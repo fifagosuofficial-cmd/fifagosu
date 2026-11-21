@@ -32,8 +32,10 @@ def grades_arg(s):
 
 
 def fetch(client, spid, g):
-    html = client.post("/datacenter/PlayerPreView", {"spid": spid, "n1strong": g, "n1Grow": 0, "n1TeamColor": 0})
-    return fgcrawl.parse_preview(html, spid)
+    html = client.post("/datacenter/PlayerPreView", {
+        "spid": spid, "n1strong": g, "n1Grow": 0, "n1Adaptation": 5, "n1TeamColor": 0,
+    })
+    return fgcrawl.parse_preview(html, spid, adaptation=5)
 
 
 def main(argv=None):

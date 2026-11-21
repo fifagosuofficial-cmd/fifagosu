@@ -131,6 +131,33 @@ class Client:
             time.sleep(3 * (attempt + 1))
         raise RuntimeError(f"{path} 요청 실패")
 
+    def get(self, path, timeout=60):
+        """GET도 POST와 같은 대기·재시도·차단 감지 규칙을 사용해요."""
+        blocked = 0
+        for attempt in range(5):
+            self._wait()
+            try:
+                r = self.s.get(BASE + path, timeout=timeout)
+            except requests.RequestException as e:
+                log("  네트워크 오류:", e.__class__.__name__, "재시도", attempt + 1)
+                time.sleep(5 * (attempt + 1))
+                continue
+            self.count += 1
+            self.bytes += len(r.content)
+            if r.status_code == 200:
+                r.encoding = "utf-8"
+                return r.text
+            if r.status_code in (403, 429, 503):
+                blocked += 1
+                log(f"  차단 신호 {r.status_code} ({blocked}/3) — {30 * blocked}초 쉬고 재시도")
+                if blocked >= 3:
+                    raise Blocked(f"HTTP {r.status_code}")
+                time.sleep(30 * blocked)
+                continue
+            log("  HTTP", r.status_code, "재시도", attempt + 1)
+            time.sleep(3 * (attempt + 1))
+        raise RuntimeError(f"{path} 요청 실패")
+
 
 # ---------------------------------------------------------------- 파싱
 
@@ -211,7 +238,7 @@ def parse_list(html: str) -> list[dict]:
     return out
 
 
-def parse_preview(html: str, spid: int) -> dict | None:
+def parse_preview(html: str, spid: int, adaptation: int = 1) -> dict | None:
     """데이터센터 PlayerPreView 응답 → 세부 정보(신체·개인기·특성·요약/세부 능력치·클럽 경력)"""
     soup = BeautifulSoup(html, "html.parser")
     stats_el = soup.select(".content_bottom li.ab")
@@ -257,6 +284,7 @@ def parse_preview(html: str, spid: int) -> dict | None:
                           1 if r and r.get_text(strip=True) else 0])
     return {
         "spid": spid,
+        "adaptation": max(1, min(5, int(adaptation))),
         "name": txt(".info_name .name") or txt(".name"),
         "ovr": to_int(txt(".playerCardInfoSide .ovr")),
         "pay": to_int(txt(".pay_side")),
@@ -278,7 +306,7 @@ def parse_preview(html: str, spid: int) -> dict | None:
                    for s in soup.select(".skill_wrap > span") if s.select_one(".desc")],
         "summary": summary,
         "stats": stats,
-        "clubs": clubs[:12],
+        "clubs": clubs,
     }
 
 
@@ -433,8 +461,8 @@ def cmd_detail(client, store, max_n, minutes):
             log("시간 예산 소진 — 다음 실행에서 이어서")
             break
         html = client.post("/datacenter/PlayerPreView",
-                           {"spid": r["spid"], "n1strong": 1, "n1Grow": 0, "n1TeamColor": 0})
-        rec = parse_preview(html, r["spid"])
+                           {"spid": r["spid"], "n1strong": 1, "n1Grow": 0, "n1TeamColor": 0})   # n1Grow=0 → 적응도 1단계
+        rec = parse_preview(html, r["spid"], adaptation=1)
         if rec:
             rec["at"] = now_iso()
             store.put("detail", rec)
@@ -525,7 +553,7 @@ def main(argv=None):
         try:
             sys.path.insert(0, str(Path(__file__).resolve().parent))
             import derive
-            derive.run(DATA)
+            derive.run(DATA, client=client)
         except Exception as e:  # noqa: BLE001
             log("파생 데이터 만들기 실패:", e)
 

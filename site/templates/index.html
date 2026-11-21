@@ -1,7 +1,9 @@
 {% extends "base.html" %}
+{% import "_news.html" as N with context %}
 {% block nav %}
   <nav class="menu" aria-label="메뉴" id="menu">
     <a href="{{ root or './' }}" data-view="home"{% if view=='home' %} aria-current="page"{% endif %}>홈</a>
+    <a href="{{ root }}news/">소식</a>
     <a href="{{ root }}diag" data-view="diag"{% if view=='diag' %} aria-current="page"{% endif %}>전적 진단</a>
     <a href="{{ root }}cards" data-view="cards"{% if view=='cards' %} aria-current="page"{% endif %}>카드 검색</a>
     <a href="{{ root }}calc" data-view="calc"{% if view=='calc' %} aria-current="page"{% endif %}>BP·강화 계산기</a>
@@ -13,18 +15,58 @@
 <div class="notice" id="notice"><b>미리보기</b> · 이 화면은 넥슨 서버에 접속할 수 없어서 미리 불러온 구단주 전적과 일부 카드(능력치·시세는 손흥민 카드 예시)만 보여요. 배포한 사이트에서는 누구나 실시간으로 조회되고 전체 카드가 검색돼요.</div>
 
 <!-- ================= 홈 ================= -->
-<main id="v-home" class="wrap"{% if view!='home' %} hidden{% endif %}>
-  <div class="hero">
-    <h1>최근 경기로 <em>내 팀 약점</em>을 찾고<br>모든 카드를 한 번에 검색해요</h1>
-    <form class="ask" id="hForm" autocomplete="off">
-      <input id="hNick" placeholder="구단주 닉네임" aria-label="구단주 닉네임">
-      <button class="go" type="submit">전적 진단</button>
-    </form>
-    <form class="ask" id="hCardForm" autocomplete="off" style="margin-top:8px">
-      <input id="hCard" placeholder="선수 이름 또는 시즌 (예: 손흥민, 26 TOTS)" aria-label="카드 검색">
-      <button class="go" type="submit">카드 검색</button>
-    </form>
+<main id="v-home" class="wrap home2"{% if view!='home' %} hidden{% endif %}>
+  <div class="h2-search">
+    <h1 class="h2-h1">오늘의 <em>FC온라인</em>,<br class="m-br"> 여기에서</h1>
+    <div class="h2-forms">
+      <form class="ask" id="hForm" autocomplete="off">
+        <input id="hNick" placeholder="구단주 닉네임을 넣으면 최근 경기로 약점을 진단해요" aria-label="구단주 닉네임">
+        <button class="go" type="submit">전적 진단</button>
+      </form>
+    </div>
   </div>
+{% if news %}
+  <section class="board" aria-label="오늘의 상태판">
+    {% if news.check %}<a class="bd-tile" href="{{ news.check.url }}" target="_blank" rel="noopener nofollow">
+      <span class="bd-k">최근 점검</span>
+      <span class="bd-v"><b class="bd-st st-{{ news.check.state }}">{{ news.check.state_label }}</b> {{ news.check.short }}</span></a>{% endif %}
+    <a class="bd-tile" href="#evH">
+      <span class="bd-k">진행 중 이벤트</span>
+      <span class="bd-v"><b class="bd-num">{{ news.events|length }}</b>개{% if news.events %} · <span data-soonest="{{ news.events[0].end }}">가장 빠른 마감 ~{{ N.date_md(news.events[0].end) }}</span>{% endif %}</span></a>
+    {% if news.upd %}<a class="bd-tile" href="{{ news.upd.url }}" target="_blank" rel="noopener nofollow">
+      <span class="bd-k">최신 업데이트</span>
+      <span class="bd-v">{{ news.upd.title }} <small>{{ N.date_md(news.upd.date) }}</small></span></a>{% endif %}
+    <a class="bd-tile" href="{{ root }}news/">
+      <span class="bd-k">소식 갱신</span>
+      <span class="bd-v"><time datetime="{{ news.updated }}" data-rel>{{ news.updated[5:7]|int }}.{{ news.updated[8:10]|int }} {{ news.updated[11:16] }}</time> · 하루 4번</span></a>
+  </section>
+  <div class="h2-grid h2-3">
+    <div class="h2-main h2-cols">
+      <section aria-labelledby="clH">
+        <h2 id="clH" class="h2-sec">공식 소식 <small>공지·점검·업데이트</small><a class="h2-more" href="{{ root }}news/">전체 보기 →</a></h2>
+        <ol class="cl">{% for x in news.official %}{{ N.official_item(x) }}{% endfor %}</ol>
+      </section>
+      <section aria-labelledby="nwH">
+        <h2 id="nwH" class="h2-sec">축구·게임 뉴스<a class="h2-more" href="{{ root }}news/#press">더 보기 →</a></h2>
+        {{ N.press_tabs(news.press, 'home') }}
+        <ol class="nw" data-list="home">{% for x in news.press %}{{ N.press_item(x, loop.index) }}{% endfor %}</ol>
+      </section>
+    </div>
+    <aside class="h2-side">
+      {{ N.events_box(news.events) }}
+      <section>
+        <h2 class="h2-sec">바로가기</h2>
+        <div class="quick quick-col">
+          <button type="button" data-go="diag"><b>내 전적 진단</b><span>최근 30·50·100경기로 약점 찾기</span></button>
+          <button type="button" data-go="cards"><b>전체 카드 검색</b><span>OVR·능력치·강화별 시세</span></button>
+          <button type="button" data-go="calc"><b>BP·강화 계산기</b><span>판매 실수령, 강화 확률</span></button>
+          <button type="button" data-go="guide"><b>시스템 가이드</b><span>등급·감독모드·강화·팀컬러</span></button>
+        </div>
+      </section>
+      <a class="funlink" href="{{ root }}fun/"><b>심심할 땐 축구 테스트</b><span>닮은 선수 찾기·내 몸값 등 12종</span><em>해보기 →</em></a>
+    </aside>
+  </div>
+{% else %}
   <section>
     <h2>바로 시작하기</h2>
     <div class="quick">
@@ -34,7 +76,8 @@
       <button type="button" data-go="guide"><b>시스템 가이드</b><span>등급·감독모드·강화·팀컬러</span></button>
     </div>
   </section>
-  <a class="funlink" href="fun/index.html"><b>심심할 땐 축구 테스트 한 판</b><span>닮은 선수 찾기·내 몸값·감독 유형 등 12종, 1분이면 끝나요</span><em>해보기 →</em></a>
+  <a class="funlink" href="{{ root }}fun/"><b>심심할 땐 축구 테스트 한 판</b><span>닮은 선수 찾기·내 몸값·감독 유형 등 12종, 1분이면 끝나요</span><em>해보기 →</em></a>
+{% endif %}
   <div class="slot" data-slot="home-1"></div>
 </main>
 
@@ -231,6 +274,7 @@
 {% endblock %}
 {% block scripts %}
 <script>if(!window.FG_LIVE)document.write('<script src="{{ root }}preview/data.js?v={{ ver }}"><\/script>')</script>
+<script src="{{ root }}assets/js/news.js?v={{ ver }}" defer></script>
 <script>window.FG_ROUTES={"home":"/","diag":"/diag","cards":"/cards","calc":"/calc","guide":"/guide/"};window.FG_TITLES={{ titles }};</script>
 <script src="{{ root }}assets/js/app.js?v={{ ver }}"></script>
 {% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<main class="wrap postpg">
+  <nav class="post-crumb" aria-label="위치"><a href="{{ root }}news/">소식 게시판</a> › <a href="{{ root }}news/#{{ post.cat }}">{{ post.label }}</a></nav>
+  <article class="post-art">
+    <header class="post-head">
+      <b class="cl-badge cat-{{ post.cat }}">{{ post.label }}</b>
+      <h1 class="post-h1">{{ post.title }}</h1>
+      <p class="post-meta"><span>{{ post.source }}</span> · <time datetime="{{ post.date }}">{{ post.date[:4] }}.{{ post.date[5:7] }}.{{ post.date[8:10] }}{% if post.date[11:16] != '00:00' %} {{ post.date[11:16] }}{% endif %}</time></p>
+    </header>
+    <div class="post-body">
+      {% if post.summary %}
+        {% if post.kind == 'official' %}
+        <h2 class="post-sub">핵심 내용</h2>
+        <ul class="cl-lines post-lines">{% for l in post.summary %}<li>{{ l }}</li>{% endfor %}</ul>
+        {% else %}
+        <h2 class="post-sub">요약</h2>
+        {% for l in post.summary %}<p>{{ l }}</p>{% endfor %}
+        {% endif %}
+      {% else %}
+        <p class="cl-empty">이 글은 요약할 본문이 없어요. 원문에서 자세한 내용을 확인하세요.</p>
+      {% endif %}
+    </div>
+    <p class="post-go"><a class="go" href="{{ post.url }}" target="_blank" rel="noopener nofollow">{{ post.source }}에서 원문 보기 ↗</a></p>
+    <p class="post-note">{% if post.kind == 'official' %}피파고수가 넥슨 공지에서 핵심 줄만 추린 요약이에요. 일정·보상 등 정확한 내용은 반드시 원문을 확인하세요.{% else %}요약은 {{ post.source }}가 RSS로 제공한 문구예요. 기사 저작권은 {{ post.source }}에 있어요.{% endif %}</p>
+  </article>
+  <nav class="post-nav" aria-label="이전·다음 글">
+    {% if post.prev %}<a href="{{ root }}news/{{ post.prev.id }}"><small>이전 글</small><span>{{ post.prev.title }}</span></a>{% else %}<span></span>{% endif %}
+    {% if post.next %}<a href="{{ root }}news/{{ post.next.id }}" class="nx"><small>다음 글</small><span>{{ post.next.title }}</span></a>{% endif %}
+  </nav>
+  {% if post.related %}
+  <section class="post-rel">
+    <h2 class="h2-sec">{{ post.label }} 최근 글</h2>
+    <ul>{% for r in post.related %}<li><a href="{{ root }}news/{{ r.id }}">{{ r.title }}</a><time datetime="{{ r.date }}">{{ r.date[5:7]|int }}.{{ r.date[8:10]|int }}</time></li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+  <p><a href="{{ root }}news/">← 게시판 목록으로</a></p>
+</main>
+{% endblock %}

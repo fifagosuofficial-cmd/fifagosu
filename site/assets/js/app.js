@@ -302,17 +302,42 @@ function mapSide(mi,names){
     player:players.filter(p=>p.pos!=='SUB'),bench:players.filter(p=>p.pos==='SUB')};
 }
 /* fetchJSON(path) 은 실서비스에서 '/api' 중계(Cloudflare Pages Functions)를 부름. names(ids) 는 spid 이름 조회 */
+const MD_CACHE=new Map();   // 받은 경기 상세는 다시 요청하지 않음(30→50경기 "더 분석" 때 차이분만)
+let BUNDLE_OK=true;         // /api/summary·/api/matches 묶음 경로 (없는 배포면 기존 경로로)
 async function realData(nick,mode,count,fetchJSON,names,BATCH=8){
-  const id=await fetchJSON('/fconline/v1/id?nickname='+encodeURIComponent(nick));
-  if(!id||!id.ouid)throw {code:'no_user',message:'해당 닉네임의 구단주를 찾지 못했어요.'};
-  const [basic,maxd,list]=await Promise.all([fetchJSON('/fconline/v1/user/basic?ouid='+id.ouid),fetchJSON('/fconline/v1/user/maxdivision?ouid='+id.ouid),
-    fetchJSON(`/fconline/v1/user/match?ouid=${id.ouid}&matchtype=${mode}&offset=0&limit=${Math.min(100,count||30)}`)]);
-  if(!list||!list.length)throw {code:'no_match',message:'최근 경기 기록이 없어요.'};
-  const details=[];
-  for(let i=0;i<list.length;i+=BATCH){ // 호출 제한 대응: 묶음 단위로 요청
-    const chunk=await Promise.all(list.slice(i,i+BATCH).map(m=>fetchJSON('/fconline/v1/match-detail?matchid='+m).catch(()=>null)));
-    details.push(...chunk.filter(Boolean));
+  const lim=Math.min(100,count||30);
+  let id,basic,maxd,list;
+  if(BUNDLE_OK){
+    try{
+      const s=await fetchJSON(`/summary?nickname=${encodeURIComponent(nick)}&matchtype=${mode}&limit=${lim}`);
+      id={ouid:s.ouid};basic=s.basic;maxd=s.maxdivision;list=s.matches;
+    }catch(e){
+      if(e&&e.code==='http_404'&&!e.api)BUNDLE_OK=false;   // 경로 자체가 없음 → 기존 방식
+      else if(e&&e.code==='http_404')throw {code:'no_user',message:'해당 닉네임의 구단주를 찾지 못했어요.'};
+      else throw e;
+    }
   }
+  if(!BUNDLE_OK){
+    id=await fetchJSON('/fconline/v1/id?nickname='+encodeURIComponent(nick));
+    if(!id||!id.ouid)throw {code:'no_user',message:'해당 닉네임의 구단주를 찾지 못했어요.'};
+    [basic,maxd,list]=await Promise.all([fetchJSON('/fconline/v1/user/basic?ouid='+id.ouid),fetchJSON('/fconline/v1/user/maxdivision?ouid='+id.ouid),
+      fetchJSON(`/fconline/v1/user/match?ouid=${id.ouid}&matchtype=${mode}&offset=0&limit=${lim}`)]);
+  }
+  if(!list||!list.length)throw {code:'no_match',message:'최근 경기 기록이 없어요.'};
+  const need=list.filter(m=>!MD_CACHE.has(m));
+  if(BUNDLE_OK){
+    for(let i=0;i<need.length;i+=10){ // 한 번에 10경기씩(Functions 하위 요청 한도 안)
+      const ids=need.slice(i,i+10);
+      const arr=await fetchJSON('/matches?ids='+ids.join(',')).catch(e=>{if(e&&e.name==='AbortError')throw e;return []});
+      ids.forEach((m,k)=>{if(arr[k])MD_CACHE.set(m,arr[k])});
+    }
+  }else{
+    for(let i=0;i<need.length;i+=BATCH){ // 호출 제한 대응: 묶음 단위로 요청
+      const chunk=await Promise.all(need.slice(i,i+BATCH).map(m=>fetchJSON('/fconline/v1/match-detail?matchid='+m).catch(()=>null)));
+      chunk.forEach((d,k)=>{if(d)MD_CACHE.set(need[i+k],d)});
+    }
+  }
+  const details=list.map(m=>MD_CACHE.get(m)).filter(Boolean);
   const ids=new Set();details.forEach(d=>d.matchInfo.forEach(mi=>mi.player.forEach(p=>ids.add(p.spId))));
   const nm=await names([...ids]);
   const matches=details.filter(d=>d.matchInfo&&d.matchInfo.length===2).map(d=>{
@@ -474,23 +499,31 @@ function dRenderMatches(d,a){
 
 /* 실서비스: window.FG_LIVE=true 이면 '/api' 중계로 넥슨 Open API 실데이터를 씀 */
 const LIVE=!!window.FG_LIVE, API=window.FG_API||'/api';
-async function fetchJSON(path){
+let DIAG_SIGNAL=null;   // 진단 버튼을 다시 누르면 이전 요청을 취소
+async function fetchJSON(path,signal){
+  signal=signal||DIAG_SIGNAL||undefined;
   for(let i=0;i<4;i++){
-    const r=await fetch(API+path);
+    const r=await fetch(API+path,{signal});
     if(r.status===429){await new Promise(s=>setTimeout(s,800*(i+1)));continue}
-    if(!r.ok)throw {code:'http_'+r.status,message:r.status===400?'요청 값을 확인해 주세요.':'넥슨 API 응답 오류('+r.status+')예요. 잠시 후 다시 시도해 주세요.'};
+    if(!r.ok){let b=null;try{b=await r.json()}catch(e){}
+      throw {code:'http_'+r.status,api:!!(b&&b.code),message:b&&b.code&&b.message?b.message:r.status===400?'요청 값을 확인해 주세요.':'넥슨 API 응답 오류('+r.status+')예요. 잠시 후 다시 시도해 주세요.'}}
     return r.json();
   }
   throw {code:'rate',message:'요청이 많아 잠시 막혔어요. 1분 뒤 다시 시도해 주세요.'};
 }
 let spidMap=null, seasonsLoaded=false;
+/* 카드·시즌 목록: 매일 수집 때 저장한 정적 사본(data/meta)을 먼저 읽어 Functions 요청을 아낌 */
+async function metaJSON(name){
+  try{const r=await fetch((window.FG_DATA||'/data')+'/meta/'+name+'.json');if(r.ok)return await r.json()}catch(e){}
+  return fetchJSON('/static/fconline/meta/'+name+'.json');
+}
 async function names(ids){
-  if(!spidMap)spidMap=fetchJSON('/static/fconline/meta/spid.json').then(a=>Object.fromEntries(a.map(x=>[x.id,x.name])));
+  if(!spidMap)spidMap=metaJSON('spid').then(a=>Object.fromEntries(a.map(x=>[x.id,x.name])));
   const m=await spidMap;return Object.fromEntries(ids.map(id=>[id,m[id]]));
 }
 async function loadSeasons(){
   if(seasonsLoaded)return;
-  const list=await fetchJSON('/static/fconline/meta/seasonid.json');
+  const list=await metaJSON('seasonid');
   const fam=n=>/ICON/.test(n)?'icon':/TOTY/.test(n)?'toty':/TOTS/.test(n)?'tots':/UCL/.test(n)?'ucl':/HR\b|Heroes/.test(n)?'hr':/NG\b/.test(n)?'ng':/\bPL/.test(n)?'pl':/LIVE|KLeague|KFA|KB\b/.test(n)?'live':'special';
   list.forEach(s=>{if(!SEASONS[s.seasonId]){const short=s.className.split(' (')[0];SEASONS[s.seasonId]=[short,fam(short)]}});
   seasonsLoaded=true;
@@ -501,9 +534,11 @@ async function runDiag(nick){
   const seq=++diagSeq;
   let d;
   if(LIVE){
+    try{runDiag.ctrl&&runDiag.ctrl.abort()}catch(e){}
+    runDiag.ctrl=typeof AbortController==='function'?new AbortController():null;DIAG_SIGNAL=runDiag.ctrl&&runDiag.ctrl.signal;
     $('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta">최근 ${dCount}경기를 불러오는 중이에요. 100경기는 30초 정도 걸릴 수 있어요.</div></div>`;
     try{await loadSeasons();d=await realData(nick,dMode,dCount,fetchJSON,names,4)}
-    catch(err){if(seq!==diagSeq)return;$('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta" style="color:var(--crit)">${esc(err&&err.message||'불러오지 못했어요. 잠시 후 다시 시도해 주세요.')}</div></div>`;['dCards','dPanel','dMatches'].forEach(id=>$(id).innerHTML='');return}
+    catch(err){if(seq!==diagSeq||(err&&err.name==='AbortError'))return;$('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta" style="color:var(--crit)">${esc(err&&err.message||'불러오지 못했어요. 잠시 후 다시 시도해 주세요.')}</div></div>`;['dCards','dPanel','dMatches'].forEach(id=>$(id).innerHTML='');return}
     if(seq!==diagSeq)return;
     if(d.matches.length<5){$('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta">${dMode==='52'?'감독모드':'공식경기'} 경기가 ${d.matches.length}경기뿐이라 진단하기에 부족해요. 5경기 이상부터 진단해요.</div></div>`;['dCards','dPanel','dMatches'].forEach(id=>$(id).innerHTML='');return}
   }else{
@@ -528,7 +563,7 @@ function seasonImg(id){const s=SEASONS[id];if(!s)return '';return s[3]||(s[2]?SE
 const sch=id=>{const n=sname(id),fam=(SEASONS[id]||['','special'])[1],u=seasonImg(id),t=`<span class="ssn ssn-${fam}" title="${esc(n)}"${u?' hidden':''}>${esc(n)}</span>`;return u?`<img class="ssnimg" src="${esc(u)}" alt="${esc(n)}" title="${esc(n)}" loading="lazy" onerror="this.nextElementSibling.hidden=false;this.remove()">${t}`:t};
 async function loadSeasons(){
   if(seasonsLoaded)return;
-  const list=await fetchJSON('/static/fconline/meta/seasonid.json');
+  const list=await metaJSON('seasonid');
   list.forEach(s=>{const short=String(s.className||s.seasonId).split(' (')[0],cur=SEASONS[s.seasonId];SEASONS[s.seasonId]=[short,SEASON_FAM(short),cur?cur[2]:'',s.seasonImg||'']});
   seasonsLoaded=true;
 }
@@ -560,7 +595,7 @@ async function initCards(){
   try{
     if(LIVE){
       await loadSeasons();
-      const a=await fetchJSON('/static/fconline/meta/spid.json');
+      const a=await metaJSON('spid');
       buildCards(a.map(x=>[x.id,x.name]));
       spidMap=Promise.resolve(Object.fromEntries(a.map(x=>[x.id,x.name])));
     }else buildCards(FG_PREVIEW_CARDS);
@@ -708,7 +743,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('pmodal').hidden
 if(!LIVE&&window.FG_PREVIEW_DATA)FG_PREVIEW_DATA.list.forEach(r=>{const sid=Math.floor(r.spid/1e6);if(!SEASONS[sid]&&r.season){const n=r.season.replace(/^(\d+)([A-Z])/,'$1 $2');SEASONS[sid]=[n,SEASON_FAM(n),r.season]}});
 /* 홈 */
 $('hForm').addEventListener('submit',e=>{e.preventDefault();const n=$('hNick').value.trim();show('diag');if(n){$('dNick').value=n;runDiag(n)}});
-$('hCardForm').addEventListener('submit',e=>{e.preventDefault();$('cq').value=$('hCard').value;$('cSeason').value='';show('cards');cLimit=60;renderCards()});
+if($('hCardForm'))$('hCardForm').addEventListener('submit',e=>{e.preventDefault();$('cq').value=$('hCard').value;$('cSeason').value='';show('cards');cLimit=60;renderCards()});
 
 /* ---------- 시작 ---------- */
 runCalc();runEnhance();

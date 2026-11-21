@@ -1,0 +1,67 @@
+{# 소식(공식 공지·업데이트·뉴스) 조각 — 홈과 /news 페이지가 함께 써요. 데이터는 build.py가 data/news/*.json에서 넣어요. #}
+
+{% macro date_md(iso) -%}{{ iso[5:7]|int }}.{{ iso[8:10]|int }}{%- endmacro %}
+
+{% macro official_item(x, open=False) -%}
+<li class="cl-item cat-{{ x.cat }}" data-cat="{{ x.cat }}">
+  <details{% if open %} open{% endif %}>
+    <summary>
+      <span class="cl-badge">{{ x.label }}</span>
+      <span class="cl-title">{{ x.title }}</span>
+      <time class="cl-time" datetime="{{ x.date }}">{{ date_md(x.date) }}</time>
+    </summary>
+    <div class="cl-body">
+      {% if x.summary %}<ul class="cl-lines">{% for l in x.summary %}<li>{{ l }}</li>{% endfor %}</ul>
+      {% else %}<p class="cl-empty">자세한 내용은 공식 페이지에서 확인하세요.</p>{% endif %}
+      <p class="cl-src">출처: {{ x.source }} · <a href="{{ root }}news/{{ x.id }}">게시글로 보기</a> · <a href="{{ x.url }}" target="_blank" rel="noopener nofollow">원문 보기 ↗</a>
+        <span class="cl-note">핵심 내용만 추린 요약이에요. 정확한 내용은 원문을 확인하세요.</span></p>
+    </div>
+  </details>
+</li>
+{%- endmacro %}
+
+{% macro press_item(x, n) -%}
+<li class="nw-item" data-cat="{{ x.cat }}">
+  <details>
+    <summary>
+      <span class="nw-n">{{ '%02d'|format(n) }}</span>
+      <span class="nw-main"><span class="nw-title">{{ x.title }}</span>
+        <span class="nw-meta"><b class="nw-src">{{ x.source }}</b> · <span class="nw-cat">{{ x.label }}</span> · <time datetime="{{ x.date }}" data-rel>{{ date_md(x.date) }}</time></span></span>
+    </summary>
+    <div class="nw-body">
+      {% for l in x.summary %}<p>{{ l }}</p>{% endfor %}
+      <p class="cl-src"><a href="{{ root }}news/{{ x.id }}">게시글로 보기</a> · <a href="{{ x.url }}" target="_blank" rel="noopener nofollow">{{ x.source }}에서 기사 전문 읽기 ↗</a>
+        <span class="cl-note">요약은 {{ x.source }} RSS 제공 문구예요. 기사 저작권은 {{ x.source }}에 있어요.</span></p>
+    </div>
+  </details>
+</li>
+{%- endmacro %}
+
+{% macro press_tabs(press, prefix) -%}
+<div class="nw-tabs" role="tablist" aria-label="뉴스 분류" data-tabs="{{ prefix }}">
+  <button type="button" role="tab" aria-selected="true" data-f="all">전체</button>
+  <button type="button" role="tab" aria-selected="false" data-f="fcgame">FC온라인</button>
+  <button type="button" role="tab" aria-selected="false" data-f="world">해외축구</button>
+  <button type="button" role="tab" aria-selected="false" data-f="korea">국내축구</button>
+</div>
+{%- endmacro %}
+
+{% macro events_box(events) -%}
+<section class="ev-box" aria-labelledby="evH">
+  <h2 id="evH">진행 중 이벤트 <small>{{ events|length }}개</small></h2>
+  {% if events %}
+  <ul class="ev-list">
+    {% for e in events %}
+    <li data-start="{{ e.start }}" data-end="{{ e.end }}">
+      <a href="{{ e.url }}" target="_blank" rel="noopener nofollow">
+        <span class="ev-t">{{ e.title }}</span>
+        <span class="ev-d" data-dday>~{{ date_md(e.end) }}</span>
+      </a>
+      <span class="ev-bar" aria-hidden="true"><i style="width:{{ e.pct }}%"></i></span>
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="cl-src">출처: FC온라인 공식 이벤트 목록</p>
+  {% else %}<p class="cl-empty">진행 중인 이벤트 정보를 불러오는 중이에요.</p>{% endif %}
+</section>
+{%- endmacro %}

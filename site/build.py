@@ -14,6 +14,7 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -49,6 +50,8 @@ GUIDE_PAGES = [
     ("market", "FC온라인 급여·이적시장 — 급여 상한·판매 수수료 계산", "FC온라인 급여 상한 310과 판매 수수료 계산식, 수수료 쿠폰 지급 방식을 정리했어요."),
 ]
 PAGES = [
+    ("news/index.html", "news.html", "/news/", "FC온라인 소식 — 공지·점검·업데이트·축구 뉴스 | 피파고수",
+     "넥슨 FC온라인 공식 공지·점검·업데이트 핵심 요약과 해외·국내 축구, FC온라인 관련 뉴스를 하루 4번 모아 보여줘요.", True),
     ("about.html", "pages/about.html", "/about", "피파고수 소개", "피파고수가 어떤 사이트인지, 데이터는 어디서 오는지 소개해요.", True),
     ("privacy.html", "pages/privacy.html", "/privacy", "개인정보처리방침 — 피파고수", "피파고수의 개인정보 처리 방침이에요.", True),
     ("terms.html", "pages/terms.html", "/terms", "이용약관 — 피파고수", "피파고수 이용약관이에요.", True),
@@ -57,6 +60,56 @@ PAGES = [
 ]
 # 그대로 복사하는 폴더(저장소 루트 기준 → dist 기준)
 COPY = [("site/assets", "assets"), ("site/preview", "preview"), ("site/brand", "site/brand"), ("fun", "fun")]
+
+
+OFFICIAL = {"notice", "check", "update", "event"}
+CATS = [("notice", "공지"), ("check", "점검"), ("update", "업데이트"), ("event", "이벤트"),
+        ("fcgame", "FC온라인 기사"), ("world", "해외축구"), ("korea", "국내축구")]
+PRESS = {"fcgame", "world", "korea"}
+
+
+def load_news(data_dir, today):
+    """data/news/feed.json·events.json → 템플릿용 값. 파일이 없으면 None(예전 홈 그대로)."""
+    feed = _load(data_dir / "news" / "feed.json")
+    if not feed or not feed.get("items"):
+        return None
+    ev = (_load(data_dir / "news" / "events.json") or {}).get("items", [])
+    items = feed["items"]
+    official = [x for x in items if x["cat"] in OFFICIAL and x["cat"] != "update"]
+    updates = [x for x in items if x["cat"] == "update"]
+    press = [x for x in items if x["cat"] in PRESS]
+    check = next((x for x in official if x["cat"] == "check"), None)
+    if check:
+        t = check["title"]
+        state = "done" if re.search(r"완료|조기 오픈|종료", t) else "plan"
+        short = re.sub(r"^\([^)]*\)\s*", "", t)
+        check = {**check, "state": state, "state_label": "완료" if state == "done" else "예정", "short": short}
+    events = []
+    for e in ev:
+        if e["end"] < today:
+            continue
+        try:
+            s_, e_, t_ = (dt.date.fromisoformat(x) for x in (e["start"], e["end"], today))
+            pct = max(4, min(100, round((t_ - s_).days / max(1, (e_ - s_).days) * 100)))
+        except ValueError:
+            pct = 50
+        events.append({**e, "pct": pct})
+    events.sort(key=lambda e: e["end"])
+    timeline = sorted(official + updates[:1], key=lambda x: x.get("date") or "", reverse=True)
+    return {"updated": feed.get("updated", ""), "official": timeline[:8], "press": press[:7], "events": events[:6],
+            "check": check, "upd": updates[0] if updates else None,
+            "all_official": sorted(official + updates, key=lambda x: x.get("date") or "", reverse=True)[:150],
+            "all_press": press[:150],
+            "board": sorted(items, key=lambda x: x.get("date") or "", reverse=True),
+            "cats": [(c, l) for c, l in CATS if any(x["cat"] == c for x in items)],
+            "counts": {c: sum(1 for x in items if x["cat"] == c) for c, _ in CATS}}
+
+
+def _load(p):
+    try:
+        return json.loads(Path(p).read_text("utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
 
 
 def main(argv=None):
@@ -83,7 +136,10 @@ def main(argv=None):
 
     env = Environment(loader=FileSystemLoader(SITE / "templates"), undefined=StrictUndefined,
                       autoescape=False, keep_trailing_newline=True)
-    common = dict(SITE_URL=site_url, ver=ver, cfg=cfg, contact=cfg.get("CONTACT_EMAIL") or "",
+    data_dir = (ROOT / a.data) if not Path(a.data).is_absolute() else Path(a.data)
+    today = dt.datetime.now(KST).strftime("%Y-%m-%d")
+    news = load_news(data_dir, today)
+    common = dict(news=news, SITE_URL=site_url, ver=ver, cfg=cfg, contact=cfg.get("CONTACT_EMAIL") or "",
                   updated=dt.datetime.now(KST).strftime("%Y-%m-%d"), og_title=None, og_description=None)
     sitemap = []
     titles = json.dumps({v: t for _, _, v, t, _ in VIEW_PAGES}, ensure_ascii=False)
@@ -104,8 +160,19 @@ def main(argv=None):
     for slug, title, desc in GUIDE_PAGES:
         render(f"guide/{slug}.html", MAIN_T, f"/guide/{slug}", title + " | 피파고수", desc, True,
                root="../", view="guide", guide_only="g-" + slug)
+    # 게시글 페이지: /news/{id} — 공식 소식만 검색 색인, 기사 요약 글은 noindex(얇은 중복 콘텐츠 방지)
+    if news:
+        board = news["board"]
+        for i, x in enumerate(board):
+            same = [y for y in board if y["cat"] == x["cat"] and y["id"] != x["id"]][:5]
+            post = {**x, "prev": board[i + 1] if i + 1 < len(board) else None,
+                    "next": board[i - 1] if i > 0 else None, "related": same}
+            desc = (" ".join(x.get("summary") or []) or x["title"])[:150]
+            render(f"news/{x['id']}.html", "post.html", f"/news/{x['id']}", f"{x['title']} | 피파고수 소식",
+                   desc, x["kind"] == "official", root="../", post=post, active="news")
     for fname, tpl, path, title, desc, in_map in PAGES:
-        render(fname, tpl, path, title, desc, in_map, root="/" if fname == "404.html" else "")
+        render(fname, tpl, path, title, desc, in_map, root="/" if fname == "404.html" else ("../" if "/" in fname else ""),
+               active="news" if fname.startswith("news/") else "")
     if (out / "fun" / "index.html").exists():
         sitemap.append(site_url + "/fun/")
 

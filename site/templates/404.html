@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<main class="wrap"><article class="doc" style="text-align:center;padding:40px 0">
+<h1>페이지를 찾을 수 없어요</h1>
+<p>주소가 바뀌었거나 없는 페이지예요.</p>
+<p><a href="/">피파고수 홈으로</a> · <a href="/#cards">카드 검색</a> · <a href="/#diag">전적 진단</a></p>
+</article></main>
+<script>
+/* 옛 해시 주소 호환: /어딘가#cards → /#cards */
+(function(){var h=location.hash.replace('#','');if(['home','diag','cards','calc','guide'].indexOf(h)>=0)location.replace('/#'+h)})();
+</script>
+{% endblock %}

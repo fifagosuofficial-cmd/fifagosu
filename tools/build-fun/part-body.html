@@ -1,0 +1,29 @@
+<style>
+/* ---- 피파고수 산하 코너용 추가 스타일 (원본 claude.ai 래퍼의 기본값 일부 + 피파고수 머리띠) ---- */
+img{max-width:100%}
+body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.site{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+/* 공식 로고는 투명 배경 + 초록 붓글씨라, 테스트마다 바뀌는 배경(밝은 테마 포함)에서도 보이도록 어두운 받침을 깔아요 */
+.site-logo{display:flex;align-items:center;flex:none;min-height:44px;padding:4px 10px;border-radius:12px;background:#0b120f;text-decoration:none}
+.site-logo img{display:block;height:32px;width:auto}
+.site-home{display:inline-flex;align-items:center;min-height:36px;padding:6px 12px;border:1px solid var(--line);border-radius:99px;background:rgba(0,0,0,.14);font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap}
+footer a{color:inherit;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="site" aria-label="피파고수">
+    <a class="site-logo" href="../index.html" aria-label="피파고수 메인으로"><picture><source srcset="../site/brand/fifagosu-logo-480.webp" type="image/webp"><img src="../site/brand/fifagosu-logo-480.png" alt="피파고수" height="32" decoding="async"></picture></a>
+    <a class="site-home" href="../index.html">← 전적·카드 검색</a>
+  </nav>
+  <header class="top">
+    <a class="brand" href="#/"><i aria-hidden="true"></i>킥킥<small>피파고수 축구 심심풀이</small></a>
+    <a class="allbtn" href="#/" id="allBtn" hidden>전체 테스트</a>
+  </header>
+  <div class="ad" id="adTop"></div>
+  <main id="app" aria-live="polite"></main>
+  <div class="ad" id="adBot"></div>
+  <footer>재미로 만든 테스트예요. 선수 성향·몸값·궁합은 공식 기록이 아니에요.<br>선수 사진: Wikimedia Commons 자유 라이선스<br><a href="../index.html">피파고수</a> · FC온라인 전적 진단·전체 카드 검색</footer>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="피파고수">
+  <title>피파고수</title>
+  <!-- B-2안 "고수 구단 엠블럼": 축구 구단 방패 + 우승 별 + 고수 두 글자. 글자는 B안과 같은 도형. -->
+  <path d="M32 2L59 8V30C59 45.5 48 55.5 32 62C16 55.5 5 45.5 5 30V8Z" fill="#F0B429" stroke="#D99A0B" stroke-width="1" stroke-linejoin="round"/>
+  <path d="M32 6.5L55 11.6V30C55 43.5 45.5 52 32 57.6C18.5 52 9 43.5 9 30V11.6Z" fill="none" stroke="#1A1300" stroke-width="1.5" stroke-linejoin="round" opacity=".5"/>
+  <path fill="#1A1300" d="M32 8.6L32.79 10.91L35.23 10.95L33.28 12.42L34 14.75L32 13.35L30 14.75L30.72 12.42L28.77 10.95L31.21 10.91Z"/>
+  <g fill="#1A1300" transform="translate(8.98 9.36) scale(.72)">
+    <path d="M11 13H30V28H25V18H11Z"/>
+    <path d="M18 33H23V44H30V49H11V44H18Z"/>
+    <path d="M43.5 12L53 29H47.5L43.5 21.8L39.5 29H34Z"/>
+    <path d="M34 34H53V39H46V51H41V39H34Z"/>
+    <path d="M19.5 20.4L22.73 22.75L21.5 26.55H17.5L16.27 22.75Z"/>
+  </g>
+</svg>

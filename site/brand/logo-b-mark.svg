@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="피파고수">
+  <title>피파고수</title>
+  <!-- B안 "고수 인장" 심볼 (32px 이상용). 글자는 모두 도형(path), 글꼴 의존 없음. 색 고정: 인장 #F0B429, 글자 #1A1300 -->
+  <rect x="2.5" y="2.5" width="59" height="59" rx="12" fill="#F0B429" stroke="#D99A0B" stroke-width="1"/>
+  <rect x="6" y="6" width="52" height="52" rx="9" fill="none" stroke="#1A1300" stroke-width="1.5" opacity=".5"/>
+  <g fill="#1A1300" transform="translate(0 .5)">
+    <!-- 고: ㄱ -->
+    <path d="M11 13H30V28H25V18H11Z"/>
+    <!-- 고: ㅗ -->
+    <path d="M18 33H23V44H30V49H11V44H18Z"/>
+    <!-- 수: ㅅ -->
+    <path d="M43.5 12L53 29H47.5L43.5 21.8L39.5 29H34Z"/>
+    <!-- 수: ㅜ -->
+    <path d="M34 34H53V39H46V51H41V39H34Z"/>
+    <!-- ㄱ 안쪽 구석의 오각형 = 골대 탑코너에 꽂힌 공 -->
+    <path d="M19.5 20.4L22.73 22.75L21.5 26.55H17.5L16.27 22.75Z"/>
+  </g>
+</svg>

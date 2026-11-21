@@ -1,0 +1,3443 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>킥킥 · 축구 심심풀이 테스트 | 피파고수</title>
+<meta name="description" content="닮은 축구선수 찾기, 몇 부 리그 선수인지, 내 몸값, 감독 유형, 이름 축구선수 생성기까지. 1분이면 끝나는 축구 심심풀이 테스트 12종">
+<link rel="canonical" href="https://fifagosu.pages.dev/fun/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="피파고수">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:url" content="https://fifagosu.pages.dev/fun/">
+<meta property="og:title" content="킥킥 · 축구 심심풀이 테스트 | 피파고수">
+<meta property="og:description" content="닮은 축구선수 찾기, 내 몸값, 감독 유형, 이름 축구선수 생성기까지. 1분이면 끝나는 축구 테스트 12종">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#0f1512">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&family=Oswald:wght@500;700&display=swap">
+<style>
+/* 킥킥: 축구 심심풀이 테스트 모음.
+   구조는 하나(세로 한 컬럼, 엄지로 누르는 큰 버튼), 색과 배경 무늬만 콘텐츠마다 바뀌어요.
+   --bg/--bg2: 바탕과 줄무늬, --acc/--ai: 강조색과 그 위 글자색, --tx/--dim: 본문/보조 글자, --qb/--qt: 질문 카드 */
+:root{
+  --bg:#0d3b2a;--bg2:#114a34;--acc:#f5c518;--ai:#1d1a05;--tx:#eef3ea;--dim:#a9bfb1;--line:rgba(238,243,234,.16);
+  --qb:#eef3ea;--qt:#14261d;--qline:#cfdad1;--qsel:#f5c518;--pat:none;
+  --f-display:"Black Han Sans","Noto Sans KR",system-ui,sans-serif;
+  --f-body:"Noto Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;
+  --f-num:"Oswald","Noto Sans KR",system-ui,sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html{background:var(--bg)}
+body{margin:0;background-color:var(--bg);background-image:var(--pat);background-attachment:fixed;color:var(--tx);font-family:var(--f-body);font-size:16px;line-height:1.55;min-height:100vh;transition:background-color .25s}
+.wrap{max-width:560px;margin:0 auto;padding-block:12px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:16px}
+button,input{font:inherit}
+button{cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--acc);outline-offset:3px}
+
+/* 머리말 */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px}
+.brand{display:flex;align-items:center;gap:8px;text-decoration:none;font-family:var(--f-display);font-size:22px;letter-spacing:.02em}
+.brand i{width:13px;height:18px;background:var(--acc);border-radius:2px;transform:rotate(10deg);display:inline-block}
+.brand small{font-family:var(--f-body);font-size:12px;font-weight:500;color:var(--dim);letter-spacing:.04em}
+.allbtn{border:1px solid var(--line);border-radius:99px;padding:7px 14px;font-size:13px;font-weight:700;text-decoration:none;background:rgba(0,0,0,.14)}
+
+/* 광고 자리 (버튼과 24px 이상 떨어뜨려 오클릭 방지) */
+.ad{display:grid;gap:4px;justify-items:center}
+.ad .adl{font-size:10px;letter-spacing:.14em;color:var(--dim)}
+.ad .slot{width:100%;display:grid;place-items:center;overflow:hidden}
+.ad .ph{width:100%;max-width:336px;border:1.5px dashed var(--line);border-radius:10px;display:grid;place-items:center;font-size:12px;color:var(--dim);background:rgba(0,0,0,.1)}
+#adTop .ph{min-height:90px}#adBot{margin-top:12px}#adBot .ph{min-height:250px}
+
+/* 허브 */
+.hub-hero{display:grid;gap:8px;padding-top:4px}
+.hub-hero h1{margin:0;font-family:var(--f-display);font-weight:400;font-size:clamp(34px,10vw,48px);line-height:1.08;text-wrap:balance}
+.hub-hero p{margin:0;color:var(--dim);font-size:15px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{position:relative;display:grid;align-content:start;gap:6px;min-height:150px;padding:14px 14px 12px;border-radius:16px;text-decoration:none;color:var(--t-tx);background:var(--t-bg);border:1px solid rgba(255,255,255,.08);overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.22)}
+.tile:active{transform:scale(.98)}
+.tile .ic{width:34px;height:34px;border-radius:10px;background:var(--t-acc);color:var(--t-ai);display:grid;place-items:center}
+.tile .ic svg{width:20px;height:20px}
+.tile b{font-family:var(--f-display);font-weight:400;font-size:19px;line-height:1.2;word-break:keep-all}
+.tile span{font-size:12.5px;line-height:1.45;color:var(--t-dim);word-break:keep-all}
+.tile em{font-style:normal;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--t-acc);margin-top:auto}
+.tile.wide{grid-column:1/-1;min-height:120px;grid-template-columns:auto 1fr;column-gap:12px}
+.tile.wide .ic{grid-row:span 3;width:52px;height:52px;border-radius:14px}
+.tile.wide .ic svg{width:30px;height:30px}
+.tile.wide b{font-size:23px}
+@media (max-width:340px){.grid{grid-template-columns:1fr}}
+
+/* 콘텐츠 첫 화면 */
+.intro{display:grid;gap:14px}
+.intro .kick{font-size:12px;letter-spacing:.16em;font-weight:700;color:var(--acc)}
+.intro h1{margin:0;font-family:var(--f-display);font-weight:400;font-size:clamp(36px,11vw,54px);line-height:1.06;text-wrap:balance;word-break:keep-all}
+.intro p{margin:0;color:var(--dim);word-break:keep-all}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.facts div{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:rgba(0,0,0,.1)}
+.facts b{display:block;font-family:var(--f-num);font-size:22px;line-height:1.15}
+.facts span{font-size:12px;color:var(--dim)}
+.field{display:grid;gap:6px}
+.field label{font-size:13px;font-weight:700;color:var(--dim)}
+.field input{border:2px solid var(--line);background:rgba(0,0,0,.14);color:var(--tx);border-radius:12px;padding:14px 16px;font-size:18px;font-weight:700;width:100%;box-sizing:border-box}
+.field input:focus{border-color:var(--acc);outline:none}
+.pair{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:end}
+.pair .amp{font-family:var(--f-display);font-size:26px;color:var(--acc);padding-bottom:12px}
+.cta{display:block;width:100%;border:0;border-radius:14px;background:var(--acc);color:var(--ai);font-weight:900;font-size:18px;padding:16px 18px;box-shadow:0 5px 0 rgba(0,0,0,.28)}
+.cta:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.28)}
+.cta:disabled{opacity:.45}
+.ghost{border:1px solid var(--line);background:rgba(0,0,0,.14);color:var(--tx);border-radius:12px;padding:12px 14px;font-weight:700}
+.ghost:disabled{opacity:.4}
+.note{font-size:12px;color:var(--dim);margin:0}
+
+/* 질문 */
+.qhead{display:grid;gap:8px}
+.qmeta{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--dim)}
+.qmeta .n{font-family:var(--f-num);font-size:20px;color:var(--tx)}
+.bar{height:8px;border-radius:99px;background:rgba(0,0,0,.25);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--acc);border-radius:99px;transition:width .25s}
+.qcard{background:var(--qb);color:var(--qt);border-radius:18px;padding:20px 18px 18px;display:grid;gap:16px;box-shadow:0 10px 30px rgba(0,0,0,.22)}
+.qcard .tag{font-size:12px;font-weight:700;letter-spacing:.1em;opacity:.7}
+.qcard h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:clamp(23px,6.4vw,29px);line-height:1.28;text-wrap:balance;word-break:keep-all}
+.answers{display:grid;gap:10px}
+.answers button{text-align:left;border:2px solid var(--qline);background:rgba(255,255,255,.75);color:var(--qt);border-radius:12px;padding:13px 14px;font-weight:700;font-size:16px;display:flex;gap:12px;align-items:center;word-break:keep-all}
+.answers button[aria-pressed="true"]{border-color:var(--qt);background:var(--qsel)}
+.answers .k{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.08);font-family:var(--f-num);font-size:14px}
+.answers.t-ab{grid-template-columns:1fr auto 1fr;align-items:stretch}
+.answers.t-ab button{flex-direction:column;justify-content:center;text-align:center;min-height:118px;font-size:16.5px}
+.answers .abk{font-family:var(--f-num);font-size:26px;opacity:.6}
+.answers .vs{align-self:center;font-family:var(--f-num);font-weight:700;font-size:18px;color:#e2453c}
+@media (max-width:380px){.answers.t-ab{grid-template-columns:1fr}.answers .vs{justify-self:center}}
+.sl{display:grid;gap:12px}
+.sl output{font-family:var(--f-num);font-size:56px;line-height:1;text-align:center}
+.sl output small{font-size:20px;margin-left:4px;font-family:var(--f-body)}
+.sl input{width:100%;accent-color:var(--qt);height:32px}
+.slscale{display:flex;justify-content:space-between;font-size:12px;opacity:.7}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chips button{border:2px solid var(--qline);background:rgba(255,255,255,.75);color:var(--qt);border-radius:12px;padding:12px;font-weight:700}
+.chips button[aria-pressed="true"]{background:var(--qsel);border-color:var(--qt)}
+.next{border:0;border-radius:12px;background:var(--qt);color:var(--qb);padding:14px;font-weight:900;font-size:16px;text-align:center}
+.next:disabled{opacity:.4;cursor:not-allowed}
+.qnav{display:flex;justify-content:space-between;gap:10px}
+
+/* 퀴즈(사진) */
+.photo{position:relative;width:100%;aspect-ratio:4/3;max-height:34svh;border-radius:16px;overflow:hidden;background:rgba(0,0,0,.25);display:grid;place-items:center}
+.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%;transition:filter .2s linear}
+.photo .miss{font-size:13px;color:var(--qt);opacity:.7;padding:20px;text-align:center}
+.timer{height:6px;border-radius:99px;background:rgba(0,0,0,.12);overflow:hidden}
+.timer i{display:block;height:100%;background:var(--qt)}
+.answers button.ok{background:#3ccf7a;border-color:#1c7a45;color:#06210f}
+.answers button.no{background:#ff8a8a;border-color:#a32b2b;color:#2a0606}
+.react{font-weight:700;font-size:15px;line-height:1.55;margin:0;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.06);word-break:keep-all}
+.credit{font-size:11px;opacity:.7;margin:0;text-align:center}
+
+/* 결과 */
+.res{display:grid;gap:12px;justify-items:center}
+.res .shot{display:block;max-width:100%;max-height:max(360px,calc(100svh - 330px));width:auto;height:auto;aspect-ratio:9/16;border-radius:16px;border:1px solid var(--line);background:rgba(0,0,0,.2)}
+.acts{width:100%;display:grid;gap:8px}
+.acts .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:8px}
+.acts .ghost{padding:11px 6px;font-size:14px}
+.more{width:100%;display:grid;gap:8px;margin-top:6px}
+.more h3{margin:0;font-size:14px;color:var(--dim);font-weight:700}
+.more .grid .tile{min-height:120px}
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:#fff;color:#111;font-weight:700;padding:10px 16px;border-radius:99px;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.3);z-index:9;max-width:90vw;text-align:center;word-break:keep-all}
+footer{font-size:11px;color:var(--dim);text-align:center;line-height:1.7;margin-top:8px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<style>
+/* ---- 피파고수 산하 코너용 추가 스타일 (원본 claude.ai 래퍼의 기본값 일부 + 피파고수 머리띠) ---- */
+img{max-width:100%}
+body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.site{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+/* 공식 로고는 투명 배경 + 초록 붓글씨라, 테스트마다 바뀌는 배경(밝은 테마 포함)에서도 보이도록 어두운 받침을 깔아요 */
+.site-logo{display:flex;align-items:center;flex:none;min-height:44px;padding:4px 10px;border-radius:12px;background:#0b120f;text-decoration:none}
+.site-logo img{display:block;height:32px;width:auto}
+.site-home{display:inline-flex;align-items:center;min-height:36px;padding:6px 12px;border:1px solid var(--line);border-radius:99px;background:rgba(0,0,0,.14);font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap}
+footer a{color:inherit;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="site" aria-label="피파고수">
+    <a class="site-logo" href="../index.html" aria-label="피파고수 메인으로"><picture><source srcset="../site/brand/fifagosu-logo-480.webp" type="image/webp"><img src="../site/brand/fifagosu-logo-480.png" alt="피파고수" height="32" decoding="async"></picture></a>
+    <a class="site-home" href="../index.html">← 전적·카드 검색</a>
+  </nav>
+  <header class="top">
+    <a class="brand" href="#/"><i aria-hidden="true"></i>킥킥<small>피파고수 축구 심심풀이</small></a>
+    <a class="allbtn" href="#/" id="allBtn" hidden>전체 테스트</a>
+  </header>
+  <div class="ad" id="adTop"></div>
+  <main id="app" aria-live="polite"></main>
+  <div class="ad" id="adBot"></div>
+  <footer>재미로 만든 테스트예요. 선수 성향·몸값·궁합은 공식 기록이 아니에요.<br>선수 사진: Wikimedia Commons 자유 라이선스<br><a href="../index.html">피파고수</a> · FC온라인 전적 진단·전체 카드 검색</footer>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+const T=['pace','power','pass','drib','shoot','def','aerial','stamina','lead','flair','temper','calm'];
+const TL={pace:'스피드',power:'피지컬',pass:'패스',drib:'드리블',shoot:'슈팅',def:'수비',aerial:'공중볼',stamina:'체력',lead:'리더십',flair:'창의성',temper:'투쟁심',calm:'침착함'};
+const POSL={GK:'골키퍼',DF:'수비수',MF:'미드필더',FW:'공격수'};
+
+/* ---------- 선수 (성향 1~5, 재미용 추정치)
+   [별명용 짧은 이름, 이름, 국적, 포지션, 주발 R/L/B, [스피드,피지컬,패스,드리블,슈팅,수비,공중볼,체력,리더십,창의성,투쟁심,침착함], 한 줄 소개] */
+const P=[
+['메시','리오넬 메시','아르헨티나','FW','L',[4,2,5,5,5,1,1,3,3,5,2,5],'낮은 무게중심과 왼발로 수비를 무너뜨리는 축구의 신'],
+['호날두','크리스티아누 호날두','포르투갈','FW','R',[5,5,3,4,5,1,5,4,5,4,4,4],'점프력과 골 결정력, 끝없는 자기관리의 상징'],
+['펠레','펠레','브라질','FW','R',[5,4,4,5,5,1,4,4,4,5,2,4],'월드컵 3회 우승의 축구 황제'],
+['마라도나','디에고 마라도나','아르헨티나','FW','L',[4,3,4,5,4,1,1,3,4,5,4,4],'혼자서 수비 다섯 명을 제친 왼발의 전설'],
+['호나우두','호나우두','브라질','FW','R',[5,4,3,5,5,1,3,3,3,5,2,5],'원조 폭주기관차, 페노메노'],
+['즐라탄','즐라탄 이브라히모비치','스웨덴','FW','R',[3,5,4,4,5,1,5,3,5,5,5,4],'곡예 같은 골과 하늘을 찌르는 자신감'],
+['앙리','티에리 앙리','프랑스','FW','R',[5,3,4,4,5,1,3,4,4,4,2,5],'왼쪽에서 파고들어 감아 차는 우아한 스트라이커'],
+['반바스텐','마르코 반바스텐','네덜란드','FW','R',[3,4,3,4,5,1,5,3,3,4,2,5],'발리슛 하나로 전설이 된 골잡이'],
+['베르캄프','데니스 베르캄프','네덜란드','FW','R',[3,3,5,5,4,1,2,3,3,5,3,5],'터치 하나로 수비를 지우는 아이스맨'],
+['셰우첸코','안드리 셰우첸코','우크라이나','FW','R',[5,3,3,4,5,1,3,4,3,3,2,5],'빠르고 냉정한 밀란의 골잡이'],
+['인자기','필리포 인자기','이탈리아','FW','R',[3,2,2,2,5,1,3,3,2,2,3,5],'오프사이드 라인 위에서 사는 골 냄새의 달인'],
+['드로그바','디디에 드로그바','코트디부아르','FW','R',[4,5,3,3,5,2,5,4,5,3,4,4],'큰 경기에 강한 힘과 높이의 해결사'],
+['에투','사뮈엘 에투','카메룬','FW','R',[5,4,3,4,5,2,3,5,4,3,3,4],'지치지 않고 침투하는 아프리카의 별'],
+['레반도프스키','로베르트 레반도프스키','폴란드','FW','R',[3,4,4,3,5,1,4,4,4,3,2,5],'어떤 자세에서도 골을 만드는 완성형 9번'],
+['벤제마','카림 벤제마','프랑스','FW','R',[3,4,5,4,5,1,3,3,4,4,2,5],'연계와 마무리를 다 하는 우아한 9번'],
+['수아레스','루이스 수아레스','우루과이','FW','R',[4,4,4,4,5,2,3,5,4,4,5,4],'끈질긴 압박과 영리한 마무리의 골잡이'],
+['아구에로','세르히오 아구에로','아르헨티나','FW','R',[4,4,3,5,5,1,2,3,3,4,2,5],'작고 단단한 몸으로 박스를 지배한 골잡이'],
+['홀란','엘링 홀란','노르웨이','FW','L',[5,5,2,3,5,1,5,4,3,2,3,5],'골문 앞의 괴물, 득점 기계'],
+['음바페','킬리안 음바페','프랑스','FW','R',[5,4,3,5,5,1,3,4,4,4,2,4],'공간만 보이면 사라지는 순간 속도'],
+['케인','해리 케인','잉글랜드','FW','R',[3,4,5,3,5,2,4,4,5,2,2,5],'내려와서 패스까지 뿌리는 만능 스트라이커'],
+['루니','웨인 루니','잉글랜드','FW','R',[4,5,4,4,5,3,3,5,5,4,5,4],'불도저 같은 투쟁심과 원더골'],
+['토티','프란체스코 토티','이탈리아','FW','R',[3,4,5,4,5,1,3,3,5,5,4,4],'로마 그 자체, 상상력의 10번'],
+['델피에로','알레산드로 델피에로','이탈리아','FW','R',[3,3,4,5,5,1,2,3,4,5,2,5],'왼쪽에서 감아 차는 델피에로 존'],
+['바조','로베르토 바조','이탈리아','FW','R',[3,2,5,5,5,1,2,3,3,5,2,5],'꽁지머리의 판타지스타'],
+['클로제','미로슬라프 클로제','독일','FW','R',[3,4,3,2,5,2,5,4,4,2,1,5],'월드컵 최다 골, 헤딩의 정석'],
+['뮐러','토마스 뮐러','독일','FW','R',[3,3,4,3,4,2,3,5,4,3,2,4],'빈 공간을 귀신같이 찾는 공간 해석가'],
+['안정환','안정환','대한민국','FW','R',[4,3,4,4,5,1,4,3,3,4,3,4],'반지의 제왕, 큰 무대의 골든골'],
+['차범근','차범근','대한민국','FW','R',[5,5,3,4,5,2,4,5,4,3,2,4],'분데스리가를 질주한 차붐'],
+['손흥민','손흥민','대한민국','FW','B',[5,3,3,4,5,2,2,5,4,3,2,4],'양발 감아차기와 폭발적인 역습 질주'],
+['황희찬','황희찬','대한민국','FW','R',[5,5,2,4,4,2,3,5,3,3,4,3],'황소처럼 밀고 들어가는 돌파'],
+['설기현','설기현','대한민국','FW','L',[4,5,3,3,4,3,4,5,3,2,3,4],'힘과 활동량으로 측면을 지배한 윙어'],
+['살라','모하메드 살라','이집트','FW','L',[5,3,4,5,5,1,2,4,4,3,2,4],'오른쪽에서 안으로 파고드는 왼발 골잡이'],
+['네이마르','네이마르','브라질','FW','R',[5,2,4,5,4,1,2,3,3,5,4,4],'개인기와 쇼맨십의 끝판왕'],
+['호나우지뉴','호나우지뉴','브라질','FW','R',[4,3,5,5,4,1,2,3,3,5,2,5],'웃으면서 수비수를 농락한 판타지스타'],
+['아자르','에덴 아자르','벨기에','FW','R',[4,4,4,5,4,1,1,3,3,5,2,5],'공을 뺏기지 않는 낮은 드리블'],
+['로벤','아르연 로벤','네덜란드','FW','L',[5,3,3,5,5,1,2,4,3,4,3,4],'알고도 못 막는 컷인 왼발'],
+['리베리','프랑크 리베리','프랑스','FW','R',[5,3,4,5,4,2,1,4,3,5,4,4],'좁은 공간을 뚫는 저돌적인 윙어'],
+['비니시우스','비니시우스 주니오르','브라질','FW','R',[5,3,3,5,4,1,2,4,3,5,4,3],'측면을 찢는 스피드 드리블'],
+['야말','라민 야말','스페인','FW','L',[4,2,5,5,4,1,2,3,3,5,2,5],'어린 나이에 완성된 왼발 천재'],
+['피구','루이스 피구','포르투갈','FW','R',[4,3,5,5,4,2,2,4,4,4,3,4],'크로스와 돌파의 정석 윙어'],
+['베일','가레스 베일','웨일스','FW','L',[5,5,4,4,5,2,4,4,3,4,2,4],'폭발적인 스피드와 바이시클킥'],
+['크루이프','요한 크루이프','네덜란드','FW','R',[4,3,5,5,4,2,2,4,5,5,3,5],'토털 풋볼의 두뇌, 크루이프 턴'],
+['라울','라울 곤살레스','스페인','FW','L',[3,3,4,4,5,1,2,4,5,3,2,5],'레알 마드리드의 영원한 7번'],
+['피를로','안드레아 피를로','이탈리아','MF','R',[2,2,5,4,4,2,2,3,4,4,1,5],'걷는 듯 경기를 지배한 레지스타'],
+['지단','지네딘 지단','프랑스','MF','R',[3,4,5,5,4,2,4,3,4,5,4,5],'마르세유 턴과 우아한 볼 터치'],
+['카카','카카','브라질','MF','R',[5,4,4,5,4,1,2,4,3,4,2,4],'공을 달고 질주하는 우아한 10번'],
+['베컴','데이비드 베컴','잉글랜드','MF','R',[3,3,5,3,5,2,2,5,4,3,3,4],'자로 잰 듯한 크로스와 프리킥'],
+['제라드','스티븐 제라드','잉글랜드','MF','R',[4,5,5,4,5,4,4,5,5,3,4,4],'리버풀의 심장, 중거리포 캡틴'],
+['램파드','프랭크 램파드','잉글랜드','MF','R',[3,4,5,3,5,3,3,5,4,3,2,5],'2선 침투로 골을 쌓은 미드필더'],
+['스콜스','폴 스콜스','잉글랜드','MF','R',[3,3,5,4,5,3,2,4,3,3,4,5],'패스와 중거리포의 장인'],
+['박지성','박지성','대한민국','MF','B',[4,4,4,3,3,4,2,5,4,2,2,4],'두 개의 심장, 지치지 않는 활동량'],
+['기성용','기성용','대한민국','MF','R',[3,4,5,3,4,3,4,4,4,3,2,5],'정확한 롱패스로 경기를 조율하는 키잡이'],
+['이강인','이강인','대한민국','MF','L',[3,3,5,5,4,2,1,3,3,5,3,4],'왼발 하나로 판을 바꾸는 플레이메이커'],
+['더브라위너','케빈 더브라위너','벨기에','MF','R',[3,4,5,4,5,2,3,4,4,3,3,4],'보이지 않는 길로 찔러 넣는 패스'],
+['모드리치','루카 모드리치','크로아티아','MF','R',[3,2,5,5,4,3,1,5,4,4,2,5],'아웃프런트 패스와 지치지 않는 조율'],
+['크로스','토니 크로스','독일','MF','R',[2,3,5,3,4,2,3,3,4,3,1,5],'패스 성공률 끝판왕, 흔들리지 않는 메트로놈'],
+['사비','사비 에르난데스','스페인','MF','R',[2,2,5,5,3,2,1,4,4,3,2,5],'점유 축구를 완성한 패스 마스터'],
+['이니에스타','안드레스 이니에스타','스페인','MF','R',[3,2,5,5,3,2,1,3,3,5,1,5],'공을 숨기는 듯한 드리블과 결승골'],
+['부스케츠','세르히오 부스케츠','스페인','MF','R',[2,3,5,4,2,4,3,3,4,3,2,5],'원터치로 압박을 푸는 수비형 미드필더'],
+['캉테','은골로 캉테','프랑스','MF','R',[4,4,3,3,2,5,2,5,3,1,1,4],'경기장의 70%를 덮는 활동량'],
+['마켈렐레','클로드 마켈렐레','프랑스','MF','R',[3,4,4,3,1,5,2,5,3,1,2,4],'포지션 이름이 된 수비형 미드필더'],
+['비에이라','파트리크 비에이라','프랑스','MF','R',[3,5,4,4,3,5,4,5,5,3,4,4],'긴 다리로 다 빼앗는 중원의 거인'],
+['가투소','젠나로 가투소','이탈리아','MF','R',[3,5,3,2,2,5,2,5,5,1,5,3],'투쟁심 그 자체, 중원의 파이터'],
+['로이킨','로이 킨','아일랜드','MF','R',[3,5,4,3,3,5,3,5,5,2,5,4],'강한 리더십의 맨유 캡틴'],
+['마테우스','로타어 마테우스','독일','MF','R',[4,5,4,4,4,4,3,5,5,3,4,4],'공수 모두 해내는 완전체 미드필더'],
+['네드베드','파벨 네드베드','체코','MF','B',[4,4,4,4,5,3,2,5,4,3,3,4],'양발 중거리포와 엄청난 체력'],
+['발락','미하엘 발락','독일','MF','R',[3,5,4,3,5,3,5,4,5,2,3,4],'높이와 슈팅을 갖춘 박스 투 박스'],
+['로드리','로드리','스페인','MF','L',[2,5,5,3,4,4,4,4,4,2,2,5],'경기를 지지 않게 만드는 중원의 기둥'],
+['페드리','페드리','스페인','MF','R',[3,2,5,5,3,3,1,4,3,4,1,5],'이니에스타를 닮은 부드러운 볼 키핑'],
+['벨링엄','주드 벨링엄','잉글랜드','MF','R',[4,5,4,4,4,4,4,5,5,4,4,4],'득점까지 하는 다재다능 미드필더'],
+['루이코스타','후이 코스타','포르투갈','MF','R',[3,3,5,5,4,1,2,3,3,5,2,4],'우아한 패스의 10번'],
+['스네이더','베슬러이 스네이더르','네덜란드','MF','B',[3,3,5,4,5,2,2,3,4,4,3,4],'양발로 쏘는 킬패스와 프리킥'],
+['외데고르','마르틴 외데고르','노르웨이','MF','L',[3,2,5,5,4,2,1,4,4,4,2,4],'왼발 스루패스를 뿌리는 캡틴'],
+['리켈메','후안 로만 리켈메','아르헨티나','MF','R',[2,3,5,5,4,1,2,2,3,5,2,5],'느리지만 누구보다 빨리 생각한 10번'],
+['말디니','파올로 말디니','이탈리아','DF','B',[4,4,4,3,1,5,4,4,5,2,1,5],'태클 없이도 다 막는 수비의 교과서'],
+['네스타','알레산드로 네스타','이탈리아','DF','R',[4,4,4,3,1,5,4,4,4,2,1,5],'깔끔한 태클의 미남 수비수'],
+['칸나바로','파비오 칸나바로','이탈리아','DF','R',[4,5,3,3,1,5,5,4,5,2,3,5],'작은 키로 공중볼을 지배한 수비 천재'],
+['푸욜','카를레스 푸욜','스페인','DF','R',[4,5,2,2,1,5,5,5,5,1,4,4],'몸을 던지는 바르셀로나의 캡틴'],
+['라모스','세르히오 라모스','스페인','DF','R',[4,5,4,3,4,5,5,4,5,3,5,4],'수비수인데 결승골을 넣는 승부사'],
+['반다이크','버질 반다이크','네덜란드','DF','R',[4,5,4,3,2,5,5,4,5,2,2,5],'여유와 높이를 갖춘 수비의 벽'],
+['김민재','김민재','대한민국','DF','R',[5,5,3,3,2,5,5,5,4,2,3,4],'뒷공간까지 다 막는 괴물 수비수'],
+['베켄바워','프란츠 베켄바워','독일','DF','R',[3,4,5,4,3,5,3,4,5,4,2,5],'리베로를 만든 카이저'],
+['티아고실바','티아고 실바','브라질','DF','R',[3,4,4,3,1,5,4,4,5,2,2,5],'읽고 먼저 끊는 수비의 두뇌'],
+['피케','헤라르드 피케','스페인','DF','R',[2,4,5,3,3,4,5,3,4,3,3,4],'빌드업하는 장신 센터백'],
+['홍명보','홍명보','대한민국','DF','R',[3,4,5,3,3,5,3,4,5,2,2,5],'한국 수비의 영원한 리베로'],
+['이영표','이영표','대한민국','DF','L',[4,3,4,4,2,4,2,5,3,3,1,4],'헛다리 드리블로 유명한 측면 수비'],
+['카를루스','호베르투 카를루스','브라질','DF','L',[5,5,3,4,5,4,2,5,3,4,3,4],'물리 법칙을 거스른 왼발 프리킥'],
+['카푸','카푸','브라질','DF','R',[5,4,4,3,3,4,2,5,5,3,2,4],'오른쪽을 끝없이 오르내린 캡틴'],
+['마이콘','마이콘','브라질','DF','R',[5,5,4,4,4,4,3,5,3,3,3,4],'힘과 공격력을 다 갖춘 풀백'],
+['알베스','다니 알베스','브라질','DF','R',[5,3,5,4,3,3,2,5,4,4,4,4],'윙어처럼 뛰는 공격형 풀백'],
+['마르셀루','마르셀루','브라질','DF','L',[4,3,4,5,4,3,2,4,3,5,3,4],'풀백인데 개인기가 미드필더급'],
+['람','필립 람','독일','DF','R',[4,3,5,4,2,5,1,5,5,2,1,5],'실수 없는 완벽주의 풀백'],
+['애슐리콜','애슐리 콜','잉글랜드','DF','L',[5,3,3,4,2,5,2,5,3,2,3,4],'윙어를 지워버리는 측면 수비'],
+['부폰','잔루이지 부폰','이탈리아','GK','R',[2,4,3,2,1,5,4,3,5,2,2,5],'20년 넘게 골문을 지킨 전설'],
+['카시야스','이케르 카시야스','스페인','GK','L',[3,3,3,2,1,5,3,3,5,2,2,5],'반사신경의 성 이케르'],
+['노이어','마누엘 노이어','독일','GK','R',[4,4,5,3,1,5,4,3,5,4,2,5],'골키퍼인지 리베로인지 헷갈리는 스위퍼 키퍼'],
+['칸','올리버 칸','독일','GK','R',[2,5,2,1,1,5,5,3,5,1,5,4],'고함으로 수비를 정리한 타이탄'],
+['야신','레프 야신','러시아','GK','R',[3,4,3,2,1,5,4,3,5,2,2,5],'골키퍼 유일의 발롱도르, 검은 거미'],
+['슈마이켈','페테르 슈마이켈','덴마크','GK','R',[3,5,3,1,1,5,5,3,5,2,5,4],'불가사리 선방의 거구'],
+['쿠르투아','티보 쿠르투아','벨기에','GK','L',[2,4,3,2,1,5,5,3,4,1,2,5],'긴 팔다리로 골문을 다 덮는 키퍼'],
+['알리송','알리송 베케르','브라질','GK','R',[3,4,4,2,1,5,4,3,4,2,2,5],'1대1에 강하고 발밑도 좋은 키퍼'],
+['이운재','이운재','대한민국','GK','R',[2,4,3,1,1,5,3,3,4,1,2,5],'승부차기의 강심장'],
+['조현우','조현우','대한민국','GK','R',[3,4,2,1,1,5,4,3,3,2,3,4],'월드컵 무대를 사로잡은 반사신경']
+].map(([short,name,nat,pos,foot,v,desc],i)=>({i,short,name,nat,pos,foot,desc,t:Object.fromEntries(T.map((k,j)=>[k,v[j]]))}));
+
+
+/* ---------- 확장 선수 명단 (이름|국적|유형|주발|보정): 유형별 기본 성향 + 보정(대문자 +1, 소문자 -1) ---------- */
+const NAT={AR:'아르헨티나',AT:'오스트리아',AU:'호주',BA:'보스니아',BE:'벨기에',BG:'불가리아',BR:'브라질',BY:'벨라루스',CA:'캐나다',CH:'스위스',CI:'코트디부아르',CL:'칠레',CM:'카메룬',CN:'중국',CO:'콜롬비아',CR:'코스타리카',CZ:'체코',DE:'독일',DK:'덴마크',DZ:'알제리',EC:'에콰도르',EG:'이집트',EN:'잉글랜드',ES:'스페인',FR:'프랑스',GA:'가봉',GE:'조지아',GH:'가나',GN:'기니',GR:'그리스',HR:'크로아티아',HU:'헝가리',IE:'아일랜드',IR:'이란',IT:'이탈리아',JM:'자메이카',JP:'일본',KR:'대한민국',MA:'모로코',ML:'말리',MX:'멕시코',NG:'나이지리아',NI:'북아일랜드',NL:'네덜란드',NO:'노르웨이',PE:'페루',PL:'폴란드',PT:'포르투갈',PY:'파라과이',RO:'루마니아',RS:'세르비아',RU:'러시아',SA:'사우디아라비아',SC:'스코틀랜드',SE:'스웨덴',SI:'슬로베니아',SK:'슬로바키아',SN:'세네갈',TG:'토고',TR:'튀르키예',UA:'우크라이나',US:'미국',UY:'우루과이',WA:'웨일스',ZA:'남아공'};
+const ARCH={
+ TM:['FW',[3,5,3,2,5,1,5,3,3,2,3,4],'높이와 힘으로 버티는 타겟형 스트라이커'],
+ PO:['FW',[4,3,2,3,5,1,3,3,2,2,2,5],'박스 안에서 골 냄새를 맡는 골잡이'],
+ CF:['FW',[3,4,4,4,5,1,4,3,4,3,2,4],'연계와 마무리를 다 하는 9번'],
+ SS:['FW',[4,3,4,5,4,1,2,3,3,5,2,4],'공격수 뒤에서 움직이는 세컨드 스트라이커'],
+ WG:['FW',[5,3,3,5,4,1,2,4,3,4,2,3],'스피드로 측면을 찢는 윙어'],
+ IW:['FW',[4,3,4,5,5,1,2,3,3,4,2,4],'측면에서 안으로 파고드는 공격수'],
+ PM:['MF',[2,3,5,4,3,3,2,3,4,3,2,5],'뒤에서 경기를 조율하는 플레이메이커'],
+ AM:['MF',[3,3,5,5,4,1,2,3,3,5,2,4],'결정적인 패스를 넣는 공격형 미드필더'],
+ BB:['MF',[4,4,4,3,4,4,3,5,4,2,3,4],'공수를 오가는 박스 투 박스 미드필더'],
+ DM:['MF',[3,4,4,3,2,5,3,5,4,1,3,4],'중원을 지키는 수비형 미드필더'],
+ WM:['MF',[4,3,5,3,3,2,2,5,3,3,2,4],'측면을 오르내리는 미드필더'],
+ BC:['DF',[3,4,4,3,2,5,4,3,4,2,2,5],'빌드업까지 하는 센터백'],
+ ST:['DF',[3,5,2,2,2,5,5,4,4,1,4,4],'몸싸움과 높이로 막는 센터백'],
+ FB:['DF',[5,3,4,4,3,3,2,5,3,3,2,3],'공격에 가담하는 풀백'],
+ DB:['DF',[4,4,3,2,1,5,3,5,3,1,3,4],'측면을 단단히 막는 수비형 풀백'],
+ SK:['GK',[3,4,4,2,1,5,4,3,4,3,2,5],'발밑까지 좋은 스위퍼 키퍼'],
+ SH:['GK',[2,4,2,1,1,5,4,3,4,2,3,5],'선방으로 승부하는 골키퍼']};
+const TW={s:'pace',p:'power',x:'pass',d:'drib',h:'shoot',f:'def',a:'aerial',t:'stamina',l:'lead',c:'flair',m:'temper',z:'calm'};
+const EXT=`앨런 시어러|EN|TM||HL
+마이클 오언|EN|PO||S
+게리 리네커|EN|PO||Z
+테디 셰링엄|EN|CF||X
+앤디 콜|EN|PO
+로비 파울러|EN|PO|L
+이안 라이트|EN|PO||M
+저메인 데포|EN|PO
+피터 크라우치|EN|TM||As
+에밀 헤스키|EN|TM||P
+대니 웰벡|EN|CF||T
+제이미 바디|EN|PO||SM
+대니얼 스터리지|EN|SS|L
+라힘 스털링|EN|WG
+마커스 래시퍼드|EN|IW
+부카요 사카|EN|IW|L
+필 포든|EN|AM|L
+잭 그릴리시|EN|AM||D
+메이슨 마운트|EN|AM||T
+콜 파머|EN|AM|L|Z
+데클런 라이스|EN|DM||T
+조던 헨더슨|EN|BB||L
+마이클 캐릭|EN|PM||Z
+오언 하그리브스|EN|DM||T
+니키 버트|EN|DM||M
+존 반스|EN|WG|L
+크리스 와들|EN|WG|L|C
+폴 개스코인|EN|AM||CM
+브라이언 롭슨|EN|BB||L
+글렌 호들|EN|PM||C
+데이비드 플랫|EN|BB||H
+스튜어트 피어스|EN|DB|L|M
+토니 애덤스|EN|ST||L
+존 테리|EN|ST||LA
+리오 퍼디낸드|EN|BC||S
+솔 캠벨|EN|ST||P
+제이미 캐러거|EN|ST||L
+개리 네빌|EN|DB||L
+게리 케이힐|EN|ST
+존 스톤스|EN|BC||X
+해리 매과이어|EN|ST||A
+카일 워커|EN|FB||S
+트렌트 알렉산더아놀드|EN|FB||Xf
+키어런 트리피어|EN|FB||X
+루크 쇼|EN|FB|L
+리스 제임스|EN|FB||P
+데이비드 시먼|EN|SH
+조 하트|EN|SH||L
+조던 픽포드|EN|SK|L|M
+고든 뱅크스|EN|SH||Z
+피터 실턴|EN|SH||L
+지미 그리브스|EN|PO||Z
+케빈 키건|EN|SS||T
+스탠리 매슈스|EN|WG||D
+애런 레넌|EN|WG||S
+숀 라이트필립스|EN|WG
+시오 월콧|EN|WG||S
+앤디 캐럴|EN|TM|L|A
+올리 왓킨스|EN|PO||T
+이반 토니|EN|TM||Z
+도미닉 캘버트르윈|EN|TM||A
+제시 린가드|EN|AM
+델리 알리|EN|AM||C
+칼빈 필립스|EN|DM
+코너 갤러거|EN|BB||T
+에베레치 에제|EN|AM||D
+앤서니 고든|EN|WG
+제러드 보언|EN|IW|L
+코비 마이누|EN|BB||Z
+마크 게히|EN|BC
+벤 화이트|EN|DB||X
+개러스 사우스게이트|EN|BC
+크리스 스몰링|EN|ST
+애슐리 영|EN|WM
+제임스 밀너|EN|BB||T
+스튜어트 다우닝|EN|WM|L
+조 콜|EN|AM||C
+레들리 킹|EN|ST||Z
+웨스 브라운|EN|ST
+필 네빌|EN|DB
+데이비드 제임스|EN|SH
+레스 퍼디낸드|EN|TM
+매트 르티시에|EN|AM||C
+로비 킨|IE|PO||C
+데이미언 더프|IE|WG|L
+숀 더피|IE|ST
+셰이 기븐|IE|SH
+존 오셰이|IE|DB
+폴 매그래스|IE|ST||L
+라이언 긱스|WA|WG|L|T
+마크 휴스|WA|TM||M
+이언 러시|WA|PO
+애런 램지|WA|BB
+조 앨런|WA|PM
+네빌 사우솔|WA|SH
+크레이그 벨러미|WA|WG||M
+대니얼 제임스|WA|WG||S
+케니 달글리시|SC|SS||Z
+데니스 로|SC|PO||M
+앤디 로버트슨|SC|FB|L|T
+스콧 맥토미니|SC|BB||H
+존 맥긴|SC|BB||P
+대런 플레처|SC|DM||T
+그레임 수네스|SC|DM||LM
+키어런 티어니|SC|FB|L
+조지 베스트|NI|WG||CD
+조니 에번스|NI|ST
+퍼트 제닝스|NI|SH
+가레스 배리|EN|PM
+피터 리드|EN|BB
+페르난도 토레스|ES|PO||S
+다비드 비야|ES|PO||Z
+페르난도 모리엔테스|ES|TM
+페르난도 이에로|ES|BC||L
+조르디 알바|ES|FB|L|S
+사비 알론소|ES|PM||X
+세스크 파브레가스|ES|AM||X
+다비드 실바|ES|AM|L|D
+후안 마타|ES|AM|L
+이스코|ES|AM||C
+산티 카소를라|ES|AM|B
+마르코스 세나|ES|DM
+가비|ES|BB||M
+다니 카르바할|ES|DB||T
+세사르 아스필리쿠에타|ES|DB||L
+다니 올모|ES|AM
+페란 토레스|ES|IW
+미켈 오야르사발|ES|CF|L
+알바로 모라타|ES|CF
+디에고 코스타|ES|TM||M
+페르난도 요렌테|ES|TM||A
+니코 윌리엄스|ES|WG
+미켈 메리노|ES|BB|L|A
+파비안 루이스|ES|BB|L
+마르크 쿠쿠레야|ES|DB|L|M
+아이메릭 라포르트|ES|BC|L
+파우 쿠바르시|ES|BC||Z
+다비드 데헤아|ES|SH
+빅토르 발데스|ES|SK
+페페 레이나|ES|SK
+우나이 시몬|ES|SK
+안도니 수비사레타|ES|SH
+에밀리오 부트라게뇨|ES|SS
+루이스 엔리케|ES|BB||M
+펩 과르디올라|ES|PM||Z
+호아킨 산체스|ES|WG||C
+헤수스 나바스|ES|WM||T
+비센테 로드리게스|ES|WG|L
+이아고 아스파스|ES|SS|L
+다니 파레호|ES|PM
+코케|ES|BB||T
+사울 니게스|ES|BB|L
+마르코스 요렌테|ES|BB||S
+알레한드로 그리말도|ES|FB|L|X
+헤라르드 모레노|ES|PO|L
+하비 마르티네스|ES|DM||A
+알바로 아르벨로아|ES|DB
+호안 카프데빌라|ES|DB|L
+라울 알비올|ES|ST
+미첼 살가도|ES|DB
+카를로스 마르체나|ES|ST
+알바로 네그레도|ES|TM
+다니 세바요스|ES|PM
+오스카르 밍게사|ES|DB
+위르겐 클린스만|DE|PO||T
+게르트 뮐러|DE|PO||Z
+루디 푈러|DE|PO
+카를하인츠 루메니게|DE|SS
+올리버 비어호프|DE|TM||A
+마리오 고메스|DE|TM
+루카스 포돌스키|DE|SS|L|H
+마리오 괴체|DE|AM
+메주트 외질|DE|AM|L|X
+바스티안 슈바인슈타이거|DE|BB||L
+일카이 귄도안|DE|BB||Z
+요주아 키미히|DE|DM||X
+레온 고레츠카|DE|BB||P
+플로리안 비르츠|DE|AM||D
+자말 무시알라|DE|AM||D
+르로이 자네|DE|WG|L|S
+세르주 그나브리|DE|IW
+카이 하베르츠|DE|CF|L
+안토니오 뤼디거|DE|ST||S
+마츠 후멜스|DE|BC||X
+제롬 보아텡|DE|BC||P
+페어 메르테자커|DE|ST||A
+베네딕트 회베데스|DE|ST
+젭 마이어|DE|SH
+마크안드레 테어슈테겐|DE|SK
+옌스 레만|DE|SH||M
+위르겐 콜러|DE|ST
+마티아스 잠머|DE|BC||L
+안드레아스 브레메|DE|DB|B
+베른트 슈스터|DE|PM
+펠릭스 마가트|DE|ST
+슈테판 에펜베르크|DE|BB||M
+디트마르 하만|DE|DM
+토르스텐 프링스|DE|DM||M
+요나탄 타|DE|ST||A
+니코 슐로터베크|DE|BC|L
+로베르트 안드리흐|DE|DM
+니클라스 퓔크루크|DE|TM
+마르코 로이스|DE|IW||H
+율리안 브란트|DE|AM
+티모 베르너|DE|PO||S
+클라우스 알로프스|DE|PO
+펠릭스 은메차|DE|BB
+미셸 플라티니|FR|AM||H
+쥐스트 퐁텐|FR|PO
+장피에르 파팽|FR|PO||H
+에리크 캉토나|FR|CF||CM
+다비드 트레제게|FR|PO||A
+니콜라 아넬카|FR|PO
+실뱅 윌토르|FR|SS
+로베르 피레스|FR|IW
+유리 조르카에프|FR|AM
+크리스토프 뒤가리|FR|SS
+앙투안 그리즈만|FR|SS||T
+올리비에 지루|FR|TM||Z
+우스만 뎀벨레|FR|WG|B|D
+킹슬레 코망|FR|WG
+마이클 올리세|FR|IW|L
+마르퀴스 튀랑|FR|CF
+랑달 콜로 무아니|FR|CF
+폴 포그바|FR|BB||C
+블레즈 마튀디|FR|BB|L|T
+아드리앵 라비오|FR|BB|L
+오렐리앵 추아메니|FR|DM
+에두아르도 카마빙가|FR|BB|L
+마티외 플라미니|FR|DM
+에마뉘엘 프티|FR|DM|L
+디디에 데샹|FR|DM||L
+마르셀 드사이|FR|ST||L
+로랑 블랑|FR|BC||Z
+릴리앙 튀랑|FR|DB||P
+비샨테 리자라쥐|FR|FB|L
+윌리엄 갈라스|FR|ST
+라파엘 바란|FR|BC||S
+사뮈엘 움티티|FR|BC|L
+윌리암 살리바|FR|BC||Z
+다요 우파메카노|FR|ST||P
+쥘 쿤데|FR|BC||S
+테오 에르난데스|FR|FB|L|S
+뱅자맹 파바르|FR|DB
+바카리 사냐|FR|DB
+파트리스 에브라|FR|FB|L
+에리크 아비달|FR|DB|L
+위고 요리스|FR|SH
+파비앵 바르테즈|FR|SK||C
+마이크 메냥|FR|SK
+루이 사아|FR|PO
+사미르 나스리|FR|AM
+요안 구르퀴프|FR|AM
+지브릴 시세|FR|PO||S
+니콜라 페페|CI|IW|L
+이브라히마 코나테|FR|ST
+데지레 두에|FR|IW
+브래들리 바르콜라|FR|WG|L
+파올로 로시|IT|PO
+크리스티안 비에리|IT|TM||P
+루카 토니|IT|TM
+안토니오 디나탈레|IT|SS
+치로 임모빌레|IT|PO
+마리오 발로텔리|IT|TM||CM
+로렌초 인시녜|IT|IW||C
+알베르토 질라르디노|IT|PO
+지안프랑코 졸라|IT|SS||C
+잔루카 비알리|IT|TM
+로베르토 만치니|IT|SS
+주세페 시뇨리|IT|PO|L
+알레산드로 알토벨리|IT|PO
+페데리코 키에사|IT|WG
+지안루이지 돈나룸마|IT|SH
+디노 조프|IT|SH||L
+왈테르 젱가|IT|SH
+안젤로 페루치|IT|SH
+프랑코 바레시|IT|BC||L
+알레산드로 코스타쿠르타|IT|ST
+잔루카 잠브로타|IT|FB|B
+파비오 그로소|IT|FB|L
+크리스티안 파누치|IT|DB
+마르코 마테라치|IT|ST||M
+조르조 키엘리니|IT|ST|L|L
+레오나르도 보누치|IT|BC||X
+안드레아 바르찰리|IT|ST
+가에타노 시레아|IT|BC||Z
+주세페 베르고미|IT|ST
+치로 페라라|IT|ST
+알레산드로 바스토니|IT|BC|L
+리카르도 칼라피오리|IT|BC|L
+지오반니 디로렌초|IT|DB
+데메트리오 알베르티니|IT|PM
+다니엘레 데로시|IT|DM||L
+클라우디오 마르키시오|IT|BB
+마르코 베라티|IT|PM||D
+니콜로 바렐라|IT|BB||M
+조르지뉴|IT|PM||Z
+산드로 토날리|IT|BB
+시모네 페로타|IT|AM
+마시모 암브로시니|IT|DM
+디노 바조|IT|DM
+카를로 안첼로티|IT|PM
+로베르토 도나도니|IT|WM
+안토니오 콘테|IT|BB||M
+마우로 카모라네시|IT|WM
+파비오 콸리아렐라|IT|SS||H
+에딘 제코|BA|TM
+미랄렘 퍄니치|BA|PM||X
+하산 살리하미지치|BA|WM
+에우제비우|PT|PO||H
+데쿠|PT|AM||D
+누누 고메스|PT|PO
+파울레타|PT|PO
+히카르두 카르발류|PT|BC
+페페|PT|ST||M
+후벵 디아스|PT|ST||L
+주앙 칸셀루|PT|FB||D
+누누 멘데스|PT|FB|L|S
+브루누 페르난드스|PT|AM||H
+베르나르두 실바|PT|AM|L|T
+주앙 펠릭스|PT|SS
+하파엘 레앙|PT|WG|R|S
+디오구 조타|PT|PO
+곤살루 하무스|PT|PO
+주앙 무티뉴|PT|PM
+비티냐|PT|PM||T
+주앙 네베스|PT|DM
+후벵 네베스|PT|PM||H
+윌리앙 카르발류|PT|BB
+나니|PT|WG||C
+히카르두 콰레스마|PT|WG||CM
+시망 사브로자|PT|WG
+비토르 바이아|PT|SH
+후이 파트리시우|PT|SH
+디오구 코스타|PT|SH
+페르난두 쿠투|PT|BC
+파울루 페헤이라|PT|DB
+조제 보싱와|PT|FB
+뤼트 굴리트|NL|BB||PC
+프랑크 레이카르트|NL|DM||L
+로날트 쿠만|NL|BC||H
+파트릭 클라위버르트|NL|TM
+뤼트 판니스텔로이|NL|PO||Z
+로빈 판페르시|NL|CF|L|H
+클라스얀 훈텔라르|NL|PO
+라파엘 판데르파르트|NL|AM|L
+클라렌서 세이도르프|NL|BB||P
+에드가 다비즈|NL|DM||M
+마르크 오베르마르스|NL|WG||S
+야프 스탐|NL|ST||P
+프랑크 데부르|NL|BC
+지오반니 판브롱크호르스트|NL|FB|L
+에드윈 판데르사르|NL|SK
+마르턴 스테켈렌뷔르흐|NL|SH
+프렌키 더용|NL|PM||D
+마테이스 더리흐트|NL|ST
+덴절 둠프리스|NL|FB||P
+멤피스 데파이|NL|SS||C
+코디 학포|NL|IW
+티자니 레인더르스|NL|BB
+라이언 흐라번베르흐|NL|BB
+더니 블린트|NL|DB|L
+나이절 더용|NL|DM||M
+마르크 판보멀|NL|DM||M
+요니 헤이팅아|NL|ST
+디르크 카윗|NL|WM||T
+로날트 더부르|NL|WM
+로멜루 루카쿠|BE|TM||P
+드리스 메르턴스|BE|SS||C
+뱅상 콤파니|BE|BC||L
+얀 페르통언|BE|BC|L
+토비 알데르베이럴트|BE|BC
+악셀 비첼|BE|DM
+무사 뎀벨레|BE|BB||D
+마루안 펠라이니|BE|BB||A
+제레미 도쿠|BE|WG||D
+레안드로 트로사르|BE|IW
+유리 틸레만스|BE|PM
+엔조 실포|BE|AM
+장마리 팡|BE|SH
+지쿠|BR|AM||H
+소크라테스|BR|AM||Z
+가린샤|BR|WG||D
+자이르지뉴|BR|WG
+히바우두|BR|AM|L|H
+호마리우|BR|PO||Z
+베베투|BR|SS
+아드리아누|BR|TM|L|H
+호비뉴|BR|WG||C
+프레드|BR|TM
+에우베르|BR|PO
+루이스 파비아누|BR|TM
+가브리엘 제주스|BR|PO||T
+호베르투 피르미누|BR|CF||X
+히샬리송|BR|TM||M
+가브리엘 마르티넬리|BR|WG
+하피냐|BR|IW|L
+호드리구|BR|IW
+엔드릭|BR|PO
+안토니|BR|IW|L|C
+필리피 코치뉴|BR|AM||H
+오스카|BR|AM
+윌리안|BR|WG
+더글라스 코스타|BR|WG|L
+루카스 모우라|BR|WG
+카세미루|BR|DM||P
+페르난지뉴|BR|DM
+파비뉴|BR|DM||A
+지우베르투 시우바|BR|DM
+에메르송|BR|DM
+마우루 시우바|BR|DM
+둥가|BR|DM||L
+제 호베르투|BR|WM|L
+브루노 기마랑이스|BR|BB
+루카스 파케타|BR|AM||C
+조르징요|BR|PO
+레오나르두|BR|AM|L
+주니뉴 페르남부카누|BR|PM||H
+아우다이르|BR|BC
+루시우|BR|ST||S
+주앙 미란다|BR|BC
+다비드 루이스|BR|BC||C
+마르키뉴스|BR|BC||X
+가브리엘 마갈량이스|BR|ST|L|A
+에데르 미리탕|BR|ST||S
+브레메르|BR|ST||P
+레오나르도 아라우주|BR|DB|L
+필리피 루이스|BR|DB|L
+알렉스 산드루|BR|FB|L
+줄리우 세자르|BR|SH
+지다|BR|SH
+클라우지우 타파렐|BR|SH
+에데르송|BR|SK|L|X
+웨베르통|BR|SH
+카를루스 아우베르투 토레스|BR|DB||L
+니우통 산투스|BR|FB
+지지|BR|PO||Z
+가브리에우 바르보자|BR|PO
+가브리엘 바티스투타|AR|PO||H
+에르난 크레스포|AR|PO
+곤살로 이과인|AR|PO
+카를로스 테베스|AR|SS||M
+앙헬 디마리아|AR|IW|L|C
+파울로 디발라|AR|SS|L|C
+라우타로 마르티네스|AR|PO||M
+훌리안 알바레스|AR|CF||T
+에세키엘 라베치|AR|WG
+하비에르 사비올라|AR|PO
+클라우디오 카니자|AR|WG||S
+마리오 켐페스|AR|PO
+알프레도 디스테파노|AR|CF||T
+가브리엘 하인체|AR|DB|L|M
+하비에르 사네티|AR|DB||T
+로베르토 아얄라|AR|BC
+왈테르 사무엘|AR|ST||P
+니콜라스 오타멘디|AR|ST||M
+크리스티안 로메로|AR|ST||M
+리산드로 마르티네스|AR|BC|L|M
+니콜라스 탈리아피코|AR|DB|L
+나우엘 몰리나|AR|FB
+하비에르 마스체라노|AR|DM||L
+페르난도 레돈도|AR|PM||Z
+디에고 시메오네|AR|DM||M
+후안 세바스티안 베론|AR|PM||X
+에스테반 캄비아소|AR|DM
+파블로 아이마르|AR|AM||D
+엔소 페르난데스|AR|PM
+알렉시스 마카이스테르|AR|BB
+로드리고 데폴|AR|BB||T
+레안드로 파레데스|AR|PM
+에밀리아노 마르티네스|AR|SH||M
+세르히오 로메로|AR|SH
+우발도 피욜|AR|SH
+마우로 이카르디|AR|PO
+에딘손 카바니|UY|PO||T
+디에고 포를란|UY|PO|B|H
+다르윈 누녜스|UY|TM||S
+알바로 레코바|UY|AM|L|C
+엔소 프란세스콜리|UY|AM
+디에고 고딘|UY|ST||L
+호세 히메네스|UY|ST
+로날드 아라우호|UY|ST||S
+페데리코 발베르데|UY|BB||T
+로드리고 벤탄쿠르|UY|BB
+루카스 토레이라|UY|DM
+페르난도 무슬레라|UY|SH
+파올로 몬테로|UY|ST||M
+하메스 로드리게스|CO|AM|L|H
+라다멜 팔카오|CO|PO
+카를로스 발데라마|CO|PM||C
+후안 콰드라도|CO|WM
+루이스 디아스|CO|WG
+다비손 산체스|CO|ST
+예리 미나|CO|ST||A
+레네 이기타|CO|SK||C
+파우스티노 아스프리야|CO|SS
+알렉시스 산체스|CL|WG||M
+아르투로 비달|CL|BB||M
+이반 사모라노|CL|TM
+마르셀로 살라스|CL|PO|L
+클라우디오 브라보|CL|SK
+가리 메델|CL|ST||M
+모이세스 카이세도|EC|DM
+피에로 인카피에|EC|BC|L
+윌리안 파초|EC|ST|L
+안토니오 발렌시아|EC|WM
+에네르 발렌시아|EC|PO
+호세 루이스 칠라베르트|PY|SH||H
+로케 산타크루스|PY|TM
+미겔 알미론|PY|WG|L
+클라우디오 피사로|PE|TM
+파올로 게레로|PE|TM
+라울 히메네스|MX|TM
+하비에르 에르난데스|MX|PO
+이르빙 로사노|MX|WG
+라파엘 마르케스|MX|BC||L
+기예르모 오초아|MX|SH
+우고 산체스|MX|PO
+과르다도|MX|PM|L
+크리스천 풀리식|US|IW
+랜던 도노번|US|IW
+클린트 뎀프시|US|SS
+팀 하워드|US|SH
+웨스턴 매케니|US|BB
+타일러 애덤스|US|DM
+앤서니 로빈슨|US|FB|L
+알폰소 데이비스|CA|FB|L|S
+조너선 데이비드|CA|PO
+케일러 나바스|CR|SH
+조엘 캠벨|CR|WG
+이반 라키티치|HR|BB
+마리오 만주키치|HR|TM||M
+다보르 수케르|HR|PO|L
+즈보니미르 보반|HR|AM
+이반 페리시치|HR|WM|B
+요슈코 그바르디올|HR|BC|L
+데얀 로브렌|HR|ST
+마테오 코바치치|HR|BB||D
+마르첼로 브로조비치|HR|DM
+안드레이 크라마리치|HR|SS
+다니엘 수바시치|HR|SH
+로베르트 프로시네치키|HR|AM
+데얀 스탄코비치|RS|BB
+네마냐 비디치|RS|ST||L
+브라니슬라프 이바노비치|RS|DB||P
+네마냐 마티치|RS|DM|L
+세르게이 밀린코비치사비치|RS|BB||A
+두산 블라호비치|RS|TM|L
+알렉산다르 미트로비치|RS|TM||M
+드라간 스토이코비치|RS|AM
+시니샤 미하일로비치|RS|BC|L|H
+두산 타디치|RS|AM|L
+얀 오블락|SI|SH
+사미르 한다노비치|SI|SH
+요시프 일리치치|SI|AM|L
+벤야민 셰슈코|SI|TM
+페테르 체흐|CZ|SH
+토마시 로시츠키|CZ|AM
+얀 콜레르|CZ|TM||A
+밀란 바로시|CZ|PO
+카렐 포보르스키|CZ|WM
+파트리크 시크|CZ|TM|L
+토마시 소우체크|CZ|BB||A
+마레크 함시크|SK|AM
+마르틴 슈크르텔|SK|ST
+밀란 슈크리니아르|SK|ST
+그제고시 라토|PL|WG
+즈비그니에프 보니에크|PL|AM
+야쿠프 브와슈치코프스키|PL|WM
+보이치에흐 슈체스니|PL|SH
+예지 두데크|PL|SH
+아르카디우시 밀리크|PL|PO
+피오트르 지엘린스키|PL|AM
+카스페르 슈마이켈|DK|SH
+미카엘 라우드루프|DK|AM||D
+브리안 라우드루프|DK|WG
+크리스티안 에릭센|DK|AM||X
+욘 달 토마손|DK|PO
+다니엘 아게르|DK|BC|L
+시몬 키예르|DK|ST||L
+피에르에밀 호이비에르|DK|DM||T
+라스무스 회이룬|DK|TM|L|S
+니클라스 벤트너|DK|TM
+헨리크 라르손|SE|PO||A
+토마스 브롤린|SE|SS
+프레드리크 융베리|SE|WM
+올로프 멜베리|SE|ST
+알렉산데르 이사크|SE|CF||D
+데얀 쿨루셉스키|SE|IW|L
+빅토르 요케레스|SE|TM||P
+에밀 포르스베리|SE|AM
+킴 셸스트룀|SE|PM|L
+욘 아르네 리세|NO|FB|L|H
+올레 군나르 솔샤르|NO|PO||Z
+토레 안드레 플로|NO|TM
+알렉산데르 쇠를로트|NO|TM
+스테펜 이베르센|NO|PO
+그라니트 자카|CH|PM|L|X
+제르단 샤키리|CH|IW|L|C
+얀 좀머|CH|SH
+스테판 리히트슈타이너|CH|FB
+마누엘 아칸지|CH|BC
+하리스 세페로비치|CH|TM
+브레얼 엠볼로|CH|TM||S
+다비드 알라바|AT|BC|L
+마르코 아르나우토비치|AT|TM
+마르셀 자비처|AT|BB
+크리스토프 바움가르트너|AT|AM
+안드레아스 헤르초크|AT|PM
+하칸 쉬퀴르|TR|PO
+아르다 투란|TR|AM
+뤼슈튀 레치베르|TR|SH
+하칸 찰하놀루|TR|PM||H
+아르다 귈레르|TR|AM|L|C
+케난 일디즈|TR|IW
+메르트 귄호크|TR|SH
+알틴톱 하밀|TR|WM
+엠레 벨뢰졸루|TR|AM
+게오르기오스 카라구니스|GR|PM
+테오파니스 게카스|GR|PO
+소크라티스 파파스타토풀로스|GR|ST||M
+안겔로스 하리스테아스|GR|TM
+크바라츠헬리아|GE|WG||D
+게오르기 미카우타제|GE|PO
+기오르기 마마르다슈빌리|GE|SH
+올렉산드르 진첸코|UA|FB|L
+미하일로 무드리크|UA|WG
+세르히 레브로프|UA|PO
+아르템 도우비크|UA|TM
+안드레이 아르샤빈|RU|SS
+알렉산드르 골로빈|RU|AM
+이고리 아킨페예프|RU|SH
+흐리스토 스토이치코프|BG|SS|L|M
+디미타르 베르바토프|BG|CF||Z
+게오르게 하지|RO|AM|L|C
+아드리안 무투|RO|SS
+크리스티안 키부|RO|BC|L
+페렌츠 푸슈카시|HU|PO|L|H
+도미니크 소보슬러이|HU|AM||H
+페테르 굴라치|HU|SH
+알렉산데르 흘레브|BY|AM
+에딘 비스차|BA|PO
+사디오 마네|SN|IW||T
+엘하지 디우프|SN|WG||M
+칼리두 쿨리발리|SN|ST||P
+에두아르 멘디|SN|SH
+이드리사 게예|SN|DM||T
+파페 마타르 사르|SN|BB
+니콜라 잭슨|SN|PO
+야야 투레|CI|BB||P
+콜로 투레|CI|ST
+살로몬 칼루|CI|WG
+제르비뉴|CI|WG||S
+윌프리드 자하|CI|WG||D
+프랑크 케시에|CI|BB||P
+세바스티앙 알레|CI|TM
+마이클 에시엔|GH|BB||P
+설리 문타리|GH|BB
+아사모아 기안|GH|PO
+아브디 펠레|GH|AM
+안드레 아예우|GH|IW
+토마스 파티|GH|DM
+모하메드 쿠두스|GH|AM||D
+제이제이 오코차|NG|AM||C
+은완쿼 카누|NG|TM|L|C
+라시디 예키니|NG|PO
+존 오비 미켈|NG|DM
+빅터 오시멘|NG|TM||S
+아데몰라 루크먼|NG|IW
+빅터 모지스|NG|WM
+윌프레드 은디디|NG|DM
+알렉스 이워비|NG|AM
+로저 밀라|CM|PO||C
+리고베르 송|CM|ST
+알렉스 송|CM|DM
+앙드레 오나나|CM|SK
+뱅상 아부바카르|CM|TM
+조엘 마팁|CM|BC
+모하메드 아부트리카|EG|AM
+아메드 호삼 미도|EG|TM
+오마르 마르무시|EG|PO
+아치라프 하키미|MA|FB||S
+하킴 지예흐|MA|IW|L|C
+야신 부누|MA|SH
+소피앙 암라바트|MA|DM||T
+누사이르 마즈라위|MA|DB
+유세프 엔네시리|MA|TM
+메디 베나티아|MA|ST
+브라힘 디아스|MA|AM
+리야드 마레즈|DZ|IW|L|C
+이슬람 슬리마니|DZ|TM
+이스마엘 베나세르|DZ|PM
+라비드 마드자르|DZ|AM
+프레데리크 카누테|ML|TM
+세이두 케이타|ML|BB
+이브 비수마|ML|DM
+피에르에메릭 오바메양|GA|PO||S
+나비 케이타|GN|BB
+세르후 기라시|GN|PO
+에마뉘엘 아데바요르|TG|TM
+베니 맥카시|ZA|PO
+황선홍|KR|PO||A
+최용수|KR|TM||M
+이동국|KR|TM||H
+박주영|KR|PO
+이천수|KR|WG||CM
+송종국|KR|DB||T
+김남일|KR|DM||M
+유상철|KR|BB||L
+최진철|KR|ST
+김태영|KR|ST
+이을용|KR|BB
+김병지|KR|SK||C
+정성룡|KR|SH
+김승규|KR|SH
+김영권|KR|BC|L
+구자철|KR|AM
+이청용|KR|WG||D
+지동원|KR|TM
+남태희|KR|AM
+손준호|KR|DM
+황인범|KR|PM
+정우영|KR|DM
+이재성|KR|BB||T
+황의조|KR|PO
+조규성|KR|TM||A
+오현규|KR|TM
+배준호|KR|AM
+양민혁|KR|WG
+김진수|KR|FB|L
+이기제|KR|FB|L
+홍철|KR|FB|L
+설영우|KR|DB
+김문환|KR|FB||S
+권창훈|KR|AM|L
+문선민|KR|WG||S
+나상호|KR|WG
+엄원상|KR|WG||S
+고종수|KR|AM|L|C
+윤정환|KR|PM
+하석주|KR|WM|L
+서정원|KR|WG||S
+신태용|KR|AM
+김주성|KR|AM
+허정무|KR|BB
+최순호|KR|PO
+이관우|KR|AM
+이민성|KR|BC
+김정우|KR|DM
+염기훈|KR|WM|L|X
+이근호|KR|PO||T
+곽태휘|KR|ST||A
+정조국|KR|PO
+김신욱|KR|TM||A
+나카타 히데토시|JP|AM
+혼다 게이스케|JP|AM|L|H
+가가와 신지|JP|AM||D
+나카무라 슌스케|JP|PM|L|X
+엔도 야스히토|JP|PM
+하세베 마코토|JP|DM||L
+나가토모 유토|JP|FB|L|T
+요시다 마야|JP|ST
+오카자키 신지|JP|PO||T
+미토마 가오루|JP|WG||D
+구보 다케후사|JP|IW|L
+도미야스 다케히로|JP|DB
+엔도 와타루|JP|DM
+가마다 다이치|JP|AM
+미나미노 다쿠미|JP|SS
+우치다 아쓰토|JP|FB
+가와시마 에이지|JP|SH
+이토 준야|JP|WG||S
+우에다 아야세|JP|PO
+팀 케이힐|AU|TM||A
+해리 큐얼|AU|WG|L
+마크 비두카|AU|TM
+마크 슈워처|AU|SH
+매슈 라이언|AU|SH
+알리 다에이|IR|TM||A
+메디 타레미|IR|PO
+사르다르 아즈문|IR|TM
+알리 카리미|IR|AM
+사미 알자베르|SA|PO
+살렘 알다우사리|SA|WG
+우레이|CN|PO
+판즈이|CN|ST
+쑨지하이|CN|DB
+조나탄 클로스|FR|DB
+알렉상드르 라카제트|FR|PO
+아마두 하이다라|ML|BB
+막스 크루제|DE|SS
+케빈 트라프|DE|SH
+안드레 쉬얼레|DE|IW
+사미 케디라|DE|BB
+크리스토프 크라머|DE|DM
+율리안 드락슬러|DE|AM
+엘리아킴 망갈라|FR|ST
+뤼카 에르난데스|FR|FB|L
+브누아 바디아실|FR|ST|L
+마테오 겐두지|FR|BB
+위고 에키티케|FR|PO||S
+워렌 자이르에메리|FR|BB
+라얀 셰르키|FR|AM|B|C
+마누 코네|FR|BB
+웨슬리 포파나|FR|ST
+말로 귀스토|FR|FB
+브라이스 삼바|FR|SH
+스티브 만단다|FR|SH
+알퐁스 아레올라|FR|SH
+안드레 실바|PT|PO
+라파 실바|PT|WG
+주앙 마리우|PT|WM
+안드레 고메스|PT|BB
+하파엘 게헤이루|PT|FB|L
+지오구 달로|PT|FB
+주앙 팔리냐|PT|DM||P
+오타비우|PT|DM
+페드로 네투|PT|WG|L|S
+프란시스쿠 콘세이상|PT|WG||D
+곤살루 이나시우|PT|BC|L
+안토니오 실바|PT|BC
+에데르|PT|TM
+히카르두 오르타|PT|WG
+지안루카 스카마카|IT|TM
+마테오 레테기|IT|PO
+마테오 다르미안|IT|DB
+페데리코 디마르코|IT|FB|L|H
+다비데 프라테시|IT|BB
+로렌초 펠레그리니|IT|AM
+브라이언 크리스탄테|IT|DM
+마누엘 로카텔리|IT|PM
+페데리코 가티|IT|ST
+스테판 엘샤라위|IT|IW
+자코모 라스파도리|IT|SS
+안드레아 벨로티|IT|TM
+안드레아 라노키아|IT|ST
+다비데 아스토리|IT|BC
+살바토레 시리구|IT|SH
+마티아 페린|IT|SH
+굴리엘모 비카리오|IT|SH
+레오나르도 스피나촐라|IT|FB|L
+알레산드로 플로렌치|IT|DB
+안토니오 카사노|IT|SS||CM
+지암파올로 파찌니|IT|PO
+빈첸초 몬텔라|IT|PO
+마르코 디바이오|IT|PO
+엔리코 키에사|IT|PO
+파브리치오 라바넬리|IT|TM
+지지 리바|IT|PO|L|H
+잔니 리베라|IT|AM
+산드로 마촐라|IT|AM
+자친토 파케티|IT|FB|L
+클라우디오 젠틸레|IT|ST||M
+마르코 타르델리|IT|BB||M
+브루노 콘티|IT|WM
+마르틴 수비멘디|ES|DM||Z
+알레한드로 발데|ES|FB|L|S
+로드리고 리켈메|ES|WG
+페르민 로페스|ES|AM||H
+마르크 기우|ES|PO
+다니 비비안|ES|ST
+로뱅 르노르망|ES|ST
+이냐키 윌리엄스|GH|PO||S
+알렉스 바에나|ES|AM|L
+세르지 로베르토|ES|DB
+보르하 이글레시아스|ES|TM
+레니 요로|FR|BC
+요주아 지르크지|NL|CF
+사비 시몬스|NL|AM||D
+미키 판더펜|NL|BC|L|S
+유리엔 팀버르|NL|DB
+제레미 프림퐁|NL|FB||S
+도니 판더베이크|NL|BB
+스테번 베르흐베인|NL|WG
+알레한드로 가르나초|AR|WG
+니코 파스|AR|AM|L
+티아고 알마다|AR|AM
+발렌틴 카스테야노스|AR|PO
+지오바니 로셀소|AR|AM|L
+아쿠냐 마르코스|AR|FB|L|M
+헤로니모 룰리|AR|SH
+마테우스 쿠냐|BR|SS
+주앙 페드루|BR|CF
+사비뉴|BR|WG|L
+이고르 티아구|BR|PO
+브레넌 존슨|WA|WG
+라스무스 크리스텐센|DK|ST
+요아킴 안데르센|DK|ST
+모르텐 히울만|DK|DM
+라슬로 쿠발라|HU|SS
+산도르 코치시|HU|PO||A
+베른트 레노|DE|SH
+요나스 호프만|DE|WM
+로빈 고젠스|DE|FB|L
+다비드 라움|DE|FB|L
+막시밀리안 미텔슈테트|DE|FB|L
+데니스 운다브|DE|PO
+알렉산다르 파블로비치|DE|PM
+아데예미 카림|DE|WG||S
+요나단 부르카르트|DE|TM
+크리스 퓌리히|DE|AM
+닉 볼테마데|DE|TM||A
+마빈 두크슈|DE|PO
+파스칼 그로스|DE|PM
+라르스 벤더|DE|DM
+스벤 벤더|DE|DM
+케빈 그로스크로이츠|DE|WM
+슈코드란 무스타피|DE|ST
+에므레 잔|DE|BB||M
+레온 바일리|JM|WG|L|S
+마이클 앤토니오|JM|TM
+제임스 메디슨|EN|AM||H
+제임스 워드프라우스|EN|PM||H
+키어넌 듀즈버리홀|EN|BB
+아담 워튼|EN|PM
+리바이 콜윌|EN|BC|L
+에즈리 콘사|EN|ST
+조 고메즈|EN|BC
+페드로 포로|ES|FB||X`;
+P.forEach(p=>p.core=true);
+{const have=new Set(P.map(p=>p.name));
+ EXT.split('\n').forEach(line=>{const [name,nat,ar,foot,tw]=line.split('|');if(!ARCH[ar]||have.has(name))return;have.add(name);
+  const t=Object.fromEntries(T.map((k,j)=>[k,ARCH[ar][1][j]]));
+  for(const c of tw||''){const k=TW[c.toLowerCase()];if(k)t[k]=Math.max(1,Math.min(5,t[k]+(c===c.toUpperCase()?1:-1)))}
+  P.push({i:P.length,short:name.includes(' ')?name.split(' ').pop():name,name,nat:NAT[nat]||nat,pos:ARCH[ar][0],foot:foot||'R',desc:ARCH[ar][2],t,core:false});
+ });}
+
+const PH_RAW=`3|48|Argentina_celebrando_copa_%28cropped%29.jpg
+2|5e|Pele_con_brasil_%28cropped%29.jpg
+23|4e|%D8%B1%D9%88%D8%A8%D8%B1%D8%AA%D9%88_%D8%A8%D8%A7%D8%AC%D9%88_%28cropped%29.jpg
+8|75o|Dennis_Bergkamp_2014_%28cropped%29.jpg
+7|7e|Marco_van_Basten_%282%29_%28cropped%29.jpg
+4|36|12.12.2025_%E2%80%93_Cerim%C3%B4nia_de_lan%C3%A7amento_do_SBT_News_-_54980664160_%28cropped2%29.jpg
+44|f3|Zinedine_Zidane_by_Tasnim_03.jpg
+20|9d|Wayne_Rooney_%2850121495731%29_%28cropped%29.jpg
+24|8c|2016209185719_2016-07-27_Champions_for_Charity_-_Sven_-_1D_X_-_0149_-_DV3P4742_mod.jpg
+6|b9|Thierry_Henry_%2851649035951%29_%28cropped%29.jpg
+42|5a|25th_Laureus_World_Sports_Awards_-_Ra%C3%BAl_-_240422_132916-2_%28cropped%29.jpg
+33|e8|Ronaldinho_in_2019.jpg
+21|42|KL-2018_%284%29.jpg
+9|c0|Andriy_Shevchenko_Volia_Space_03_%28cropped%29.png
+1|26|Cristiano_Ronaldo_Croatia_v_Portugal_2_July_2026-075_%28cropped%29.jpg
+30|1e|Seol.JPG
+5|ce|Zlatan_Ibrahimovi%C4%87_nyc.jpg
+35|d1|2019147183036_2019-05-27_Fussball_1.FC_Kaiserslautern_vs_FC_Bayern_M%C3%BCnchen_-_Sven_-_1D_X_MK_II_-_0196_-_B70I8495_%28cropped%29.jpg
+10|39|Filippo_Inzaghi_2011.jpg
+11|77|Didier_Drogba_%282019%29_%28cropped2%29.jpg
+26|a8|Ahn_Jung-hwan_in_November_2021.png
+27|05|Cha_Bum_Kun.jpg
+12|6a|Sammuel_Eto%27o_Fils_02.jpg
+43|6e|20150616_-_Portugal_-_Italie_-_Gen%C3%A8ve_-_Andrea_Pirlo_%28cropped%29.jpg
+0|c8|Leo_Messi_Argentina_v_Egypt_7_July_2026-1.jpg
+36|bc|Franck_Ribery_2019_%28cropped%29.jpg
+16|7b|Ag%C3%BCero_in_2018.jpg
+14|5f|Karim_Benzema_Pick.jpg
+40|ff|2022_FIFA_World_Cup_United_States_1%E2%80%931_Wales_-_%2832%29_2.png
+13|95|Robert_Lewandowski_NYCFC_v_Chicago_25_July_2026-383.jpg
+32|c0|Neymar_Junior_Brazil_V_Morocco_13_June_2026-40.jpg
+34|46|Eden_Hazard_at_Baku_before_2019_UEFA_Europe_League_Final.jpg
+25|aa|FC_Red_Bull_Salzburg_gegen_Bayern_M%C3%BCnchen_%282025-01-06_Testspiel%29_19.jpg
+22|95|25th_Laureus_World_Sports_Awards_-_Alessandro_Del_Piero_-_240421_155220_%28cropped%29_%28cropped%29.jpg
+41|cb|Johan_Cruijff_%281974%29.jpg
+28|b0|BFA_2023_-2_Heung-Min_Son_%28cropped%29.jpg
+19|a3|Harry_Kane_England_v_Ghana_23_June_2026-219_%28cropped%29.jpg
+31|a6|Mohamed_Salah_Argentina_v_Egypt_7_July_2026-163_%28cropped%29.jpg
+29|be|240622_%ED%99%A9%ED%9D%AC%EC%B0%AC_%ED%92%8B%EB%B3%BC_%ED%8E%98%EC%8A%A4%ED%8B%B0%EB%B2%8C.jpg
+39|15|Luis_Figo_2023.jpg
+18|95|Kylian_Mbappe_France_v_Senegal_16_June_2026-391_%28cropped%29.jpg
+37|10|Vin%C3%ADcius_J%C3%BAnior_Brazil_V_Morocco_13_June_2026-207_%28cropped%29.jpg
+17|43|Erling_Haaland_Morocco_v_Norway_7_June_2026-51.jpg
+38|13|Lamine_Yamal_France_v_Spain_7.24.26-142.jpg
+46|73|David_Beckham_UNICEF_%28cropped2%29.jpg
+74|0a|Paolo_Maldini_AC_Milan_Technical_director_2018.jpg
+81|56|Franz_Beckenbauer_%281975%29.jpg
+61|6c|Patrick_Vieira_NYCFC_%28cropped%29.JPG
+63|0a|Roy_keane_2014.jpg
+86|a8|LS3_1288_%2853332367864%29_%28cropped%29.jpg
+64|84|2019_Lothar_Matth%C3%A4us.jpg
+66|5d|10._Tag_der_Legenden_2014_69.jpg
+47|d5|Steven_Gerrard_2018.jpg
+49|dc|P_Scholes.jpg
+70|92|Rui_Costa_2026.jpg
+87|64|Cafu_-_26.02.2026_-_Cerim%C3%B4nia_de_apresenta%C3%A7%C3%A3o_das_ta%C3%A7as_da_Copa_do_Mundo_de_2026.jpg
+75|0f|Alessandro_Nesta_as_Miami_FC_Manager.jpg
+65|46|Pavel_Nedv%C4%9Bd.jpg
+84|62|Hong_Myung-Bo.jpg
+50|4a|Park_Ji-sung_G20_Seoul_Summit_Ambassador_%28cropped%29.jpg
+48|8c|Frank_Lampard_2019.jpg
+62|01|Lausanne_vs_Sion_27_february_2013_-_Gennaro_Gattuso.jpg
+71|86|Wesley_Sneijder_at_Sports_Festival_2025.jpg
+76|09|Fabio_Cannavaro_2011.jpg
+73|ba|Juan_Rom%C3%A1n_Riquelme_-_2019.jpg
+45|6d|Kak%C3%A1_visited_Stadium_St._Petersburg.jpg
+77|65|Premios_Goya_2020_-_Carles_Pujol.jpg
+60|ac|Claude_Mak%C3%A9l%C3%A9l%C3%A9_%2853557564951%29_%28cropped%29.jpg
+83|f2|Gerard_Piqu%C3%A9_Euro_2012_vs_France_01.jpg
+78|4b|Sergio_Ramos_Interview_2021_%28cropped%29.jpg
+57|ac|Andr%C3%A9s_Iniesta_Argentina_v_Spain_19_July_2026-034_%28cropped%29.jpg
+89|ddo|07_07_2019_Final_da_Copa_Am%C3%A9rica_2019_%2848226649586%29_%28cropped%29.jpg
+88|17|Maicon_Douglas_Sisenando_-_Inter_Mailand_%282%29.jpg
+82|c8|20180610_FIFA_Friendly_Match_Austria_vs._Brazil_Thiago_Silva_850_1582.jpg
+55|64|Toni_Kroos_Real_Madrid_2021.jpg
+51|5e|240609_FC_%EC%84%9C%EC%9A%B8_%ED%8C%AC%EC%82%AC%EC%9D%B8%ED%9A%8C_%28%EA%B8%B0%EC%84%B1%EC%9A%A9%29.jpg
+58|40|Sergio_Busquets_NYCFC_Miami_24_Sep_2025-020_%28cropped%29.jpg
+53|40|Kevin_De_Bruyne_USMNT_v_Belgium_Mar_28_2026-64_%28cropped%29.jpg
+79|5d|20160604_AUT_NED_8876_%28cropped%29.jpg
+85|91|Leeyoungpyo.jpg
+72|13|Martin_Odegaard_France_v_Norway_26_June_26-014.jpg
+59|c1|N%27Golo_Kante_France_v_Senegal_16_June_2026-397.jpg
+67|7a|Rodri_Argentina_v_Spain_19_July_2026-187_%28cropped%29.jpg
+52|13|Lee_Kang-in_-_2022_%2852551771501%29_%28cropped%29.jpg
+69|23|Jude_Bellingham_England_v_Ghana_23_June_2026-061_%28cropped%29.jpg
+68|1c|Pedri_France_v_Spain_7.24.26-245.jpg
+97|f5|LevYashin.JPG
+96|4b|2022-07-30_Fu%C3%9Fball%2C_M%C3%A4nner%2C_DFL-Supercup%2C_RB_Leipzig_-_FC_Bayern_M%C3%BCnchen_1DX_3179_by_Stepro.jpg
+98|24|Peter_Schmeichel_2012-01-25_001.jpg
+94|c8|Iker-Casillas-SportsTrade-2021-cropped.jpg
+93|d7|Norway_Italy_-_June_2025_A_44_%28Gianluigi_Buffon%29.jpg
+92|d5o|ACole.JPG
+91|8a|Philipp_Lahm_auf_der_Berlinale_2024%2C_Ausschnitt.jpg
+101|f9o|Lee_Woon-Jae.jpg
+90|c6|Marcelo_Vieira_in_2022.jpg
+95|b9|Manuel_Neuer_Ecuador_v_Germany_25_June_2026-148.jpg
+99|a4|Thibaut_Courtois_Belgium_v_USA_6_July_2026-076_%28cropped%29.jpg
+102|b3|260726_FC_%EC%84%9C%EC%9A%B8_vs_%EC%9A%B8%EC%82%B0_%28%EC%A1%B0%ED%98%84%EC%9A%B0%29.jpg
+100|4f|Alisson_Becker_Brazil_V_Morocco_13_June_2026-117_%28cropped%29.jpg
+105|7bo|Gary_Lineker_2011.jpg
+136|bd|John_George_Terry.jpg
+125|c6|Michael_Carrick_12042025_%283%29.jpg
+140|c9|Gary_Neville_2014_%28cropped%29.jpg
+104|24|Michael_Owen.jpg
+126|20|O_Hargreaves.jpg
+111|95|Peter_Crouch_v_Chelsea_2014.jpg
+103|bao|Alan_Shearer_2008.jpg
+137|4c|Web_Summit_2015_-_Dublin%2C_Ireland_-_22183056474_%28cropped%29.jpg
+139|e4|Jamie_Carragher_meets_the_fans.jpg
+138|63|Sol-Campbell.jpg
+106|48|Teddy_Sheringham_-_53493097595.jpg
+113|46|Danny_Welbeck_2018-06-13_1.jpg
+108|64o|Fowler%2C_Robbie.jpg
+127|cfo|Nickybutt.JPG
+112|71o|Emile_Heskey.png
+141|11|Gary_Cahill_2018_2_%28cropped%29_%28cropped%29.jpg
+110|d2|Jermain_Defoe_Brighton_v_Spurs_Amex_Opening_30711_2_%28cropped%29.jpg
+124|84|Jordan_Henderson_England_v_Ghana_23_June_2026-029_%28cropped%29.jpg
+115|c8|Sturridge_v_Swansea.jpg
+144|01|Kyle_Walker.jpg
+107|8d|Andy_Cole_%28cropped%29.jpg
+130|1d|Paul_Gascoigne_2021.png
+116|55|Raheem_Sterling_2018-06-13_1.jpg
+131|4e|Bryan_Robson_Thailand_2009-11-01_%282%29.jpg
+135|d2|Tony_Adams_2017_portrait_%28cropped%29.jpg
+147|4a|Shaw_-_July_2015_%28cropped%29.jpg
+142|b5|England_v_Panama_27_June_26-037_%28John_Stones_cropped%29.jpg
+133|8e|DavidPlatt.jpg
+114|85|Jamie_Vardy_2018.jpg
+134|86|Stuart_Pearce.jpg
+146|d8|Kieran_Trippier_2018-07-14_1.jpg
+120|a4|ManCity20240722-017_%28cropped%29.jpg
+117|4d|Marcus_Rashford%2C_FWC_2018_-_Round_of_16_-_COL_v_ENG_-_Photo_106_%28cropped%29.jpg
+132|e0|Glenn_Hoddle_2014_%28cropped%29.jpg
+109|a4|Ian_Wright_Eng_Women_0_Czech_Rep_0_11_10_2022-23_%2852426854534%29_%28cropped%29.jpg
+128|67|John_Barnes_in_Kristiansund%2C_Norway.jpg
+121|32|Mountbrightonoct3_2019_%28cropped%29.jpg
+119|68o|Phil_Foden_2022-11-21_1.jpg
+145|8a|Trent_Alexander-Arnold_2018.jpg
+143|be|Harry_Maguire_2018-07-11_1.jpg
+123|d3o|2022_FIFA_World_Cup_England_6%E2%80%932_Iran_-_%288%29_%28Declan_Rice%29.jpg
+118|2f|Bukayo_Saka_England_v_Ghana_23_June_2026-057_%28cropped%29.jpg
+122|fbo|Cole_Palmer_2025_FIFA_Club_World_Cup_Final.jpg
+192|18|Cskamu_17.jpg
+186|2b|Robbie_Keane_vs_Chelsea.jpg
+179|32|Joe_Cole2023.jpeg
+190|88o|Johnoshea.jpg
+181|5e|Wes_Brown%2C_Feb._2008.jpg
+158|9e|Shaun_Wright-Phillips_warming_up.jpg
+180|e0o|Ledley_King.jpg
+178|08o|Stewart_downing.jpg
+189|fc|Shay_Given_2012_Sopot.jpg
+187|a8|DDuff.JPG
+150|41|Joe_Hart_69775.jpg
+159|ed|Theo_Walcott_happy_with_his_goal%21_1_%2816501335572%29_%28cropped%29.jpg
+182|d8|Phil_Neville_2019.jpg
+177|40|2022-07-21_Fu%C3%9Fball%2C_M%C3%A4nner%2CFreundschaftsspiel%2C_RB_Leipzig_-_FC_Liverpool_1DX_2223_by_Stepro.jpg
+156|ed|Stanley_Matthews_1962_%28crop%29.jpg
+176|bf|Ashley_Young_2018-06-13_1.jpg
+175|3ao|Chris_Smalling_vs_Rostov_9_March_2017_%28cropped%29.jpg
+160|02|AndyCarrollSeptember2015.JPG
+149|ca|David_Seaman.jpg
+155|f9|Kevin_Keegan_2.jpg
+152|a3o|Gordon_Banks_2007.jpg
+153|43|Peter_Shilton.png
+154|6e|Jimmy_Greaves_at_Cheslea_FC_December_2011_%28crop%29.jpg
+184|c1|LesFerdinandMay2015.JPG
+174|bc|Southgate_2023.jpg
+164|78|240609_FC_%EC%84%9C%EC%9A%B8_%ED%8C%AC%EC%82%AC%EC%9D%B8%ED%9A%8C_%28Jesse_Lingard%29.jpg
+165|7e|2020-03-10_Dele_Alli_%28cropped%29.jpg
+151|9ao|Jordan_Pickford_2018_%28cropped%29.jpg
+163|93|Manchester_United_v_Everton%2C_17_September_2017_%2835%29.jpg
+148|89|Reece_James_2021.jpg
+173|a0|Ben_White_2018.jpg
+162|5e|Ivan_Toney_England_v_Ghana_23_June_2026-051.jpg
+167|b0|Conor_Gallagher_2024_%28cropped%29.jpg
+169|f9o|Anthony_Gordon_%28cropped%29.jpg
+161|4a|Ollie_Watkins_England_v_Ghana_23_June_2026-035.jpg
+172|7b|Fredrikstad_Fotballklubb_v_Crystal_Palace_FC%2C_28_August_2025_B23_%28Marc_Guehi%29.jpg
+168|9f|Qpr2018eberechieeze001.jpg
+171|1f|Kobbie_Mainoo_England_v_Ghana_23_June_2026-042.jpg
+213|57o|Fernando_Torres_2017.jpg
+219|5b|2023_-_Cesc_Fabregas_%28cropped%29.jpg
+214|65|David_Villa_NYCFC_vs._Houston_Dynamo-_5-30-2015_%2818289895465%29.jpg
+205|f1|Darren_Fletcher_2017.jpg
+216|29|Fernando_Hierro_in_Spain-Iran_press_conference_2018-06-19.jpg
+215|7e|Fernando_Morientes_-_53822470816.jpg
+208|a5|George_best_1976.jpg
+218|b6|Los_Caminos_del_f%C3%BAtbol._Xabi_Alonso_%2839666778464%29_%28cropped%29.jpg
+198|ac|Craig_Bellamy_2013.jpg
+200|9b|King_Kenny_vs_Bolton_2011.jpg
+209|cb|Evans_pictured_at_the_Hawthorns_in_2017.jpg
+224|7eo|Senna1.jpg
+195|ab|Aaron_Ramsey_2019.jpg
+211|08|Gareth_Barry_2014_2.jpg
+223|cd|Santiago_Cazorla_-_Spain_vs._Chile%2C_10th_September_2013_%28cropped%29.jpg
+193|38|1_mark_hughes_2015.jpg
+233|bfo|Sev_tren_2016_%288%29.jpg
+221|31o|Zarya-MU_%2810%29.jpg
+220|a6|David_Silva_2017.jpg
+201|d8|Denis_Law.jpg
+194|67o|Ian_Rush_in_Singapore.jpg
+227|7f|C%C3%A9sar_Azpilicueta%2C_Al_Hilal_SFC_vs_Chelsea_F.C.%2C_9_February_2022.jpg
+217|ba|Russia-Spain_2017_%2811%29.jpg
+231|fd|%C3%81lvaro_Morata.jpg
+222|32|Liver-RM_%285%29_%28cropped%29.jpg
+196|63|AUT_vs._WAL_2016-10-06_%28135%29_02.jpg
+232|5f|Iran_and_Spain_match_at_the_FIFA_World_Cup_23.jpg
+235|0a|Miker_Merino_2018_%28cropped%29.jpg
+206|09|Souness_%28retouched%29.jpg
+230|f1|UEFA_EURO_qualifiers_Sweden_vs_Spain_20191015_108_%28cropped%29.jpg
+203|3f|Scott_McTominay_2021.jpg
+202|f2|Liver-RM_%2810%29.jpg
+199|68o|Daniel_James_Wolves_vs_Man_U_2020-01-04_%28cropped%29.jpg
+207|79|Kieran_Tierney_Scotland_v_Bolivia_6_June_2026-6.jpg
+229|1c|Ferran_Torres_France_v_Spain_7.24.26-237_%28cropped%29.jpg
+236|e5|UEFA_EURO_qualifiers_Sweden_vs_Spain_20191015_Fabian_Ruiz_6_%28cropped%29.jpg
+228|c5|2022-04-20_Fu%C3%9Fball%2C_M%C3%A4nner%2C_DFB-Pokal%2C_RB_Leipzig_-_1._FC_Union_Berlin_1DX_8160_by_Stepro.jpg
+204|9a|John_McGinn_2019.jpg
+237|c7o|Marc_Cucurella_%28cropped%29.jpg
+234|d0|Neco_Williams_LFCU19_2019_2.jpg
+267|af|J%C3%BCrgen_Klinsmann_14021113000678638425063004371092_64131.jpg
+273|7d|Lukas_Podolski_2023.jpg
+276|ac|Re-publica_23_-_Tag_3_%2852957826298%29_%28cropped%29.jpg
+268|9a|Gerd_M%C3%BCller_c1973_%28cropped%29.jpg
+272|8e|Mario_gomez.jpg
+241|2a|2012_2013_-_01_Victor_Vald%C3%A9s.jpg
+270|7e|2015-02-06_Rummenigge_0400.JPG
+248|ff|Joaquin_2022_%28cropped%29.jpg
+247|60|Josep_Guardiola_2023-10-04_Fu%C3%9Fball%2C_M%C3%A4nner%2C_UEFA_Champions_League%2C_RB_Leipzig_-_Manchester_City_FC_1DX_2797_%28cropped%29.jpg
+271|79|2018-11-30_DFB_presentation_of_the_new_head_coach_of_the_National_Womens_Team_StP_6868_LR10_by_Stepro.jpg
+262|97|M%C3%ADchel_Salgado_in_Tehran.jpg
+260|d4|Joan_Capdevila_2013_Catalonia.jpg
+249|4e|Navas_v_Southampton_2017.jpg
+244|71|Andoni_Zubizarreta_en_2013-03_-_versi%C3%B3n_ampliada_%28cropped%29.JPG
+259|4a|Arbeloa_in_2009-10_Real_Madrid.jpg
+263|a2|Carlos_Marchena_Lopez.jpg
+261|cb|RAlbiol.JPG
+242|52|Pepe_Reina_2017.jpg
+245|f4|Emilio_Butrague%C3%B1o_2015_%28cropped%29.jpg
+275|12|Mesut_%C3%96zil_at_Baku_before_2019_UEFA_Europe_League_Final.jpg
+269|15|Rudi_V%C3%B6ller_junie_2009.jpg
+258|77|Javi_Martinez_Training_2017-03_FC_Bayern_Muenchen-1_%28cropped%29.jpg
+274|a0|Mario_G%C3%B6tze%2C_Germany_national_football_team_%2807%29.jpg
+240|68|David_de_Gea_2017.jpg
+250|b1|Vicente_Rodr%C3%ADguez_Guill%C3%A9n_VCF.jpg
+264|64|Alvaro_Negredo_MCFC.jpg
+251|28|XXIII_Memorial_Quinocho_%28RC_Celta_vs_Mainz_05%29_-_10.jpg
+277|c7|20180602_FIFA_Friendly_Match_Austria_vs._Germany_%C4%B0lkay_G%C3%BCndo%C4%9Fan_850_0728.jpg
+279|68|Leon_Goretzka_Ecuador_v_Germany_25_June_2026-159.jpg
+253|17|Koke_2019.jpg
+278|32|2019-06-11_Fu%C3%9Fball%2C_M%C3%A4nner%2C_L%C3%A4nderspiel%2C_Deutschland-Estland_StP_2078_LR10_by_Stepro.jpg
+255|49|Marcos_Llorente_2019.jpg
+265|4f|Dani_Ceballos%2C_Real_Madrid%2C_2022.jpg
+254|e0|Sa%C3%BAl_%C3%91%C3%ADguez_2012_%28cropped%29.jpg
+281|44|Jamal_Musiala_2022_%28cropped%29.jpg
+266|80|%D0%9C%D0%B0%D1%82%D1%87_%C2%AB%D0%94%D0%B8%D0%BD%D0%B0%D0%BC%D0%BE%C2%BB_-_%C2%AB%D0%91%D0%B0%D1%80%D1%81%D0%B5%D0%BB%D0%BE%D0%BD%D0%B0%C2%BB_0-4._24_%D0%BD%D0%BE%D1%8F%D0%B1%D1%80%D1%8F_2020_%D0%B3%D0%BE%D0%B4%D0%B0_%E2%80%94_1166746_%28cropped%29.jpg
+243|ba|Unai_Sim%C3%B3n_2025_%28cropped%29.jpg
+280|1d|Florian_Wirtz_04012026_%283%29_%28extracted%29.jpg
+239|c9|Pau_Cubarsi_France_v_Spain_7.24.26-115.jpg
+313|f4|Eric_Cantona_Cannes_2009.jpg
+300|a7|Fringsvsla2012.jpg
+292|74|Jens_Lehmann_-_2019202184453_2019-07-21_Champions_for_Charity_-_3017_-_B70I3052_%28cropped%29.jpg
+314|95|David_Trezeguet_became_Save_the_Dream_Ambassador%2C_2017.jpg
+315|45|Nicolas_Anelka_4690.jpg
+316|aco|Sylvain_Wiltord_Rennes_081229.jpg
+310|66o|Michel_Platini_2010_%28cropped%29.jpg
+311|1c|Just_Fontaine.jpg
+318|16|Youri_Djorkaeff_2008-10-25.jpg
+294|e7|Bundesarchiv_Bild_183-1990-0602-009%2C_1._FC_Dynamo_Dresden_-_PSV_Schwerin_2-1.jpg
+317|d2|Robert_Pires1.JPG
+299|81o|Hamann%2C_Dietmar_%28cropped%29.jpg
+288|a4|Per_Mertesacker_2014_v_Palace.jpg
+308|55|Klaus_Allofs_-_SV_Werder_Bremen_%282%29_%28cropped%29.jpg
+287|22|Jerome_Boateng_Training_2019-04-10_FC_Bayern_Muenchen-2_%28cropped%29.jpg
+286|c1|Mats_Hummels.jpg
+289|33|Benedikt_H%C3%B6wedes_2018.jpg
+297|62o|Magath2.jpg
+305|cf|2023-08-12_TSV_Schott_Mainz_gegen_Borussia_Dortmund_%28DFB-Pokal_2023-24%29_by_Sandro_Halank%E2%80%93126.jpg
+312|07|Jean-Pierre_Papin%2C_2006.jpg
+327|fc|Paul_Pogba_2018.jpg
+296|51|Bernd_Schuster_%282007%29.JPG
+295|c1o|Andreas_Brehme.jpg
+321|04|Olivier_Giroud_in_2017_%28cropped%29.jpg
+293|10o|J%C3%BCrgen_Kohler_2005.jpg
+323|ef|Kingsley_Coman_%282019%29_%28cropped%29.jpg
+320|d2|Antoine_Griezmann_2018.jpg
+283|54|2019-06-11_Fu%C3%9Fball%2C_M%C3%A4nner%2C_L%C3%A4nderspiel%2C_Deutschland-Estland_StP_2075_LR10_by_Stepro.jpg
+306|68|20180602_FIFA_Friendly_Match_Austria_vs._Germany_Julian_Brandt_850_0710.jpg
+285|08o|2025_04_26_Final_de_la_Copa_del_Rey_-_54482387776_%28Elenco_do_Real_Madrid%29_%28Antonio_R%C3%BCdiger%29.jpg
+322|2f|Ousmane_Dembele_France_v_Senegal_16_June_2026-341_%28cropped%29.jpg
+301|bc|2019-06-11_Fu%C3%9Fball%2C_M%C3%A4nner%2C_L%C3%A4nderspiel%2C_Deutschland-Estland_StP_2060_LR10_by_Stepro.jpg
+307|fd|2020-03-10_Fu%C3%9Fball%2C_M%C3%A4nner%2C_UEFA_Champions_League_Achtelfinale%2C_RB_Leipzig_-_Tottenham_Hotspur_1DX_3684_by_Stepro.jpg
+319|80|Christophe_Dugarry_2007.jpg
+325|0a|Marcus_Thuram_France_v_Senegal_16_June_2026-261_%28cropped%29.jpg
+284|e8|2019-06-11_Fu%C3%9Fball%2C_M%C3%A4nner%2C_L%C3%A4nderspiel%2C_Deutschland-Estland_StP_2059_LR10_by_Stepro.jpg
+302|ba|2023-08-12_TSV_Schott_Mainz_gegen_Borussia_Dortmund_%28DFB-Pokal_2023-24%29_by_Sandro_Halank%E2%80%93069.jpg
+304|b8|NiclasF%C3%BCllkrug_%28cropped%29.jpg
+326|d8|Randal_Kolo_Muani_2020.jpg
+324|04|Michael_Olise_France_v_Senegal_16_June_2026-307_%28cropped%29.jpg
+309|fd|Felix_Nmecha_2021.jpg
+351|f5|Fabien_Barthez_at_OM.jpg
+363|46|FC_Zenit_Saint_Petersburg_vs._Juventus%2C_20_October_2021_33_%28Luca_Toni%29.jpg
+368|0a|Alberto_Gilardino.jpg
+339|3a|William_Gallas_2018_%282%29.jpg
+348|98|Patrice_Evra_Euro_2012.jpg
+337|24|Lilian_Thuram_-_F%C3%A9vrier_2013.jpg
+349|c8|%C3%89ric_Abidal_-_001.jpg
+361|75|Paolo_Rossi_Vicenza_%28cropped%29.jpg
+356|c8|Djibril_Ciss%C3%A9_in_Moscow.jpg
+362|42|Christian_Vieri_%28cropped%29.jpg
+336|be|Laurent_blanc_11_11_2013_reves_de_Clara.jpg
+335|5a|MarcelDesailly.JPG
+332|e6|Mathieu_Flamini_%2819468174744%29.jpg
+353|3a|Louis_Saha%2C_Everton.jpg
+347|83|Bacary_Sagna_2012.jpg
+354|b1|Samir_Nasri_Manchester_City_vs_Chelsea_at_Busch_Stadium-2_%28cropped%29.jpg
+334|ae|Didier_Deschamps_in_2018.jpg
+333|cco|Manu-Petit-2000.JPG
+366|f4|Mario_Balotelli_%2815440231808%29_%28cropped%29_%28cropped%29.jpg
+355|c5|Stade_rennais_vs_USM_Alger%2C_July_16th_2016_-_Yoann_Gourcuff_1.jpg
+371|e9|Roberto_Mancini_2021.jpg
+364|37o|Antonio_di_natale.JPG
+340|cco|Rapha%C3%ABl_Varane_2018_%28cropped%29.jpg
+350|ca|Lloris_2018_%28cropped%29.jpg
+328|07|Matuidi_PSG.jpg
+369|e5|Zola_2018_%28cropped%29.jpg
+370|f5|Gianluca_Vialli.jpg
+365|88|Ciro_Immobile_20240803_%28cropped%29.jpg
+367|9e|FC_Salzburg_gegen_SSC_Napoli_%28UEFA_Euroleague_Achtelfinalr%C3%BCckspiel_14._M%C3%A4rz_2019%29_22.jpg
+329|11o|Rus-Fra_2018_%283%29_%28cropped%29.jpg
+341|fb|Samuel_Umtiti.jpg
+345|93|Theo_Hernandez_France_v_Senegal_16_June_2026-222_%28cropped%29.jpg
+346|5a|Benjamin_Pavard_20180709.jpg
+342|8a|1_william_saliba_arsenal_2025_%28cropped%29.jpg
+357|cb|Nicolas_Pepe_Cote_D%27Ivoire_v_Ecuador_14_June_2026-30.jpg
+343|e8|2020-03-10_Fu%C3%9Fball%2C_M%C3%A4nner%2C_UEFA_Champions_League_Achtelfinale%2C_RB_Leipzig_-_Tottenham_Hotspur_1DX_3676_by_Stepro.jpg
+358|65|2019-03-30_Fu%C3%9Fball%2C_M%C3%A4nner%2C_1._Bundesliga%2C_RB_Leipzig_-_Hertha_BSC_StP_3845_LR10_by_Stepro_%28cropped%29_2.jpg
+352|e1|Mike_Maignan_France_v_Norway_26_June_26-132_%28cropped%29.jpg
+344|f0|Jules_Kound%C3%A9_%28cropped%29.jpg
+331|05|Ofrenda_de_la_Liga_y_la_Champions-13-L.Mill%C3%A1n_%2852109790215%29_%28cropped%29.jpg
+330|d1|Aur%C3%A9lien_Tchouam%C3%A9ni.jpg
+360|f6|Bradley_Barcola_France_v_Spain_7.24.26-112_%28cropped%29.jpg
+359|dc|Lens_-_Stade_Rennais_%2820-08-2023%29_42.jpg
+379|4a|Franco_Baresi_2012.jpg
+384|0d|Marco_Materazzi_2020.jpg
+382|e1|Fabio_Grosso_-_Frosinone_Calcio_-_DSC_2731_AF_%28cropped%29.jpg
+395|7d|Daniele_De_Rossi_BGR-ITA_2012.jpg
+407|c0|Camoranesi_2016.jpg
+402|8d|Massimo_Ambrosini_%E2%80%93_A.C._Milan_2.jpg
+401|47|Simone_Perrotta_2007.jpg
+381|95|Gianluca_Zambrotta_-_001.jpg
+383|ec|Panuccochristian.jpg
+387|a1|Andrea_Barzagli_%28Juventus%29.jpg
+378|9a|Angelo_Peruzzi.JPG
+413|5c|Chelsea_Deco.jpg
+412|55|Eusebio_en_1973.jpg
+414|02|Web_Summit_2016_-_SportsTrade_-_Nov_8_-_Day_1_ws_%2867_of_79%29_%2830860213285%29_%28cropped%29.jpg
+411|13o|Hasan_Salihamidzic_2006.jpg
+416|c3|Ricardo-Carvalho-2015-07.jpg
+415|13o|Pauleta2011.JPG
+389|cd|Giuseppe_Bergomi.jpg
+385|30|Chiellini_Mancini_Gravina_Mattarella_2021_%28Giorgio_Chiellini%29.jpg
+376|a9|Dino_Zoff_-_1972_-_Juventus_FC_%28cropped%29.jpg
+409|a5|20150331_2026_AUT_BIH_2177_Edin_D%C5%BEeko.jpg
+404|a9|Carlo_Ancelotti_2016_%28cropped%29.jpg
+403|26o|Dino_Baggio_%28Inter_1991%29.jpg
+380|f4|Billy_Costacurta_AC_Milan_Glorie_2011.jpg
+410|d4|20150331_2025_AUT_BIH_2130_Miralem_Pjani%C4%87.jpg
+396|d0|Claudio_Marchisio_BGR-ITA_2012.jpg
+386|6b|20150616_-_Portugal_-_Italie_-_Gen%C3%A8ve_-_Leonardo_Bonucci_%28cropped_2%29.jpg
+408|db|Zenit-Torino_%287%29.jpg
+406|c6|20150616_Antonio_Conte.jpg
+397|94|2019-07-17_SG_Dynamo_Dresden_vs._Paris_Saint-Germain_by_Sandro_Halank%E2%80%93505_%28cropped%29.jpg
+405|46|Roberto_Donadoni_-_SSC_Neapel_%282%29.jpg
+373|93|Alessandro_Altobelli_-_1982_-_Inter_Milan.jpg
+390|9f|Ciro_Ferrara.jpg
+394|fa|Demetrio_Albertini.JPG
+377|b4|WalterZenga.jpg
+388|5e|1975%E2%80%9376_Juventus_FC_-_Gaetano_Scirea.jpg
+375|17|Gianluigi_Donnarumma_%2831895135436%29_%28cropped%29.jpg
+398|a2|Nicol%C3%B2_Barella_in_2021.jpg
+374|29|Federico_Chiesa_vs_Zenit_2021-10-20_%28cropped2%29.jpg
+400|ff|SandroTonali2022Salzburg.jpg
+391|23o|Sergio_Mattarella_meets_Italy_national_football_team_and_Matteo_Berrettini_%2812_July_2021%29_34_%28cropped%29.jpg
+392|90|Riccardo_Calafiori.jpg
+442|4a|FrankRijkaard2.jpg
+441|67|25th_Laureus_World_Sports_Awards_-_Ruud_Gullit_-_240422_131911_%28cropped%29.jpg
+445|9d|Ruud_van_Nistelrooy_2017.jpg
+444|cf|Kluivert7Sep2006.jpg
+449|c2|Clarence_Seedorf_Introductory_Press_Conferences%2C_2_June_2025_-_40_%28cropped%29.jpg
+448|ed|Rafael_van_der_Vaart_2014.jpg
+446|65|Loco-Fener_%2810%29.jpg
+451|20o|Marc_Overmars.jpg
+452|61|Jaap_Stam.jpg
+450|2c|Edgar_Davids.jpg
+447|6a|Huntelaar_2015.jpg
+434|38|SimaoSabrosaBJK.JPG
+432|3a|New_Zealand-Portugal_Nani.jpg
+433|db|Ricardo_Quaresma_-_Inter_Mailand_%283%29.jpg
+443|deo|Ronald_Koeman_%282014%29_%28cropped%29.jpg
+440|0co|Jos%C3%A9_Bosingwa.jpg
+439|b6o|Ferreira.jpg
+456|67|Stekelenburg_Audi_quattro-Cup_44.JPG
+427|58|Jo%C3%A3o_Moutinho_2018_%28cropped%29.jpg
+435|a3|Vitor_baia_in_2016.jpg
+436|fb|Rui_Patr%C3%ADcio_2018.jpg
+460|02|OL-MHSC_%282017%29_-_Memphis_Depay.jpg
+431|a6|William_Carvalho.jpg
+430|22o|Ruben_Neves_avec_la_selection.jpg
+422|cf|Bernardo_Silva_%28Isto_%C3%89_Gozar_Com_Quem_Trabalha%2C_2024%29.png
+419|ef|Joao_Cancelo_Croatia_v_Portugal_2_July_2026-002.jpg
+423|e2|Jo%C3%A3o_F%C3%A9lix_2019.jpg
+458|c9o|2022-07-30_Fu%C3%9Fball%2C_M%C3%A4nner%2C_DFL-Supercup%2C_RB_Leipzig_-_FC_Bayern_M%C3%BCnchen_Matthijs_de_Ligt_%28cropped%29.jpg
+424|02|RafaelLe%C3%A3oPortugal23.jpg
+425|d4|Diogo_Jota_2025.jpg
+418|9ao|Portugal_national_football_team_0866_%28R%C3%BAben_Dias%29.jpg
+461|4f|Cody_Gakpo_06042025_%282%29_%28cropped%29.jpg
+428|44|Vitinha_USMNT_v_Portugal_Mar_31_2026-50_%28cropped%29.jpg
+437|15|DiogoCosta23.jpg
+426|ce|Gon%C3%A7alo_Ramos_USMNT_v_Portugal_Mar_31_2026-32_%28cropped%29.jpg
+429|eb|Jo%C3%A3o_Neves%2C_SLB_-_Entrevista_2023-03-23.png
+462|5b|Reijnders_arriva_in_albergo_%28cropped%29.jpg
+491|08|Robinho061115-2.jpg
+483|db|Zico2.JPG
+487|b4|Rivaldo_bunyodkor_2010.jpg
+468|96|Dirk_Kuyt_Fenerbah%C3%A7e_20260805_%281%29_%28cropped%29.JPG
+466|b8|Mark_van_Bommel.jpg
+469|ce|Ronald_de_Boer_2.jpg
+488|ad|Senadores_da_57%C2%AA_Legislatura_%2852689451805%29.jpg
+485|eb|MFdSantos-Garrincha.jpg
+489|68o|Bebeto_brazil_%28cropped%29.jpg
+477|4e|Marouane_Fellaini_2018.jpg
+494|37|JSP_0799.JPG
+493|02|Giovane_Elber_2021.jpg
+475|61|Axel_Witsel_USMNT_v_Belgium_Mar_28_2026-34_%28cropped%29.jpg
+467|be|GAE_-_Ajax_-_52788475730_%28John_Heitinga%29.jpg
+465|0c|Nigel_de_Jong_2011_%282%29.jpg
+472|00|FC_Red_Bull_Salzburg_gegen_Bayern_M%C3%BCnchen_%282025-01-06_Testspiel%29_73.jpg
+470|dc|Romelu_Lukaku_2021.jpg
+486|8f|Jairzinho_1970s.jpg
+503|66|20180610_FIFA_Friendly_Match_Austria_vs._Brazil_Philippe_Coutinho_850_1692.jpg
+496|00|20180610_FIFA_Friendly_Match_Austria_vs._Brazil_Roberto_Firmino_850_1557.jpg
+473|b5|Jan_Vertonghen_14_Jul_2018.jpg
+507|9b|Lucas_MouraPSG.jpg
+476|e3|Moussa_Demb%C3%A9l%C3%A9_Belgium_%28cropped%29.jpg
+474|98|2020-03-10_Fu%C3%9Fball%2C_M%C3%A4nner%2C_UEFA_Champions_League_Achtelfinale%2C_RB_Leipzig_-_Tottenham_Hotspur_1DX_3693_by_Stepro_%28cropped%29.jpg
+471|03|Mertens_2018_%28cropped%29.jpg
+506|a5|Douglas_Costa_2016.jpg
+495|87|20180610_FIFA_Friendly_Match_Austria_vs._Brazil_Gabriel_Jesus_850_1688.jpg
+480|ff|Youri_Tielemans_USMNT_v_Belgium_Mar_28_2026-20_%28cropped%29.jpg
+497|5bo|07_07_2019_Final_da_Copa_Am%C3%A9rica_2019_%2848226557731%29_%28cropped%29.jpg
+498|81|Gabriel_Martinelli_Brazil_V_Morocco_13_June_2026-144.jpg
+479|93o|Leandro_Trossard_warming-up_Nations_League_2021_Italy.jpg
+478|dco|J%C3%A9r%C3%A9my_Doku.png
+463|3e|2022-07-30_Fu%C3%9Fball%2C_M%C3%A4nner%2C_DFL-Supercup%2C_RB_Leipzig_-_FC_Bayern_M%C3%BCnchen_1DX_3342_by_Stepro_%28cropped%29.jpg
+542|1a|CrespoInter.jpg
+533|88|Jeddah%2C_Saudi_Arabia_locator_map.png
+522|f0|L%C3%BAcio_-_Inter_Mailand_%285%29.jpg
+550|a7|Saviola_after_Goal.jpg
+544|31|Carlos_Tevez_with_Argentina_November_2014_%28cropped%29.jpg
+541|e4|Gabriel_batistuta.jpg
+520|ef|Juninho_Pernambucano.JPG
+511|a4o|Gilberto_Silva_in_North_London.jpg
+543|72o|Gonzalo_Higua%C3%ADn_2019.jpg
+514|ad|Dunga061115.jpg
+549|f2|Kiev-PSG_%287%29.jpg
+512|afo|Emerson_Ferreira_da_Rosa.png
+552|6do|Kempes_Valencia_CF.jpg
+551|69o|ClaudioPaulCaniggia.jpg
+545|8c|NIG-ARG_%285%29.jpg
+523|66|20180610_FIFA_Friendly_Match_Austria_vs._Brazil_Miranda_850_1585.jpg
+524|51|David_Luiz_at_Baku_before_2019_UEFA_Europe_League_Final.jpg
+538|bb|Nilton_Santos_-_2004.jpg
+530|e8|Filipe_Lu%C3%ADs_2018_%28cropped%29.jpg
+508|2f|Casemiro_Brazil_V_Morocco_13_June_2026-76_%28cropped%29.jpg
+525|dc|FC_Salzburg_gegen_Paris_Saint-Germain_UEFA_Champions_League_49_%28cropped%29.jpg
+546|59|2017_FRIENDLY_MATCH_RUSSIA_v_ARGENTINA_-_Paulo_Dybala_01_%28cropped%29.jpg
+540|5c|Gabriel_Barbosa_-_Rio_2016.jpg
+521|b6o|Aldair.jpg
+510|d0|Fabinho_Brazil_V_Morocco_13_June_2026-70.jpg
+535|e4|Ederson_Moraes_31_Fenerbah%C3%A7e_20260805_%287%29_%28cropped%29.JPG
+547|2e|Lautaro_Martinez_ARGENTINA_VS_VENEZUELA_2017.jpg
+517|0c|Lucas_Paqueta_Brazil_V_Morocco_13_June_2026-134_%28cropped%29.jpg
+526|0d|GabrielLille2019.png
+548|9d|Julian_Alvarez_Argentina_v_Egypt_7_July_2026-056.jpg
+516|70|Bruno_Guimaraes_Brazil_V_Morocco_13_June_2026-78_%28cropped%29.jpg
+513|ea|Maurosilva.png
+580|b2|Alvaro_Recoba.jpg
+568|80|Match_legends_2017_CC_%284%29.jpg
+578|f3|U10_Diego_Forl%C3%A1n_7524.jpg
+563|9a|Javier_Mascherano_NE_Revolution_Inter_Miami_7.9.25-040_%28cropped%29.jpg
+592|c2|Valderrama2010.JPG
+567|9ao|Esteban_Cambiasso.jpg
+556|2c|Roberto_Ayala_y_Javier_Zanetti_-_07FEB2007_-_Francia_-_presidencia-govar.jpg
+555|e7|Metalist-Inter_%282%29.jpg
+564|3e|%D0%A4%D0%B5%D1%80%D0%BD%D0%B0%D0%BD%D0%B4%D0%BE_%D0%A0%D0%B5%D0%B4%D0%BE%D0%BD%D0%B4%D0%BE_2019.png
+557|9a|Walter_Samuel_FC_Internazionale.jpg
+575|37o|Ubaldo_Fillol_2006.jpg
+597|7ao|Ren%C3%A9_Higuita%2C_2007.jpg
+565|8c|Diego_Simeone_-_01.jpg
+588|36|Fernando_Muslera_2018.jpg
+582|c6|Diego_God%C3%ADn_2018_%28cropped%29.jpg
+577|9f|Edinson_Cavani_2018_%28cropped%29.jpg
+591|98|Radamel_Falcao_Garc%C3%ADa_%28cropped%29.jpg
+590|61|James_Rodr%C3%ADguez_%28cropped%29.jpg
+574|3bo|Russia-Argentina_2017_%28cropped_Sergio_Romero%29.jpg
+589|45|Paolo_Montero.jpg
+593|b6o|Juan_Cuadrado_2019_%28cropped%29.jpg
+569|10|Enzo_Fernandez_Argentina_v_Spain_19_July_2026-050_%28cropped%29.jpg
+572|27|Leandro_Paredes_2018.jpg
+573|d9|Emiliano_Martinez_Argentina_v_Spain_19_July_2026-269.jpg
+596|bf|FWC_2018_-_Round_of_16_-_COL_v_ENG_-_Photo_103_%28cropped%29.jpg
+585|73|Federico_Valverde_2021_%28cropped%29.jpg
+587|e9|Lucas_Torreira.jpg
+561|4do|Argentina_team_in_St._Petersburg_%28cropped%29.jpg
+559|40|Cristian_Romero_Argentina_v_Egypt_7_July_2026-108.jpg
+560|61|Lisandro_Martinez_2022.jpg
+562|f8|Universidad_Cat%C3%B3lica_-_Rosario_Central_20190313_04.jpg
+594|cc|2022-07-21_Fu%C3%9Fball%2C_M%C3%A4nner%2CFreundschaftsspiel%2C_RB_Leipzig_-_FC_Liverpool_1DX_2067_by_Stepro_%28Luis_Diaz%29.jpg
+584|3f|FC_Red_Bull_Salzburg_gegen_CF_Barcelona_%28Testspiel_4._August_2021%29_45_%28cropped%29.jpg
+579|4e|Darwin_N%C3%BA%C3%B1ez_WC2022.jpg
+602|60o|Marcelo_Salas.jpg
+610|f7o|Chilavert_sanlorenzo.jpg
+635|52|Football_against_poverty_2014_-_Davor_%C5%A0uker.jpg
+625|6d|DinamoKiev-Everton_%289%29.jpg
+613|64|Pizarro_training_FC_Bayern_%28cropped%29.jpg
+618|6e|Rafael_M%C3%A1rquez_%C3%81lvarez_%282009%29.jpg
+624|a9|Clint_Dempsey_20110622.jpg
+623|ca|LandonDonovan_20060410.jpg
+636|cf|Primorac_-_Boban-Balic-cropped.jpeg
+620|9e|Huguito.jpg
+608|78|Manchester_United_v_Manchester_City%2C_October_2016_%2819%29.JPG
+601|8b|ZamoranoFCSG_cropped.JPG
+633|6e|Ivan_Rakiti%C4%87.jpg
+634|47|Mario_Mand%C5%BEuki%C4%87_in_2018.jpg
+639|2f|Lovren_in_Zenit_%28cropped%29.jpg
+614|ab|Guerrero-Paolo.JPG
+599|50|Alexis_S%C3%A1nchez_2017.jpg
+600|0d|Arturo_Vidal_Copiap%C3%B3_v_Colo-Colo_20241110_13.jpg
+637|85o|Ivan_Peri%C5%A1i%C4%87_%28cropped%29.jpg
+621|40|Mex-Kor_%2825%29_%28cropped%29.jpg
+603|8d|Claudio_Bravo_-_Spain_vs._Chile%2C_10th_September_2013.jpg
+619|2f|Mex-Kor_%281%29_%28cropped%29.jpg
+604|8c|Gary_Medel_Cardiff_City.jpg
+640|d9|Chelsea_vs._Arsenal%2C_29_May_2019_18_Kovacic.jpg
+632|e4|Joel_Campbell%2714.JPG
+615|9b|Raul_Jim%C3%A9nez.png
+631|dc|Keylor_Navas_2018_%28cropped%29.jpg
+641|c9|Marcelo_Brozovi%C4%87_2021_%28cropped%29.jpg
+609|4f|Enner_Valencia_Cote_D%27Ivoire_v_Ecuador_14_June_2026-95.jpg
+642|2e|Andrej_Kramari%C4%87_2018.jpg
+617|e3|Hirving_Lozano.png
+622|71|Christian_Pulisic_USMNT_v_Belgium_Mar_28_2026-73_%28cropped%29.jpg
+629|53|Alphonso_Davies_20190428_%28cropped%29.jpg
+627|b1|Adams4_%28cropped%29.jpg
+630|63|Jonathan_David_Canada_v_Qatar_18_June_2026-242_%28cropped%29.jpg
+626|2b|Weston_McKennie_vs_Zenit_2021-10-20_%28cropped%29.jpg
+612|d7|2018-08-19_-_Atlanta_United_-_Miguel_Almir%C3%B3n.jpg
+638|19|2021_Jo%C5%A1ko_Gvardiol_2_%28cropped%29.jpg
+605|9f|Moises_Caicedo_2022.jpg
+606|27|Piero_Hincapi%C3%A9%2C_2022-07-31%2C_Saisoner%C3%B6ffnung_Bayer_04%2C_Leverkusen_%281%29.jpg
+607|a4|Pacho_asse_psg_2425.png
+676|62|20140904_-_Kasper_Schmeichel.jpg
+646|4f|Nemanja_Vidi%C4%87.jpg
+666|b8|Marek_Ham%C5%A1%C3%ADk_-_SSC_Neapel_%283%29.jpg
+645|a4|Dejan_Stankovi%C4%87_-_Inter_Mailand_%284%29.jpg
+660|43|Tomas_Rosicky_2007.jpg
+673|c4|Jerzy_Dudek_%282%29.jpg
+686|9a|Henrik_Larsson_in_Jan_2014.jpg
+680|e6|Dahl_Thomasson_2021_%28cropped%29.jpg
+662|20|Milan_baros.JPG
+661|47|Jan_Koller_2019.jpg
+663|c4|Karel_Poborsk%C3%BD_%282012%29.jpg
+653|44o|Sini%C5%A1a_Mihajlovi%C4%87.JPG
+670|0d|Boniek_Zbigniew.jpg
+685|a4|Nicklas_Bendtner_2017.jpg
+652|eeo|Dragan_Stojkovic_Piksi.jpg
+647|44|Branislav_Ivanovi%C4%87_2018.jpg
+667|cc|Martin_%C5%A0krtel.jpg
+677|ca|Michael_Laudrup_2016c_%28cropped%29.jpg
+678|15|Brian-Laudrup-Darren-Laver-Lars-Hogh_%28cropped%29.jpg
+656|29|Samir_Handanovi%C4%87_Slovenia.jpg
+681|e6|Daniel_Agger_20120613.jpg
+644|2d|Robert_Prosine%C4%8Dki_2024_%281%29_%28cropped%29.jpg
+672|4d|Wojciech_Szcz%C4%99sny.png
+679|d8o|EriksenTottenham2016%28cropped%29_2.jpg
+671|a4|Jakub_B%C5%82aszczykowski5.jpg
+648|f8|Nemanja_Mati%C4%87_27_September_2017_cropped.jpg
+682|5a|Simon_Kjaer.JPG
+675|f3|Piotr_Zieli%C5%84ski_2018.jpg
+683|c8|2014-05-18-Pierre_Emile_H%C3%B8jbjerg.jpg
+643|63|Danijel_Suba%C5%A1i%C4%87_2018_2.jpg
+657|3b|Josip_Ilicic_2021.jpg
+687|0a|Tomas_Brolin.jpg
+654|67o|Du%C5%A1an_Tadi%C4%87_%28cropped%29.jpg
+651|78o|Aleksandar_Mitrovi%C4%87_2018_%28cropped%29.jpg
+669|56|Grzegorz_Lato_by_Slawek.jpg
+655|a1|Jan_Oblak_2019.jpg
+674|a9|FC_Salzburg_gegen_SSC_Napoli_%28UEFA_Euroleague_Achtelfinalr%C3%BCckspiel_14._M%C3%A4rz_2019%29_21.jpg
+668|8f|Milan_%C5%A0kriniar_37_Fenerbah%C3%A7e_20260805_%288%29_%28cropped%29.JPG
+649|a2|Milinkovi%C4%87-Savi%C4%87_2018.jpg
+665|d6|Tom%C3%A1%C5%A1_Sou%C4%8Dek_WHU.jpeg
+664|71|2020-03-10_Fu%C3%9Fball%2C_M%C3%A4nner%2C_UEFA_Champions_League_Achtelfinale%2C_RB_Leipzig_-_Tottenham_Hotspur_1DX_3672_by_Stepro.jpg
+658|fd|FC_Liefering_gegen_FC_Wacker_Innsbruck_%2821._September_2019%29_10.jpg
+684|d3o|Rasmus_H%C3%B8jlund_with_a_fan.jpg
+695|d1|John_Arne_Riise.JPG
+688|f1|Fredrik_Ljungberg_2006.jpg
+696|69|Ole_Gunnar_Solskjaer_Trondheim2011-1_crop.jpg
+689|fb|Olof_Mellberg%2713.JPG
+712|9e|Hakan.jpg
+732|e5|Andrey_Arshavin_2018.jpg
+720|76|Emre_in_national_team_%2811.08.2010%29_%28cropped%29.JPG
+713|8c|AUT_vs._TUR_2016-03-29_%28283%29.jpg
+694|b4o|Kim_K%C3%A4llstr%C3%B6m_2012.jpg
+708|f6|20180610_FIFA_Friendly_Match_Austria_vs._Brazil_Marko_Arnautovi%C4%87_850_1633.jpg
+714|0f|Rustu_Recber_2010.jpg
+699|02|Steffen_Iversen.jpg
+723|a1|Sokratis170727.jpg
+707|3f|David_Alaba_Training_2019-04-10_FC_Bayern_Muenchen-4_%28cropped%29.jpg
+730|d4|Serhiy_Rebrov_2015.jpg
+701|2a|Xherdan_Shaqiri_2018.jpg
+711|f9|Andreas_Herzog_Wien2008.jpg
+722|64|Gekas.jpg
+697|ff|Tore_Andre_Flo_2006_06_06.jpg
+705|62|AUT_vs._SUI_2015-11-17_%28187%29.jpg
+700|01|Granit_Xhaka_%28cropped%29.jpg
+702|03o|Ser-Swi_%2818%29_%28cropped%29.jpg
+715|d7|AUT_vs._TUR_2016-03-29_%28342%29.jpg
+709|0e|Marcel_Sabitzer_2020_%28cropped%29.jpg
+728|6f|Oleksandr_Zinchenko_%28footballer%29_2023_%28cropped%29.jpg
+693|4e|Forsberg_2018_%28cropped%29_2.jpg
+690|56|Alexander_Isak_%28training_2016%2C_cropped_2%29.jpg
+704|f2o|Ser-Swi_%2834%29_%28cropped%29.jpg
+698|e2|Norway_Italy_-_June_2025_E_10.jpg
+710|1a|Austria_national_under-21_football_team_-_Teamcamp_October_2019_%2861%29_%28cropped%29.jpg
+729|35|%D0%9C%D0%B8%D1%85%D0%B0%D0%B8%D0%BB_%D0%9C%D1%83%D0%B4%D1%80%D0%B8%D0%BA._26_%D0%BC%D0%B0%D1%8F_2021_%D0%B3%D0%BE%D0%B4%D0%B0_%E2%80%94_1233123_%28cropped%29.jpg
+692|73|Viktor_Gy%C3%B6keres_2026-06-04_1_%28cropped%29.jpg
+716|26o|Derbide_Fenerbah%C3%A7e_Yedek_Oyuncu_Arda_G%C3%BCler_%282021-22_S%C3%BCper_Lig_-_Cropped%29.jpg
+731|6f|Artem_Dovbyk_2025_%28cropped%29.jpeg
+727|91o|Giorgi_Mamardashvili_Valencia_2021.png
+717|e0|Kenan_Y%C4%B1ld%C4%B1z_in_the_international_match_%28March_2025%29_%28cropped%29.jpg
+735|f3|Stoichkov_in_2016.jpg
+759|ea|Chelsea_Legends_1_Inter_Forever_4_%2828453496098%29_%28cropped%29.jpg
+740|93o|Ferenc_Puskas_en_1965.jpg
+738|02|Adrian_Mutu_Roberto_Vicario.jpg
+753|b6|Kolo_Toure_8932.JPG
+739|06|Chivu2018.jpg
+754|ef|Hertha_BSC_vs._West_Ham_United_20190731_%28044%29.jpg
+736|aeo|Berbatov_9.jpg
+761|71|Asamoah_Gyan_%282014%29.jpg
+760|95|Sulley_Muntari_-_Inter_Mailand_%281%29.jpg
+737|d1|Gheorghe_Hagi3_cropped.jpg
+752|4a|Yaya_Tour%C3%A9_2013-06-06_001.jpg
+734|c4|Igor_Akinfeev_2020.jpg
+775|9a|Milla2008cropped.jpg
+777|01|Zenit_-_Rubin%2C_2016_%284%29_%28cropped%29_-_Song.jpg
+769|df|John_Obi_Mikel_2018.jpg
+766|ed|Match_legends_2017_CC_%281%29.jpg
+755|7d|Gervinho_2010.jpg
+776|cb|20060816_191713_0072_Football_Guinee-Cameroun.JPG
+763|db|20150331_Mali_vs_Ghana_170.jpg
+772|b2|Victor_Moses_%28SPA-AKH%29.jpg
+756|7d|Wilfried_Zaha_NYCFC_v_Charlotte_20_Sep_2025-022_%28cropped%29.jpg
+742|d7|2020-03-10_Fu%C3%9Fball%2C_M%C3%A4nner%2C_UEFA_Champions_League_Achtelfinale%2C_RB_Leipzig_-_Tottenham_Hotspur_1DX_3666_by_Stepro.jpg
+745|92|Sadio_Mane_France_v_Senegal_16_June_2026-450.jpg
+733|e7|Aleksandr_Golovin.jpg
+749|aco|Idrissa_Gueye_%28cropped%29.jpg
+774|06|Alex_Iwobi_%2824109638313%29_%28cropped%29.jpg
+773|fbo|Wilfred_Ndidi-Nigeria.jpg
+747|ba|Kalidou_Koulibaly_France_v_Senegal_16_June_2026-370_%28cropped%29.jpg
+764|b7|Thomas_Partey_5_England_v_Ghana_at_2026_Fifa_World_Cup_by_YantsImages_02_%28cropped%29.jpg
+771|b7|Ademola_Lookman_%282019%29_%28cropped%29.jpg
+770|34|Victor-osimhen-nigeria-2024-3-4.jpg
+748|8e|2021_FIFA_Club_World_Cup_Final_-_30.jpg
+757|21|Franck_Kessie_Cote_D%27Ivoire_v_Ecuador_14_June_2026-15_%28cropped%29.jpg
+741|2b|Dominik_Szoboszlai_in_2020.jpg
+750|6d|Pape_Matar_Sarr_France_v_Senegal_16_June_2026-227.jpg
+765|ef|Mohammed_Kudus_of_West_Ham_United.jpeg
+751|35|Nicolas_Jackson_France_v_Senegal_16_June_2026-369_%28cropped%29.jpg
+807|33|FC%EC%84%9C%EC%9A%B8_2016_K%EB%A6%AC%EA%B7%B8_%EC%9A%B0%EC%8A%B9%21_%ED%99%A9%EC%84%A0%ED%99%8D%EA%B0%90%EB%8F%85_%EB%B0%95%EC%A3%BC%EC%98%81%2C_%EB%8B%A4%EC%B9%B4%ED%95%98%EA%B8%B0_%EC%9D%B8%ED%84%B0%EB%B7%B0_0.51_minutes_Scene.jpg
+804|b4|260815_FC_%EC%84%9C%EC%9A%B8_vs_%EB%8C%80%EC%A0%84_%28%ED%99%A9%EC%84%A0%ED%99%8D%29.jpg
+802|47|Emmanuel_Adebayor_-_Lech_-_Manchester_026.jpg
+806|5f|%EC%9D%B4%EB%8F%99%EA%B5%AD_2020%EB%85%84.jpg
+808|5c|Lee_Chun-Soo.jpg
+810|d0o|Kim_Nam-Il_IMG_2896.jpg
+812|97o|%EC%B5%9C%EC%A7%84%EC%B2%A0.jpg
+815|df|Kim_Byung-Ji_in_2012.jpg
+805|ae|%EC%B5%9C%EC%9A%A9%EC%88%98_2022.jpg
+816|3d|Jung_Sung-Ryong.jpg
+796|68|Frederic_Kanoute_2011.jpg
+820|ec|260705_FC_%EC%84%9C%EC%9A%B8_vs_%EC%9D%B8%EC%B2%9C_%28%EC%9D%B4%EC%B2%AD%EC%9A%A9%29.jpg
+803|13|BenniMcCarthy.jpg
+822|49|240816_FC_%EC%84%9C%EC%9A%B8_vs_%EC%A0%9C%EC%A3%BC_%28%EB%82%A8%ED%83%9C%ED%9D%AC%29.jpg
+819|92o|%EA%B5%AC%EC%9E%90%EC%B2%A0_2018.jpg
+797|6ao|Keita_August_2008_Joan_Gamper_Trophy.jpg
+821|a3|%EC%A7%80%EB%8F%99%EC%9B%90%EC%9D%98_FC%EC%84%9C%EC%9A%B8_%EC%9E%85%EB%8B%A8_%EC%B2%AB_%EC%9D%B8%ED%84%B0%EB%B7%B0.jpg
+818|c4|%28%EC%B6%94%EA%BE%B8%EB%AF%B8%29_%27%EC%9A%B8%EC%82%B0_%ED%95%A9%EB%A5%98%27_%EA%B9%80%EC%98%81%EA%B6%8C.jpg
+780|df|2022-07-21_Fu%C3%9Fball%2C_M%C3%A4nner%2CFreundschaftsspiel%2C_RB_Leipzig_-_FC_Liverpool_1DX_2092_by_Stepro_%28cropped%29.jpg
+790|85o|CSKA-Bavaria_%2811%29.jpg
+799|37|1_Pierre-Emerick_Aubameyang_%28cropped%29.jpg
+793|4do|CSKA_Sporting_%2812%29.jpg
+792|45|Mahrez_2021.jpg
+779|4a|Vincent_Aboubakar_in_2023_%28cropped%29.jpg
+781|8a|2010-abotrika.jpg
+800|3a|0K8A9223_%2853493337827%29.jpg
+791|00|Brahim_Diaz_3_vs_Niger_%28cropped%29_%28cropped%29.jpg
+789|08o|Real_Valladolid_-_CD_Legan%C3%A9s_2018-12-01_%288%29_%28cropped%29.jpg
+785|e1|Hakim_Ziyech_2021.jpg
+778|67|Andr%C3%A9_Onana.jpg
+786|93|Yassine_bounou_Interview_2023.jpg
+794|2c|BennacerLeB2022.jpg
+787|9f|Sofyan_Amrabat_Brazil_V_Morocco_13_June_2026-63.jpg
+798|b4|Bissouma_2018.jpg
+788|77|Mazraoui.jpg
+783|ec|Omar_Marmoush_Argentina_v_Egypt_7_July_2026-018.jpg
+857|eb|Hidetoshi_Nakata_in_Okinawa.jpg
+847|b5o|Huh_Jung-Moo_from_acrofan.jpg
+849|9b|20071109101057%21LeeKwanwoo.jpg
+852|03|%EC%97%BC%EA%B8%B0%ED%9B%88_2019.jpg
+860|e4|Shunsuke2_20080622.png
+841|dc|%EB%8C%80%EC%A0%84_%EA%B3%A0%EC%A2%85%EC%88%98.png
+844|21o|Seo_Jung-Won_from_acrofan.jpg
+850|84|%EC%9D%B4%EB%AF%BC%EC%84%B1_2021.jpg
+854|7e|Kwak_Tae-Hwi.jpg
+855|61|%EC%A0%95%EC%A1%B0%EA%B5%AD_%EC%9D%80%ED%87%B4_%EC%9D%B8%ED%84%B0%EB%B7%B0.jpg
+842|aa|%EC%9C%A4%EC%A0%95%ED%99%98.png
+848|5ao|Choi_Soon-Ho_from_acrofan.jpg
+861|d1|Yasuhito_End%C5%8D_against_Bahrain_June_22_2008.png
+845|4d|%EC%8B%A0%ED%83%9C%EC%9A%A9_%28Shin_Tae-yong%29.jpg
+858|79|Keisuke_Honda_2018_%28cropped%29_%28cropped%29.jpg
+856|e2|Team_Korea_Russia_WorldCup_03_%28cropped%29.jpg
+862|45|2022128173751_2022-05-08_Fussball_Eintracht_Frankfurt_vs_Borussia_M%C3%B6nchengladbach_-_Sven_-_1D_X_MK_II_-_0713_-_AK8I7448_%28Makoto_Hasebe_cropped%29.jpg
+865|c9|Shinji_Okazaki.png
+859|96|Shinji_Kagawa%2714.JPG
+863|ff|Yuto_Nagatomo_in_2018.jpg
+833|f9|220410_K%EB%A6%AC%EA%B7%B81_FC_%EC%84%9C%EC%9A%B8_vs_%EC%88%98%EC%9B%90_%EC%82%BC%EC%84%B1_%EB%B8%94%EB%A3%A8%EC%9C%99%EC%A6%88_%28%EC%9D%B4%EA%B8%B0%EC%A0%9C%29.jpg
+864|9c|Maya_Yoshida_along_with_Japan_National_Football_Team_at_the_Kantei.jpg
+837|88|260509_%EC%A0%9C%EC%A3%BC_vs_FC_%EC%84%9C%EC%9A%B8_%28%EA%B6%8C%EC%B0%BD%ED%9B%88%29.jpg
+827|7d|230624_%EC%88%98%EC%9B%90_%EC%82%BC%EC%84%B1_%EB%B8%94%EB%A3%A8%EC%9C%99%EC%A6%88_vs_FC_%EC%84%9C%EC%9A%B8_%28%ED%99%A9%EC%9D%98%EC%A1%B0%29.jpg
+824|8e|240611_%EB%8C%80%ED%95%9C%EB%AF%BC%EA%B5%AD_vs_%EC%A4%91%EA%B5%AD_%28%ED%99%A9%EC%9D%B8%EB%B2%94%29.jpg
+838|8c|250222_FC_%EC%84%9C%EC%9D%84_vs_%EC%95%88%EC%96%91_%28%EB%AC%B8%EC%84%A0%EB%AF%BC%29.jpg
+867|be|Takefusa_Kubo_2019.png
+839|f2|231022_FC_%EC%84%9C%EC%9A%B8_vs_%EA%B0%95%EC%9B%90_FC_%28%EB%82%98%EC%83%81%ED%98%B8%29.jpg
+829|b4|Oh_Hyeon-gyu_BJK.jpeg
+840|b5|260815_FC_%EC%84%9C%EC%9A%B8_vs_%EB%8C%80%EC%A0%84_%28%EC%97%84%EC%9B%90%EC%83%81%29_2.jpg
+828|a7|191130_%EB%B6%80%EC%82%B0%EC%95%84%EC%9D%B4%ED%8C%8C%ED%81%AC_VS_FC%EC%95%88%EC%96%91_%ED%94%8C%EB%A0%88%EC%9D%B4%EC%98%A4%ED%94%84%2C_%EC%A1%B0%EA%B7%9C%EC%84%B1_2.jpg
+835|66|%28%EC%B6%94%EA%BE%B8%EB%AF%B8%29_%27%EC%9A%B8%EC%82%B0_%ED%95%A9%EB%A5%98%27_%EC%84%A4%EC%98%81%EC%9A%B0.jpg
+866|90|Kaoru_Mitoma_%282022%29.jpg
+831|bf|240626_FC_%EC%84%9C%EC%9A%B8_vs_%EA%B0%95%EC%9B%90_%28%EC%96%91%EB%AF%BC%ED%98%81%29.jpg
+884|f4|Ali-Karimi-2008-Semnan.jpg
+876|39|Tim_Cahill-31.03.09.jpg
+878|fao|Mark_Viduka_2005_WCQ.jpg
+889|87o|SunJihai.JPG
+877|b2|HarryKewell.jpg
+881|c7|Ali-Daei.JPG
+879|e5|Mark_Schwarzer.jpg
+872|06|Uchida_Schalke_2015.jpg
+885|e5|Sami09.JPG
+896|4f|20180602_FIFA_Friendly_Match_Austria_vs._Germany_Sami_Khedira_850_0707.jpg
+873|1fo|Eiji_Kawashima_2018.jpg
+895|ea|Andr%C3%A9_Sch%C3%BCrrle%2714.JPG
+898|a0o|2019-06-11_Fu%C3%9Fball%2C_M%C3%A4nner%2C_L%C3%A4nderspiel%2C_Deutschland-Estland_StP_2278_LR10_by_Stepro_-_Julian_Draxler_%28cropped%29.jpg
+891|eb|Alexandre_Lacazette_2018.jpg
+893|2e|Kruse%2C_Max_StP_10-11.JPG
+899|7a|Eliaquim_Mangala_FC_Porto_2013.jpg
+897|33|Christoph_Kramer_2015.jpg
+880|2f|20180601_FIFA_Friendly_Match_Czech_Republic_vs._Australia_Matthew_Ryan_850_0230.jpg
+883|d1|Sardar_Azmoun_2021.jpg
+911|2c|2019-07-17_SG_Dynamo_Dresden_vs._Paris_Saint-Germain_by_Sandro_Halank%E2%80%93011_%28cropped%29.jpg
+894|64|20180602_FIFA_Friendly_Match_Austria_vs._Germany_Kevin_Trapp_850_0760.jpg
+869|35|Wataru_endo.jpg
+871|4b|FC_Admira_Wacker_M%C3%B6dling_vs._FC_Red_Bull_Salzburg_2018-04-15_%28061%29.jpg
+882|74o|Iran_-_Japan%2C_AFC_Asian_Cup_2019_42_%28cropped%29.jpg
+870|3b|DaichiKamada.jpg
+868|c9|RC_Lens_-_Arsenal_FC_%2803-10-2023%29_29.jpg
+900|27|Lucas_Hernandez_France_v_Senegal_16_June_2026-281.jpg
+886|6d|Salem_Al-Dawsari_2018.jpg
+902|85|Matt%C3%A9o_Guendouzi_6_Fenerbah%C3%A7e_20260805_%288%29_%28cropped%29.JPG
+875|d5|Go_Ahead_Eagles_-_Feyenoord_-_53679351240_%28Ayase_Ueda_02%29.jpg
+892|c9|FC_Admira_Wacker_M%C3%B6dling_vs._FC_Red_Bull_Salzburg_2018-04-15_%28035%29.jpg
+907|f6|Wesley_Fofana_2022.jpg
+903|ac|Hugo_Ekitike_%28PSG_2023%29.jpg
+905|ec|Rayan_Cherki_2019.jpg
+908|a2|Malo_Gusto_France_v_Senegal_16_June_2026-399.jpg
+901|2fo|Beno%C3%AEt_Badiashile_FIFA_Club_World_Cup_final_extraction.jpg
+904|92o|Zaire_Emery_vs_MHSC_18_mars_2024.png
+909|96|Brice_Samba_asse_rcl_23_24.jpg
+945|e4|Antonio_Cassano_Milan.jpg
+951|67o|Gigi_Riva%2C_Italia%2C_1968_%28cropped_2%29.JPG
+946|42o|Giampaolo_Pazzini_%2815_02_2011%29.jpg
+952|7do|Rivera.jpg
+954|15|1966%E2%80%9367_Inter_Milan_-_Giacinto_Facchetti.jpg
+938|6co|Ranocchia.jpg
+956|07|Marco_Tardelli_-_Lucca_Comics_%26_Games_2016.jpg
+940|8a|20150616_-_Portugal_-_Italie_-_Gen%C3%A8ve_-_Salvatore_Sirigu_1_%28cropped%29.jpg
+935|76|Stephan-El-Shaarawy-2023.jpg
+939|35|20150616_-_Portugal_-_Italie_-_Gen%C3%A8ve_-_Davide_Astori.jpg
+947|ab|Vincenzo_Montella_2015.jpg
+953|cb|Inter_Milan_1971-1972_Sandro_Mazzola.jpg
+944|d6|Florenzi%2C_Roma-Udinese_17_marzo_2014.jpg
+941|e8|Mattia_Perin_2016.jpg
+932|0fo|Cristante_CSKA-Roma18.jpg
+928|c5|20150616_-_Portugal_-_Italie_-_Gen%C3%A8ve_-_Matteo_Darmian.jpg
+943|32o|Leonardo_Spinazzola_03.jpg
+916|49|Rapha%C3%ABl_Guerreiro_%28cropped%29.jpg
+914|17|Joao_Mario_2021.jpg
+915|4b|Andr%C3%A9_Gomes_%281%29.jpg
+937|45o|Andrea_Belotti_2021.jpg
+931|29|Lorenzo_Pellegrini.jpg
+955|37o|Claudio_Gentile_1973_%28cropped%29.jpg
+933|7d|FC_Zenit_Saint_Petersburg_vs._Juventus%2C_20_October_2021_34_%28Manuel_Locatelli%29.jpg
+936|95|Raspadori_Nazionale.jpg
+918|47|Joaopalhinha.jpg
+926|a8|Scamacca_%28cropped%29.jpeg
+919|ceo|Otavio_2023_%28cropped%29.jpg
+925|d1o|Ricardo_Horta.jpg
+930|5c|FC_Salzburg_gegen_Inter_Mailand_%28UEFA_Championsleague_2023-11-08%29_14.jpg
+942|f1o|Guglielmo_Vicario.png
+929|7e|FC_Salzburg_gegen_Inter_Mailand_%28Testspiel_2023-08-09%29_73_-_Federico_Dimarco_%28cropped%29.jpg
+934|f0|Frosinone_Calcio_-_Federico_Gatti_-_MS_1_cut.jpg
+922|e0|Gon%C3%A7alo_In%C3%A1cio_2021.png
+957|7b|Bruno_Conti_1982.jpg
+927|d6|Norway_Italy_-_June_2025_A_21_%28cropped%29.jpg
+950|0ao|Fabrizio_Ravanelli_maggio_2012.jpg
+921|3e|Francisco_Concei%C3%A7%C3%A3o_USMNT_v_Portugal_Mar_31_2026-62_%28cropped%29.jpg
+993|9c|S%C3%A1ndor_Kocsis_1960_cropped.jpg
+994|5d|20180602_FIFA_Friendly_Match_Austria_vs._Germany_Bernd_Leno_850_0646.jpg
+995|80|2022128153308_2022-05-08_Fussball_Eintracht_Frankfurt_vs_Borussia_M%C3%B6nchengladbach_-_Sven_-_1D_X_MK_II_-_0729_-_B70I6840_%28cropped%29_%28cropped%29.jpg
+967|98|Sergi_Roberto_2019_03_17_1.jpg
+992|bb|Kubala.jpg
+975|52|Donny_van_de_Beek_2021_%28cropped%29.jpg
+976|be|Steven_Bergwijn_in_2017.png
+996|6b|Robin_Gosens_01_%28cropped%29.jpg
+973|dc|GAE_-_Ajax_-_52788075131_%28Jurri%C3%ABn_Timber%29.jpg
+984|80|Matheus_Cunha_em_2021.jpg
+965|05|I%C3%B1aki_Williams.png
+958|61|1_Mart%C3%ADn_Zubimendi_arsenal_2025_%28cropped%29.jpg
+997|a8|2023-10-04_Fu%C3%9Fball%2C_M%C3%A4nner%2C_UEFA_Champions_League%2C_RB_Leipzig_-_Manchester_City_FC_1DX_2658_%28cropped%29.jpg
+990|e5|Joachim_Andersen_2019.jpg
+971|b2|2023-10-04_Fu%C3%9Fball%2C_M%C3%A4nner%2C_UEFA_Champions_League%2C_RB_Leipzig_-_Manchester_City_FC_1DX_2672_%28Xavi_Simons%29.jpg
+983|cf|Geronimo_Rulli_Argentina_v_Spain_19_July_2026-267_%28cropped%29.jpg
+968|1c|Borja_iglesias_2019001_%28cropped%29.jpg
+989|60|Rasmus_Nissen%2C_FC_RB_Salzburg_versus_Wolfsberger_AC_%2810._August_2019%29.jpg
+974|3e|Jeremie_Frimpong_04012026_%283%29_%28cropped%29.jpg
+979|20|Thiago_Almada_Argentina_v_Egypt_7_July_2026-045.jpg
+959|93|Esapana-inglaterra-74_%2848899354493%29.jpg
+988|dc|Brennan_Johnson_%28cropped%29.jpg
+977|c3|Manchester_United_v_Brighton_%26_Hove_Albion%2C_7_August_2022_%2836%29.jpg
+985|1do|Jo%C3%A3o_Pedro%2C_2025_FIFA_Club_World_Cup_final_%2854654843615%29.jpg
+991|59|Hjulmand.png
+972|3f|Micky_Van_De_Ven_pre-match_training_%28cropped%29.jpg
+961|5c|Ferm%C3%ADn_L%C3%B3pez_%28cropped%29.jpg
+969|a2|RC_Lens_-_Lille_OSC_%2808-10-2023%29_12_%28cropped1%29.jpg
+960|79|Rodrigo_Riquelme_2020.png
+978|12|Nico_Paz_Como_2025.jpg
+966|16|%C3%81lex_Baena_2019.jpg
+998|52|Maxi_mittelstaedt.jpg
+1000|90|FC_RB_Salzburg_gegen_FC_Bayern_M%C3%BCnchen_%282026-01-06_Testspiel%29_34.jpg
+962|53o|Marc_Guiu_FIFA_Club_World_Cup_final_extraction.jpg
+999|3e|RC_Lens_-_Union-Saint-Gilloise_%2805-08-2020%29_46.jpg
+1007|2d|Lars-Bender-2018-08-19.jpg
+1008|98|Sven-Bender-2018-08-19.jpg
+1009|88|Kevin_Gro%C3%9Fkreutz_IMG_1623.jpg
+1010|e9|1_Shkodran_Mustafi_2018_%28cropped%29.jpg
+1015|8b|James_Ward-Prowse_in_2024.jpeg
+1020|a4|Joe_Gomez.jpg
+1006|41|Pascal_Gross.jpg
+1021|5e|Pedro_Porro_Argentina_v_Spain_19_July_2026-177_%28cropped%29.jpg
+1018|06|Levi_Colwill_playing_for_England_U17s_against_Spain_in_2019.jpg
+1003|d9|Chris_fuehrich.jpg
+1019|c7|Ezri_Konsa_England_v_Panama_27_June_26-259_%28cropped%29.jpg
+1004|6a|Nick_Woltemade_Ecuador_v_Germany_25_June_2026-069.jpg`;
+
+/* ---------- 계산 ---------- */
+function effects(q,a){
+  if(a==null)return [];
+  if(q.type==='slider')return [[q.eff(a),q.pre(a)]];
+  if(q.type==='multi')return a.map(i=>[q.a[i][1],q.a[i][2]]);
+  return [[q.a[a][1],q.a[a][2]]];
+}
+function profile(a){
+  const acc={},pres=[];let pos='MF',foot='R';
+  Q.forEach((q,i)=>effects(q,a[i]).forEach(([eff,pre])=>{
+    let key=null,best=-1;
+    for(const k in eff){if(k==='pos')pos=eff[k];else if(k==='foot')foot=eff[k];else{(acc[k]??=[]).push(eff[k]);if(eff[k]>best){best=eff[k];key=k}}}
+    if(pre)pres.push({pre,k:key,i});
+  }));
+  const t={};T.forEach(k=>t[k]=acc[k]?acc[k].reduce((s,x)=>s+x,0)/acc[k].length:3);
+  return {t,pos,foot,pres};
+}
+function rank(me){
+  return P.map(p=>{
+    let d=0;T.forEach(k=>{const w=(k==='calm'||k==='temper')?0.7:1;d+=w*(me.t[k]-p.t[k])**2});
+    d=Math.sqrt(d);
+    if(p.pos!==me.pos)d+=me.pos==='GK'||p.pos==='GK'?6:1.8;
+    if(me.foot==='L'&&p.foot==='R'||me.foot==='R'&&p.foot==='L')d+=0.5;
+    if(me.foot==='B'&&p.foot==='B')d-=0.4;
+    if(p.core)d-=0.35;
+    if(PHOTO[p.i])d-=0.15;
+    d+=((p.i*2654435761)%1000)/1000*0.3;
+    return {p,d};
+  }).sort((a,b)=>a.d-b.d).map(x=>({...x,pc:Math.max(52,Math.min(99,Math.round(100-x.d*5.2)))}));
+}
+// 별명 후보: 내 답변의 앞말(내가 가장 강한 성향 순) + 닮은 선수 이름
+function nicknames(me,best){
+  const s=best.short, seen=new Set(), out=[];
+  me.pres.slice().sort((a,b)=>((b.k?me.t[b.k]:0)-(a.k?me.t[a.k]:0))||(a.i-b.i)).forEach(x=>{
+    if(seen.has(x.pre)||out.length>=5)return;seen.add(x.pre);out.push({nick:x.pre+s,pre:x.pre,k:x.k});
+  });
+  if(!out.length)out.push({nick:'신비주의'+s,pre:'신비주의',k:null});
+  return out;
+}
+function topTraits(me,n){return T.slice().sort((a,b)=>me.t[b]-me.t[a]).slice(0,n)}
+
+
+/* ---------- 선수 사진 DB: 위키미디어 공용(Commons)의 자유 라이선스 사진 파일 목록 (선수 번호|해시[o=원본]|파일명) ---------- */
+const PHOTO={};
+PH_RAW.split('\n').forEach(r=>{const [i,h,f]=r.split('|');if(!f)return;const o=h.length>2,hh=h.slice(0,2),base=`https://upload.wikimedia.org/wikipedia/commons/${o?'':'thumb/'}${hh[0]}/${hh}/${f}`;
+  PHOTO[+i]={src:o?[base]:[base+'/500px-'+f,base+'/330px-'+f],page:'https://commons.wikimedia.org/wiki/File:'+f}});
+function loadImg(src){return new Promise(res=>{if(!src)return res(null);const im=new Image();im.crossOrigin='anonymous';const to=setTimeout(()=>res(null),6000);im.onload=()=>{clearTimeout(to);res(im)};im.onerror=()=>{clearTimeout(to);res(null)};im.src=src})}
+async function loadPhoto(p){const ph=PHOTO[p.i];if(!ph)return null;if(ph.img!==undefined)return ph.img;for(const s of ph.src){const im=await loadImg(s);if(im)return ph.img=im}return ph.img=null}
+
+
+/* ---------- 질문 은행 (110개, 5가지 형식). 한 번 할 때마다 20개를 골라요 ----------
+   k = 이 질문이 주로 재는 성향. 매번 12가지 성향이 최소 한 번씩 나오도록 뽑아요. */
+const YN=[['네, 그렇습니다',5],['반반이에요',3],['아니요',1]];
+const yn=(t,k,pre)=>({type:'yn',k:Object.keys(k)[0],t,a:YN.map(([l,v],i)=>[l,Object.fromEntries(Object.keys(k).map(x=>[x,k[x]<0?6-v:v])),i===0?pre:null])});
+const mc=(k,t,a)=>({type:'mc',k,t,a});
+const ab=(k,t,a,b)=>({type:'ab',k,t,a:[a,b]});
+const sl=(k,t,min,max,step,def,unit,eff,pre)=>({type:'slider',k,t,min,max,step,def,unit,eff,pre});
+const mu=(t,a)=>({type:'multi',k:null,t,max:2,a});
+const clamp5=v=>Math.max(1,Math.min(5,v));
+const TYPE_L={yn:'예 / 아니요',mc:'상황 선택',ab:'밸런스 게임',slider:'슬라이더',multi:'2개 고르기'};
+
+const QP=[
+/* 스피드 */
+yn('횡단보도 초록불이 깜빡이면, 무조건 건넌다',{pace:1},'번개'),
+yn('술래잡기에서 술래가 된 기억이 별로 없다',{pace:1},'번개'),
+yn('엘리베이터 기다리느니 계단을 뛰어 올라간다',{pace:1,stamina:1},'체력왕'),
+yn('달리기 시합 하자고 하면 일단 신발끈부터 묶는다',{pace:1,temper:1},'스프린터'),
+ab('pace','평생 하나만 가질 수 있다면?',['100m 11초 다리',{pace:5},'총알'],['하프라인 슛 성공률 50%',{shoot:5,flair:4},'장거리포']),
+ab('pace','어릴 때 더 좋아했던 놀이는?',['술래잡기',{pace:5},'스피드스타'],['숨바꼭질',{calm:5,flair:3},'침투왕']),
+mc('pace','지각 직전, 버스가 막 출발하려 한다',[['전력질주로 따라잡는다',{pace:5,temper:3},'번개'],['손 흔들며 기사님과 눈을 맞춘다',{lead:4,calm:3},'사령관'],['다음 차 탄다, 인생은 길다',{calm:5,pace:1},'여유왕'],['택시 부른다',{calm:3,flair:3},'여유왕']]),
+mc('pace','뒷공간으로 긴 패스가 날아왔다',[['일단 뛴다, 생각은 나중에',{pace:5},'침투왕'],['원터치로 옆 동료에게 떨군다',{pass:4,calm:4},'원터치'],['가슴 트래핑부터 멋지게',{flair:5,drib:3},'트래핑장인'],['수비수와 어깨싸움부터',{power:5,temper:3},'황소']]),
+sl('pace','학창 시절 50m 달리기 기록은?',6,12,0.1,8.5,'초',v=>({pace:v<=7?5:v<=7.8?4:v<=8.8?3:v<=10?2:1}),v=>v<=7.2?'번개':v>=10.5?'여유왕':null),
+/* 피지컬 */
+yn('나는 하체 근육(허벅지·종아리)에 자신이 있다',{power:1},'하체왕'),
+yn('몸싸움에서 잘 밀리지 않는다',{power:1,def:1},'탱크'),
+yn('출근길 지하철에서 밀려도 내 자리는 끝까지 사수한다',{power:1,temper:1},'인간장벽'),
+yn('어깨싸움을 하면 대체로 상대가 먼저 넘어진다',{power:1},'황소'),
+ab('power','둘 중 하나만 가질 수 있다면?',['빠른 발',{pace:5},'총알'],['강한 몸',{power:5},'하체왕']),
+ab('power','공을 뺏을 때 나는?',['몸으로 밀어서 뺏는다',{power:5,def:4},'불도저'],['발끝으로 쏙 빼낸다',{def:4,drib:3,calm:4},'소매치기']),
+mc('power','친구 이삿날, 나의 포지션은?',[['냉장고 담당',{power:5},'황소'],['박스 테트리스 지휘',{lead:5,pass:3},'지휘자'],['짜장면 주문 담당',{calm:4,flair:3},'살림꾼'],['쉬지 않고 계단 왕복',{stamina:5},'체력왕']]),
+mc('power','회식 자리 팔씨름 대회, 나는?',[['결승까지 간다',{power:5,temper:4},'황소'],['손목 기술로 이긴다',{flair:4,calm:4},'여우'],['심판을 본다',{lead:5,calm:3},'심판'],['응원단장 한다',{lead:4,temper:3},'분위기메이커']]),
+sl('power','헬스장, 일주일에 몇 번 가세요?',0,7,1,2,'회',v=>({power:clamp5(1+v*0.65)}),v=>v>=5?'강철허벅지':v===0?'강철허벅지':null),
+/* 패스 */
+yn('내가 골 넣을 때보다 어시스트할 때가 더 짜릿하다',{pass:1},'택배기사'),
+yn('단톡방에서 약속 시간·장소 정리는 늘 내 몫이다',{pass:1,lead:1},'살림꾼'),
+yn('시야가 넓다는 말을 자주 듣는다',{pass:1,calm:1},'넓은시야'),
+ab('pass','평생 하나만 고른다면?',['원더골 1개',{shoot:5,flair:4},'원더골'],['어시스트 10개',{pass:5,calm:3},'어시왕']),
+ab('pass','넷플릭스 계정, 나는?',['내가 결제하고 나눠준다',{pass:5,lead:3},'도우미'],['남의 계정에 얹혀 산다',{flair:4,calm:4},'여우']),
+mc('pass','역습 2대1 상황! 너라면?',[['끝까지 몰고 가서 직접 슛',{shoot:5,drib:4},'해결사'],['타이밍 맞춰 옆으로 패스',{pass:5,calm:4},'택배기사'],['수비를 끌고 가 공간 열어주기',{pass:4,stamina:4,lead:3},'희생왕'],['속도로 다 따돌린다',{pace:5},'총알']]),
+mc('pass','친구가 고백 고민 상담을 한다',[['타이밍과 각을 짜준다',{pass:5,calm:4},'킬패스'],['일단 질러라, 슛은 쏴야 들어간다',{shoot:5,temper:3},'돌격대장'],['내가 같이 가서 분위기 띄운다',{lead:4,flair:4},'분위기메이커'],['그냥 하지 마라',{def:5,calm:3},'철벽']]),
+mc('pass','뷔페에 가면 나는?',[['친구 접시까지 챙겨온다',{pass:5,stamina:3},'택배기사'],['고기 코너 직행',{shoot:5,temper:3},'골잡이'],['한 바퀴 돌고 전략부터 짠다',{calm:5,lead:3},'전술가'],['디저트부터 먹는다',{flair:5},'판타지스타']]),
+sl('pass','한 경기에 내가 주는 패스, 대충 몇 개?',0,60,5,20,'개',v=>({pass:clamp5(1+v/14)}),v=>v>=45?'패스머신':v<=5?'마이웨이':null),
+/* 드리블 */
+yn('사람 많은 번화가를 아무와도 안 부딪히고 지나갈 수 있다',{drib:1,flair:1},'드리블러'),
+yn('공을 받으면 일단 한 명은 제치고 본다',{drib:1},'드리블러'),
+yn('발바닥으로 공 굴리는 게 습관이다',{drib:1,flair:1},'테크니션'),
+yn('공 오래 끈다고 혼난 적이 있다',{drib:1,pass:-1},'볼키퍼'),
+ab('drib','하나만 고른다면?',['수비 셋 제치고 놓친 슛',{drib:5,flair:5},'드리블러'],['원터치 패스로 만든 골',{pass:5,calm:4},'원터치']),
+ab('drib','평생 개인기 하나만 쓸 수 있다면?',['마르세유 턴',{drib:5,flair:4},'룰렛'],['플립플랍',{drib:5,pace:3},'테크니션']),
+mc('drib','수비수와 1대1로 마주쳤다',[['화려한 개인기로 농락',{flair:5,drib:5},'묘기왕'],['스피드로 밀고 들어간다',{pace:5,power:3},'폭주기관차'],['동료가 올 때까지 키핑',{pass:4,calm:4},'볼키퍼'],['각 보이면 바로 슛',{shoot:5},'슈팅머신']]),
+mc('drib','마트에서 카트 몰 때 나는?',[['좁은 틈을 칼같이 비집는다',{drib:5,pace:3},'드리블러'],['천천히 안전운전',{calm:5,def:3},'모범생'],['카트 타고 미끄러진다',{flair:5,temper:3},'묘기왕'],['사람 오면 비켜줄 때까지 기다린다',{calm:4,pass:3},'도우미']]),
+sl('drib','드리블 자신감은 몇 점?',0,10,1,5,'점',v=>({drib:1+v*0.4}),v=>v>=8?'드리블왕':v<=1?'원터치':null),
+/* 슈팅 */
+yn('슛 각이 보이면 거리 상관없이 때린다',{shoot:1},'난사왕'),
+yn('휴지를 쓰레기통에 던졌다 안 들어가면, 들어갈 때까지 던진다',{shoot:1,temper:1},'골결정력'),
+yn('골 넣고 할 세리머니를 미리 정해둔 게 있다',{shoot:1,flair:1},'세리머니장인'),
+ab('shoot','둘 중 더 싫은 쪽은?',['팀은 지고, 나는 해트트릭',{lead:4,stamina:3,calm:4},'원팀'],['팀은 이기고, 나는 무득점',{shoot:5,temper:4},'골욕심']),
+ab('shoot','오락실에 가면?',['펀치 기계',{power:5,temper:4},'강슛'],['농구 슛 게임',{shoot:5,calm:3},'슈팅머신']),
+mc('shoot','PK 키커를 정한다',[['내가 찬다, 공 내놔',{shoot:5,temper:4},'PK전담'],['파넨카 각 재는 중',{flair:5,calm:5},'파넨카'],['자신 있는 사람이 차라',{pass:4,calm:3},'도우미'],['눈 감고 기도한다',{calm:1,temper:2},'슈퍼서브']]),
+mc('shoot','코너킥 찬스! 내 위치는?',[['니어포스트로 뛰어들어 헤딩',{aerial:5,temper:3},'헤딩머신'],['박스 밖에서 세컨볼 대기',{shoot:5},'중거리포'],['내가 찬다',{pass:5,flair:3},'코너킥장인'],['뒤에 남아 역습 대비',{def:4,calm:4},'지킴이']]),
+mc('shoot','골대 앞 노마크 찬스! 머릿속은?',[['구석으로 강슛',{shoot:5},'대포알'],['칩슛으로 우아하게',{flair:5,calm:4},'칩슛장인'],['옆 친구한테 내준다',{pass:5,calm:3},'도우미'],['…왜 나한테 왔지?',{calm:1,shoot:1},'얼음']]),
+sl('shoot','지난 경기에서 때린 슛은 몇 개?',0,15,1,3,'개',v=>({shoot:clamp5(1+v*0.3)}),v=>v>=10?'난사왕':v===0?'도우미':null),
+/* 수비 */
+yn('친구들 사이에서 비밀 지키는 금고 역할이다',{def:1,calm:1},'포커페이스'),
+yn('골 먹으면 골키퍼보다 내가 더 억울하다',{def:1,temper:1},'수비대장'),
+yn('슬라이딩 태클을 할 때 묘한 쾌감이 있다',{def:1,temper:1},'태클장인'),
+yn('공 뺏기면 끝까지 쫓아가서 다시 뺏는다',{def:1,stamina:1},'진드기'),
+ab('def','하나만 고른다면?',['극장 결승골',{shoot:5,temper:3},'해결사'],['골라인 앞 클리어링',{def:5,temper:3},'골라인수비수']),
+ab('def','팀에 한 명만 데려간다면?',['골 넣는 공격수',{shoot:4,lead:2},'골잡이'],['골 안 먹는 수비수',{def:5,calm:4},'통곡의벽']),
+mc('def','상대 에이스가 드리블로 달려온다',[['바로 태클 들어간다',{def:5,temper:4},'태클장인'],['거리 두고 길목을 막는다',{def:4,calm:5},'수비교과서'],['몸으로 부딪혀 밀어낸다',{power:5,def:4},'불도저'],['내 일 아님, 역습 준비',{def:1,shoot:4,pace:4},'골잡이']]),
+mc('def','친구가 내 감자튀김을 노린다',[['손등 찰싹, 즉시 차단',{def:5,pace:4},'철벽'],['미리 내 쪽으로 옮겨둔다',{def:4,calm:5},'수비교과서'],['같이 먹자고 나눠준다',{pass:5},'도우미'],['그 친구 걸 먼저 먹는다',{shoot:4,flair:4},'역습장인']]),
+sl('def','한 경기에 내가 끊어내는 공은 몇 개?',0,20,1,5,'개',v=>({def:clamp5(1+v*0.22)}),v=>v>=14?'인터셉터':v===0?'골잡이':null),
+/* 공중볼 */
+yn('헤딩할 때 눈을 안 감는다',{aerial:1,temper:1},'헤딩머신'),
+yn('농구할 때 리바운드는 대부분 내 차지다',{aerial:1,power:1},'제공권'),
+yn('높은 선반 물건은 보통 내가 꺼내준다',{aerial:1},'타워'),
+yn('공중볼 경합은 이긴 적이 진 적보다 많다',{aerial:1},'공중전사'),
+ab('aerial','평생 하나만 넣는다면?',['헤딩골 10개',{aerial:5},'헤딩머신'],['바이시클킥 1개',{flair:5,shoot:4},'오버헤드킥']),
+mc('aerial','하늘 높이 뜬 공이 내 쪽으로 떨어진다',[['머리로 받는다',{aerial:5,temper:4},'헤딩머신'],['가슴으로 부드럽게 받는다',{drib:4,calm:4},'트래핑장인'],['떨어질 때까지 기다린다',{calm:5,aerial:1},'여유왕'],['발리로 그냥 때린다',{shoot:5,flair:5},'발리장인']]),
+mc('aerial','체육 시간 배구, 나의 포지션은?',[['스파이크 때리는 공격수',{aerial:5,power:4},'헤딩머신'],['토스 올려주는 세터',{pass:5,calm:4},'패스마스터'],['몸 날리는 리베로',{def:5,pace:4},'리베로'],['벤치에서 응원',{lead:4,calm:3},'분위기메이커']]),
+sl('aerial','내 키는?',150,200,1,175,'cm',v=>({aerial:v>=190?5:v>=183?4.5:v>=176?3.5:v>=168?2.5:1.5}),v=>v>=185?'타워':v<=167?'작은거인':null),
+/* 체력 */
+yn('풀타임을 뛰어도 체력이 남는다',{stamina:1},'산소탱크'),
+yn('등산 가면 정상까지 쉬지 않고 올라간다',{stamina:1},'철인'),
+yn('놀이공원에 가면 폐장 음악 들을 때까지 논다',{stamina:1},'철인'),
+yn('경기 중에 교체해달라고 해본 적이 거의 없다',{stamina:1,temper:1},'철인'),
+ab('stamina','고르라면?',['20분 1경기, 전력질주',{pace:5,temper:3},'스프린터'],['10분씩 6경기 연속',{stamina:5},'무한체력']),
+ab('stamina','내 경기 스타일은?',['90분 내내 꾸준히',{stamina:5,calm:3},'마라토너'],['필요할 때 한 방',{pace:4,calm:4,shoot:4},'한방']),
+mc('stamina','0:1로 지고 있는 후반 40분, 나는?',[['소리 지르며 동료들을 깨운다',{lead:5,temper:4},'캡틴'],['혼자서라도 해결하러 간다',{drib:4,shoot:5,temper:3},'해결사'],['아무도 못 따라오게 더 뛴다',{stamina:5},'두개의심장'],['평소처럼 침착하게 기회를 본다',{calm:5},'포커페이스']]),
+mc('stamina','축구 끝나고 뒤풀이, 나는?',[['바로 2차, 3차까지',{stamina:5,lead:3},'체력왕'],['집 가서 기절',{stamina:1,calm:3},'슈퍼서브'],['오늘 경기 리뷰 시작',{lead:4,pass:4},'전술가'],['혼자 남아 슈팅 연습',{shoot:5,temper:4},'연습벌레']]),
+sl('stamina','쉬지 않고 뛸 수 있는 시간은?',0,60,5,15,'분',v=>({stamina:clamp5(1+v/14)}),v=>v>=45?'산소탱크':v<=5?'슈퍼서브':null),
+/* 리더십 */
+yn('경기 중에 큰 소리로 동료에게 지시하는 편이다',{lead:1},'캡틴'),
+yn('조별 과제에서 조장을 자주 맡는다',{lead:1},'리더'),
+yn('식당 메뉴는 결국 내가 정한다',{lead:1},'캡틴'),
+yn('경기 끝나면 단톡방에 다음 경기 일정을 올린다',{lead:1,pass:1},'주장'),
+ab('lead','하나만 준다면?',['주장 완장',{lead:5},'주장'],['등번호 10번',{flair:5,shoot:3},'에이스']),
+ab('lead','팀 나누기 할 때 나는?',['팀장 하면서 직접 뽑는다',{lead:5},'주장'],['뽑히길 기다린다',{calm:4,lead:1},'벤치워머']),
+mc('lead','하프타임, 팀 분위기가 바닥이다',[['원 만들고 연설한다',{lead:5,temper:4},'캡틴'],['개그로 분위기를 살린다',{flair:5,lead:3},'분위기메이커'],['조용히 전술을 바꾼다',{calm:5,pass:4},'전술가'],['물 마시고 혼자 집중',{calm:4,lead:1},'독고다이']]),
+mc('lead','골을 넣었다! 나의 세리머니는?',[['조용히 손가락으로 하늘 가리키기',{calm:5,flair:2},'아이스맨'],['미리 준비한 화려한 퍼포먼스',{flair:5,temper:3},'세리머니장인'],['동료들한테 달려가 단체 포옹',{lead:5,calm:3},'분위기메이커'],['상대 응원석 앞에서 귀에 손 대기',{temper:5,flair:4},'악동']]),
+sl('lead','풋살 모임에서 내 목소리 크기는?',0,10,1,5,'점',v=>({lead:1+v*0.4}),v=>v>=8?'확성기':v<=1?'과묵왕':null),
+/* 창의성 */
+yn('경기 전 축구화와 양말 색 맞추는 데 진심이다',{flair:1},'패셔니스타'),
+yn('힐킥, 라보나 같은 기술을 실전에서 써본 적 있다',{flair:1,drib:1},'라보나'),
+yn('뻔한 패스보다 아무도 예상 못한 패스가 좋다',{flair:1,pass:1},'노룩패스'),
+yn('같은 골이라도 멋있게 넣고 싶다',{flair:1},'낭만파'),
+ab('flair','어느 쪽이 더 낫다?',['멋있게 지기',{flair:5,temper:2},'낭만파'],['못생기게라도 이기기',{def:4,temper:4,calm:3},'승리요정']),
+ab('flair','평생 하나만 갖는다면?',['결승전 원더골 영상',{flair:5,shoot:4},'원더골'],['리그 우승 트로피',{lead:4,calm:4,stamina:3},'우승청부사']),
+mc('flair','노래방에서 나는?',[['고음 지르는 메인보컬',{flair:4,temper:4},'쇼맨'],['춤까지 추는 퍼포먼스형',{flair:5,stamina:3},'쇼맨'],['탬버린으로 분위기 담당',{lead:4,pass:4},'분위기메이커'],['예약 버튼 담당',{calm:5,pass:3},'살림꾼']]),
+mc('flair','여행 스타일은?',[['계획 없이 즉흥',{flair:5},'판타지스타'],['엑셀로 분 단위 계획',{calm:5,lead:4},'전술가'],['맛집만 판다',{shoot:4,temper:3},'골냄새'],['친구 계획에 묻어간다',{pass:4,calm:4},'조커']]),
+sl('flair','하루에 개인기 영상 보는 시간은?',0,120,10,20,'분',v=>({flair:clamp5(1+v/28)}),v=>v>=90?'테크니션':null),
+/* 투쟁심 */
+yn('보드게임에서 지면 꼭 한 판 더 하자고 한다',{temper:1},'승부사'),
+yn('억울한 판정을 받으면 그날 잠이 안 온다',{temper:1},'파이터'),
+yn('가위바위보에도 진심이다',{temper:1},'승부사'),
+yn('질 것 같으면 오히려 더 불타오른다',{temper:1,lead:1},'불꽃'),
+ab('temper','경기에 진 날 나는?',['다음 날까지 분하다',{temper:5},'승부사'],['치킨 먹으면 잊는다',{calm:5},'강철멘탈']),
+mc('temper','상대가 거친 태클을 했다',[['바로 일어나 눈싸움',{temper:5,power:3},'파이터'],['다음 플레이로 갚아준다',{calm:4,shoot:4},'해결사'],['심판한테 어필',{lead:4,temper:3},'파이터'],['괜찮다고 손 내민다',{calm:5,lead:3},'신사']]),
+mc('temper','친구랑 축구 게임 하다 졌다',[['이길 때까지 재경기',{temper:5,stamina:4},'승부사'],['패드 탓을 한다',{temper:4,flair:3},'악동'],['리플레이 보며 분석',{calm:4,lead:3},'전술가'],['축하해주고 끝',{calm:5},'신사']]),
+sl('temper','내 승부욕은 몇 점?',0,10,1,5,'점',v=>({temper:1+v*0.4}),v=>v>=9?'승부사':v<=1?'여유왕':null),
+/* 침착함 */
+yn('실수해도 금방 잊고 다음 플레이에 집중한다',{calm:1},'강철멘탈'),
+yn('PK 차기 직전에도 심장이 평온하다',{calm:1},'포커페이스'),
+yn('남들이 당황할 때 나는 오히려 차분해진다',{calm:1},'아이스맨'),
+yn('경기 중 표정 변화가 거의 없다',{calm:1},'포커페이스'),
+ab('calm','하나만 맡는다면?',['1분 남기고 동점골 기회',{temper:4,shoot:4},'클러치'],['10분 남기고 1점 지키기',{def:4,calm:5},'자물쇠']),
+mc('calm','시험 5분 전, 나는?',[['이미 끝냈다, 여유',{calm:5},'볼키퍼'],['마지막까지 벼락치기',{temper:4,stamina:4},'클러치'],['친구들한테 요점 전파',{pass:5,lead:4},'패스마스터'],['어차피 망했다, 잔다',{calm:4,temper:1},'여유왕']]),
+mc('calm','지갑을 잃어버렸다',[['동선부터 역추적',{calm:5,lead:3},'전술가'],['일단 패닉',{calm:1,temper:4},'유리멘탈'],['카드 정지부터',{calm:4,def:4},'철벽'],['친구한테 빌린다',{pass:4,flair:3},'분위기메이커']]),
+sl('calm','관중 100명 앞에서 PK, 내 긴장도는?',0,10,1,5,'점',v=>({calm:clamp5(5-v*0.4)}),v=>v<=2?'강심장':v>=9?'유리멘탈':null),
+/* 2개 고르기 */
+mu('가장 자신 있는 무기 2개를 골라주세요',[['스피드',{pace:5},'총알'],['슈팅',{shoot:5},'골냄새'],['패스',{pass:5},'택배기사'],['드리블',{drib:5},'테크니션'],['수비',{def:5},'철벽'],['헤딩',{aerial:5},'헤딩머신'],['체력',{stamina:5},'산소탱크'],['멘탈',{calm:5},'강철멘탈']]),
+mu('친구들이 말하는 나, 2개만 골라주세요',[['분위기 메이커',{lead:5,flair:3},'분위기메이커'],['인간 내비',{pass:5},'패스마스터'],['체력 괴물',{stamina:5},'체력괴물'],['승부욕 화신',{temper:5},'승부사'],['평화주의자',{calm:5},'신사'],['몸짱',{power:5},'황소'],['스피드광',{pace:5},'스피드스타'],['관종',{flair:5},'쇼맨']]),
+mu('경기 끝나고 듣고 싶은 칭찬 2개는?',[['패스 미쳤다',{pass:5},'택배기사'],['슛 미쳤다',{shoot:5},'골잡이'],['수비 미쳤다',{def:5},'철벽'],['드리블 미쳤다',{drib:5},'테크니션'],['안 지치네',{stamina:5},'산소탱크'],['헤딩 미쳤다',{aerial:5},'헤딩머신'],['몸 좋다',{power:5},'하체왕'],['너 없으면 안 된다',{lead:5},'캡틴']])
+];
+// 매번 들어가는 질문 2개: 포지션, 주발
+const Q_POS=mc(null,'풋살에서 주로 서는 자리는?',[['골키퍼 (골레이로)',{pos:'GK'},'수문장'],['수비 (픽소)',{pos:'DF'},null],['중앙 (아라)',{pos:'MF'},null],['공격 (피보)',{pos:'FW'},null]]);
+const Q_FOOT=mc(null,'주로 쓰는 발은?',[['오른발',{foot:'R'},null],['왼발',{foot:'L'},'왼발의'],['양발 다 써요',{foot:'B'},'양발']]);
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+function pickQuestions(){
+  const pool=shuffle(QP.slice()), out=[], cnt={slider:0,multi:0}, per={};
+  const ok=q=>!out.includes(q)&&!(q.type==='slider'&&cnt.slider>=2)&&!(q.type==='multi'&&cnt.multi>=1)&&!(q.k&&(per[q.k]||0)>=2);
+  const add=q=>{out.push(q);if(q.type in cnt)cnt[q.type]++;if(q.k)per[q.k]=(per[q.k]||0)+1};
+  add(pool.find(q=>q.type==='multi'));
+  shuffle(T.slice()).forEach(k=>{const q=pool.find(q=>q.k===k&&ok(q));if(q)add(q)});
+  for(const q of pool){if(out.length>=18)break;if(ok(q))add(q)}
+  return [...shuffle(out),Q_POS,Q_FOOT];
+}
+
+/* ---------- 상황 맞춤 코멘트 ----------
+   내 별명의 앞말이 가리키는 성향(k)과, 닮은 선수가 그 성향에서 원래 어떤 사람인지(낮음/보통/높음)를 엮어서 골라요.
+   {P}=선수 짧은 이름, {P이}{P은}{P와}{P을}{P라니}{P처럼}{P의}=조사 자동 */
+const hasJong=w=>{const c=w.charCodeAt(w.length-1);return c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28>0};
+const J=(w,a,b)=>w+(hasJong(w)?a:b);
+const ACT={pace:'총알처럼 달리는',power:'하체가 단단한',pass:'택배 패스를 뿌리는',drib:'드리블로 다 제치는',shoot:'슛부터 때리는',def:'태클로 다 끊어내는',aerial:'헤딩을 하는',stamina:'90분 내내 뛰어다니는',lead:'목청 높여 지휘하는',flair:'묘기를 부리는',temper:'승부욕이 불타는',calm:'얼음처럼 침착한'};
+const CM={
+pace:{
+ low:['발 느리기로 유명한 {P이} 총알처럼 달린다니, 거의 버그 플레이예요. 뒷공간 한 번만 뚫어도 다들 눈 비빌 겁니다.',
+  '{P은} 원래 공을 뛰게 하던 사람인데 당신은 본인이 뜁니다. 패스가 늦으면 직접 받으러 가세요. 아, 이미 가 있겠네요.',
+  '걸어 다니던 {P에} 터보 엔진을 달았네요. 상대 수비가 "쟤 원래 저렇게 빨랐어?" 하고 단톡방을 뒤질 겁니다.'],
+ mid:['{P에} 스피드 옵션을 추가 결제하셨군요. 오늘 역습 세 번이면 단톡방 공지에 이름 올라갑니다.',
+  '적당히 빠른 {P}. 상대 수비가 뒤돌아보는 순간이 출발 신호예요.'],
+ high:['{P}급 스피드라니, 상대 수비는 당신 등번호만 보다가 경기 끝납니다. 풋살장이 좁아서 미안할 지경이에요.',
+  '인간 KTX {P} 인정. 단, 공보다 먼저 도착해서 혼자 기다리는 일은 없도록 합시다.',
+  '{P처럼} 달리는 당신, 벽에 부딪히기 전에 브레이크 연습부터 하세요.']},
+power:{
+ low:['가녀린 테크니션 {P이} 하체왕이라니, 정말 기상천외하군요! 어깨싸움 걸어오는 상대를 조용히 튕겨내 보세요. 사과는 안 해도 됩니다.',
+  '{P에} 허벅지 DLC를 깔았네요. 드리블하다 막히면 그냥 밀고 지나가세요. 그것도 드리블입니다.',
+  '{P의} 발재간에 헬스 3년 차 몸이라니. 상대는 피할지 부딪힐지 고민하다 경기 끝납니다.'],
+ mid:['적당히 단단한 {P}. 몸싸움 들어오면 "어, 왔어?" 하고 버티기만 해도 반은 이깁니다.',
+  '등지고 버틸 줄 아는 {P}. 오늘은 공 지키기 3초만 버텨봅시다. 그 3초가 골이 됩니다.'],
+ high:['{P}급 피지컬 인증. 상대가 당신을 막으려면 두 명이 붙어야 하고, 그럼 우리 팀은 공짜로 한 명 남습니다.',
+  '몸이 곧 무기인 {P와} 같은 과. 상대 수비가 혼자 넘어지면, 파울 아니라고 끝까지 우기세요.',
+  '하체 근육은 거짓말을 안 하죠. {P처럼} 버티다 보면 상대가 알아서 공을 두고 갑니다.']},
+pass:{
+ low:['슛밖에 모르는 {P이} 택배를 뿌린다니, 축구 역사에 없던 장면이에요! 당신 패스를 받은 동료가 제일 놀랄 테니 미리 "간다!" 외쳐주세요.',
+  '공 잡으면 끝을 보던 {P에} 이타심 패치가 깔렸습니다. 골 넣은 동료가 세리머니 하러 당신한테 달려올 거예요.',
+  '착한 {P}, 실존했네요. 오늘 어시스트 하나면 팀 전체가 당신 편입니다.'],
+ mid:['{P의} 감각에 배송 기능이 붙었네요. 오늘은 "내줄 걸" 후회 대신 진짜로 내줘봅시다.',
+  '줄 때는 주는 {P}. 패스 한 번에 수비 셋이 지워지는 장면, 오늘 한 번은 나옵니다.'],
+ high:['{P}급 택배기사. 동료가 서 있기만 하면 발 앞까지 배달됩니다. 반품은 안 받습니다.',
+  '패스 장인 {P와} 같은 결. 오늘도 슛 대신 패스 하다가 "너가 좀 차!" 소리 한 번은 듣겠네요.',
+  '{P처럼} 경기를 손바닥 위에 올려놓는 타입. 오늘 공은 당신 발을 거쳐야만 골대로 갑니다.']},
+drib:{
+ low:['걷어내기가 전문인 {P이} 줄줄이 제친다니, 상대 분석관이 사표 쓸 일이네요! 수비 셋 제치고 동료한테 욕먹는 경험, 오늘 해보세요.',
+  '{P이} 드리블을 시작했다… 상대 팀 분석관도 포기한 영역입니다. 단, 네 번째 수비는 그냥 패스하세요.',
+  '{P에} 개인기 패키지 장착 완료. 공 잡고 고개 숙이는 순간, 아무도 못 말립니다. 팀원도요.'],
+ mid:['적당히 제칠 줄 아는 {P}. 한 명만 제치고 바로 패스, 그게 제일 멋있습니다.',
+  '{P의} 발재간에 당신의 자신감을 더했어요. 측면 1대1, 오늘 한 번은 꼭 지르세요.'],
+ high:['{P}급 드리블러 등장. 상대는 당신 발목만, 동료들은 "공 언제 와?" 하고 당신만 쳐다봅니다.',
+  '공이 발에 붙어 다니는 {P와} 판박이. 오늘 목표: 알까기 1회, 그리고 적당히 패스.',
+  '{P처럼} 춤추듯 제치는 당신. 단, 풋살장 벽까지 제치려고 하진 마세요.']},
+shoot:{
+ low:['평생 남의 슛을 막던 {P이} 슛부터 때린다니, 역사적인 포지션 변경이네요! 하프라인에서 한 번 질러보세요. 들어가면 전설, 안 들어가면 추억.',
+  '{P이} 골 욕심을 낸다? 다큐멘터리감이에요. 오늘 첫 슛이 골대를 맞히면 그게 전성기의 시작입니다.',
+  '{P의} 몸에 스트라이커 영혼이 들어갔습니다. 동료들이 "슛 좀 그만" 할 때까지 쏘세요.'],
+ mid:['적당히 날카로운 {P}. 각 보이면 쏘고, 안 보이면 각을 만들어서 쏘세요.',
+  '{P의} 슈팅 감각 장착 완료. 다섯 번 때려서 하나만 들어가도 남는 장사입니다.'],
+ high:['골 냄새 맡는 {P와} 싱크로. 공이 골대 근처에 떨어지면 거기엔 이미 당신이 서 있을 거예요.',
+  '{P}급 결정력. 오늘 무득점이면 당신 탓이 아니라 상대 골키퍼가 미친 날입니다.',
+  '{P처럼} 일단 쏘고 보는 당신, 패스 달라는 동료 목소리는 오늘도 안 들리겠네요.']},
+def:{
+ low:['수비는 남의 일이던 {P이} 태클로 다 끊어낸다니, 감독들이 평생 꿈꾸던 장면이에요. 클린시트는 당신 이름으로 올리세요.',
+  '{P에} 수비 모듈 설치 완료. 공격수가 내려와서 수비하면 팀 사기가 두 배로 오릅니다.',
+  '{P이} 수비 가담을? 상대 에이스가 당신 앞에서 공 잃고 멍해지는 장면, 오늘 나옵니다.'],
+ mid:['막을 땐 막는 {P}. 상대 슛 하나 몸으로 막고 "괜찮아" 한마디, 이게 진짜 리더입니다.',
+  '{P의} 감각에 수비 본능 추가. 상대가 등 돌리는 순간이 당신의 사냥 시간이에요.'],
+ high:['통곡의 벽 {P와} 같은 과. 상대 공격수는 당신 앞에서 패스할 곳만 찾다가 경기 끝납니다.',
+  '{P}급 수비력. 오늘은 상대 에이스 전담 마크, 화장실까지 따라가도 됩니다.',
+  '{P처럼} 길목을 아는 사람. 공보다 먼저 와 있는 당신을 보고 상대는 귀신 본 표정일 거예요.']},
+aerial:{
+ low:['땅볼 장인 {P이} 헤딩을 한다니, 정말 기상천외하군요! 코너킥 때 머리부터 들이밀어 보세요. 머리는 소중하니 적당히.',
+  '작은 거인 {P이} 공중볼을 따낸다? 상대 센터백 자존심에 금 가는 소리가 들립니다.',
+  '{P의} 몸에 점프력 버프. 키 큰 상대를 한 번만 이겨도 그날 하이라이트는 당신 겁니다.'],
+ mid:['공중볼도 좀 하는 {P}. 높은 공 오면 피하지 말고 이마로 인사합시다.',
+  '{P의} 감각에 헤딩 옵션 추가. 방향은 하늘이 정해줄 겁니다.'],
+ high:['공중 지배자 {P와} 싱크로. 천장 낮은 실내 풋살장이면 머리 조심하세요.',
+  '{P}급 제공권. 상대 골키퍼가 공 차기 전에 당신 위치부터 확인할 겁니다.',
+  '{P처럼} 머리로 해결하는 사람. 오늘 공중볼 경합은 전부 당신 지분입니다.']},
+stamina:{
+ low:['걸으면서 경기를 지배하던 {P이} 내내 뛰어다닌다니, 이건 거의 회춘이에요! 교체 없이 풀타임 뛰면 상대가 먼저 지칩니다.',
+  '{P이} 쉬지 않고 뛴다? 고양이가 산책 나간 수준의 충격이에요. 오늘은 마지막 5분에 승부 보세요.',
+  '{P에} 체력 무한 치트 적용. 다들 헉헉댈 때 혼자 전력질주, 그게 진짜 클러치입니다.'],
+ mid:['적당히 지치지 않는 {P}. 후반에 다들 걸을 때 한 번만 뛰어도 골입니다.',
+  '{P의} 감각에 체력 보너스. 공격 갔다가 수비까지 복귀, 오늘 한 번만 해보세요.'],
+ high:['두 개의 심장 {P와} 싱크로. 경기 끝나고 다들 누워 있을 때 당신은 혼자 공 차고 있을 겁니다.',
+  '{P}급 산소탱크. 상대 팀에서 "저 사람 교체 안 해?" 소리가 나오면 성공입니다.',
+  '{P처럼} 경기장 전체가 내 구역인 사람. 오늘 뛴 거리, 꼭 단톡방에 자랑하세요.']},
+lead:{
+ low:['말없이 공만 차던 {P이} 목청 높여 지휘한다니, 동료들이 귀를 의심하겠네요! 하프타임 연설 한 번이면 다들 감동하거나 웃거나.',
+  '조용한 {P에} 확성기가 장착됐습니다. 경기 끝나고 목이 쉬어 있으면 제대로 한 거예요.',
+  '{P이} 주장 완장을? 상대보다 우리 팀이 더 놀랄 겁니다. 첫 마디는 "집중!" 추천합니다.'],
+ mid:['필요할 때 한마디 하는 {P}. 오늘은 "내가 찬다" 한마디로 팀을 이끄세요.',
+  '{P의} 리더십 장착. 다음 경기 공지는 당신이 단톡방에 올리세요.'],
+ high:['타고난 캡틴 {P와} 싱크로. 아무도 안 시켰는데 팀 나누기는 이미 당신이 하고 있을 거예요.',
+  '{P}급 카리스마. 지고 있을 때 당신 한마디면 다들 다시 뛰기 시작합니다.',
+  '{P처럼} 경기장 위의 감독. 오늘 MVP 투표도 당신이 진행하세요. 결과는 알아서.']},
+flair:{
+ low:['교과서 같은 {P이} 묘기를 부린다니, 교과서에 부록이 생겼네요! 힐킥 한 번 시도하세요. 실패해도 박수는 받습니다.',
+  '{P에} 유튜브 개인기 패키지 설치. 성공하면 하이라이트, 실패하면 밈. 어느 쪽이든 이득.',
+  '정석의 {P이} 라보나를? 축구계가 술렁입니다. 오늘은 실전에서 딱 한 번만.'],
+ mid:['가끔 번뜩이는 {P}. 노룩 패스 한 번이면 오늘 레전드로 충분합니다.',
+  '{P의} 감각에 창의력 한 스푼. 뻔한 패스 대신 한 번은 엉뚱한 길로 가보세요.'],
+ high:['판타지스타 {P와} 싱크로. 경기 끝나고 "그거 어떻게 한 거야?" 질문 세 번은 받습니다.',
+  '{P}급 낭만. 이기는 것보다 멋있게 이기는 게 중요하죠. 오늘도 힐킥 갑니다.',
+  '{P처럼} 공으로 노는 사람. 상대가 막기를 포기하고 구경하기 시작할 거예요.']},
+temper:{
+ low:['부처님 같던 {P이} 승부욕에 불탄다니, 사리 대신 불꽃이 나오겠어요! 그 불꽃은 반칙 말고 골로 증명하세요.',
+  '{P에} 승부욕 부스터 장착. 가위바위보로 공 정할 때부터 이미 경기는 시작입니다.',
+  '온화한 {P이} 화나면 무섭죠. 지고 있을 때 그 눈빛 한 번이면 팀이 깨어납니다.'],
+ mid:['적당히 뜨거운 {P}. 지면 분하지만 치킨 먹으면 풀리는 건강한 승부욕이에요.',
+  '{P의} 감각에 독기 한 스푼. 오늘은 마지막 1분까지 포기 금지.'],
+ high:['지는 거 못 참는 {P와} 싱크로. 경기 끝나고 "한 판 더!" 외치는 사람, 당신일 겁니다.',
+  '{P}급 투쟁심. 상대가 거칠게 나오면 웃으면서 골로 갚아주세요. 그게 제일 아픕니다.',
+  '{P처럼} 이기려고 태어난 사람. 단, 옐로카드는 풋살에도 있습니다.']},
+calm:{
+ low:['다혈질 {P이} 얼음처럼 침착하다니, 사우나에서 냉탕으로 직행했네요! PK 키커 자원하세요. 표정 관리는 이미 완벽합니다.',
+  '{P에} 멘탈 강화 패치 적용. 상대가 도발해도 미소 한 번, 그게 제일 무섭습니다.',
+  '불같던 {P이} 명상을 시작했다… 오늘 아무도 당신 심박수를 못 올립니다.'],
+ mid:['흔들려도 금방 돌아오는 {P}. 실수 하나 하고 바로 다음 플레이, 오늘은 그거면 됩니다.',
+  '{P의} 감각에 포커페이스 장착. 골 넣고 무표정 세리머니, 강력 추천합니다.'],
+ high:['강철 멘탈 {P와} 싱크로. 1분 남기고 동점 PK, 당신은 이미 골대 구석을 보고 있습니다.',
+  '{P}급 침착함. 다들 우왕좌왕할 때 공 잡고 고개 드는 사람, 오늘도 당신입니다.',
+  '{P처럼} 심장 대신 얼음이 있는 사람. 실수해도 아무도 눈치 못 챕니다.']}
+};
+// 골키퍼와 닮았는데 공격 성향이 튀는 경우: 따로 반응
+const CM_GK=['{ACT} {P라니}, 정말 기상천외하군요! 이번 풋살에선 골문 비우고 득점까지 노려보세요. 역습 맞으면 책임은 본인이.',
+ '장갑 낀 {P의} 몸에 {T} 본능이 깨어났습니다. 상대 팀은 골키퍼까지 막아야 하는 지옥을 맛볼 거예요.',
+ '{P은} 골대 앞을 지키는 사람인데, 당신은 골대 앞을 노리는 사람이네요. 오늘은 장갑 벗고 필드로 나가보세요.'];
+// 내가 골키퍼 선수와 닮았을 때: 골키퍼 상황에 맞춘 코멘트
+const CM_KEEP={
+ pace:['{P}급 순발력. 1대1에서 공격수보다 먼저 튀어나가 공을 덮치세요. 단, 박스 라인은 기억하고요.','반사신경은 이미 {P}. 오늘 상대 슛은 당신 눈에 슬로모션으로 보일 겁니다.'],
+ power:['몸으로 골문을 막는 {P}. 공격수가 당신 앞에서 슛각을 못 찾고 뒤로 돌리게 될 거예요.','{P}급 덩치. 골대가 평소보다 작아 보인다는 소리, 오늘 들을 겁니다.'],
+ pass:['발밑 좋은 키퍼 {P와} 같은 계열. 오늘은 골킥 대신 롱패스 한 방으로 어시스트까지 노려보세요.','골키퍼가 빌드업 시작점이죠. {P처럼} 침착하게 한 번 더 돌려주세요.'],
+ drib:['골키퍼가 드리블이라니, {P}도 가끔 그러다 감독 심장 떨어지게 하죠. 오늘은 딱 한 번만.'],
+ shoot:['키퍼 {P의} 골킥이 그대로 슛이 된다면? 오늘 상대 골키퍼 머리 위로 한 번 노려보세요.'],
+ def:['{P}급 선방. 오늘 상대 팀 단톡방에 "저 골키퍼 누구냐" 메시지가 올라옵니다.','{P처럼} 골문에 자물쇠 채우는 사람. 오늘 클린시트, 미리 축하드려요.'],
+ aerial:['크로스는 전부 내 거라는 {P}. 코너킥 때 공 잡고 "내 공!" 한 번 크게 외쳐주세요.','{P}급 공중 장악. 높은 공은 오늘 다 당신 장갑으로 들어갑니다.'],
+ stamina:['끝까지 집중력이 안 떨어지는 {P}. 경기 막판 실점 없는 골키퍼가 제일 무섭습니다.','{P처럼} 경기 내내 깨어 있는 수문장. 마지막 1분 선방이 오늘의 하이라이트예요.'],
+ lead:['골문 앞의 사령관 {P}. 수비 라인 정리는 당신 목소리로 시작합니다.','{P}급 잔소리꾼… 아니, 리더. 오늘은 수비수들 위치를 목소리로 옮겨주세요.'],
+ flair:['{P처럼} 골문에서도 낭만을 찾는 사람. 펀칭 대신 한 손 캐치, 오늘 한 번 해보세요.','골키퍼가 묘기를? {P}도 울고 갈 스콜피온 킥, 연습은 꼭 경기 끝나고 하세요.'],
+ temper:['실점하면 장갑부터 던지는 {P} 스타일. 그 분노는 다음 선방으로 바꾸세요.','{P}급 투쟁심. 수비수가 실수하면 눈빛만으로 반성문을 쓰게 만듭니다.'],
+ calm:['{P}급 침착함. PK 앞에서 끝까지 안 움직이는 당신, 키커가 먼저 무너집니다.','{P처럼} 실점해도 표정 하나 안 바뀌는 사람. 그게 공격수들한텐 제일 무섭습니다.']
+};
+const GK_ODD=['pace','drib','shoot','flair','pass'];
+function fillP(s,p,k){
+  const n=p.short;
+  return s.replace(/\{ACT\}/g,ACT[k]||'').replace(/\{T\}/g,TL[k]||'').replace(/\{P(이|은|와|을|에|라니|처럼|의)?\}/g,(m,j)=>
+    !j?n:j==='이'?J(n,'이','가'):j==='은'?J(n,'은','는'):j==='와'?J(n,'과','와'):j==='을'?J(n,'을','를'):j==='라니'?J(n,'이라니','라니'):n+j);
+}
+function seedOf(){let h=7;JSON.stringify(ans).split('').forEach(c=>h=(h*31+c.charCodeAt(0))%1000003);return h}
+function comment(me,best,cand){
+  const p=best.p, k=cand.k||topTraits(me,1)[0], pv=p.t[k], s=seedOf()+nickPick;
+  if(p.pos==='GK'&&GK_ODD.includes(k)&&pv<=2)return fillP(CM_GK[s%CM_GK.length],p,k);
+  const set=p.pos==='GK'?CM_KEEP[k]:CM[k][pv<=2?'low':pv>=4?'high':'mid'];
+  return fillP(set[s%set.length],p,k);
+}
+
+
+
+
+/* =================== 공통: 도구 =================== */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hashStr=s=>{let h=2166136261;for(const c of String(s)){h^=c.codePointAt(0);h=Math.imul(h,16777619)>>>0}return h};
+const rng=seed=>{let a=Math.imul(seed^0x9E3779B9,0x85EBCA6B)>>>0;const f=()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};for(let i=0;i<7;i++)f();return f};
+const pickBy=(arr,r)=>arr[Math.floor(r()*arr.length)];
+const sampleN=(arr,n,r=Math.random)=>{const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a.slice(0,n)};
+const won=v=>v>=1e8?(Math.round(v/1e7)/10).toLocaleString()+'억 원':v>=1e4?Math.round(v/1e4).toLocaleString()+'만 원':Math.round(v).toLocaleString()+'원';
+function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,2400)}
+const cleanName=s=>String(s||'').replace(/\s+/g,'').slice(0,8);
+
+/* =================== 광고 (구글 애드센스) ===================
+   승인받은 뒤 client(ca-pub-…)와 광고 단위 ID 두 개만 채우면 모든 화면 위·아래에 광고가 떠요.
+   비워두면 '광고 자리' 박스만 보여요. 화면(콘텐츠 첫 화면, 결과 화면)이 바뀔 때만 새로 불러와요. */
+const ADS={client:'',slots:{top:'',bottom:''}};
+let adsLoaded=false;
+function renderAds(){
+  [['adTop','top','가로형 배너'],['adBot','bottom','반응형 사각 배너']].forEach(([id,k,lab])=>{
+    const box=$(id);
+    if(ADS.client&&ADS.slots[k]){
+      box.innerHTML=`<span class="adl">AD</span><div class="slot"><ins class="adsbygoogle" style="display:block;width:100%" data-ad-client="${ADS.client}" data-ad-slot="${ADS.slots[k]}" data-ad-format="${k==='top'?'horizontal':'auto'}" data-full-width-responsive="true"></ins></div>`;
+      try{(window.adsbygoogle=window.adsbygoogle||[]).push({})}catch{}
+    }else box.innerHTML=`<span class="adl">AD</span><div class="slot"><div class="ph">광고 자리 (${lab})</div></div>`;
+  });
+  if(ADS.client&&!adsLoaded){adsLoaded=true;const s=document.createElement('script');s.async=true;s.crossOrigin='anonymous';s.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client='+ADS.client;document.head.appendChild(s)}
+}
+
+/* =================== 테마 =================== */
+function applyTheme(th){
+  const r=document.documentElement.style;
+  const m={bg:'--bg',bg2:'--bg2',acc:'--acc',ai:'--ai',tx:'--tx',dim:'--dim',line:'--line',qb:'--qb',qt:'--qt',qline:'--qline',qsel:'--qsel'};
+  for(const k in m)r.setProperty(m[k],th[k]);
+  r.setProperty('--pat',th.css||'none');
+  document.documentElement.style.colorScheme=th.light?'light':'dark';
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content',th.bg);
+}
+
+/* =================== 캔버스 (1080×1920 인스타 스토리) =================== */
+const W=1080,H=1920,CX=540;
+const FONT={d:s=>`400 ${s}px "Black Han Sans"`,b:(s,w=700)=>`${w} ${s}px "Noto Sans KR"`,n:(s,w=700)=>`${w} ${s}px "Oswald"`};
+async function fontsReady(){try{await Promise.all(['400 120px "Black Han Sans"','700 40px "Noto Sans KR"','900 40px "Noto Sans KR"','500 40px "Noto Sans KR"','700 80px "Oswald"'].map(f=>document.fonts.load(f,'가A1')))}catch{}}
+function newCanvas(){const c=document.createElement('canvas');c.width=W;c.height=H;return c}
+function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function fit(ctx,text,maxW,size,fontFn,min=26){let s=size;do{ctx.font=fontFn(s);if(ctx.measureText(text).width<=maxW)break;s-=3}while(s>min);return s}
+function wrapText(ctx,text,maxW){
+  const lines=[];let cur='';
+  for(const w of String(text).split(' ')){
+    const t=cur?cur+' '+w:w;if(ctx.measureText(t).width<=maxW){cur=t;continue}
+    if(cur)lines.push(cur);cur='';let piece='';
+    for(const ch of w){if(ctx.measureText(piece+ch).width>maxW){lines.push(piece);piece=''}piece+=ch}cur=piece;
+  }
+  if(cur)lines.push(cur);return lines;
+}
+// 글자 쓰기: 가운데 정렬 기본, 넘치면 줄임
+function txt(ctx,s,x,y,{font,color,align='center',max=960}={}){ctx.font=font;ctx.fillStyle=color;ctx.textAlign=align;ctx.textBaseline='alphabetic';
+  if(max&&ctx.measureText(s).width>max){const m=/(\d+)px/.exec(font);const size=+m[1];const f=font.replace(/\d+px/,'{s}px');ctx.font=f.replace('{s}',fit(ctx,s,max,size,z=>f.replace('{s}',z)))}
+  ctx.fillText(s,x,y)}
+// 여러 줄 글 상자. 돌려주는 값 = 상자 아래쪽 y
+function para(ctx,s,{x=90,y,w=900,size=38,lh=1.48,color,weight=700,max=6,align='left'}){ctx.font=FONT.b(size,weight);const ls=wrapText(ctx,s,w).slice(0,max);ctx.fillStyle=color;ctx.textAlign=align;ls.forEach((l,i)=>ctx.fillText(l,align==='center'?x+w/2:x,y+size+i*size*lh));return y+size*0.3+ls.length*size*lh}
+function chipRow(ctx,items,y,{fill,ink,stroke,size=32,gap=14,padX=26,h=62}){
+  ctx.font=FONT.b(size);const ws=items.map(s=>ctx.measureText(s).width+padX*2);const total=ws.reduce((a,b)=>a+b,0)+gap*(items.length-1);let x=CX-total/2;
+  items.forEach((s,i)=>{rr(ctx,x,y,ws[i],h,h/2);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=4;ctx.stroke()}ctx.fillStyle=ink;ctx.textAlign='left';ctx.fillText(s,x+padX,y+h/2+size*0.36);x+=ws[i]+gap});
+}
+// 배경 무늬
+function drawPattern(ctx,th){
+  ctx.fillStyle=th.bg;ctx.fillRect(0,0,W,H);
+  const p=th.pat;ctx.save();
+  if(p==='stripes'){for(let i=0;i<15;i++){if(i%2){ctx.fillStyle=th.bg2;ctx.fillRect(0,i*128,W,128)}}}
+  else if(p==='rows'){for(let i=0;i<30;i++){if(i%2){ctx.fillStyle=th.bg2;ctx.fillRect(0,i*64,W,64)}}}
+  else if(p==='grid'){ctx.strokeStyle=th.bg2;ctx.lineWidth=2;for(let x=0;x<=W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<=H;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}}
+  else if(p==='paper'){ctx.fillStyle=th.bg2;for(let y=40;y<H;y+=56){ctx.fillRect(0,y,W,2)}}
+  else if(p==='scarf'){ctx.translate(W/2,H/2);ctx.rotate(-.5);for(let i=-30;i<30;i++){if(i%2){ctx.fillStyle=th.bg2;ctx.fillRect(i*80,-1600,80,3200)}}}
+  else if(p==='diamond'){ctx.fillStyle=th.bg2;for(let y=0;y<H+80;y+=120)for(let x=(y/120%2)*60;x<W+60;x+=120){ctx.beginPath();ctx.moveTo(x,y-30);ctx.lineTo(x+30,y);ctx.lineTo(x,y+30);ctx.lineTo(x-30,y);ctx.fill()}}
+  else if(p==='mesh'){ctx.fillStyle=th.bg2;for(let y=0;y<H;y+=28)for(let x=(y/28%2)*14;x<W;x+=28){ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fill()}}
+  else if(p==='rings'){ctx.strokeStyle=th.bg2;ctx.lineWidth=5;for(let r=80;r<1500;r+=110){ctx.beginPath();ctx.arc(CX,760,r,0,Math.PI*2);ctx.stroke()}}
+  else if(p==='digits'){ctx.fillStyle=th.bg2;ctx.font=FONT.n(260);ctx.textAlign='center';const r=rng(7);for(let y=230;y<H+200;y+=260)for(let x=120;x<W+100;x+=280)ctx.fillText(String(1+Math.floor(r()*99)),x+(y/260%2)*120,y)}
+  else if(p==='split'){ctx.fillStyle=th.bg2;ctx.beginPath();ctx.moveTo(0,H*.55);ctx.lineTo(W,H*.45);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill()}
+  else if(p==='film'){ctx.fillStyle=th.bg2;ctx.fillRect(0,0,70,H);ctx.fillRect(W-70,0,70,H);ctx.fillStyle=th.bg;for(let y=20;y<H;y+=70){rr(ctx,18,y,34,40,6);ctx.fill();rr(ctx,W-52,y,34,40,6);ctx.fill()}}
+  else if(p==='globe'){ctx.strokeStyle=th.bg2;ctx.lineWidth=4;for(let i=1;i<9;i++){ctx.beginPath();ctx.ellipse(CX,760,560,560*Math.abs(Math.cos(i*Math.PI/9)),0,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.ellipse(CX,760,560*Math.abs(Math.cos(i*Math.PI/9)),560,0,0,Math.PI*2);ctx.stroke()}}
+  ctx.restore();
+}
+// 카드 머리말·꼬리말 (위아래 250px은 인스타 UI에 가려질 수 있어 핵심 정보는 넣지 않아요)
+function cardFrame(ctx,th,title){
+  drawPattern(ctx,th);
+  ctx.font=FONT.d(40);const label='킥킥 · '+title;const w=ctx.measureText(label).width;
+  ctx.fillStyle=th.acc;ctx.save();ctx.translate(CX-w/2-34,150);ctx.rotate(.16);ctx.fillRect(-12,-18,24,36);ctx.restore();
+  txt(ctx,label,CX+10,166,{font:FONT.d(40),color:th.tx});
+  const fy=1716;rr(ctx,CX-340,fy,680,78,39);ctx.fillStyle=th.acc;ctx.fill();
+  txt(ctx,'나도 해보기 · '+SHARE_HOST,CX,fy+51,{font:FONT.b(31,900),color:th.ai,max:620});
+}
+function circlePhoto(ctx,img,x,y,r,{ring,ringW=10,fallback,bg,fg}){
+  ctx.save();ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.closePath();ctx.clip();
+  if(img){const sc=Math.max(2*r/img.width,2*r/img.height),w=img.width*sc,h=img.height*sc;ctx.drawImage(img,x-w/2,y-r-Math.max(0,(h-2*r)*0.12),w,h)}
+  else{ctx.fillStyle=bg;ctx.fillRect(x-r,y-r,2*r,2*r);ctx.fillStyle=fg;ctx.font=FONT.d(Math.round(r*.9));ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(fallback||'?',x,y+r*.05);ctx.textBaseline='alphabetic'}
+  ctx.restore();if(ring){ctx.lineWidth=ringW;ctx.strokeStyle=ring;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke()}
+}
+function canvasURL(c){try{return c.toDataURL('image/png')}catch{return null}}
+
+/* =================== 저장/공유 =================== */
+/* 일반 브라우저용 저장·공유: 파일 공유를 지원하면(주로 모바일) 공유 시트, 아니면 PNG 다운로드 */
+const SHARE_URL=/^https?:$/.test(location.protocol)?(location.origin+location.pathname).replace(/index\.html$/,''):'https://fifagosu.pages.dev/fun/';
+const SHARE_HOST=SHARE_URL.replace(/^https?:\/\//,'').replace(/\/$/,'');
+let canShareFiles=false;
+try{canShareFiles=!!(navigator.canShare&&navigator.canShare({files:[new File([new Blob(['x'])],'a.png',{type:'image/png'})]}))}catch{}
+async function saveCanvas(c,filename,text){
+  let blob;try{blob=await new Promise(r=>c.toBlob(r,'image/png'))}catch{blob=null}
+  if(!blob){toast('이미지를 길게 눌러 저장하세요');return}
+  const file=new File([blob],filename,{type:'image/png'});
+  try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'킥킥 축구 테스트 · 피파고수',text:text?text+' '+SHARE_URL:SHARE_URL});return}}catch(e){if(e&&e.name==='AbortError')return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('이미지를 저장했어요. 스토리에 올려보세요!');
+}
+
+/* =================== 화면 조립 =================== */
+const ICON={
+ card:'<path d="M7 3h10l-2 18H5z" fill="currentColor"/>',
+ table:'<path d="M4 5h16M4 10h16M4 15h16M4 20h10" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/>',
+ receipt:'<path d="M6 2h12v20l-3-2-3 2-3-2-3 2z" fill="currentColor"/><path d="M9 8h6M9 12h6" stroke="var(--t-bg,#000)" stroke-width="2" stroke-linecap="round"/>',
+ board:'<rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="8" cy="9" r="1.8" fill="currentColor"/><circle cx="16" cy="15" r="1.8" fill="currentColor"/><path d="M9.5 10.5l5 3" stroke="currentColor" stroke-width="2" stroke-dasharray="2 2"/>',
+ scarf:'<path d="M3 7l18-3v6L3 13z" fill="currentColor"/><path d="M6 13v8M10 12.5v8" stroke="currentColor" stroke-width="2.2"/>',
+ shield:'<path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="currentColor"/>',
+ shirt:'<path d="M8 3l-5 3 2 5 2-1v11h10V10l2 1 2-5-5-3c-1 2-2.4 3-4 3S9 5 8 3z" fill="currentColor"/>',
+ duo:'<circle cx="8.5" cy="12" r="5.5" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="15.5" cy="12" r="5.5" fill="none" stroke="currentColor" stroke-width="2.4"/>',
+ hash:'<path d="M9 3L7 21M17 3l-2 18M4 8.5h17M3 15.5h17" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+ scale:'<path d="M12 3v18M5 7h14M5 7l-3 7h6zM19 7l-3 7h6zM8 21h8" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/>',
+ eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/>',
+ globe:'<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" fill="none" stroke="currentColor" stroke-width="1.8"/>'
+};
+const svg=k=>`<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
+function tileHTML(a,wide){const t=a.th;return `<a class="tile${wide?' wide':''}" href="#/${a.id}" style="--t-bg:${t.bg};--t-tx:${t.tx};--t-dim:${t.dim};--t-acc:${t.acc};--t-ai:${t.ai}"><span class="ic">${svg(a.icon)}</span><b>${esc(a.title)}</b><span>${esc(a.desc)}</span><em>${esc(a.tag)} · ${esc(a.time)}</em></a>`}
+
+const APPS=[];   // 각 콘텐츠가 자기 자신을 등록해요
+let cur=null;     // 지금 보고 있는 콘텐츠
+function introView(a,{lead,facts,fields,cta='시작하기',onStart,extra=''}){
+  const f=fields||[];
+  $('app').innerHTML=`<section class="intro">
+    <span class="kick">${esc(a.kicker||a.tag)}</span>
+    <h1>${esc(a.title)}</h1>
+    <p>${lead}</p>
+    ${facts?`<div class="facts">${facts.map(([b,s])=>`<div><b>${esc(b)}</b><span>${esc(s)}</span></div>`).join('')}</div>`:''}
+    ${f.length===2?`<div class="pair">${f.map((x,i)=>`<div class="field"><label for="in${i}">${esc(x.label)}</label><input id="in${i}" maxlength="8" autocomplete="off" placeholder="${esc(x.ph)}"></div>`).join('<span class="amp" aria-hidden="true">&amp;</span>')}</div>`
+      :f.map((x,i)=>`<div class="field"><label for="in${i}">${esc(x.label)}</label><input id="in${i}" maxlength="${x.max||8}" autocomplete="off" placeholder="${esc(x.ph)}"></div>`).join('')}
+    <button class="cta" id="goBtn" type="button">${esc(cta)}</button>
+    ${extra}
+  </section>`;
+  const go=()=>{const vals=f.map((x,i)=>$('in'+i).value.trim());if(f.some((x,i)=>x.required&&!cleanName(vals[i]))){toast(f.length===2?'이름 두 개를 모두 입력해주세요':'이름을 입력해주세요');$('in0').focus();return}onStart(vals)};
+  $('goBtn').addEventListener('click',go);
+  f.forEach((x,i)=>$('in'+i).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(i<f.length-1)$('in'+(i+1)).focus();else go()}}));
+  window.scrollTo({top:0});renderAds();
+}
+// 질문 진행기: yn / mc / ab / slider / multi
+function runQuiz(qs,{onDone,onQuit,shuffleOpts}){
+  const A=new Array(qs.length).fill(null);let qi=0;
+  const Q2=qs.map(q=>shuffleOpts&&(q.type==='mc')?{...q,a:sampleN(q.a,q.a.length)}:q);
+  const TYPE={yn:'예 / 아니요',mc:'상황 선택',ab:'밸런스 게임',slider:'슬라이더',multi:'2개 고르기'};
+  function draw(){
+    const q=Q2[qi],a=A[qi];
+    $('app').innerHTML=`<section class="quiz"><div class="qhead"><div class="qmeta"><span><span class="n">${qi+1}</span> / ${Q2.length}</span><span>${TYPE[q.type]}</span></div><div class="bar" aria-hidden="true"><i style="width:${(qi+1)/Q2.length*100}%"></i></div></div>
+      <div class="qcard" style="margin-top:14px"><span class="tag">QUESTION ${String(qi+1).padStart(2,'0')}</span><h2 id="qText">${esc(q.t)}</h2><div class="answers t-${q.type}" id="qAns" role="group" aria-labelledby="qText"></div></div>
+      <div class="qnav" style="margin-top:14px"><button class="ghost" id="bPrev" type="button" ${qi?'':'disabled'}>이전 질문</button><button class="ghost" id="bQuit" type="button">그만하기</button></div></section>`;
+    const box=$('qAns');
+    if(q.type==='slider'){
+      const v=a??q.def;
+      box.innerHTML=`<div class="sl"><output id="slOut">${v}<small>${q.unit}</small></output><input id="slIn" type="range" min="${q.min}" max="${q.max}" step="${q.step}" value="${v}" aria-label="${esc(q.t)}"><div class="slscale"><span>${q.min}${q.unit}</span><span>${q.max}${q.unit}</span></div><button type="button" class="next" id="slNext">다음</button></div>`;
+      $('slIn').addEventListener('input',e=>{$('slOut').innerHTML=e.target.value+`<small>${q.unit}</small>`});
+      $('slNext').addEventListener('click',()=>{A[qi]=+$('slIn').value;next()});
+    }else if(q.type==='multi'){
+      const sel=a||[];
+      box.innerHTML=`<div class="chips">${q.a.map((o,i)=>`<button type="button" data-m="${i}" aria-pressed="${sel.includes(i)}">${esc(o[0])}</button>`).join('')}</div><button type="button" class="next" id="mNext" ${sel.length?'':'disabled'}>다음 (${sel.length}/${q.max})</button>`;
+      box.querySelector('.chips').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(!b)return;const i=+b.dataset.m;let s=A[qi]||[];
+        s=s.includes(i)?s.filter(x=>x!==i):s.length<q.max?[...s,i]:[...s.slice(1),i];A[qi]=s;
+        box.querySelectorAll('[data-m]').forEach(x=>x.setAttribute('aria-pressed',s.includes(+x.dataset.m)));$('mNext').disabled=!s.length;$('mNext').textContent=`다음 (${s.length}/${q.max})`});
+      $('mNext').addEventListener('click',()=>{if((A[qi]||[]).length)next()});
+    }else if(q.type==='ab'){
+      box.innerHTML=`<button type="button" data-i="0" aria-pressed="${a===0}"><span class="abk">A</span><span>${esc(q.a[0][0])}</span></button><span class="vs" aria-hidden="true">VS</span><button type="button" data-i="1" aria-pressed="${a===1}"><span class="abk">B</span><span>${esc(q.a[1][0])}</span></button>`;
+    }else{
+      box.innerHTML=q.a.map((o,i)=>`<button type="button" data-i="${i}" aria-pressed="${a===i}"><span class="k">${i+1}</span><span>${esc(o[0])}</span></button>`).join('');
+    }
+    box.addEventListener('click',e=>{const b=e.target.closest('button[data-i]');if(!b)return;A[qi]=+b.dataset.i;box.querySelectorAll('button[data-i]').forEach(x=>x.setAttribute('aria-pressed',x===b));setTimeout(next,170)});
+    $('bPrev').addEventListener('click',()=>{if(qi>0){qi--;draw()}});
+    $('bQuit').addEventListener('click',onQuit);
+  }
+  function next(){if(qi<Q2.length-1){qi++;draw()}else onDone(A,Q2)}
+  draw();window.scrollTo({top:0});
+}
+// 결과 화면: 스토리 카드 + 버튼 + 다른 테스트
+function resultView(a,{canvas,filename,share,buttons=[],credit='',alt}){
+  const url=canvasURL(canvas);
+  $('app').innerHTML=`<section class="res">
+    <img class="shot" id="rImg" alt="${esc(alt||a.title+' 결과 카드')}" src="${url||''}">
+    <div class="acts">
+      <button class="cta" id="bSave" type="button">${canShareFiles?'스토리에 공유하기':'이미지 저장 (스토리 공유용)'}</button>
+      <div class="row">${buttons.map((b,i)=>`<button class="ghost" data-b="${i}" type="button">${esc(b.label)}</button>`).join('')}<button class="ghost" id="bRetry" type="button">다시 하기</button></div>
+    </div>
+    ${credit?`<p class="credit">${credit}</p>`:''}
+    <div class="more"><h3>다른 테스트도 해보기</h3><div class="grid">${sampleN(APPS.filter(x=>x!==a),4).map(x=>tileHTML(x)).join('')}</div></div>
+  </section>`;
+  let cv=canvas;
+  $('bSave').addEventListener('click',()=>saveCanvas(cv,filename(),share()));
+  $('bRetry').addEventListener('click',()=>a.start());
+  $('app').querySelectorAll('[data-b]').forEach(el=>el.addEventListener('click',async()=>{const r=await buttons[+el.dataset.b].onClick();if(r&&r.canvas){cv=r.canvas;$('rImg').src=canvasURL(cv)||'';if(r.alt)$('rImg').alt=r.alt}}));
+  window.scrollTo({top:0});renderAds();
+}
+// 결과 카드 만들기 (글꼴·사진 준비 후)
+async function makeCard(th,title,draw){await fontsReady();const c=newCanvas(),ctx=c.getContext('2d');cardFrame(ctx,th,title);await draw(ctx);return c}
+
+/* =================== 첫 화면(허브)과 주소 이동 =================== */
+const HUB_TH={bg:'#0f1512',bg2:'#141c18',acc:'#f5c518',ai:'#1d1a05',tx:'#eef3ea',dim:'#9fb0a6',line:'rgba(238,243,234,.14)',qb:'#eef3ea',qt:'#14261d',qline:'#cfdad1',qsel:'#f5c518',css:'repeating-linear-gradient(180deg,#0f1512 0 72px,#121a16 72px 144px)'};
+function hubView(){
+  applyTheme(HUB_TH);$('allBtn').hidden=true;document.title='킥킥 · 축구 심심풀이 테스트 | 피파고수';
+  $('app').innerHTML=`<section class="hub-hero"><h1>심심할 땐<br>축구 테스트 한 판</h1><p>1분이면 끝나는 축구 심심풀이 ${APPS.length}종. 결과는 전부 인스타 스토리 사이즈 이미지로 저장돼요.</p></section>
+   <div class="grid" style="margin-top:16px">${APPS.map((a,i)=>tileHTML(a,i===0||(i===APPS.length-1&&APPS.length%2===0))).join('')}</div>`;
+  window.scrollTo({top:0});renderAds();
+}
+function route(){
+  const id=(location.hash.match(/^#\/([\w-]+)/)||[])[1];const a=APPS.find(x=>x.id===id);
+  if(cur&&cur.stop)cur.stop();
+  if(!a){cur=null;hubView();return}
+  cur=a;applyTheme(a.th);$('allBtn').hidden=false;document.title=a.title+' · 킥킥 | 피파고수';a.start();
+}
+window.addEventListener('hashchange',route);
+
+
+/* =================== 1. 내가 축구선수라면? =================== */
+let Q=[],ans=[],nickPick=0;   // 기존 엔진(profile, comment)이 쓰는 전역 상태
+(function(){
+const th={bg:'#0d3b2a',bg2:'#114a34',acc:'#f5c518',ai:'#1d1a05',tx:'#eef3ea',dim:'#a9bfb1',line:'rgba(238,243,234,.16)',qb:'#eef3ea',qt:'#14261d',qline:'#cfdad1',qsel:'#f5c518',pat:'stripes',
+  css:'repeating-linear-gradient(180deg,#0d3b2a 0 64px,#114a34 64px 128px)'};
+const A={id:'ifplayer',title:'내가 축구선수라면?',desc:'질문 20개로 1,022명 중 나와 닮은 선수 찾기 + 풋살 별명',tag:'대표 테스트',time:'2분',icon:'card',th,kicker:'질문 20개 · 선수 1,022명'};
+let R=null;
+A.start=()=>introView(A,{lead:`은퇴한 레전드부터 지금 뛰는 선수까지 ${P.length.toLocaleString()}명 중에서 나와 가장 닮은 선수를 찾고, 풋살 앱에 바로 쓸 별명도 지어드려요. 질문은 110개 중에서 매번 다른 20개가 나와요.`,
+  facts:[['20','질문'],[P.length.toLocaleString(),'비교 선수'],['110','질문 은행']],
+  onStart:()=>{Q=pickQuestions();runQuiz(Q,{onQuit:()=>A.start(),onDone:(a)=>{ans=a;finish()}})}});
+async function card(){
+  const {me,r,best}=R, p=best.p, nick=R.nicks[nickPick], cmt=comment(me,best,R.cands[nickPick]);
+  const photo=await loadPhoto(p);
+  const c=await makeCard(th,'내가 축구선수라면?',ctx=>{
+    ctx.strokeStyle='rgba(238,243,234,.12)';ctx.lineWidth=6;ctx.beginPath();ctx.arc(CX,700,330,0,Math.PI*2);ctx.stroke();
+    txt(ctx,'내 풋살 별명',CX,276,{font:FONT.b(32),color:th.dim});
+    txt(ctx,nick,CX,408,{font:FONT.d(136),color:th.acc,max:960});
+    circlePhoto(ctx,photo,CX,690,205,{ring:th.tx,fallback:p.short.slice(0,1),bg:'#1d1a05',fg:th.acc});
+    const bx=CX+205,by=808;ctx.fillStyle=th.acc;ctx.beginPath();ctx.arc(bx,by,112,0,Math.PI*2);ctx.fill();ctx.lineWidth=8;ctx.strokeStyle=th.bg;ctx.stroke();
+    txt(ctx,'싱크로율',bx,by-46,{font:FONT.b(24,900),color:th.ai});
+    ctx.font=FONT.n(68);const pw=ctx.measureText(String(best.pc)).width;ctx.font=FONT.n(32);const sw=ctx.measureText('%').width;const x0=bx-(pw+sw+4)/2;
+    txt(ctx,String(best.pc),x0,by+44,{font:FONT.n(68),color:th.ai,align:'left',max:0});txt(ctx,'%',x0+pw+4,by+44,{font:FONT.n(32),color:th.ai,align:'left',max:0});
+    txt(ctx,p.name,CX,1012,{font:FONT.d(84),color:th.tx,max:940});
+    txt(ctx,`${p.nat} · ${POSL[p.pos]} · ${p.desc}`,CX,1066,{font:FONT.b(31,500),color:th.dim,max:940});
+    ctx.font=FONT.b(38);const ls=wrapText(ctx,cmt,840).slice(0,5),bh=ls.length*56+76;
+    rr(ctx,60,1110,W-120,bh,28);ctx.fillStyle=th.tx;ctx.fill();rr(ctx,60,1110,14,bh,7);ctx.fillStyle=th.acc;ctx.fill();
+    ctx.fillStyle='#14261d';ctx.textAlign='left';ls.forEach((l,i)=>ctx.fillText(l,120,1176+i*56));
+    const y3=1110+bh+40;txt(ctx,'내 무기',CX,y3,{font:FONT.b(28),color:th.dim});
+    chipRow(ctx,topTraits(me,3).map(k=>TL[k]),y3+18,{stroke:th.acc,ink:th.acc});
+    txt(ctx,`2위 ${R.r[1].p.name} ${R.r[1].pc}%   3위 ${R.r[2].p.name} ${R.r[2].pc}%`,CX,y3+150,{font:FONT.b(30,500),color:th.tx});
+    if(photo)txt(ctx,'Photo: Wikimedia Commons (free license)',CX,1850,{font:FONT.b(22,500),color:'rgba(238,243,234,.5)'});
+  });
+  const alt=`결과 카드. 풋살 별명 ${nick}. 닮은 선수 ${p.name}, 싱크로율 ${best.pc}%. ${cmt}`;
+  return {canvas:c,alt,photo};
+}
+async function finish(){
+  const me=profile(ans), r=rank(me), best=r[0];
+  const cands=nicknames(me,best.p);nickPick=0;
+  R={me,r,best,cands,nicks:cands.map(c=>c.nick)};
+  const {canvas,alt,photo}=await card(), ph=PHOTO[best.p.i];
+  const buttons=[];
+  if(R.nicks.length>1)buttons.push({label:'별명 바꾸기',onClick:async()=>{nickPick=(nickPick+1)%R.nicks.length;toast(`"${R.nicks[nickPick]}"(으)로 바꿨어요`);return card()}});
+  buttons.push({label:'별명 복사',onClick:async()=>{const t=R.nicks[nickPick];try{await navigator.clipboard.writeText(t);toast(`"${t}" 복사했어요`)}catch{toast('별명: '+t)}}});
+  resultView(A,{canvas,alt,buttons,filename:()=>`킥킥_내가축구선수라면_${R.nicks[nickPick]}.png`,share:()=>R.nicks[nickPick],
+    credit:photo&&ph?`선수 사진: <a href="${ph.page}" target="_blank" rel="noopener">Wikimedia Commons</a> (자유 라이선스)`:''});
+}
+APPS.push(A);
+})();
+
+
+/* =================== 7. 내 이름 축구선수 생성기 (유니폼 등판 컨셉) ===================
+   같은 이름은 항상 같은 결과. 이름 변형 + 등록명 + 이적 루머 기사 + 응원가 + 중계 멘트 + 플레이 스타일까지 한 장에. */
+(function(){
+const th={bg:'#13161c',bg2:'#1a1e26',acc:'#ff7a1a',ai:'#1d0d00',tx:'#f6f2ec',dim:'#b0a99f',line:'rgba(246,242,236,.15)',qb:'#f6f2ec',qt:'#13161c',qline:'#ddd4c8',qsel:'#ffc08a',pat:'mesh',
+  css:'radial-gradient(circle,#1d2129 4px,transparent 5px) 0 0/24px 24px'};
+const A={id:'name',title:'내 이름 축구선수 생성기',desc:'이름만 넣으면 등록명, 이적 루머, 응원가까지. 친구 이름도 넣어보세요',tag:'생성기',time:'3초',icon:'shirt',th,kicker:'이름 입력 · 3초 컷'};
+// 커뮤니티 '축구선수 이름 드립' 방식: 내 이름 + 그 나라 이름 어미에 한국어 신세한탄을 끼워 넣기
+// [나라, 이름 만들기(g=이름, s=성), 선수 소개]
+const TPL=[
+ ['러시아',g=>`${g} 졸려도프스키`,'후반 70분부터 눈이 감기는 스트라이커'],
+ ['러시아',g=>`${g} 배고파스키`,'하프타임에 김밥부터 찾는 미드필더'],
+ ['세르비아',g=>`${g} 텅장비치`,'연봉이 들어오자마자 사라지는 윙어'],
+ ['러시아',g=>`${g} 야근하기싫코프`,'평일엔 회사원, 주말엔 국가대표(동네)'],
+ ['러시아',g=>`${g} 월요일시러노프`,'일요일 밤마다 은퇴를 고민하는 베테랑'],
+ ['크로아티아',g=>`${g} 다이어트포기치`,'뒤풀이에서 득점력이 폭발하는 스트라이커'],
+ ['세르비아',g=>`${g} 이불밖은위험비치`,'원정 경기 기피증이 있는 수비수'],
+ ['폴란드',g=>`${g} 퇴근하고싶도프스키`,'레반도프스키급 결정력. 단, 퇴근에 한해서'],
+ ['우크라이나',g=>`${g} 출근시러넨코`,'출근은 안 해도 출전은 하는 공격수'],
+ ['우크라이나',g=>`${g} 라면끓여첸코`,'공보다 냄비를 더 잘 다루는 미드필더'],
+ ['우크라이나',g=>`${g} 언제끝나첸코`,'킥오프 5분 만에 시계를 보는 선수'],
+ ['스페인',g=>`${g} 데 라 퇴근`,'칼퇴 후 칼같이 경기장에 도착하는 윙어'],
+ ['아르헨티나',g=>`${g} 델 월급날`,'월급날에만 각성하는 에이스'],
+ ['스페인',g=>`${g} 데 로스 배달음식`,'배달 앱 VIP 등급의 수비형 미드필더'],
+ ['스페인',g=>`${g} 데 라 낮잠`,'낮잠으로 체력을 관리하는 플레이메이커'],
+ ['멕시코',g=>`${g} 곤잘레스 데 라 치맥`,'경기 끝나고 치맥 먹으려고 뛰는 공격수'],
+ ['이탈리아',g=>`${g} 누워있자니`,'누운 채로 오프사이드 트랩을 거는 센터백'],
+ ['이탈리아',g=>`${g} 다귀찮아니`,'공이 오면 일단 귀찮아하는 판타지스타'],
+ ['이탈리아',g=>`${g} 배부르니`,'뒤풀이 후 체중 관리가 시급한 레지스타'],
+ ['이탈리아',g=>`${g} 그만먹자니`,'다이어트는 늘 내일부터인 미드필더'],
+ ['이탈리아',g=>`${g} 돈없으니`,'이적료보다 교통비가 걱정인 유망주'],
+ ['포르투갈',g=>`${g} 다 쉴바`,'이름부터 쉬고 싶은 수비형 미드필더'],
+ ['브라질',g=>`${g} 잠깐만쉬징요`,'드리블보다 쉬는 타이밍이 화려한 테크니션'],
+ ['브라질',g=>`${g} 지각뉴`,'킥오프 10분 뒤에 도착하는 브라질 특급'],
+ ['브라질',g=>`${g} 다먹었징요`,'하프타임 간식을 혼자 다 먹는 브라질리언'],
+ ['사우디',g=>`${g} 알 배김`,'경기 다음 날 종아리에 알이 배기는 공격수'],
+ ['이집트',g=>`압둘 라면 ${g}`,'라면 국물로 체력을 보충하는 중동 특급'],
+ ['카타르',g=>`${g} 빈 지갑`,'빈 지갑으로 뛰는 투혼의 미드필더'],
+ ['네덜란드',g=>`${g} 판 데르 한판만더`,'"한 판만 더"를 외치다 해가 지는 미드필더'],
+ ['네덜란드',g=>`${g} 판 데르 치킨`,'치킨 한 마리로 90분을 뛰는 연비왕'],
+ ['독일',g=>`${g} 배불러슈타인`,'배부르면 수비 가담을 안 하는 전차군단'],
+ ['독일',g=>`${g} 피곤만`,'모든 경기를 피곤한 상태로 치르는 철인'],
+ ['독일',g=>`${g} 퇴근바우어`,'베켄바우어처럼 우아하게 퇴근하는 리베로'],
+ ['그리스',g=>`${g} 다귀찮풀로스`,'귀찮음을 철학으로 승화한 그리스 수비수'],
+ ['그리스',g=>`${g} 배불러풀로스`,'올림포스 산만큼 식욕이 높은 미드필더'],
+ ['튀르키예',g=>`${g} 늦잠오글루`,'알람 다섯 개를 끄고 킥오프에 맞춰 오는 윙어'],
+ ['튀르키예',g=>`${g} 치킨오글루`,'닭다리 두 개로 계약한 공격수'],
+ ['스코틀랜드',g=>`${g} 맥주한잔슨`,'경기보다 뒤풀이 출석률이 높은 특급'],
+ ['아일랜드',g=>`오'${g} 집에갈래`,'연장전만 되면 표정이 굳는 공격수'],
+ ['아이슬란드',g=>`${g} 집에가고싶손`,'바이킹 박수는 잘 치는데 집에 가고 싶은 수비수'],
+ ['포르투갈',g=>`${g}날두`,'"시우~" 대신 "쉬어~"를 외치는 셀럽 공격수'],
+ ['프랑스',g=>`${g}바페`,'배고플 때만 음바페보다 빨라지는 공격수'],
+ ['스페인',g=>`${g}니에스타`,'"니 어디 있노?" 늘 위치를 묻게 되는 미드필더'],
+ ['아르헨티나',g=>`${g} 메시지안읽씹`,'패스도 메시지도 씹는 왼발의 마법사'],
+ ['노르웨이',g=>`${g} 홀란드`,'골보다 혼자 있는 시간이 많은 스트라이커']
+];
+const FIRST=['알레한드로','크리스티안','후안 카를로스','마테우스','루카스','세바스티안'];
+const MID=['곤살레스','로드리게스','다 쉴바','데 라 퇴근','델 월급날','페르난데스'];
+const AND=['치킨','라면','늦잠','배달음식','야식','주말'];
+const TAIL=['주니오르','2세','3세','네투','(본명 맞음)'];
+const POS=['벤치 담당 수비수 (전문 분야: 박수)','하프라인 상주 공격수','물 당번 겸 공격수','자책골 전문 센터백','오프사이드 상주 스트라이커','골키퍼 (본인은 원한 적 없음)','세리머니 전담 미드필더','입으로 뛰는 전술가'];
+const SKILL=['헛발질 후 자연스러운 스트레칭','넘어지고 심판 쳐다보기','하이파이브만 국가대표급','세리머니 연습 3년, 골 0','공 대신 상대 정강이 맞히기','슈팅 후 하늘 보며 한숨','패스인 척 슛, 슛인 척 패스, 결국 아웃','5분 뛰고 30분 물 마시기'];
+const CLUB=['사우디 갑부 구단','EPL 빅클럽','스페인 명문','분데스리가 1위 팀','동네 조기축구회 새벽FC','회사 축구 동호회','이탈리아 세리에A 강호','브라질 명문 유스팀'];
+const OFFER=['치킨 300마리','국밥 무한리필 쿠폰','연봉 대신 김장김치 세 포기','PC방 평생 이용권','구단 주차 자리 1칸','붕어빵 1년치','구단 매점 외상 무제한'];
+const REPLY=['엄마한테 물어봐야','일단 점심 먹고 생각해볼게요','주말엔 조기축구가 있어서 곤란','저 사실 공 무서워요','연봉은 됐고 유니폼만 주세요','고향 팀 새벽FC를 떠날 수 없다','등번호 10번 아니면 안 감'];
+const ACT=['골키퍼까지 제칩니다','하프라인에서 슛','수비 셋을 달고 돌파','회심의 바이시클킥','노룩 패스','파넨카 PK'];
+const RES=['그대로 관중석!','공이 안 따라왔어요!','본인이 먼저 넘어집니다!','골대 뒤 치킨집 창문이 깨졌어요!','골인가요? 아, 옆 경기장입니다!','심판이 맞았습니다!'];
+const CHANT=['공은 몰라도 밥은 잘 먹어','패스는 안 줘도 웃음은 줘','넘어져도 심판 보고 일어나','오늘도 출근 대신 출전해','헛발질도 예술이야','안 뛰어도 존재감은 MVP','슛은 하늘로 꿈은 크게'];
+function gen(raw){
+  const name=raw.replace(/\s+/g,'');const r=rng(hashStr('kk-name2:'+name));const pk=a=>pickBy(a,r);
+  const isKo=/^[가-힣]+$/.test(name);
+  const g=isKo&&name.length>=3?name.slice(-2):name;  // 두 글자 이름은 그대로, 세 글자 이상은 이름 두 글자만
+  const picks=sampleN(TPL,TPL.length,r), main=picks[0];
+  const nick=main[1](g), vers=[];
+  for(const t of picks.slice(1)){if(vers.length>=3)break;if(t[0]!==main[0]&&!vers.some(v=>v[0]===t[0]))vers.push([t[0],t[1](g)])}
+  const shirt=nick.startsWith(g+' ')?nick.slice(g.length+1):nick;
+  const full=`${g} ${pk(FIRST)} ${pk(MID)} 이 ${pk(AND)} ${pk(TAIL)}`;
+  const num=pk([7,9,10,11,17,19,22,23,77,88,99,3,4,13,21]);
+  return {name,nick,nat:main[0],tag:main[2],shirt,full,vers,num,skill:pk(SKILL),
+    news:`[단독] ${pk(CLUB)}, '${nick}' 영입 위해 ${pk(OFFER)} 제시… 본인은 "${pk(REPLY)}"`,
+    chant:`${shirt}~ 오오오~ ${pk(CHANT)}~`,
+    cast:`"아~ ${shirt}! ${pk(ACT)}… ${pk(RES)}"`};
+}
+A.start=()=>introView(A,{lead:'내 이름이 러시아, 이탈리아, 브라질 축구선수였다면? "졸려도프스키", "다 쉴바" 같은 선수 이름에 이적 루머 기사, 응원가, 중계 멘트까지 만들어 드려요. 같은 이름은 항상 같은 결과가 나와요.',
+  fields:[{label:'내 이름',ph:'예: 김민수',required:true}],cta:'선수 등록하기',
+  onStart:([nm])=>finish(cleanName(nm))});
+async function finish(nm){
+  const g=gen(nm);
+  const canvas=await makeCard(th,'이름 축구선수 생성기',ctx=>{
+    // 유니폼 등판
+    const top=220;ctx.fillStyle=th.acc;ctx.beginPath();
+    ctx.moveTo(CX-150,top);ctx.lineTo(CX-320,top+55);ctx.lineTo(CX-430,top+205);ctx.lineTo(CX-320,top+260);ctx.lineTo(CX-250,top+185);
+    ctx.lineTo(CX-250,top+560);ctx.lineTo(CX+250,top+560);ctx.lineTo(CX+250,top+185);ctx.lineTo(CX+320,top+260);ctx.lineTo(CX+430,top+205);ctx.lineTo(CX+320,top+55);ctx.lineTo(CX+150,top);
+    ctx.quadraticCurveTo(CX,top+60,CX-150,top);ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,.12)';ctx.fillRect(CX-250,top+520,500,40);
+    txt(ctx,g.shirt,CX,top+175,{font:FONT.d(88),color:th.ai,max:470});
+    txt(ctx,String(g.num),CX,top+465,{font:FONT.n(260),color:th.ai,max:0});
+    txt(ctx,g.nat+' 국가대표',CX,top+622,{font:FONT.b(28,700),color:th.dim});
+    txt(ctx,g.nick,CX,top+712,{font:FONT.d(78),color:th.acc,max:960});
+    txt(ctx,g.tag,CX,top+770,{font:FONT.b(32,700),color:th.tx,max:960});
+    let y=top+790;txt(ctx,'풀네임: '+g.full,CX,y+46,{font:FONT.b(26,500),color:th.dim,max:960});y+=40;
+    // 기사 박스
+    y+=74;ctx.font=FONT.b(34,900);const nl=wrapText(ctx,g.news,840).slice(0,3);const bh=nl.length*50+80;
+    rr(ctx,80,y,W-160,bh,22);ctx.fillStyle=th.tx;ctx.fill();txt(ctx,'BREAKING',120,y+46,{font:FONT.n(28),color:'#d63a2f',align:'left'});
+    ctx.fillStyle=th.bg;ctx.textAlign='left';ctx.font=FONT.b(34,900);nl.forEach((l,i)=>ctx.fillText(l,120,y+96+i*50));
+    y+=bh+26;
+    [['응원가',g.chant],['중계',g.cast]].forEach(([k,v])=>{txt(ctx,k,90,y+40,{font:FONT.b(28,900),color:th.acc,align:'left'});y=para(ctx,v,{x:220,y:y+2,w:770,size:32,weight:500,color:th.tx,max:2})+14});
+    if(y+46<1680)txt(ctx,g.vers.map(v=>v[0]+'식 '+v[1]).join('  ·  '),CX,y+46,{font:FONT.b(26,500),color:th.dim,max:940});
+  });
+  const alt=`${g.name}의 축구선수 이름: ${g.nick} (${g.nat}). ${g.tag}. 풀네임 ${g.full}. ${g.news} 응원가 ${g.chant}`;
+  resultView(A,{canvas,alt,filename:()=>`킥킥_축구선수이름_${g.nick}.png`,share:()=>`내 축구선수 이름은 ${g.nick}`,
+    buttons:[{label:'다른 이름 넣기',onClick:()=>A.start()}]});
+  // 결과 아래에 다른 나라 버전도 텍스트로
+  const res=document.querySelector('.res .acts');res.insertAdjacentHTML('afterend',`<div class="react" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.06)"><b>다른 나라였다면</b><br>${g.vers.map(v=>`${esc(v[0])}: ${esc(v[1])}`).join('<br>')}<br><b>주특기</b> ${esc(g.skill)}</div>`);
+}
+APPS.push(A);
+})();
+
+
+/* =================== 8. 친구랑 투톱 궁합 (두 개의 원·네온 핑크 컨셉) =================== */
+(function(){
+const th={bg:'#24102a',bg2:'#2d1434',acc:'#ff5fa2',ai:'#2a0618',tx:'#fff0f7',dim:'#d4a9c4',line:'rgba(255,240,247,.16)',qb:'#fff0f7',qt:'#24102a',qline:'#efc8dc',qsel:'#ffb1d2',pat:'rings',
+  css:'radial-gradient(circle at 50% 30%,#3a1642 0,#24102a 60%)'};
+const A={id:'duo',title:'친구랑 투톱 궁합',desc:'이름 두 개로 보는 축구 케미. 누가 패스하고 누가 골 넣을까?',tag:'궁합',time:'5초',icon:'duo',th,kicker:'이름 두 개 · 5초 컷'};
+const TIER=[
+ [95,'전설의 투톱',['메시-수아레스급 케미','앙리-베르캄프급 케미','손흥민-케인급 케미'],['눈빛만 봐도 패스 길이 보이는 사이. 이 정도면 결혼식 축사도 서로 해줘야 해요.','두 사람이 같은 팀이면 상대 팀은 그냥 귀가하세요.']],
+ [85,'황금 투톱',['호나우두-호나우지뉴급 케미','드로그바-램파드급 케미','베일-벤제마급 케미'],['패스 타이밍이 기가 막혀요. 가끔 서로 골 욕심에 눈치 싸움은 있음.','둘이 붙어 있으면 공격이 술술 풀립니다. 뒤풀이 메뉴 고를 때만 싸워요.']],
+ [70,'꽤 괜찮은 콤비',['동네 풋살 MVP 듀오','조기축구회 간판 콤비','사내 대회 우승 후보 투톱'],['평소엔 잘 맞는데 결정적인 순간에 둘 다 패스를 해버려요.','합은 좋은데 둘 다 수비를 안 내려가요. 골키퍼가 운다.']],
+ [55,'애매한 사이',['제라드-램파드급 (같이 두면 애매)','같은 팀인데 다른 경기 하는 사이','서로 패스를 기다리는 사이'],['실력은 각자 좋은데 같이 두면 이상하게 안 맞아요. 그래도 사진은 잘 나옴.','한 명이 뛰면 한 명이 걷는, 체력 분배형 콤비.']],
+ [0,'서로의 오프사이드',['공 하나에 두 명이 동시에 달려가는 사이','서로 "네가 차!" 하다 공 뺏기는 사이','같은 편끼리 태클하는 사이'],['패스를 주면 받는 사람이 없고, 슛을 하면 같은 편이 맞아요. 대신 웃긴 장면은 많이 나옴.','둘이 같은 팀이면 상대 팀이 고마워해요. 그래도 끝나고 치킨은 같이 먹는 사이.']]
+];
+const ROLE=[['패스 담당','골 담당'],['심판한테 항의 담당','뜯어말리는 담당'],['세리머니 기획','세리머니 따라 하는 사람'],['뒤풀이 장소 정하는 사람','계산하는 사람'],['혼자 드리블하는 사람','공 기다리다 지치는 사람'],['공 주우러 가는 사람','"고마워" 하는 사람']];
+const EVT=['같은 공을 동시에 차서 공이 하늘로 날아감','골 넣고 서로 반대 방향으로 세리머니','패스 주고받다 둘 다 넘어짐','"너 왜 거기 있어?"를 경기당 5번 외침','어시스트한 사람이 골 넣은 사람보다 더 기뻐함','둘이서 2대1 패스로 상대 다섯 명 농락','경기 끝나고 누가 MVP인지로 30분 토론','같은 축구화를 신고 와서 헷갈림','서로 패스 안 준다고 단톡방에서 싸움','골키퍼 정할 때 서로 미룸','물 하나를 나눠 마심. 의리','둘이 손잡고 입장 세리머니 연습'];
+A.start=()=>introView(A,{lead:'나와 친구 이름을 넣으면 둘이 투톱으로 섰을 때의 궁합 점수와 역할, 둘이 풋살하면 벌어질 일을 알려드려요. 같은 두 이름은 항상 같은 결과예요.',
+  fields:[{label:'내 이름',ph:'예: 민수',required:true},{label:'친구 이름',ph:'예: 지훈',required:true}],cta:'궁합 보기',
+  onStart:([x,y])=>finish(cleanName(x),cleanName(y))});
+async function finish(a,b){
+  const key=[a,b].sort().join('&');const r=rng(hashStr('kk-duo:'+key));
+  const pc=a===b?100:39+Math.floor(r()*61);
+  const tier=TIER.find(t=>pc>=t[0]);const like=pickBy(tier[2],r),line=pickBy(tier[3],r);
+  const roles=sampleN(ROLE,3,r).map(([p,q])=>r()<.5?[p,a,q,b]:[p,b,q,a]);
+  const evts=sampleN(EVT,2,r);
+  const canvas=await makeCard(th,'친구랑 투톱 궁합',ctx=>{
+    // 두 원
+    const y=520;
+    [[CX-170,a],[CX+170,b]].forEach(([x,n])=>{ctx.beginPath();ctx.arc(x,y,230,0,Math.PI*2);ctx.lineWidth=12;ctx.strokeStyle=th.acc;ctx.stroke()});
+    ctx.save();ctx.beginPath();ctx.arc(CX-170,y,230,0,Math.PI*2);ctx.clip();ctx.beginPath();ctx.arc(CX+170,y,230,0,Math.PI*2);ctx.fillStyle=th.acc;ctx.fill();ctx.restore();
+    txt(ctx,a,CX-250,y+20,{font:FONT.d(64),color:th.tx,max:230});txt(ctx,b,CX+250,y+20,{font:FONT.d(64),color:th.tx,max:230});
+    txt(ctx,pc+'%',CX,y+26,{font:FONT.n(66),color:th.ai,max:0});
+    txt(ctx,tier[1],CX,880,{font:FONT.d(104),color:th.acc,max:960});
+    txt(ctx,like,CX,950,{font:FONT.b(36,900),color:th.tx,max:960});
+    let yy=para(ctx,line,{x:110,y:990,w:860,size:36,weight:500,color:th.tx,max:3,align:'center'});
+    yy+=24;rr(ctx,90,yy,W-180,3*70+40,26);ctx.fillStyle='rgba(255,240,247,.1)';ctx.fill();
+    roles.forEach(([p,n1,q,n2],i)=>txt(ctx,`${n1} ${p}  ·  ${n2} ${q}`,CX,yy+70+i*70,{font:FONT.b(32,700),color:th.tx,max:860}));
+    yy+=3*70+80;txt(ctx,'둘이 풋살하면 생기는 일',CX,yy+10,{font:FONT.b(30,900),color:th.acc});
+    evts.forEach((e,i)=>txt(ctx,'· '+e,CX,yy+70+i*58,{font:FONT.b(31,500),color:th.tx,max:900}));
+  });
+  resultView(A,{canvas,alt:`${J(a,'과','와')} ${b}의 투톱 궁합 ${pc}%, ${tier[1]}. ${like}. ${line}`,filename:()=>`킥킥_투톱궁합_${a}_${b}.png`,share:()=>`${a}&${b} 투톱 궁합 ${pc}%`,
+    buttons:[{label:'다른 친구랑',onClick:()=>A.start()}]});
+}
+APPS.push(A);
+})();
+
+
+/* =================== 13. 축구 밸런스 게임 (파랑 vs 빨강 VS 컨셉) =================== */
+(function(){
+const th={bg:'#11131c',bg2:'#1a1020',acc:'#ffd23f',ai:'#1d1600',tx:'#f4f5fb',dim:'#a6a9bd',line:'rgba(244,245,251,.15)',qb:'#f4f5fb',qt:'#11131c',qline:'#d3d6e4',qsel:'#ffe58a',pat:'split',
+  css:'linear-gradient(160deg,#121a33 0 50%,#2a1018 50% 100%)'};
+const A={id:'balance',title:'축구 밸런스 게임',desc:'평생 헤딩 금지 vs 평생 왼발 금지. 고르기 어려운 20문제',tag:'게임',time:'2분',icon:'scale',th,kicker:'20문제 · 낭만파 vs 실리파'};
+// [질문, [A, 낭만R/실리S, 반응], [B, R/S, 반응]]
+const QS=[
+ ['평생 하나만 금지된다면?',['평생 헤딩 금지','R','머리는 소중하니까요. 대신 발재간으로 승부.'],['평생 왼발 금지','S','오른발 하나로 충분하다는 자신감. 왼발은 원래 장식이었죠?']],
+ ['둘 중 하나를 고른다면?',['월드컵 우승 + 대머리','R','트로피가 머리보다 빛납니다. 우승 퍼레이드 때 햇빛 반사 조심.'],['무관 + 풍성한 머리','S','바람에 휘날리는 머리카락, 그것도 하나의 트로피죠.']],
+ ['결승전에서 더 싫은 쪽은?',['PK 실축','R','적어도 찰 용기는 있었다. 자서전 1장 확보.'],['자책골','S','현실적인 선택. 그래도 골은 골이니까 기록엔 남아요.']],
+ ['계약 조건 선택',['주전인데 연봉 0원','R','뛰는 게 연봉이다. 진정한 축구 낭만.'],['벤치인데 연봉 10억','S','벤치 쿠션이 이렇게 푹신할 수가. 박수도 열심히 칩니다.']],
+ ['더 나은 쪽은?',['골 넣고 세리머니하다 넘어지기','S','결과는 챙겼다. 영상은 평생 밈이 되겠지만.'],['골 못 넣고 멋있게 퇴장','R','무득점이지만 표정 연기는 MVP.']],
+ ['하루만 빌릴 수 있다면?',['메시의 왼발','R','하루 종일 공이 발에 붙어요. 다음 날 현실로 복귀가 문제.'],['호날두의 점프력','S','농구장, 배구장, 선반 위 물건까지 다 해결.']],
+ ['오늘 풋살 날씨는?',['비 오는 날 풋살','R','슬라이딩 태클의 계절. 빨래는 내일의 나에게.'],['폭염 속 풋살','S','땀은 흘려도 공은 안 미끄러진다. 물 3리터 준비.']],
+ ['어떤 골이 나을까?',['원더골인데 오프사이드 취소','R','기록엔 없어도 다들 기억함. 낭만이란 그런 것.'],['엉덩이 맞고 들어간 골 인정','S','골은 골이다. 엉덩이도 신체의 일부입니다.']],
+ ['둘 중 하나만 이뤄진다면?',['응원팀 리그 우승','R','내 일처럼 기쁜 남의 우승. 진정한 팬.'],['내가 조기축구 득점왕','S','동네에서 나는 이미 레전드. 현수막 제작 예정.']],
+ ['커리어 선택',['평생 한 팀 원클럽맨','R','의리로 쌓은 커리어. 구단이 동상 세워줌.'],['매년 빅클럽 이적','S','유니폼 컬렉션이 저절로 완성됩니다.']],
+ ['보고 싶은 경기는?',['9:1로 이기는 경기','S','스트레스 0. 후반엔 치킨에 집중 가능.'],['0:0인데 명승부','R','슈팅은 없어도 긴장감은 월드컵 결승급.']],
+ ['팀 구성',['팀원 전부 나보다 잘함','S','이기는 게 중요하죠. 나는 열심히 박수.'],['팀원 전부 나보다 못함','R','오늘은 내가 메시. 대신 혼자 다 뛰어야 함.']],
+ ['경기 중 사고, 하나만',['신발이 벗겨진다','R','한 발로 드리블하는 레전드 장면 탄생.'],['바지가 내려간다','S','빠르게 올리고 아무 일 없던 척. 프로의 자세.']],
+ ['친구가 있다면 어디가 좋아?',['심판이 내 친구','S','판정 운이 좋아집니다. 단, 우정에 금이 갈 수 있음.'],['상대 골키퍼가 내 친구','R','골 넣고 미안해하는 의리 세리머니 가능.']],
+ ['경기 끝나고',['바로 집에 가서 샤워','S','깔끔함이 최고. 내일 출근하는 어른의 선택.'],['땀 흘린 채로 뒤풀이','R','땀 냄새도 추억. 치킨집 사장님은 괴로움.']],
+ ['갖고 싶은 능력',['축구 게임 만렙','S','손가락은 이미 국가대표. 무릎은 무사함.'],['실제 리프팅 100개','R','공원에서 하면 사람들이 모여듭니다.']],
+ ['레전드를 만났다',['같이 사진 한 장','R','액자 확정. 프로필 사진 10년 고정.'],['사인 유니폼 받기','S','가치가 오르는 자산. 액자는 덤.']],
+ ['은퇴 경기에서',['결승골 넣기','S','마지막까지 결과로 말하는 사람.'],['기립박수 받으며 교체','R','눈물 버튼. 하이라이트 조회수 1위.']],
+ ['시즌 선택',['결승골 넣고 부상으로 시즌 아웃','R','한 장면으로 영원히 기억되는 선택.'],['무득점이지만 전 경기 출전','S','꾸준함이 재능. 감독이 제일 좋아하는 타입.']],
+ ['상위 1%가 된다면',['공 차는 실력 상위 1%','R','몸으로 증명하는 사람. 말보다 발.'],['축구 보는 눈 상위 1%','S','해설위원 데뷔 예정. 단톡방 영향력 급상승.']]
+];
+const TYPES=[[85,'낭만 그 자체','지더라도 멋있게. 축구는 결과가 아니라 장면이라고 믿는 사람. 통장은 텅장이어도 마음은 부자.'],[65,'감성 축구인','기본은 낭만, 가끔 현실. 명장면 보면 눈물 나는데 그래도 이기는 게 좋긴 해요.'],[36,'밸런스의 신','낭만도 챙기고 실속도 챙기는 욕심쟁이. 이 게임이 제일 어려웠을 사람.'],[16,'현실파 승부사','멋보다 승점. 이기면 다 멋있다고 생각하는 사람.'],[0,'냉혈 실리주의자','축구도 인생도 계산기로 합니다. 감독 하면 우승은 하는데 팬들이 졸아요.']];
+A.start=()=>introView(A,{lead:'고르기 어려운 축구 양자택일 20문제. 고를 때마다 한마디씩 반응이 나오고, 끝나면 나의 낭만파 vs 실리파 비율이 나와요.',facts:[['20','문제'],['2','선택지'],['2분','소요']],cta:'게임 시작',onStart:play});
+function play(){
+  const order=sampleN(QS,QS.length);const picks=[];let i=0;
+  function draw(){
+    const [t,a,b]=order[i];
+    $('app').innerHTML=`<section><div class="qhead"><div class="qmeta"><span><span class="n">${i+1}</span> / ${order.length}</span><span>밸런스 게임</span></div><div class="bar" aria-hidden="true"><i style="width:${(i+1)/order.length*100}%"></i></div></div>
+      <div class="qcard" style="margin-top:14px"><span class="tag">ROUND ${String(i+1).padStart(2,'0')}</span><h2 id="qText">${esc(t)}</h2>
+      <div class="answers t-ab" id="qAns" role="group" aria-labelledby="qText"><button type="button" data-i="0" style="border-color:#3a7bff"><span class="abk" style="color:#3a7bff">A</span><span>${esc(a[0])}</span></button><span class="vs" aria-hidden="true">VS</span><button type="button" data-i="1" style="border-color:#ff3a3a"><span class="abk" style="color:#ff3a3a">B</span><span>${esc(b[0])}</span></button></div>
+      <p class="react" id="react" hidden></p><button class="next" id="bNext" type="button" hidden>${i<order.length-1?'다음 문제':'결과 보기'}</button></div>
+      <div class="qnav" style="margin-top:14px"><span></span><button class="ghost" id="bQuit" type="button">그만하기</button></div></section>`;
+    $('qAns').addEventListener('click',e=>{const bt=e.target.closest('button[data-i]');if(!bt||picks[i])return;const o=[a,b][+bt.dataset.i];picks[i]={q:t,o};
+      $('qAns').querySelectorAll('button').forEach(x=>{x.setAttribute('aria-pressed',x===bt);x.disabled=x!==bt;if(x!==bt)x.style.opacity='.45'});
+      $('react').textContent=o[2];$('react').hidden=false;$('bNext').hidden=false;$('bNext').focus()});
+    $('bNext').addEventListener('click',()=>{if(i<order.length-1){i++;draw();window.scrollTo({top:0})}else finish(picks)});
+    $('bQuit').addEventListener('click',()=>A.start());
+  }
+  draw();window.scrollTo({top:0});
+}
+async function finish(picks){
+  const R=Math.round(picks.filter(p=>p.o[1]==='R').length/picks.length*100),t=TYPES.find(x=>R>=x[0]);
+  const show=sampleN(picks,3);
+  const canvas=await makeCard(th,'축구 밸런스 게임',ctx=>{
+    txt(ctx,'나의 축구 성향',CX,290,{font:FONT.b(34),color:th.dim});
+    txt(ctx,t[1],CX,410,{font:FONT.d(112),color:th.acc,max:960});
+    // 낭만 vs 실리 막대
+    const bx=90,bw=W-180,by=480,bh=120;
+    rr(ctx,bx,by,bw,bh,60);ctx.save();ctx.clip();ctx.fillStyle='#ff3a3a';ctx.fillRect(bx,by,bw,bh);ctx.fillStyle='#3a7bff';ctx.fillRect(bx,by,bw*R/100,bh);ctx.restore();
+    txt(ctx,`낭만 ${R}%`,bx+40,by+80,{font:FONT.b(44,900),color:'#fff',align:'left',max:0});txt(ctx,`실리 ${100-R}%`,bx+bw-40,by+80,{font:FONT.b(44,900),color:'#fff',align:'right',max:0});
+    let y=para(ctx,t[2],{x:110,y:640,w:860,size:38,weight:500,color:th.tx,max:4,align:'center'});
+    txt(ctx,'내가 고른 것들',CX,y+60,{font:FONT.b(30,900),color:th.dim});y+=90;
+    show.forEach(p=>{rr(ctx,90,y,W-180,150,24);ctx.fillStyle='rgba(244,245,251,.08)';ctx.fill();ctx.fillStyle=p.o[1]==='R'?'#3a7bff':'#ff3a3a';rr(ctx,90,y,14,150,7);ctx.fill();
+      txt(ctx,p.q,130,y+52,{font:FONT.b(28,500),color:th.dim,align:'left',max:820});txt(ctx,p.o[0],130,y+112,{font:FONT.b(40,900),color:th.tx,align:'left',max:840});y+=170});
+  });
+  resultView(A,{canvas,alt:`축구 밸런스 게임 결과: ${t[1]}, 낭만 ${R}% 실리 ${100-R}%.`,filename:()=>`킥킥_밸런스게임_${t[1]}.png`,share:()=>`나는 ${t[1]} (낭만 ${R}%)`});
+}
+APPS.push(A);
+})();
+
+
+/* =================== 15. 흐린 사진 보고 선수 맞히기 (카메라·필름 컨셉) ===================
+   =================== 17. 국적 맞히기 퀴즈 (지구본 컨셉) ===================
+   사진은 위키미디어 공용의 자유 라이선스 사진만 써요. */
+(function(){
+const withPhoto=P.filter(p=>PHOTO[p.i]);
+function preload(p){return loadPhoto(p)}
+function photoCredit(p){const ph=PHOTO[p.i];return ph?`<a href="${ph.page}" target="_blank" rel="noopener">사진 출처: Wikimedia Commons</a>`:''}
+
+/* ---- 흐린 사진 ---- */
+const thB={bg:'#0c1016',bg2:'#151b25',acc:'#4de1ff',ai:'#00222b',tx:'#eef8ff',dim:'#9fb3c4',line:'rgba(238,248,255,.15)',qb:'#eef8ff',qt:'#0c1016',qline:'#c8d8e4',qsel:'#a6f0ff',pat:'film',
+  css:'linear-gradient(90deg,#151b25 0 18px,transparent 18px calc(100% - 18px),#151b25 calc(100% - 18px))'};
+const B={id:'blur',title:'흐린 사진 보고 선수 맞히기',desc:'점점 선명해지는 사진, 빨리 맞힐수록 고득점. 10라운드',tag:'퀴즈',time:'2분',icon:'eye',th:thB,kicker:'10라운드 · 빨리 맞힐수록 고득점'};
+const ROUNDS=10,SEC=8;
+B.start=()=>introView(B,{lead:'아주 흐린 선수 사진이 8초 동안 점점 선명해져요. 보기 4개 중에서 누군지 빨리 맞힐수록 점수가 높아요. 레전드와 현역 스타 위주로 나와요.',facts:[['10','라운드'],['8초','라운드당'],['1000','만점']],cta:'게임 시작',onStart:playB});
+async function playB(){
+  const pool=withPhoto.filter(p=>p.core);const picks=sampleN(pool,ROUNDS+6);const log=[];let i=0,miss=0,timer=null;
+  $('app').innerHTML='<p class="note" style="text-align:center;padding:40px 0">사진 불러오는 중…</p>';
+  async function round(){
+    let p=picks.shift(),img=await preload(p);
+    while(!img&&picks.length>ROUNDS-i-1){miss++;if(miss>=4)break;p=picks.shift();img=await preload(p)}
+    if(!img){$('app').innerHTML=`<section class="intro"><h1>사진을 불러올 수 없어요</h1><p>지금 환경에서 외부 사진(위키미디어)을 불러오지 못했어요. 인터넷 연결을 확인하거나 잠시 후 다시 해주세요.</p><button class="cta" type="button" onclick="location.hash='#/'">다른 테스트 하기</button></section>`;return}
+    const opts=sampleN([p,...sampleN(pool.filter(x=>x!==p&&x.pos===p.pos),3)],4);
+    $('app').innerHTML=`<section><div class="qhead"><div class="qmeta"><span><span class="n">${i+1}</span> / ${ROUNDS}</span><span>점수 <b id="sc">${log.reduce((s,x)=>s+x.pt,0)}</b></span></div><div class="bar" aria-hidden="true"><i style="width:${(i+1)/ROUNDS*100}%"></i></div></div>
+      <div class="qcard" style="margin-top:14px"><span class="tag">WHO IS IT?</span>
+      <div class="photo"><img id="ph" alt="흐린 선수 사진" src="${img.src}" style="filter:blur(28px)"></div><div class="timer" aria-hidden="true"><i id="tm" style="width:100%"></i></div>
+      <div class="answers" id="qAns" role="group" aria-label="보기">${opts.map((o,k)=>`<button type="button" data-k="${k}"><span class="k">${k+1}</span><span>${esc(o.name)}</span></button>`).join('')}</div>
+      <p class="credit" id="cr" hidden>${photoCredit(p)}</p><button class="next" id="bNext" type="button" hidden>${i<ROUNDS-1?'다음 라운드':'결과 보기'}</button></div>
+      <div class="qnav" style="margin-top:14px"><span></span><button class="ghost" id="bQuit" type="button">그만하기</button></div></section>`;
+    const t0=performance.now();let done=false;
+    const tick=()=>{if(done)return;const el=(performance.now()-t0)/1000,f=Math.max(0,1-el/SEC);$('ph').style.filter=`blur(${(28*f).toFixed(1)}px)`;$('tm').style.width=f*100+'%';if(f<=0){answer(-1,el)}else timer=requestAnimationFrame(tick)};
+    timer=requestAnimationFrame(tick);
+    function answer(k,el){if(done)return;done=true;cancelAnimationFrame(timer);
+      const ok=k>=0&&opts[k]===p,pt=ok?Math.max(10,Math.round(100-el*11)):0;log.push({p,ok,pt,el,img});
+      $('ph').style.filter='none';$('qAns').querySelectorAll('button').forEach((b,j)=>{b.disabled=true;if(opts[j]===p)b.classList.add('ok');else if(j===k)b.classList.add('no')});
+      $('sc').textContent=log.reduce((s,x)=>s+x.pt,0);$('cr').hidden=false;$('bNext').hidden=false;
+      toast(ok?`정답! +${pt}점 (${el.toFixed(1)}초)`:k<0?`시간 초과! 정답은 ${p.name}`:`아쉽! 정답은 ${p.name}`)}
+    $('qAns').addEventListener('click',e=>{const b=e.target.closest('button[data-k]');if(b)answer(+b.dataset.k,(performance.now()-t0)/1000)});
+    $('bNext').addEventListener('click',()=>{i++;if(i<ROUNDS)round();else finishB(log)});
+    $('bQuit').addEventListener('click',()=>{done=true;cancelAnimationFrame(timer);B.start()});
+    window.scrollTo({top:0});
+  }
+  B.stop=()=>{cancelAnimationFrame(timer)};
+  round();
+}
+const TITLE_B=[[900,'스카우터의 눈','흐린 사진만 봐도 걸음걸이까지 보이는 수준.'],[700,'축구 덕후 인증','친구들이 선수 이름 물어보면 당신을 찾아요.'],[500,'주말 하이라이트 시청자','얼굴은 아는데 이름이 혀끝에서 맴돌죠.'],[300,'월드컵 때만 보는 편','4년에 한 번 뜨거워지는 타입.'],[0,'공은 둥글다는 것만 앎','괜찮아요. 축구는 원래 보는 것보다 차는 게 재밌어요.']];
+async function finishB(log){
+  const score=log.reduce((s,x)=>s+x.pt,0),t=TITLE_B.find(x=>score>=x[0]),fast=log.filter(x=>x.ok).sort((a,b)=>a.el-b.el)[0];
+  const canvas=await makeCard(thB,'흐린 사진 퀴즈',ctx=>{
+    txt(ctx,'내 점수',CX,290,{font:FONT.b(34),color:thB.dim});
+    txt(ctx,String(score),CX,500,{font:FONT.n(230),color:thB.acc,max:0});
+    txt(ctx,'/ 1000',CX,570,{font:FONT.n(48,500),color:thB.dim,max:0});
+    txt(ctx,t[1],CX,700,{font:FONT.d(100),color:thB.tx,max:960});
+    let y=para(ctx,t[2],{x:110,y:730,w:860,size:36,weight:500,color:thB.dim,max:2,align:'center'});
+    // 10칸 결과
+    const s=74,g=14,tw=10*s+9*g;let x=CX-tw/2;y+=40;
+    log.forEach(l=>{rr(ctx,x,y,s,s,16);ctx.fillStyle=l.ok?thB.acc:'rgba(238,248,255,.14)';ctx.fill();txt(ctx,l.ok?'O':'X',x+s/2,y+s/2+14,{font:FONT.n(40),color:l.ok?thB.ai:thB.dim,max:0});x+=s+g});
+    y+=s+60;
+    if(fast){txt(ctx,'가장 빨리 맞힌 선수',CX,y+20,{font:FONT.b(30,700),color:thB.dim});circlePhoto(ctx,fast.img,CX,y+220,160,{ring:thB.acc,fallback:fast.p.short[0],bg:thB.bg2,fg:thB.acc});
+      txt(ctx,`${fast.p.name}  ${fast.el.toFixed(1)}초`,CX,y+450,{font:FONT.b(40,900),color:thB.tx,max:900});
+      txt(ctx,'Photo: Wikimedia Commons (free license)',CX,1850,{font:FONT.b(22,500),color:'rgba(238,248,255,.5)'})}
+  });
+  resultView(B,{canvas,alt:`흐린 사진 퀴즈 ${score}점, ${t[1]}`,filename:()=>`킥킥_흐린사진퀴즈_${score}점.png`,share:()=>`흐린 사진 퀴즈 ${score}점! ${t[1]}`,credit:'선수 사진: Wikimedia Commons 자유 라이선스'});
+}
+APPS.push(B);
+
+/* ---- 국적 맞히기 ---- */
+const thN={bg:'#0b1d33',bg2:'#10294a',acc:'#b6f24a',ai:'#152400',tx:'#f0f7ff',dim:'#9fb4cf',line:'rgba(240,247,255,.15)',qb:'#f0f7ff',qt:'#0b1d33',qline:'#c6d5e8',qsel:'#dcff9e',pat:'globe',
+  css:'radial-gradient(circle at 50% 0,#163a63 0,#0b1d33 70%)'};
+const N={id:'nation',title:'국적 맞히기 퀴즈',desc:'선수 사진과 이름만 보고 어느 나라 선수인지 맞히기. 10문제',tag:'퀴즈',time:'2분',icon:'globe',th:thN,kicker:'10문제 · 선수 873명'};
+const NATS=[...new Set(P.map(p=>p.nat))];
+N.start=()=>introView(N,{lead:'선수 사진과 이름을 보고 국적을 맞혀보세요. 레전드부터 요즘 뜨는 선수까지 섞여서 나와요. 이름이 익숙해도 국적은 헷갈릴걸요?',facts:[['10','문제'],['4','보기'],[NATS.length+'개국','출제 범위']],cta:'퀴즈 시작',onStart:playN});
+async function playN(){
+  const core=withPhoto.filter(p=>p.core),ext=withPhoto.filter(p=>!p.core);
+  const qs=sampleN([...sampleN(core,5),...sampleN(ext,5)],10);const log=[];let i=0;
+  async function round(){
+    const p=qs[i];const img=await preload(p);
+    const opts=sampleN([p.nat,...sampleN(NATS.filter(n=>n!==p.nat),3)],4);
+    $('app').innerHTML=`<section><div class="qhead"><div class="qmeta"><span><span class="n">${i+1}</span> / 10</span><span>정답 <b>${log.filter(x=>x.ok).length}</b></span></div><div class="bar" aria-hidden="true"><i style="width:${(i+1)*10}%"></i></div></div>
+      <div class="qcard" style="margin-top:14px"><span class="tag">WHERE IS HE FROM?</span>
+      <div class="photo">${img?`<img alt="${esc(p.name)} 사진" src="${img.src}">`:`<span class="miss">사진을 불러오지 못했어요. 이름만 보고 맞혀보세요!</span>`}</div>
+      <h2 style="text-align:center">${esc(p.name)}<br><small style="font-family:var(--f-body);font-size:15px;opacity:.7">${POSL[p.pos]}</small></h2>
+      <div class="answers" id="qAns" role="group" aria-label="국적 보기">${opts.map((o,k)=>`<button type="button" data-k="${k}"><span class="k">${k+1}</span><span>${esc(o)}</span></button>`).join('')}</div>
+      <p class="credit" id="cr" hidden>${img?photoCredit(p):''}</p><button class="next" id="bNext" type="button" hidden>${i<9?'다음 문제':'결과 보기'}</button></div>
+      <div class="qnav" style="margin-top:14px"><span></span><button class="ghost" id="bQuit" type="button">그만하기</button></div></section>`;
+    let done=false;
+    $('qAns').addEventListener('click',e=>{const b=e.target.closest('button[data-k]');if(!b||done)return;done=true;const k=+b.dataset.k,ok=opts[k]===p.nat;log.push({p,ok,pick:opts[k]});
+      $('qAns').querySelectorAll('button').forEach((x,j)=>{x.disabled=true;if(opts[j]===p.nat)x.classList.add('ok');else if(j===k)x.classList.add('no')});
+      $('cr').hidden=false;$('bNext').hidden=false;toast(ok?'정답!':`땡! ${p.name}의 국적은 ${p.nat}`)});
+    $('bNext').addEventListener('click',()=>{i++;if(i<10)round();else finishN(log)});
+    $('bQuit').addEventListener('click',()=>N.start());
+    if(qs[i+1])preload(qs[i+1]);window.scrollTo({top:0});
+  }
+  round();
+}
+const TITLE_N=[[10,'인간 FIFA 데이터베이스','국적은 물론 고향 동네까지 알 것 같은 사람.'],[8,'해외축구 고인물','새벽 경기로 다진 지식. 존경합니다.'],[5,'월드컵 시즌 전문가','유명한 선수는 확실히 압니다. 나머지는 감으로.'],[3,'국적은 감으로 찍는 편','이름 느낌으로 맞히는 직감파.'],[0,'국적은 몰라도 축구는 사랑','국경 없는 축구 사랑. 그게 진짜 팬이죠.']];
+async function finishN(log){
+  const sc=log.filter(x=>x.ok).length,t=TITLE_N.find(x=>sc>=x[0]);
+  const show=log.slice(0,10);
+  const canvas=await makeCard(thN,'국적 맞히기 퀴즈',ctx=>{
+    txt(ctx,'내 점수',CX,290,{font:FONT.b(34),color:thN.dim});
+    txt(ctx,`${sc}/10`,CX,500,{font:FONT.n(220),color:thN.acc,max:0});
+    txt(ctx,t[1],CX,640,{font:FONT.d(96),color:thN.tx,max:960});
+    let y=para(ctx,t[2],{x:110,y:670,w:860,size:36,weight:500,color:thN.dim,max:2,align:'center'})+30;
+    show.forEach((l,i)=>{const yy=y+i*84;rr(ctx,90,yy,W-180,72,18);ctx.fillStyle=l.ok?'rgba(182,242,74,.16)':'rgba(240,247,255,.07)';ctx.fill();
+      txt(ctx,l.ok?'O':'X',130,yy+50,{font:FONT.n(34),color:l.ok?thN.acc:'#ff8a8a',align:'left',max:0});
+      txt(ctx,l.p.name,190,yy+50,{font:FONT.b(32,700),color:thN.tx,align:'left',max:520});
+      txt(ctx,l.p.nat,W-130,yy+50,{font:FONT.b(32,900),color:thN.acc,align:'right',max:300})});
+  });
+  resultView(N,{canvas,alt:`국적 맞히기 퀴즈 ${sc}/10, ${t[1]}`,filename:()=>`킥킥_국적퀴즈_${sc}점.png`,share:()=>`국적 맞히기 ${sc}/10! ${t[1]}`,credit:'선수 사진: Wikimedia Commons 자유 라이선스'});
+}
+APPS.push(N);
+})();
+
+
+/* =================== 2. 나는 몇 부 리그 선수일까? (리그 순위표 컨셉) =================== */
+(function(){
+const th={bg:'#0e1631',bg2:'#131d3d',acc:'#7fd1ff',ai:'#06213a',tx:'#eef3ff',dim:'#9fb0d6',line:'rgba(200,215,255,.16)',qb:'#eef3ff',qt:'#0e1631',qline:'#c9d4ee',qsel:'#7fd1ff',pat:'rows',
+  css:'repeating-linear-gradient(180deg,#0e1631 0 56px,#131d3d 56px 112px)'};
+const A={id:'league',title:'나는 몇 부 리그 선수일까?',desc:'프리미어리그 주전부터 조기축구 물 당번까지, 내 등급 판정',tag:'테스트',time:'1분',icon:'table',th,kicker:'질문 12개 · 10개 등급'};
+const q=(t,a)=>({type:'mc',t,a});
+const QS=[
+ q('풋살 끝난 다음 날 내 몸 상태는?',[['멀쩡함. 오늘 또 뛸 수 있음',3],['허벅지가 살짝 뻐근',2],['계단 내려갈 때 난간 필수',1],['이틀째 누워서 천장 보는 중',0]]),
+ q('리프팅(공 튀기기) 최고 기록은?',[['100개 이상',3],['30~99개',2],['10개 언저리',1],['공이 나를 튀김',0]]),
+ q('경기 전 몸풀기, 나는?',[['스트레칭+러닝 15분 정석 코스',3],['다리 몇 번 흔들고 끝',2],['몸풀기는 경기하면서',1],['편의점에서 이온음료 고르는 중',0]]),
+ q('패스를 받았는데 상대가 바로 붙었다',[['원터치로 벗겨낸다',3],['등지고 일단 지킨다',2],['뒤로 돌린다. 안전 제일',1],['정신 차려보니 공이 상대 발에',0]]),
+ q('솔직히 내 슈팅 정확도는?',[['골대 구석을 노린다',3],['골대 안에는 들어간다',2],['골대 근처까지는 간다',1],['옆 코트 사람들이 공 돌려줌',0]]),
+ q('내 축구화 사정은?',[['구장별로 2켤레 이상',3],['아끼는 한 켤레',2],['운동화로 뜀',1],['슬리퍼 투혼',0]]),
+ q('공 차는 횟수는?',[['일주일에 3번 이상',3],['일주일에 1~2번',2],['한 달에 한두 번',1],['축구는 게임으로만',0]]),
+ q('1대1 수비 상황이다',[['뺏고 바로 역습',3],['버티면서 시간 끈다',2],['일단 옷을 잡는다',1],['이미 제쳐졌다',0]]),
+ q('헤딩 경합 상황',[['이마 정중앙으로 정확히',3],['어딘가에는 맞음',2],['눈 감고 점프',1],['자연스럽게 피함',0]]),
+ q('경기 중 내가 제일 많이 하는 말',[['"여기 비었어! 줘!"',3],['"괜찮아 괜찮아!"',2],['"아 미안미안"',1],['"지금 몇 대 몇이야?"',0]]),
+ q('상대 팀에 선수 출신이 있다',[['오히려 좋아. 붙어본다',3],['조심하면서 내 플레이',2],['그 사람 반대편으로만 다닌다',1],['골키퍼 자원한다',0]]),
+ q('내 체력은?',[['풀타임 쌉가능',3],['전반까지는 확실',2],['10분 뛰면 교체 사인',1],['몸풀기에서 이미 방전',0]])
+];
+const TIERS=[
+ ['프리미어리그 주전','이 정도면 풋살장 사장님이 돈 받기 미안해합니다.','모든 것','겸손','동네 풋살 출입 금지 검토 중'],
+ ['라리가 로테이션 멤버','기술은 충분. 다만 출전 시간은 감독 기분에 달렸어요.','볼 터치, 여유','수비 가담은 기분 따라','패스 받으면 일단 한 번 접는 습관 있음'],
+ ['분데스리가 교체 1순위','후반 70분에 들어가서 판을 뒤집는 조커.','체력, 성실함','선발만 되면 긴장함','벤치에서 몸 푸는 모습이 제일 무서움'],
+ ['K리그1 주전','주말마다 "저 사람 뭐야?" 소리를 듣는 실력.','기본기 탄탄','세리머니가 아직 어색함','유니폼 마킹 각'],
+ ['K리그2 에이스','팀 승격의 열쇠. 단, 원정 버스에서 멀미함.','결정력','상대 선출 앞에서 위축','올 시즌 승격하면 연봉 협상 가능'],
+ ['K3리그 성실맨','실력보다 출석률로 주전을 차지했어요.','개근','슈팅 각도','감독이 제일 아끼는 타입'],
+ ['대학 동아리 MVP','동아리방 트로피의 절반은 당신 것. 나머지는 족구 트로피.','열정','다음 날 출근','MT 가서도 공 차자고 할 사람'],
+ ['사내 축구대회 에이스','회사에선 대리, 운동장에선 레전드. 부장님 패스는 무조건 받아야 함.','눈치','진심 슈팅','이 대회 끝나면 인사고과 반영 예정'],
+ ['조기축구 주전 (아저씨들한테 밀림)','60대 형님의 왼발에 매주 겸손을 배웁니다.','젊음','아침잠','형님들이 "자네는 체력만 기르면 돼" 하심'],
+ ['조기축구 물 당번','당신이 없으면 팀은 탈수로 집니다. 사실상 핵심 전력.','물 배달 속도','공과의 거리감','아이스박스 관리 능력은 국가대표급']
+];
+A.start=()=>introView(A,{lead:'질문 12개면 스카우트 리포트가 나와요. 결과는 리그 순위표에 내 이름을 올린 이미지로 저장돼요.',facts:[['12','질문'],['10','등급'],['1분','소요']],
+  fields:[{label:'선수 이름 (닉네임, 선택)',ph:'예: 하체왕피를로',max:10}],
+  onStart:([nm])=>runQuiz(QS,{shuffleOpts:true,onQuit:()=>A.start(),onDone:(a,qs)=>finish(nm||'익명의 유망주',a,qs)})});
+async function finish(nm,a,qs){
+  const score=a.reduce((s,x,i)=>s+qs[i].a[x][1],0), tier=Math.min(9,Math.floor((36-score)/3.6)), T0=TIERS[tier];
+  const canvas=await makeCard(th,'몇 부 리그 선수?',ctx=>{
+    txt(ctx,nm+' 선수의 리그는',CX,282,{font:FONT.b(34),color:th.dim});
+    txt(ctx,T0[0],CX,392,{font:FONT.d(92),color:th.acc,max:960});
+    // 순위표
+    const x=80,w=W-160,y0=448,rh=58;
+    rr(ctx,x,y0,w,rh*10+70,26);ctx.fillStyle='rgba(0,0,0,.28)';ctx.fill();
+    txt(ctx,'#',x+50,y0+46,{font:FONT.n(28),color:th.dim});txt(ctx,'리그 등급표',x+110,y0+46,{font:FONT.b(28),color:th.dim,align:'left'});
+    TIERS.forEach((t,i)=>{const y=y0+60+i*rh;const me=i===tier;
+      if(me){rr(ctx,x+10,y,w-20,rh-6,14);ctx.fillStyle=th.acc;ctx.fill()}
+      txt(ctx,String(i+1),x+50,y+40,{font:FONT.n(32),color:me?th.ai:th.dim});
+      txt(ctx,t[0],x+110,y+40,{font:FONT.b(30,me?900:500),color:me?th.ai:th.tx,align:'left',max:w-260});
+      if(me)txt(ctx,'◀ 나',x+w-40,y+40,{font:FONT.b(28,900),color:th.ai,align:'right'});
+    });
+    let y=y0+rh*10+120;
+    rr(ctx,80,y,W-160,400,26);ctx.fillStyle=th.tx;ctx.fill();
+    txt(ctx,'스카우트 리포트',120,y+64,{font:FONT.b(30,900),color:'#3b5ba5',align:'left'});
+    let yy=para(ctx,T0[1],{x:120,y:y+80,w:840,size:36,color:'#0e1631'});
+    [['강점',T0[2]],['약점',T0[3]],['비고',T0[4]]].forEach(([k,v],i)=>{txt(ctx,k,120,yy+50+i*52,{font:FONT.b(30,900),color:'#3b5ba5',align:'left'});txt(ctx,v,210,yy+50+i*52,{font:FONT.b(30,500),color:'#0e1631',align:'left',max:740})});
+  });
+  resultView(A,{canvas,alt:`${nm} 선수 등급: ${T0[0]}. ${T0[1]}`,filename:()=>`킥킥_몇부리그_${T0[0]}.png`,share:()=>`나는 ${T0[0]}!`});
+}
+APPS.push(A);
+})();
+
+
+/* =================== 3. 내 몸값, 이적료로 환산하면? (이적 계약서·영수증 컨셉, 밝은 종이 테마) =================== */
+(function(){
+const th={bg:'#f3eee2',bg2:'#e7e0cf',acc:'#d63a2f',ai:'#fff8ee',tx:'#1f1d18',dim:'#6b6455',line:'rgba(31,29,24,.18)',qb:'#fffdf7',qt:'#1f1d18',qline:'#d9d1bd',qsel:'#ffd9a8',pat:'paper',light:true,
+  css:'repeating-linear-gradient(180deg,#f3eee2 0 54px,#e9e2d1 54px 56px)'};
+const A={id:'price',title:'내 몸값, 이적료로 환산하면?',desc:'질문 10개로 받는 공식(?) 이적 계약서. 단위는 치킨',tag:'테스트',time:'1분',icon:'receipt',th,kicker:'질문 10개 · 이적 계약서 발급'};
+const q=(t,a)=>({type:'mc',t,a});
+const QS=[
+ q('풋살하러 가는 날 아침 기분은?',[['설레서 전날 잠 못 잠',3,'경기 전날 숙면 보장 (수면안대 지급)'],['평범하게 신남',2,null],['귀찮은데 막상 가면 좋음',1,'출석 시 아이스아메리카노 1잔 지급'],['누가 끌고 가야 감',0,'선수 픽업 차량 제공 필수']]),
+ q('나의 주무기는?',[['왼발 감아차기',4,'왼발 골 시 붕어빵 3개 보너스'],['몸싸움',3,'몸싸움 승리 시 프로틴 1스쿱'],['킬패스',3,'어시스트 1개당 떡볶이 1인분'],['입축구',1,'입축구 해설료는 별도 청구']]),
+ q('쉬는 시간에 나는?',[['동료들과 전술 얘기',3,null],['물 마시며 숨 고르기',2,null],['휴대폰 확인',1,'경기 중 휴대폰 압수 조항'],['이미 집에 갈 준비',0,'조기 퇴근 시 위약금 치킨 1마리']]),
+ q('같이 차는 친구들 반응은?',[['"너 왜 축구 안 했냐?"',4,'초상권 수익 50:50 분배'],['"오 잘하네?"',3,null],['"열심히는 하네"',1,null],['"공 좀 줘봐, 나도 하게"',0,'공 터치 횟수 보장 조항']]),
+ q('부상 이력은?',[['없음. 강철 몸',3,null],['발목 한 번 접질림',2,'발목 보호대 평생 지원'],['매번 어딘가 아픔',1,'파스 정기 배송'],['경기 다음 날 출근을 못 함',0,'월요일 반차 보장']]),
+ q('골을 넣으면?',[['준비한 세리머니 시전',3,'세리머니 저작권은 선수에게 귀속'],['동료와 하이파이브',2,null],['어리둥절',1,null],['골 넣어본 기억이 가물가물',0,'첫 골 시 구단 회식 의무 개최']]),
+ q('경기 후 뒤풀이는?',[['오늘은 내가 쏜다',3,'뒤풀이 비용 구단 부담'],['깔끔하게 n분의 1',2,null],['안 가고 집으로',1,null],['얻어먹을 때만 간다',0,'계약금 일부 삼겹살로 지급']]),
+ q('체력 자신감은?',[['풀타임 OK',4,null],['전반 전력, 후반 걷기',2,null],['15분 뛰면 교체',1,'교체 횟수 무제한 조항'],['산소호흡기 필요',0,'벤치에 산소캔 상시 비치']]),
+ q('풋살장 패션은?',[['유니폼 풀세트+스타킹',3,'유니폼 마킹비 구단 부담'],['트레이닝복',2,null],['출근 복장 그대로',1,null],['잠옷인지 운동복인지',0,'드레스코드 위반 시 벌금 붕어빵 1봉지']]),
+ q('스스로 평가하는 나는?',[['이 동네 메시',4,'하이라이트 영상 제작 의무'],['평균은 함',2,null],['팀에 민폐만 안 끼치면',1,null],['차는 것보다 보는 게 좋음',0,'벤치 방석 지급']])
+];
+const GRADE=[[30,'세계 이적료 기록 갱신','구단주가 집을 팔았다는 소문이 돌아요.'],[24,'빅클럽 영입 전쟁','에이전트 전화가 끊이지 않아요.'],[18,'K리그 연봉킹 후보','계약서 사인할 때 손이 떨려요.'],[12,'동네 FA시장 대어','조기축구회 세 곳이 동시에 연락 중.'],[6,'자유계약 (이적료 0원 같은 느낌)','오면 좋고 안 와도 괜찮은 사이.'],[0,'오히려 돈 받고 보내야 함','상대 팀이 데려가 주면 감사 인사를 드려야 해요.']];
+A.start=()=>introView(A,{lead:'질문 10개에 답하면 나의 이적료와 옵션 조항이 적힌 공식(?) 계약서가 발급돼요. 모든 금액은 치킨으로 환산해 드려요.',facts:[['10','질문'],['₩','이적료'],['1분','소요']],
+  fields:[{label:'계약서에 적을 이름',ph:'예: 김풋살',max:10}],cta:'계약 협상 시작',
+  onStart:([nm])=>runQuiz(QS,{shuffleOpts:true,onQuit:()=>A.start(),onDone:(a,qs)=>finish(nm||'익명의 유망주',a,qs)})});
+function unit(v){
+  if(v<20000)return `삼각김밥 ${Math.max(1,Math.round(v/1500)).toLocaleString()}개`;
+  const ch=Math.floor(v/20000),rest=v-ch*20000,tb=Math.floor(rest/5000);
+  return `치킨 ${ch.toLocaleString()}마리${tb?` + 떡볶이 ${tb}인분`:''}`;
+}
+async function finish(nm,a,qs){
+  const score=a.reduce((s,x,i)=>s+qs[i].a[x][1],0);
+  const value=Math.round(3000*Math.pow(1.38,score)/100)*100;
+  const g=GRADE.find(x=>score>=x[0]);
+  const r=rng(hashStr(nm+score));
+  const clauses=sampleN(a.map((x,i)=>qs[i].a[x][2]).filter(Boolean),3,r);
+  if(clauses.length<2)clauses.push('경기 후 바나나 우유 지급','유니폼 세탁은 구단이 책임');
+  const buyout=value*3;
+  const no=String(hashStr(nm)%900000+100000);
+  const canvas=await makeCard(th,'이적 계약서',ctx=>{
+    // 영수증 종이
+    const x=80,y=230,w=W-160,h=1420;
+    ctx.save();ctx.shadowColor='rgba(0,0,0,.18)';ctx.shadowBlur=30;ctx.fillStyle='#fffdf7';ctx.fillRect(x,y,w,h);ctx.restore();
+    ctx.fillStyle='#fffdf7';for(let i=0;i<w;i+=40){ctx.beginPath();ctx.moveTo(x+i,y+h);ctx.lineTo(x+i+20,y+h+18);ctx.lineTo(x+i+40,y+h);ctx.fill()}
+    txt(ctx,'공식 이적 계약서',CX,y+96,{font:FONT.d(64),color:th.tx});
+    txt(ctx,`계약번호 KK-${no} · 킥킥 FC 사무국`,CX,y+146,{font:FONT.b(26,500),color:th.dim});
+    const dash=yy=>{ctx.setLineDash([12,10]);ctx.strokeStyle='#b9b09b';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x+40,yy);ctx.lineTo(x+w-40,yy);ctx.stroke();ctx.setLineDash([])};
+    dash(y+184);
+    const row=(k,v,yy,bold)=>{txt(ctx,k,x+50,yy,{font:FONT.b(30,500),color:th.dim,align:'left'});txt(ctx,v,x+w-50,yy,{font:FONT.b(bold?34:30,bold?900:700),color:th.tx,align:'right',max:560})};
+    row('선수',nm,y+244,true);row('등급',g[1],y+300);row('평가',g[2],y+356);
+    dash(y+400);
+    txt(ctx,'이적료',CX,y+470,{font:FONT.b(32),color:th.dim});
+    txt(ctx,won(value),CX,y+590,{font:FONT.d(118),color:th.tx,max:820});
+    txt(ctx,'= '+unit(value),CX,y+660,{font:FONT.b(40,900),color:th.acc,max:820});
+    dash(y+716);
+    txt(ctx,'특약 사항',x+50,y+782,{font:FONT.b(30,900),color:th.tx,align:'left'});
+    let yy=y+800;clauses.slice(0,3).forEach((c,i)=>{yy=para(ctx,`${i+1}. ${c}`,{x:x+50,y:yy+8,w:w-100,size:32,weight:500,color:th.tx,max:2})});
+    dash(yy+30);
+    row('바이아웃',won(buyout),yy+96,true);
+    txt(ctx,'(= '+unit(buyout)+')',x+w-50,yy+146,{font:FONT.b(26,500),color:th.dim,align:'right'});
+    txt(ctx,'구단 서명',x+50,y+h-110,{font:FONT.b(28,500),color:th.dim,align:'left'});
+    ctx.strokeStyle='#1f1d18';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x+200,y+h-100);ctx.bezierCurveTo(x+260,y+h-170,x+300,y+h-60,x+360,y+h-120);ctx.bezierCurveTo(x+400,y+h-150,x+420,y+h-90,x+470,y+h-110);ctx.stroke();
+    // 도장
+    ctx.save();ctx.translate(x+w-170,y+h-130);ctx.rotate(-.22);ctx.strokeStyle=th.acc;ctx.lineWidth=9;ctx.beginPath();ctx.arc(0,0,105,0,Math.PI*2);ctx.stroke();ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,86,0,Math.PI*2);ctx.stroke();
+    txt(ctx,'계약',0,-6,{font:FONT.d(52),color:th.acc});txt(ctx,'완료',0,52,{font:FONT.d(52),color:th.acc});ctx.restore();
+  });
+  resultView(A,{canvas,alt:`${nm}의 이적료 ${won(value)}, ${unit(value)}. 등급 ${g[1]}.`,filename:()=>`킥킥_내몸값_${nm}.png`,share:()=>`내 이적료는 ${unit(value)}!`});
+}
+APPS.push(A);
+})();
+
+
+/* =================== 4. 내가 감독이라면? (전술판 컨셉) =================== */
+(function(){
+const th={bg:'#1d2b2f',bg2:'#243539',acc:'#ff8a3d',ai:'#2a1405',tx:'#f1f5f2',dim:'#a8b8b4',line:'rgba(241,245,242,.16)',qb:'#f1f5f2',qt:'#1d2b2f',qline:'#cfd9d6',qsel:'#ffc59a',pat:'grid',
+  css:'linear-gradient(#243539 2px,transparent 2px) 0 0/48px 48px,linear-gradient(90deg,#243539 2px,transparent 2px) 0 0/48px 48px'};
+const A={id:'manager',title:'내가 감독이라면?',desc:'버스 주차형? 헤어드라이어형? 나의 감독 스타일과 전술',tag:'테스트',time:'1분',icon:'board',th,kicker:'질문 10개 · 감독 유형 8가지'};
+const TY={
+ bus:{n:'버스 2대 주차형',s:'무리뉴 스타일',f:'5-4-1',d:'1:0 승리가 세상에서 제일 아름답다고 믿어요. 점유율은 상대 주고 승점은 내가 가져갑니다.',line:'"재미? 재미는 우승 퍼레이드에서 찾자."',good:'지지 않는 팀',bad:'관중이 졸아요',fit:'몸으로 막는 센터백'},
+ tiki:{n:'점유율 집착형',s:'과르디올라 스타일',f:'4-3-3',d:'패스 600개를 돌려야 마음이 편해요. 공을 뺏기면 개인적으로 상처받습니다.',line:'"공은 우리 거야. 끝까지 돌려."',good:'경기를 지배함',bad:'슛을 안 쏨',fit:'원터치 미드필더'},
+ hair:{n:'헤어드라이어형',s:'퍼거슨 스타일',f:'4-4-2',d:'하프타임 라커룸 온도 40도. 선수들 머리가 저절로 마릅니다. 그래도 끝나면 다 같이 웃어요.',line:'"후반에 이렇게 하면 오늘 집에 못 간다."',good:'역전승 장인',bad:'물병 예산 초과',fit:'멘탈 강한 베테랑'},
+ gegen:{n:'닥공 압박형',s:'클롭 스타일',f:'4-3-3',d:'쉬는 것도 압박하면서 쉽니다. 상대가 공을 잡으면 셋이 동시에 달려가요.',line:'"뛰어! 숨은 집에 가서 쉬어!"',good:'경기가 화끈함',bad:'선수들 다리에 쥐',fit:'산소탱크 윙어'},
+ roman:{n:'낭만 4-2-4형',s:'옛날 축구 감성',f:'4-2-4',d:'수비수 둘 빼고 공격수를 넣는 게 취미예요. 지더라도 5:4로 집니다.',line:'"한 골 먹으면 두 골 넣으면 되잖아!"',good:'명승부 제조기',bad:'실점도 제조기',fit:'슛 좋아하는 모든 사람'},
+ data:{n:'데이터 노예형',s:'태블릿 감독',f:'4-2-3-1',d:'엑셀 없이는 선발도 못 정해요. 선수 컨디션을 소수점 둘째 자리까지 관리합니다.',line:'"기대득점 2.3이었으니까 사실상 이긴 경기야."',good:'준비성 최고',bad:'선수들이 숫자로 보임',fit:'시키는 대로 하는 모범생'},
+ dad:{n:'선수 멘탈 케어형',s:'안첼로티 스타일',f:'4-4-2',d:'눈썹 하나로 라커룸을 평정해요. 선수들이 감독님 때문에 뛴다고 말합니다.',line:'"괜찮아. 커피 한잔하고 다시 하자."',good:'선수들이 따름',bad:'화낼 줄 모름',fit:'예민한 천재'},
+ gamble:{n:'로테이션 도박형',s:'예측 불가 감독',f:'3-5-2',d:'결승전에 어제 처음 본 유스 선수를 선발로 냅니다. 그리고 그게 가끔 통해요.',line:'"오늘의 주인공은... 너야, 막내!"',good:'깜짝 스타 발굴',bad:'주전들 불만 폭발',fit:'기회에 목마른 신인'}
+};
+const q=(t,a)=>({type:'mc',t,a});
+const QS=[
+ q('1:0으로 이기는 후반 80분, 지시는?',[['전원 수비, 시간 끌어',['bus']],['공 돌리면서 점유',['tiki']],['한 골 더 넣으러 가',['roman']],['압박 강도 더 올려',['gegen']]]),
+ q('에이스가 훈련에 지각했다',[['라커룸에서 큰 소리',['hair']],['따로 불러 커피 한잔',['dad']],['벌금표 엑셀에 기록',['data']],['다음 경기 벤치, 신인 선발',['gamble']]]),
+ q('영입 1순위는?',[['킬패스 미드필더',['tiki']],['키 2m 센터백',['bus']],['달리기 빠른 윙어 셋',['gegen']],['스탯은 좋은 무명 선수',['data','gamble']]]),
+ q('하프타임, 0:2로 지고 있다',[['물병이 날아다닌다',['hair']],['"괜찮아, 우리 축구 하자"',['dad']],['공격수 세 명 추가 투입',['roman']],['태블릿으로 상대 약점 분석',['data']]]),
+ q('기자: "오늘 경기 지루했다는 평이 있는데요?"',[['"이기면 그만입니다"',['bus']],['"점유율 78%였는데요?"',['tiki','data']],['(대답 대신 퇴장)',['hair']],['"다음 경기엔 다 뛰게 할 겁니다"',['gamble']]]),
+ q('선수들이 말하는 우리 감독님',[['농담 잘 받아주는 분',['dad']],['같이 소리 지르며 뛰는 분',['gegen']],['무조건 이기게 해주는 분',['bus']],['다음 수가 안 읽히는 분',['gamble']]]),
+ q('가장 이상적인 스코어는?',[['1:0',['bus']],['5:4',['roman']],['3:0, 점유율 80%',['tiki']],['4:1, 압박으로 뺏어서',['gegen']]]),
+ q('오늘의 훈련 메뉴',[['공 돌리기 2시간',['tiki']],['인터벌 달리기 지옥',['gegen','hair']],['영상 분석 3시간',['data']],['오늘은 미니게임만',['dad','roman']]]),
+ q('결승전 선발 명단',[['검증된 베테랑만',['bus','hair']],['어제 처음 본 유스 선수',['gamble']],['데이터상 최적의 11명',['data']],['골 넣는 사람 전부',['roman']]]),
+ q('심판이 오심을 했다',[['터치라인 폭주',['hair']],['경기 후 인터뷰로 저격',['bus']],['선수들부터 진정시킨다',['dad']],['그 덕에 더 화끈한 경기',['roman','gamble']]])
+];
+A.start=()=>introView(A,{lead:'벤치에 앉은 나는 어떤 감독일까요? 질문 10개로 감독 유형과 주 포메이션, 라커룸 한마디까지 알려드려요.',facts:[['10','질문'],['8','감독 유형'],['1분','소요']],
+  onStart:()=>runQuiz(QS,{shuffleOpts:true,onQuit:()=>A.start(),onDone:finish})});
+function formation(f){const rows=f.split('-').map(Number);const pts=[[0.5,0.93]];rows.forEach((n,ri)=>{const y=0.78-ri*(0.62/(rows.length-1||1));for(let i=0;i<n;i++)pts.push([(i+1)/(n+1),y])});return pts}
+async function finish(a,qs){
+  const sc={};let order=[];a.forEach((x,i)=>qs[i].a[x][1].forEach(k=>{sc[k]=(sc[k]||0)+1;if(!order.includes(k))order.push(k)}));
+  const k=order.sort((p,q)=>sc[q]-sc[p])[0], t=TY[k];
+  const canvas=await makeCard(th,'내가 감독이라면?',ctx=>{
+    txt(ctx,'당신의 감독 유형',CX,282,{font:FONT.b(34),color:th.dim});
+    txt(ctx,t.n,CX,394,{font:FONT.d(100),color:th.acc,max:960});
+    txt(ctx,t.s+' · 주 포메이션 '+t.f,CX,456,{font:FONT.b(32,700),color:th.tx});
+    // 전술판
+    const bx=110,by=500,bw=W-220,bh=640;
+    rr(ctx,bx,by,bw,bh,24);ctx.fillStyle='#2f6b4f';ctx.fill();ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=5;rr(ctx,bx+20,by+20,bw-40,bh-40,8);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(bx+20,by+20);ctx.lineTo(bx+bw-20,by+20);ctx.stroke();ctx.beginPath();ctx.arc(CX,by+20,90,0,Math.PI);ctx.stroke();
+    ctx.strokeRect(CX-180,by+bh-150,360,130);ctx.strokeRect(CX-80,by+bh-70,160,50);
+    formation(t.f).forEach(([fx,fy],i)=>{const x=bx+40+fx*(bw-80),y=by+40+fy*(bh-80);ctx.beginPath();ctx.arc(x,y,30,0,Math.PI*2);ctx.fillStyle=i?th.acc:'#f5c518';ctx.fill();ctx.lineWidth=5;ctx.strokeStyle='#14261d';ctx.stroke();txt(ctx,String(i?i+1:1),x,y+11,{font:FONT.n(28),color:'#14261d'})});
+    ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=5;ctx.setLineDash([16,12]);ctx.beginPath();ctx.moveTo(bx+bw*.3,by+bh*.62);ctx.quadraticCurveTo(bx+bw*.5,by+bh*.35,bx+bw*.72,by+bh*.22);ctx.stroke();ctx.setLineDash([]);
+    let y=para(ctx,t.d,{x:110,y:1170,w:860,size:36,color:th.tx,weight:500,max:3});
+    rr(ctx,90,y+20,W-180,110,22);ctx.fillStyle=th.tx;ctx.fill();
+    txt(ctx,'라커룸 한마디  '+t.line,CX,y+90,{font:FONT.b(32,900),color:th.bg,max:860});
+    txt(ctx,`장점 ${t.good}  ·  단점 ${t.bad}`,CX,y+200,{font:FONT.b(30,500),color:th.dim,max:900});
+  });
+  resultView(A,{canvas,alt:`감독 유형 ${t.n} (${t.s}). ${t.d} 라커룸 한마디 ${t.line}`,filename:()=>`킥킥_감독유형_${t.n}.png`,share:()=>`나는 ${t.n} 감독!`});
+}
+APPS.push(A);
+})();
+
+
+/* =================== 5. 축구 팬 유형 테스트 (응원 머플러·경기장 컨셉) =================== */
+(function(){
+const th={bg:'#2a0d14',bg2:'#35111b',acc:'#ff4d5e',ai:'#fff3f4',tx:'#fff3f4',dim:'#d7a8af',line:'rgba(255,243,244,.16)',qb:'#fff3f4',qt:'#2a0d14',qline:'#efc9ce',qsel:'#ffb3bb',pat:'scarf',
+  css:'repeating-linear-gradient(-30deg,#2a0d14 0 46px,#33101a 46px 92px)'};
+const A={id:'fan',title:'축구 팬 유형 테스트',desc:'새벽 알람형? 단톡방 해설위원형? 같이 보면 안 되는 유형까지',tag:'테스트',time:'1분',icon:'scarf',th,kicker:'질문 10개 · 팬 유형 8가지'};
+const TY={
+ alarm:{n:'새벽 알람형',d:'알람 3개는 기본. 새벽 4시 경기도 실시간으로 봐야 직성이 풀려요. 출근길 눈 밑 그림자는 훈장입니다.',f:['다크서클이 유니폼','커피가 주식','스포일러 당하면 하루 망함'],m:'jinx',x:'high'},
+ high:{n:'하이라이트 3분형',d:'90분은 길고 인생은 짧아요. 결과만 확인하고 골 장면만 보면 충분한 효율주의자.',f:['2배속은 기본','결과부터 검색','"그래서 누가 이겼어?"'],m:'cool',x:'alarm'},
+ kit:{n:'유니폼 수집가형',d:'옷장의 절반이 유니폼. 시즌마다 새 유니폼이 나오면 손가락이 먼저 결제합니다.',f:['마킹은 무조건 선수 이름','택배 기사님과 친함','"이건 어웨이 3rd 킷이야"'],m:'live',x:'cool'},
+ talk:{n:'단톡방 해설위원형',d:'경기 중 단톡방에 전술 분석 장문을 올려요. 해설보다 말이 많지만 가끔 맞혀서 더 신나요.',f:['"내가 뭐랬어"','오프사이드 설명 30분','경기 후 평점 매기기'],m:'game',x:'jinx'},
+ live:{n:'직관 성지순례형',d:'TV로 보는 건 축구가 아니라고 생각해요. 원정 경기 일정에 맞춰 연차를 씁니다.',f:['목이 쉬어야 진짜','티켓 모으는 앨범 보유','구장 근처 맛집 마스터'],m:'kit',x:'game'},
+ game:{n:'게임으로 축구 배운형',d:'선수 이름은 게임 카드로 외웠어요. 실제 경기 보면서 "저 선수 내 팀에 있는데"를 외칩니다.',f:['능력치로 선수 평가','이적시장은 게임처럼','"쟤 오버롤 몇이야?"'],m:'talk',x:'live'},
+ jinx:{n:'징크스 신봉형',d:'내가 보면 지니까 안 보고, 이기는 날 입은 양말은 안 빨아요. 승리는 내 미신 덕분입니다.',f:['승리 양말 보유','앉는 자리 고정','지면 옷부터 갈아입음'],m:'alarm',x:'talk'},
+ cool:{n:'졌잘싸 평화형',d:'져도 "잘 싸웠다", 이겨도 "운이 좋았다". 상대 팀이 잘해도 박수 치는 축구계의 부처님.',f:['치킨이 메인, 축구는 배경','상대 골에도 "와~"','악플 0개'],m:'high',x:'kit'}
+};
+const q=(t,a)=>({type:'mc',t,a});
+const QS=[
+ q('새벽 4시에 빅매치가 있다',[['알람 3개 맞추고 실시간 시청',['alarm']],['자고 일어나서 하이라이트',['high']],['단톡방 실시간 중계하며 본다',['talk']],['내가 보면 지니까 안 본다',['jinx']]]),
+ q('월급이 들어왔다',[['신상 유니폼부터 결제',['kit']],['원정 경기 비행기표 검색',['live']],['축구 게임 패키지 결제',['game']],['적금. 축구는 무료로 즐긴다',['cool','high']]]),
+ q('응원하는 팀이 졌다',[['단톡방에 전술 분석 장문',['talk']],['오늘 입은 옷을 버린다',['jinx']],['졌잘싸. 치킨이나 먹자',['cool']],['잠 못 자고 본 게 더 억울',['alarm']]]),
+ q('내 방 인테리어는?',[['벽에 유니폼 액자',['kit']],['직관 티켓 모음 앨범',['live']],['모니터와 게임 패드',['game']],['딱히 축구 흔적 없음',['high','cool']]]),
+ q('선수 이름 외우는 방법',[['게임 카드로 외운다',['game']],['포지션, 이적료까지 줄줄',['talk']],['유명한 선수만 안다',['high']],['등번호와 마킹으로 외운다',['kit']]]),
+ q('경기 볼 때 필수템',[['승리를 부르는 양말',['jinx']],['응원 머플러와 목소리',['live']],['치킨과 콜라',['cool']],['커피 세 잔',['alarm']]]),
+ q('친구가 오프사이드가 뭐냐고 묻는다',[['30분짜리 강의 시작',['talk']],['그냥 같이 보면 알게 돼',['cool']],['게임 한 판 해보면 알아',['game']],['1분 요약 영상 링크 보냄',['high']]]),
+ q('해외여행을 간다면',[['구장 투어가 1순위',['live']],['공식 스토어 털기',['kit']],['관광이 메인, 축구는 덤',['cool']],['시차 적응 필요 없음 (원래 새벽에 삶)',['alarm']]]),
+ q('응원팀 유니폼은 몇 벌?',[['10벌 이상',['kit']],['직관용 한 벌을 닳도록',['live']],['이기는 날 입는 한 벌만',['jinx']],['없음',['high','game']]]),
+ q('축구 보면서 내는 소리',[['해설보다 말이 많음',['talk']],['새벽이라 속으로 비명',['alarm']],['주문을 외운다',['jinx']],['"와~ 잘한다" (상대 팀에게도)',['cool']]])
+];
+A.start=()=>introView(A,{lead:'같은 축구를 봐도 보는 방법은 다 달라요. 나는 어떤 팬인지, 누구랑 같이 보면 찰떡이고 누구랑은 절대 같이 보면 안 되는지 알려드려요.',facts:[['10','질문'],['8','팬 유형'],['1분','소요']],
+  onStart:()=>runQuiz(QS,{shuffleOpts:true,onQuit:()=>A.start(),onDone:finish})});
+async function finish(a,qs){
+  const sc={},order=[];a.forEach((x,i)=>qs[i].a[x][1].forEach(k=>{sc[k]=(sc[k]||0)+1;if(!order.includes(k))order.push(k)}));
+  const k=order.sort((p,q)=>sc[q]-sc[p])[0],t=TY[k];
+  const canvas=await makeCard(th,'축구 팬 유형',ctx=>{
+    // 응원 머플러 띠
+    ctx.save();ctx.translate(CX,330);ctx.rotate(-.05);rr(ctx,-520,-70,1040,140,10);ctx.fillStyle=th.acc;ctx.fill();ctx.clip();
+    ctx.fillStyle='#fff3f4';for(let x=-540;x<540;x+=90)ctx.fillRect(x,-70,30,140);ctx.restore();
+    ctx.save();ctx.translate(CX,330);ctx.rotate(-.05);rr(ctx,-330,-46,660,92,10);ctx.fillStyle=th.bg;ctx.fill();txt(ctx,'MY FAN TYPE',0,18,{font:FONT.n(54),color:'#fff3f4'});ctx.restore();
+    txt(ctx,'나는',CX,520,{font:FONT.b(36),color:th.dim});
+    txt(ctx,t.n,CX,650,{font:FONT.d(120),color:th.acc,max:960});
+    let y=para(ctx,t.d,{x:110,y:700,w:860,size:38,color:th.tx,weight:500,max:4});
+    t.f.forEach((f,i)=>{const yy=y+40+i*92;rr(ctx,110,yy,W-220,74,37);ctx.fillStyle='rgba(255,243,244,.1)';ctx.fill();txt(ctx,'#  '+f,150,yy+50,{font:FONT.b(34),color:th.tx,align:'left',max:780})});
+    y+=40+3*92+30;
+    const box=(x,lab,name,col)=>{rr(ctx,x,y,430,190,26);ctx.fillStyle=col;ctx.fill();txt(ctx,lab,x+215,y+60,{font:FONT.b(28,700),color:'#2a0d14'});txt(ctx,name,x+215,y+140,{font:FONT.d(50),color:'#2a0d14',max:390})};
+    box(100,'같이 보면 찰떡',TY[t.m].n,'#ffd6db');box(550,'같이 보면 안 됨',TY[t.x].n,'#ffffff');
+  });
+  resultView(A,{canvas,alt:`축구 팬 유형 ${t.n}. ${t.d} 찰떡: ${TY[t.m].n}, 상극: ${TY[t.x].n}`,filename:()=>`킥킥_팬유형_${t.n}.png`,share:()=>`나는 ${t.n} 축구팬!`});
+}
+APPS.push(A);
+})();
+
+
+/* =================== 6. 나랑 닮은 축구 구단 (방패·우승 트로피 컨셉) ===================
+   구단 엠블럼은 그리지 않아요(상표). 이름과 성격 풀이만 써요. */
+(function(){
+const th={bg:'#1a1430',bg2:'#21193d',acc:'#c9a6ff',ai:'#1a1030',tx:'#f3efff',dim:'#b2a8d4',line:'rgba(243,239,255,.16)',qb:'#f3efff',qt:'#1a1430',qline:'#d6cdee',qsel:'#d9c4ff',pat:'diamond',
+  css:'radial-gradient(circle at 20px 20px,#231b42 6px,transparent 7px) 0 0/40px 40px'};
+const A={id:'club',title:'나랑 닮은 축구 구단',desc:'성격으로 보는 내 팀. 레알? 토트넘? 유럽 12개 구단 중 하나',tag:'테스트',time:'1분',icon:'shield',th,kicker:'질문 10개 · 유럽 12개 구단'};
+const C={
+ rm:{n:'레알 마드리드',t:'주인공병 말기',d:'평소엔 좀 느슨해 보여도 중요한 순간엔 꼭 해내는 사람. 인생 하이라이트는 늘 후반 추가시간에 나와요.',g:'큰 무대 체질',w:'평소엔 대충',c:['#ffffff','#d4af37']},
+ fcb:{n:'FC 바르셀로나',t:'철학 있는 예술가',d:'이기는 것보다 "어떻게" 이기는지가 중요한 사람. 대신 통장 잔고는 늘 아슬아슬해요.',g:'확고한 취향',w:'지갑 사정',c:['#a50044','#004d98']},
+ mu:{n:'맨체스터 유나이티드',t:'왕년의 슈퍼스타',d:'"나 때는 말이야"로 시작하는 이야기를 잔뜩 가진 사람. 그래도 다시 올라갈 거라고 믿어요.',g:'추억 부자',w:'요즘은 기복',c:['#da291c','#000000']},
+ mc:{n:'맨체스터 시티',t:'완벽주의 계획러',d:'엑셀, 루틴, 우승. 빈틈이 너무 없어서 가끔 친구들이 무서워해요.',g:'계획대로 됨',w:'인간미 부족',c:['#6cabdd','#1c2c5b']},
+ lfc:{n:'리버풀',t:'의리와 감성',d:'친구를 절대 혼자 걷게 두지 않는 사람. 노래방 가면 떼창을 유도합니다.',g:'의리',w:'감성 과다',c:['#c8102e','#00b2a9']},
+ ars:{n:'아스널',t:'과정은 완벽',d:'시작은 늘 1등인 사람. 계획도 완벽하고 준비도 철저한데, 결말은 다음 시즌에 보여드릴게요.',g:'꾸준한 성장',w:'뒷심',c:['#ef0107','#ffffff']},
+ che:{n:'첼시',t:'즉흥 쇼핑러',d:'마음에 들면 일단 사는 사람. 장바구니에 담긴 것만 30개입니다.',g:'결단력',w:'카드값',c:['#034694','#ffffff']},
+ tot:{n:'토트넘',t:'희망회로 장인',d:'"올해는 다르다"를 매년 말하는 사람. 그래서 더 응원하고 싶어지는 매력이 있어요.',g:'긍정 에너지',w:'희망고문',c:['#ffffff','#132257']},
+ fcbm:{n:'바이에른 뮌헨',t:'성실한 1등',d:'1등이 일상인 사람. 2등은 실패라고 생각해서 본인도 피곤합니다.',g:'꾸준함',w:'여유 부족',c:['#dc052d','#0066b2']},
+ juv:{n:'유벤투스',t:'포커페이스 승부사',d:'1:0으로 이기고 무표정하게 퇴근하는 사람. 감정은 집에 가서 표현해요.',g:'냉정함',w:'재미없다는 소리',c:['#ffffff','#000000']},
+ mil:{n:'AC 밀란',t:'클래식 낭만파',d:'옛날 레전드 영상을 즐겨찾기에 저장해둔 사람. 패션은 늘 정장 핏.',g:'품격',w:'과거에 삼',c:['#fb090b','#000000']},
+ psg:{n:'파리 생제르맹',t:'화려한 셀럽',d:'친구는 다 스타, 사진은 다 화보인 사람. 단체 사진 찍을 때 자리 싸움이 치열해요.',g:'화려함',w:'팀워크',c:['#004170','#da291c']}
+};
+const q=(t,a)=>({type:'mc',t,a});
+const QS=[
+ q('주말 계획 스타일',[['마음 가는 대로 쇼핑',['che','psg']],['계획표대로 착착',['mc','fcbm']],['친구들 몰고 노래방',['lfc','mil']],['집에서 조용히 충전',['juv','mu']]]),
+ q('시험 기간의 나',[['평소엔 놀다 마지막 날 몰아침',['rm']],['한 달 전부터 계획',['mc','fcbm']],['계획은 완벽, 실천은 내일부터',['ars','tot']],['족보 공유로 다 같이 산다',['lfc']]]),
+ q('친구들 사이에서 나는',[['분위기 메이커',['lfc','psg']],['조용한 실세',['juv','fcbm']],['다들 따라 하는 패셔니스타',['mil','psg']],['예전엔 인기 짱이었음',['mu']]]),
+ q('단체 사진 찍을 때 나는',[['무조건 가운데',['psg','rm']],['구석에서 브이',['tot','juv']],['사진 찍자고 먼저 말함',['lfc']],['구도부터 잡아줌',['mc','fcb']]]),
+ q('돈이 생기면',[['일단 산다',['che','psg']],['적금',['fcbm','juv']],['좋아하는 것에 올인',['fcb','mil']],['친구들 밥 산다',['lfc','mu']]]),
+ q('내가 제일 듣기 좋은 말',[['"역시 큰 경기에 강해"',['rm']],['"너 진짜 꾸준하다"',['fcbm','ars']],['"너 감성 좋다"',['fcb','mil']],['"올해는 진짜 될 거야"',['tot']]]),
+ q('연애 스타일',[['한눈에 반해서 직진',['che','rm']],['오래 보고 천천히',['ars','juv']],['의리 있는 연애',['lfc','mu']],['밀당은 계산적으로',['mc']]]),
+ q('실패했을 때 나는',[['"다음엔 무조건 된다"',['tot','ars']],['조용히 분석하고 다시',['mc','juv']],['예전 잘나가던 시절 떠올림',['mu','mil']],['돈으로 해결',['che','psg']]]),
+ q('여행 스타일',[['명품 거리와 인생샷',['psg','rm']],['역사 깊은 도시 산책',['mil','fcb']],['친구들과 시끌벅적 투어',['lfc']],['분 단위 일정표',['fcbm','mc']]]),
+ q('나를 한 단어로',[['카리스마',['rm','juv']],['낭만',['fcb','mil','lfc']],['성실',['fcbm','ars']],['예측 불가',['che','tot','mu']]])
+];
+A.start=()=>introView(A,{lead:'축구 실력 말고 성격으로 고르는 내 팀이에요. 유럽 12개 구단 중 나랑 제일 닮은 팀과, 의외로 잘 맞는 팀까지 알려드려요.',facts:[['10','질문'],['12','구단'],['1분','소요']],
+  onStart:()=>runQuiz(QS,{shuffleOpts:true,onQuit:()=>A.start(),onDone:finish})});
+async function finish(a,qs){
+  const sc={},order=[];a.forEach((x,i)=>qs[i].a[x][1].forEach(k=>{sc[k]=(sc[k]||0)+1;if(!order.includes(k))order.push(k)}));
+  const rk=order.sort((p,q)=>sc[q]-sc[p]),k=rk[0],c=C[k],second=C[rk[1]||'lfc'];
+  const total=Object.values(sc).reduce((s,x)=>s+x,0),pc=Math.min(98,Math.round(55+sc[k]/total*90));
+  const canvas=await makeCard(th,'나랑 닮은 구단',ctx=>{
+    // 방패 (구단 색 두 가지로 칠한 일반 방패, 실제 엠블럼 아님)
+    const sx=CX,sy=300,sw=300,sh=360;
+    ctx.save();ctx.beginPath();ctx.moveTo(sx-sw/2,sy);ctx.lineTo(sx+sw/2,sy);ctx.lineTo(sx+sw/2,sy+sh*.5);ctx.quadraticCurveTo(sx+sw/2,sy+sh*.85,sx,sy+sh);ctx.quadraticCurveTo(sx-sw/2,sy+sh*.85,sx-sw/2,sy+sh*.5);ctx.closePath();
+    ctx.fillStyle=c.c[0];ctx.fill();ctx.clip();ctx.fillStyle=c.c[1];ctx.fillRect(sx,sy,sw/2,sh);ctx.restore();
+    ctx.lineWidth=12;ctx.strokeStyle=th.acc;ctx.beginPath();ctx.moveTo(sx-sw/2,sy);ctx.lineTo(sx+sw/2,sy);ctx.lineTo(sx+sw/2,sy+sh*.5);ctx.quadraticCurveTo(sx+sw/2,sy+sh*.85,sx,sy+sh);ctx.quadraticCurveTo(sx-sw/2,sy+sh*.85,sx-sw/2,sy+sh*.5);ctx.closePath();ctx.stroke();
+    rr(ctx,sx-90,sy+130,180,96,20);ctx.fillStyle=th.bg;ctx.fill();txt(ctx,pc+'%',sx,sy+200,{font:FONT.n(64),color:th.acc});
+    txt(ctx,'나와 닮은 구단',CX,760,{font:FONT.b(34),color:th.dim});
+    txt(ctx,c.n,CX,872,{font:FONT.d(104),color:th.tx,max:960});
+    rr(ctx,CX-250,906,500,74,37);ctx.fillStyle=th.acc;ctx.fill();txt(ctx,c.t,CX,956,{font:FONT.b(36,900),color:th.ai,max:460});
+    let y=para(ctx,c.d,{x:110,y:1010,w:860,size:38,color:th.tx,weight:500,max:4});
+    txt(ctx,`장점  ${c.g}     약점  ${c.w}`,CX,y+60,{font:FONT.b(34),color:th.dim});
+    rr(ctx,110,y+110,W-220,130,24);ctx.fillStyle='rgba(243,239,255,.1)';ctx.fill();
+    txt(ctx,'2위로 닮은 구단: '+second.n+' ('+second.t+')',CX,y+190,{font:FONT.b(32,700),color:th.tx,max:820});
+  });
+  resultView(A,{canvas,alt:`나와 닮은 구단 ${c.n} (${c.t}) ${pc}%. ${c.d}`,filename:()=>`킥킥_닮은구단_${c.n}.png`,share:()=>`나랑 닮은 구단은 ${c.n}!`});
+}
+APPS.push(A);
+})();
+
+
+/* =================== 10. 내 등번호 뽑기 (등번호 전광판 컨셉) =================== */
+(function(){
+const th={bg:'#062a2c',bg2:'#08302f',acc:'#3ee6c4',ai:'#022421',tx:'#eafffb',dim:'#9cc9c2',line:'rgba(234,255,251,.15)',qb:'#eafffb',qt:'#062a2c',qline:'#c4e6e0',qsel:'#9ff3e1',pat:'digits',
+  css:'linear-gradient(180deg,#062a2c,#073133)'};
+const A={id:'number',title:'내 등번호 뽑기',desc:'이름으로 정해지는 운명의 등번호와 그 번호를 달았던 레전드',tag:'생성기',time:'3초',icon:'hash',th,kicker:'이름 입력 · 3초 컷'};
+// [번호, 별칭, 의미, 이 번호를 달았던 선수(짧은 이름), 이 번호 달면 생기는 일]
+const N=[
+ [1,'골문의 주인','실점하면 다 내 탓, 선방하면 당연한 것. 그래도 장갑 끼면 멋있음.',['부폰','카시야스'],'팀원들이 골 먹을 때마다 나를 쳐다봄'],
+ [2,'오른쪽 셔틀버스','90분 내내 오른쪽 측면을 왕복 운행합니다. 정류장은 없어요.',['카푸'],'경기 끝나면 오른쪽 다리만 아픔'],
+ [3,'왼쪽의 철벽','왼쪽 측면을 지키는 수호신. 가끔 올라가서 대포알 슛.',['말디니','카를루스'],'왼발 프리킥 차겠다고 줄 서게 됨'],
+ [4,'수비의 대들보','뒤에서 소리 지르는 게 주 업무. 헤딩골은 보너스.',['라모스','반다이크'],'코너킥 때마다 박스 안으로 출장'],
+ [5,'빌드업 장인','수비수인데 패스가 미드필더급. 우아함이 등번호에 묻어있음.',['베켄바워','지단'],'공 잡으면 다들 "올라가!" 외침'],
+ [6,'보이지 않는 엔진','아무도 모르게 팀을 굴리는 사람. 기록엔 안 남지만 다들 앎.',['사비'],'MVP는 못 받는데 다들 고마워함'],
+ [7,'측면의 스타','팀의 얼굴이자 사진 담당. 7번은 일단 잘생겨 보이는 효과가 있어요.',['베컴','호날두','손흥민'],'세리머니 연습량이 실력을 앞지름'],
+ [8,'중원의 심장','공격도 수비도 다 하는 사람. 체력은 소모품이 아니라고 믿음.',['제라드','이니에스타','크로스'],'"8번 어디 갔어?" 소리를 제일 많이 들음'],
+ [9,'골 넣는 사람','이 번호의 존재 이유는 단 하나, 골. 수비 가담은 계약서에 없음.',['호나우두','레반도프스키'],'골 못 넣은 날엔 집에 걸어서 감'],
+ [10,'팀의 얼굴','공은 일단 10번에게. 실패해도 10번이니까 괜찮아요.',['펠레','마라도나','메시'],'프리킥, PK, 코너킥 전부 내가 참'],
+ [11,'측면 돌파 전문','공 잡으면 일단 사이드라인 끝까지 달립니다. 크로스는 기분 따라.',['네이마르','살라'],'공 들고 사이드라인 밖으로 나가는 일 잦음'],
+ [12,'12번째 선수','원래 관중석에 있어야 할 번호. 당신이 있으면 팀 응원이 두 배.',[],'벤치에서 제일 크게 소리 지름'],
+ [13,'불운? 오히려 개성','남들이 피하는 번호를 고른 강심장. 많이 뛰고 조용히 해냄.',['박지성','발락'],'"왜 하필 13번?" 질문을 매주 받음'],
+ [14,'우아한 해결사','10번 같은 존재감을 다른 번호로 증명하는 사람.',['앙리','크루이프'],'골 넣고 하는 세리머니가 유난히 멋있음'],
+ [16,'숨은 살림꾼','팀에 꼭 필요한데 하이라이트에는 안 나오는 사람.',[],'물병 챙기는 사람이 결국 나'],
+ [17,'조용한 지휘자','말없이 킬패스를 넣는 사람. 표정은 늘 진지.',['더브라위너'],'패스 받고 골 못 넣은 동료를 조용히 쳐다봄'],
+ [18,'슈퍼서브','후반에 들어가서 판을 바꾸는 조커. 선발은 아직.',[],'몸 풀다가 경기 끝나는 날도 있음'],
+ [19,'막내의 반란','신인이 달고 나와서 전설이 되는 번호.',['메시','야말'],'형들이 "막내야 공 주워와" 함'],
+ [20,'열정의 번호','나이는 숫자, 체력은 20대. 적어도 마음은.',[],'경기 다음 날 실제 나이를 체감함'],
+ [21,'느림의 미학','뛰지 않고 걸으면서 경기를 지배합니다.',['피를로'],'"좀 뛰어!"를 들어도 패스 하나로 대답'],
+ [22,'여유로운 천재','슬렁슬렁 뛰는 것 같은데 결정적인 순간엔 거기 있음.',['카카'],'웃으면서 골 넣어서 상대가 더 화남'],
+ [23,'두 번째 7번','7번이 이미 있어서 골랐지만 존재감은 7번 이상.',['베컴'],'유니폼 사진이 실력보다 먼저 유명해짐'],
+ [24,'편의점형 미드필더','24시간 열려 있는 패스 창구. 언제든 공 받아줌.',[],'공이 계속 나한테만 옴'],
+ [33,'33번의 시도','33번 슛해서 1골. 그래도 그 1골이 결승골.',[],'슈팅 수 기록은 늘 팀 1위'],
+ [66,'66분의 사나이','66분부터 진심 모드. 그 전엔 몸 푸는 중.',[],'전반엔 다들 내가 있는 줄 모름'],
+ [77,'7이 두 개','7번 하나로는 부족해서 두 개를 단 욕심쟁이.',[],'"7번이 둘이야?" 소리를 들음'],
+ [88,'팔팔한 체력','숫자처럼 끝까지 팔팔하게 뛰는 사람.',[],'경기 끝나고 혼자 공 더 차고 감'],
+ [99,'자신감 MAX','이 번호를 고른 순간부터 이미 주인공.',['호나우두'],'공 잡으면 관중이 일단 일어남']
+];
+A.start=()=>introView(A,{lead:'이름으로 정해지는 나만의 등번호예요. 번호의 의미와 같은 번호를 달았던 레전드, 이 번호를 달면 생기는 일까지 알려드려요.',
+  fields:[{label:'유니폼에 새길 이름',ph:'예: 김민수',required:true}],cta:'등번호 뽑기',onStart:([nm])=>finish(cleanName(nm))});
+async function finish(nm){
+  const r=rng(hashStr('kk-num:'+nm));const e=N[Math.floor(r()*N.length)];
+  const legends=e[3].map(s=>P.find(p=>p.short===s)).filter(Boolean);
+  const canvas=await makeCard(th,'내 등번호 뽑기',ctx=>{
+    // 전광판
+    rr(ctx,90,230,W-180,700,36);ctx.fillStyle='#021c1d';ctx.fill();ctx.lineWidth=8;ctx.strokeStyle=th.acc;ctx.stroke();
+    ctx.fillStyle='rgba(62,230,196,.12)';for(let y=250;y<920;y+=16)for(let x=110;x<W-100;x+=16){ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill()}
+    txt(ctx,nm,CX,350,{font:FONT.d(80),color:th.tx,max:820});
+    ctx.save();ctx.shadowColor=th.acc;ctx.shadowBlur=40;txt(ctx,String(e[0]),CX,800,{font:FONT.n(440),color:th.acc,max:0});ctx.restore();
+    txt(ctx,e[1],CX,1050,{font:FONT.d(96),color:th.acc,max:960});
+    let y=para(ctx,e[2],{x:110,y:1080,w:860,size:38,weight:500,color:th.tx,max:3,align:'center'});
+    rr(ctx,90,y+20,W-180,110,24);ctx.fillStyle='rgba(234,255,251,.1)';ctx.fill();
+    txt(ctx,'이 번호 달면: '+e[4],CX,y+90,{font:FONT.b(32,700),color:th.tx,max:860});
+    txt(ctx,legends.length?'같은 번호를 달았던 선수':'이 번호의 전설은',CX,y+200,{font:FONT.b(28,700),color:th.dim});
+    txt(ctx,legends.length?legends.map(p=>p.name).join(' · '):'아직 없음. 당신이 1호',CX,y+256,{font:FONT.b(36,900),color:th.tx,max:900});
+  });
+  resultView(A,{canvas,alt:`${nm}의 등번호 ${e[0]}번, ${e[1]}. ${e[2]}`,filename:()=>`킥킥_등번호_${nm}_${e[0]}.png`,share:()=>`내 등번호는 ${e[0]}번!`,
+    buttons:[{label:'다른 이름 넣기',onClick:()=>A.start()}]});
+}
+APPS.push(A);
+})();
+
+route();
+</script>
+
+</body></html>

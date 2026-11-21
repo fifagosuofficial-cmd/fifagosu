@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block nav %}
+  <nav class="menu" aria-label="메뉴" id="menu">
+    <button type="button" data-view="home" aria-current="page">홈</button>
+    <button type="button" data-view="diag">전적 진단</button>
+    <button type="button" data-view="cards">카드 검색</button>
+    <button type="button" data-view="calc">BP·강화 계산기</button>
+    <button type="button" data-view="guide">시스템 가이드</button>
+    <a class="fun" href="{{ root }}fun/">심심풀이 테스트</a>
+  </nav>
+{% endblock %}
+{% block content %}
+<div class="notice" id="notice"><b>미리보기</b> · 이 화면은 넥슨 서버에 접속할 수 없어서 미리 불러온 구단주 전적과 일부 카드(능력치·시세는 손흥민 카드 예시)만 보여요. 배포한 사이트에서는 누구나 실시간으로 조회되고 전체 카드가 검색돼요.</div>
+
+<!-- ================= 홈 ================= -->
+<main id="v-home" class="wrap">
+  <div class="hero">
+    <h1>최근 경기로 <em>내 팀 약점</em>을 찾고<br>모든 카드를 한 번에 검색해요</h1>
+    <form class="ask" id="hForm" autocomplete="off">
+      <input id="hNick" placeholder="구단주 닉네임" aria-label="구단주 닉네임">
+      <button class="go" type="submit">전적 진단</button>
+    </form>
+    <form class="ask" id="hCardForm" autocomplete="off" style="margin-top:8px">
+      <input id="hCard" placeholder="선수 이름 또는 시즌 (예: 손흥민, 26 TOTS)" aria-label="카드 검색">
+      <button class="go" type="submit">카드 검색</button>
+    </form>
+  </div>
+  <section>
+    <h2>바로 시작하기</h2>
+    <div class="quick">
+      <button type="button" data-go="diag"><b>내 전적 진단</b><span>최근 30·50·100경기로 약점 찾기</span></button>
+      <button type="button" data-go="cards"><b>전체 카드 검색</b><span>모든 시즌 카드와 공식 시즌 배지</span></button>
+      <button type="button" data-go="calc"><b>BP·강화 계산기</b><span>판매 실수령, 교체 비용, 강화 확률</span></button>
+      <button type="button" data-go="guide"><b>시스템 가이드</b><span>등급·감독모드·강화·팀컬러</span></button>
+    </div>
+  </section>
+  <a class="funlink" href="fun/index.html"><b>심심할 땐 축구 테스트 한 판</b><span>닮은 선수 찾기·내 몸값·감독 유형 등 12종, 1분이면 끝나요</span><em>해보기 →</em></a>
+  <div class="slot" data-slot="home-1"></div>
+</main>
+
+<!-- ================= 전적 진단 ================= -->
+<main id="v-diag" class="wrap" hidden>
+  <form class="ask" id="dForm" autocomplete="off">
+    <input id="dNick" value="" placeholder="구단주 닉네임" aria-label="구단주 닉네임">
+    <div class="seg" role="group" aria-label="경기 모드" id="dMode">
+      <button type="button" data-mode="50" aria-pressed="true">공식경기</button>
+      <button type="button" data-mode="52" aria-pressed="false">감독모드</button>
+    </div>
+    <div class="seg" role="group" aria-label="분석 경기 수" id="dCount"><button type="button" data-n="30" aria-pressed="true">30경기</button><button type="button" data-n="50" aria-pressed="false">50경기</button><button type="button" data-n="100" aria-pressed="false">100경기</button></div>
+    <button class="go" type="submit">진단하기</button>
+  </form>
+  <div class="board" id="dBoard"></div>
+  <section><h2>약점 진단 <small id="dSub"></small></h2><div class="cards" id="dCards"></div></section>
+  <section><h2>상세 분석</h2><div class="tabs" role="tablist" id="dTabs"></div><div class="panel" id="dPanel"></div></section>
+  <div class="slot" data-slot="diag-1"></div>
+  <section><h2>경기 기록 <small>누르면 상세 비교</small></h2><div class="matches" id="dMatches"></div></section>
+</main>
+
+
+<!-- ================= 카드 검색 ================= -->
+<main id="v-cards" class="wrap" hidden>
+  <section>
+    <h2>카드 검색 <small id="cMeta"></small></h2>
+    <div class="panel sheet">
+      <input id="cq" type="search" placeholder="선수 이름 또는 시즌 (예: 손흥민, 26 TOTS, 앙리 ICON)" aria-label="카드 검색" autocomplete="off">
+      <div class="grid"><label class="f">시즌<select id="cSeason"><option value="">전체 시즌</option></select></label><label class="f">정렬<select id="cSort"><option value="rel">관련도</option><option value="ovr">OVR 높은 순</option><option value="pdesc">1강 시세 높은 순</option><option value="pasc">1강 시세 낮은 순</option></select></label><label class="f" style="grid-auto-flow:column;align-items:center;justify-content:start;gap:8px;align-self:end"><input id="cTrade" type="checkbox" style="width:auto"> 거래 가능한 카드만</label></div>
+      <div class="sub" id="cCount"></div>
+      <div class="cgrid" id="cRes"></div>
+      <div class="actions" style="justify-content:center"><button type="button" class="ghost" id="cMore" hidden>더 보기</button></div>
+      <p class="sub">카드 목록·시즌 배지·선수 이미지는 넥슨 Open API, OVR·능력치·시세는 FC온라인 데이터센터 기준이에요. 시세는 매일 갱신돼요.</p>
+    </div>
+  </section>
+  <div class="slot" data-slot="cards-1"></div>
+</main>
+
+<!-- ================= 계산기 ================= -->
+<main id="v-calc" class="wrap" hidden>
+  <section>
+    <h2>판매 실수령 BP</h2>
+    <div class="panel sheet">
+      <div class="grid">
+        <label class="f">판매 등록가(억)<input id="kPrice" type="number" min="0" step="any" value="3"></label>
+        <label class="f">기본 수수료(%)<input id="kBase" type="number" min="0" max="100" step="1" value="40"></label>
+        <label class="f">쿠폰 감면(%)<select id="kCoupon"><option value="0">없음</option><option>10</option><option>20</option><option>30</option><option>40</option><option>50</option></select></label>
+      </div>
+      <div class="grid">
+        <label class="f" style="grid-auto-flow:column;align-items:center;justify-content:start;gap:8px"><input id="kPc" type="checkbox" style="width:auto"> PC방 감면 <input id="kPcRate" type="number" value="30" style="width:64px">%</label>
+        <label class="f" style="grid-auto-flow:column;align-items:center;justify-content:start;gap:8px"><input id="kTop" type="checkbox" style="width:auto"> TOP CLASS 감면 <input id="kTopRate" type="number" value="20" style="width:64px">%</label>
+        
+      </div>
+      <div class="stat-grid" id="kOut"></div>
+      <p class="sub">최종 수수료율 = 기본 수수료 × (100% − PC방 − TOP CLASS − 쿠폰) 공식을 써요(<a href="https://fc-info.com/commission" target="_blank" rel="noopener" style="color:var(--accent)">FC INFO 수수료 계산기</a> 기준). 정확한 값은 게임 안 판매 화면에서 확인해 주세요.</p>
+    </div>
+  </section>
+  <section>
+    <h2>선수 교체 비용</h2>
+    <div class="panel sheet">
+      <div class="grid">
+        <label class="f">보유 BP(억)<input id="xHave" type="number" min="0" value="50"></label>
+        <label class="f">판매할 선수 가격(억)<input id="xSell" type="number" min="0" value="100"></label>
+        <label class="f">살 선수 가격(억)<input id="xBuy" type="number" min="0" value="160"></label>
+      </div>
+      <div class="stat-grid" id="xOut"></div>
+      <p class="sub">판매 실수령은 위 계산기 설정(수수료·감면)을 그대로 써요.</p>
+    </div>
+  </section>
+  <section>
+    <h2>강화 계산기 <small>넥슨 공지 확률(26.4 기준)</small></h2>
+    <div class="panel sheet">
+      <div class="grid">
+        <label class="f">현재 강화<select id="eFrom"></select></label>
+        <label class="f">목표 강화<select id="eTo"></select></label>
+        <label class="f">부스트 게이지(%)<input id="eGauge" type="number" min="1" max="100" value="100"></label>
+      </div>
+      <div class="stat-grid" id="eSum"></div>
+      <div class="tablewrap" id="eTable"></div>
+      <p class="sub">실제 성공 확률 = 풀 게이지 확률 × 게이지 비율(넥슨 공지). 실패해도 단계가 유지된다고(등급 보호) 가정한 기대 시도 횟수예요. 실패 시 하락·복구 확률은 공지에 이미지로만 있어 반영하지 않았어요.</p>
+    </div>
+  </section>
+  <div class="slot" data-slot="calc-1"></div>
+</main>
+
+
+<!-- ================= 시스템 가이드 ================= -->
+<main id="v-guide" class="wrap" hidden>
+  <div class="hero" style="padding-top:0"><h1 style="font-size:clamp(24px,5vw,32px)">FC온라인 <em>시스템 가이드</em></h1><p class="sub">피파고수가 진단에 쓰는 게임 규칙을 공식 공지와 커뮤니티 자료로 정리했어요. 게임 업데이트로 바뀔 수 있어요.</p></div>
+  <nav class="chips" aria-label="가이드 목차"><a class="chip" href="#g-patch">최근 패치</a><a class="chip" href="#g-official">공식경기 등급</a><a class="chip" href="#g-manager">감독모드</a><a class="chip" href="#g-grade">강화</a><a class="chip" href="#g-tc">팀컬러</a><a class="chip" href="#g-season">시즌·이미지</a><a class="chip" href="#g-market">급여·이적시장</a></nav>
+  <section id="g-patch">
+    <h2>최근 패치 반영 내역 <small>2026년 10월 15일 기준</small></h2>
+    <div class="panel sheet">
+      <ul class="glist">
+        <li><b>6/25 업데이트</b>: 급여 상한 300 → <b>310</b>, 신규 특성 4종(트릭스터·레이저 슈터·프레데터·GK 데드아이), 수수료 쿠폰 주간 지급.</li>
+        <li><b>7/9 밸런스 조정</b>: 트릭스터 킥 페이크 효율 조정(PC).</li>
+        <li><b>최근 클래스</b>: 26FSL(7/30), UC(9/10). 피파고수 시즌 배지에 반영했어요.</li>
+        <li><b>1차 시즌</b>: 8월 20일 종료.</li>
+      </ul>
+      <p class="sub">출처: <a href="https://fconline.nexon.com/news/update/list" target="_blank" rel="noopener">넥슨 업데이트 목록</a>, <a href="https://fconline.nexon.com/news/notice/view?n4ArticleSN=6110" target="_blank" rel="noopener">26년 7월 밸런스 조정</a>, <a href="https://www.gamevu.co.kr/news/articleView.html?idxno=58926" target="_blank" rel="noopener">게임뷰 기사</a></p>
+    </div>
+  </section>
+  <section id="g-official">
+    <h2>공식경기 등급</h2>
+    <div class="panel sheet">
+      <p style="margin:0">등급은 아래에서 위로 <b>유망주 → 세미프로 → 프로 → 월드클래스 → 마스터 → 챌린저 → 슈퍼 챌린지 → 챔피언스 → 슈퍼 챔피언스</b> 순이에요. 유망주~챌린저는 각각 3부~1부로 나뉘어요.</p>
+      <div class="ladder" id="gLadder"></div>
+      <ul class="glist">
+        <li><b>유망주 3부 ~ 월드클래스 1부</b>: 스테이지를 오르내리는 사다리 방식이에요. 체크포인트에 닿으면 그 아래로는 떨어지지 않고, 점수가 크게 떨어지면 방어전이 열려요.</li>
+        <li><b>챌린저 3부 이상</b>: 랭킹 점수로 정해져요. 챌린저 3부 2,200점 · 2부 2,350점 · 1부 2,500점 · 슈퍼 챌린지 2,650점.</li>
+        <li><b>챔피언스 계열</b>: 2,650점 이상에서 순위로 나눠요. 1~100위 슈퍼 챔피언스, 101~1,000위 챔피언스.</li>
+        <li><b>시즌</b>: 8~10주, 전반기·후반기로 나눠 반기마다 보상을 줘요. 챌린저 3부 이상은 반기마다 점수가 초기화돼요.</li>
+        <li><b>주간 보상 포인트</b>: 승 3점, 무 1점, 패 0점, 하루 첫 경기 5점.</li>
+      </ul>
+      <p class="sub">출처: <a href="https://fconline.nexon.com/news/notice/view?n4ArticleSN=5456" target="_blank" rel="noopener">넥슨 공식경기 업데이트 공지</a>, <a href="https://open.api.nexon.com/static/fconline/meta/division.json" target="_blank" rel="noopener">넥슨 Open API 등급 메타데이터</a></p>
+    </div>
+  </section>
+  <section id="g-manager">
+    <h2>감독모드</h2>
+    <div class="panel sheet">
+      <ul class="glist">
+        <li><b>AI가 경기를 뛰어요.</b> 직접 조작하지 않으니 결과는 스쿼드(능력치·강화·체형)와 포메이션, 팀 전술, 개인 전술로 갈려요.</li>
+        <li><b>상위권 전술 경향</b>: 수비는 지속적 압박, 공격은 롱패스 빌드업과 공격적 팀 성향이 많이 쓰여요. 4-1-2-3 같은 포메이션과 제로톱 구성이 인기예요.</li>
+        <li><b>선수 고르기 팁</b>: 센터백 190cm 이상, 스트라이커·풀백 180cm 이상, 중앙 미드필더는 피지컬을 중시해요. 체형은 마른 체형보다 보통·건장이 낫다는 의견이 많아요. 약발은 조작 모드보다 덜 중요해요.</li>
+        <li><b>순위 보상</b>: 시즌 종료 시 200위 이내에 FC 보상. 최근 시즌 200위 컷은 약 4,400점대였어요.</li>
+        <li><b>장기 미접속 감점</b>: 경기를 96시간 하지 않으면 30점이 깎인다는 정리가 있어요.</li>
+      </ul>
+      <p class="sub">피파고수 스쿼드 추천의 '감독모드' 설정은 위 신체 기준을 가산점으로 반영해요. 출처: <a href="https://www.invenglobal.com/articles/23536/boost-your-win-rate-with-a-click-manager-mode-tactics-guide-coupon-event" target="_blank" rel="noopener">인벤 감독모드 전술 가이드</a>, <a href="https://www.inven.co.kr/board/fifaonline4/3145/37967" target="_blank" rel="noopener">인벤 감독모드 팁</a>, <a href="https://fc-info.com/posts/706" target="_blank" rel="noopener">FC INFO 감독모드 정리</a> (커뮤니티 자료)</p>
+    </div>
+  </section>
+  <section id="g-grade">
+    <h2>강화</h2>
+    <div class="panel sheet">
+      <p style="margin:0">강화는 13강까지 있어요. 카드 색은 1~4강 브론즈(동카), 5~7강 실버(은카), 8~10강 골드(금카), 11~13강 플래티넘(백금카)이에요. 특정 강화 단계에서 특성 슬롯이 열려요. '다음 강화 성공'은 부스트 게이지가 가득 찼을 때 확률이에요.</p>
+      <div class="tablewrap" id="gGrade"></div>
+      <p class="sub">출처: <a href="https://fconline.nexon.com/news/notice/view?n4ArticleSN=5106" target="_blank" rel="noopener">넥슨 선수 강화 확률 안내(26.4 기준)</a></p>
+    </div>
+  </section>
+  <section id="g-tc">
+    <h2>팀컬러</h2>
+    <div class="panel sheet">
+      <ul class="glist">
+        <li><b>소속 팀컬러(클럽·국가)</b>: 같은 팀 선수가 3·6·8·11명일 때 4단계로 보너스가 커져요. 일부만 같아도 그 선수들에게 적용돼요.</li>
+        <li><b>특성 팀컬러</b>: 듀오·트리오(2~4명), 전설의 스쿼드(5명), 유럽 대항전·국제 대회 진출 스쿼드(8명) 등. 소속 팀컬러와 둘 중 하나를 골라요.</li>
+        <li><b>강화 팀컬러</b>: 강화 단계가 높은 선수가 5명·8명 이상이면 모든 능력치가 올라요.</li>
+      </ul>
+      <div class="tablewrap"><table><thead><tr><th>강화 팀컬러</th><th>조건</th><th class="n">5명</th><th class="n">8명</th></tr></thead><tbody>
+        <tr><td>동빛 물결</td><td>3강 이상</td><td class="n">+1</td><td class="n">-</td></tr><tr><td>은빛 물결</td><td>5강 이상</td><td class="n">+1</td><td class="n">+3</td></tr>
+        <tr><td>금빛 물결</td><td>8강 이상</td><td class="n">+3</td><td class="n">+4</td></tr><tr><td>백금빛 물결</td><td>11강 이상</td><td class="n">+4</td><td class="n">+5</td></tr></tbody></table></div>
+      <p class="sub">출처: <a href="https://namu.wiki/w/FC%20%EC%98%A8%EB%9D%BC%EC%9D%B8/%ED%8C%80%EC%BB%AC%EB%9F%AC" target="_blank" rel="noopener">나무위키 FC 온라인/팀컬러</a> (커뮤니티 자료). 클럽·국가 팀컬러의 단계별 수치는 팀마다 달라 피파고수는 단계만 표시해요.</p>
+    </div>
+  </section>
+  <section id="g-season">
+    <h2>시즌과 선수 이미지</h2>
+    <div class="panel sheet">
+      <ul class="glist">
+        <li><b>같은 선수도 시즌마다 다른 카드예요.</b> ICON, TOTY, TOTS, UCL, LIVE처럼 시즌에 따라 능력치와 가격이 달라서, 피파고수는 선수 이름 앞에 항상 시즌 배지를 붙여요.</li>
+        <li><b>선수 고유 ID(spid)</b> = 시즌 ID × 1,000,000 + 선수 번호. 넥슨 Open API의 시즌 메타데이터(<code>seasonid.json</code>)에 시즌 이름과 공식 시즌 이미지 주소가 들어 있어요.</li>
+        <li><b>선수 얼굴·시즌 이미지</b>는 넥슨 Open API의 '이미지 정보 조회'로 제공돼요. 피파고수는 이 공식 이미지를 그대로 표시해요. 이미지를 불러오지 못하면 시즌 이름 배지로 대신 보여줘요.</li>
+      </ul>
+      <p class="sub">출처: <a href="https://open.api.nexon.com/static/fconline/meta/seasonid.json" target="_blank" rel="noopener">넥슨 Open API 시즌 메타데이터</a>, <a href="https://openapi.nexon.com/ko/game/fconline/?id=6" target="_blank" rel="noopener">이미지 정보 조회 문서</a></p>
+    </div>
+  </section>
+  <section id="g-market">
+    <h2>급여·이적시장</h2>
+    <div class="panel sheet">
+      <ul class="glist">
+        <li><b>급여</b>: 급여 상한은 <b>310</b>이에요(2026년 6월 25일 업데이트로 300에서 상향, PC·모바일 공통). 부족하면 골키퍼·풀백에서 급여를 아끼는 경우가 많아요.</li>
+        <li><b>판매 수수료</b>: 최종 수수료율 = 40% × (100% − PC방 30% − TOP CLASS 20% − 쿠폰). 예를 들어 셋 다 적용하고 쿠폰 30%면 40% × 20% = 8%예요.</li>
+        <li><b>수수료 쿠폰</b>: 2026년 6월 개편으로 한 번에 몰아서가 아니라 매주 점검 후 접속할 때 지급돼요.</li>
+      </ul>
+      <p class="sub">출처: <a href="https://www.inven.co.kr/board/fifaonline4/4711/3851" target="_blank" rel="noopener">6/25 정기점검 공지(인벤 소식 게시판)</a>, <a href="https://www.gamevu.co.kr/news/articleView.html?idxno=58926" target="_blank" rel="noopener">게임뷰 2026.6.24 기사</a>, <a href="https://fc-info.com/commission" target="_blank" rel="noopener">FC INFO 수수료 계산식</a></p>
+    </div>
+  </section>
+  <div class="slot" data-slot="guide-1"></div>
+</main>
+
+
+<div class="pm" id="pmodal" hidden><div class="pm-panel" role="dialog" aria-modal="true" aria-labelledby="pmTitle"><button type="button" class="pm-x" id="pmClose" aria-label="닫기">×</button><div id="pmBody" style="display:grid;gap:16px"></div></div></div>
+{% endblock %}
+{% block scripts %}
+<script>if(!window.FG_LIVE)document.write('<script src="{{ root }}preview/data.js?v={{ ver }}"><\/script>')</script>
+<script src="{{ root }}assets/js/app.js?v={{ ver }}"></script>
+{% endblock %}

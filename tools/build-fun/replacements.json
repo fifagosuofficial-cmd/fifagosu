@@ -1,0 +1,47 @@
+[
+  {
+    "id": "share-url (window.claude downloads 대신 일반 브라우저용 주소 상수)",
+    "from": "const dlCap=window.claude&&window.claude.use?window.claude.use('downloads').catch(()=>null):Promise.resolve(null);",
+    "to": "/* 일반 브라우저용 저장·공유: 파일 공유를 지원하면(주로 모바일) 공유 시트, 아니면 PNG 다운로드 */\nconst SHARE_URL=/^https?:$/.test(location.protocol)?(location.origin+location.pathname).replace(/index\\.html$/,''):'https://fifagosu.pages.dev/fun/';\nconst SHARE_HOST=SHARE_URL.replace(/^https?:\\/\\//,'').replace(/\\/$/,'');"
+  },
+  {
+    "id": "canShareFiles (window.claude 확인 제거)",
+    "from": "(async()=>{const dl=await dlCap;if(!dl&&navigator.canShare){try{canShareFiles=navigator.canShare({files:[new File([new Blob(['x'])],'a.png',{type:'image/png'})]})}catch{}}})();",
+    "to": "try{canShareFiles=!!(navigator.canShare&&navigator.canShare({files:[new File([new Blob(['x'])],'a.png',{type:'image/png'})]}))}catch{}"
+  },
+  {
+    "id": "saveCanvas: dlCap 대기 제거",
+    "from": "  const dl=await dlCap;\n",
+    "to": ""
+  },
+  {
+    "id": "saveCanvas: window.claude downloads 저장 분기 제거",
+    "from": "  if(dl){try{await dl.save({filename,data:blob});toast('이미지를 저장했어요. 스토리에 올려보세요!')}catch(e){if(e&&e.code==='declined')return;toast('이미지를 길게 눌러 저장하세요')}return}\n",
+    "to": ""
+  },
+  {
+    "id": "공유 시트에 새 주소 링크 포함",
+    "from": "await navigator.share({files:[file],title:'킥킥 축구 테스트',text});",
+    "to": "await navigator.share({files:[file],title:'킥킥 축구 테스트 · 피파고수',text:text?text+' '+SHARE_URL:SHARE_URL});"
+  },
+  {
+    "id": "결과 이미지 하단 알약 폭 (주소가 들어가도록 600 -> 680)",
+    "from": "  const fy=1716;rr(ctx,CX-300,fy,600,78,39);ctx.fillStyle=th.acc;ctx.fill();",
+    "to": "  const fy=1716;rr(ctx,CX-340,fy,680,78,39);ctx.fillStyle=th.acc;ctx.fill();"
+  },
+  {
+    "id": "결과 이미지 하단 문구에 사이트 주소",
+    "from": "  txt(ctx,'나도 해보기 · 킥킥 축구 테스트',CX,fy+51,{font:FONT.b(31,900),color:th.ai});",
+    "to": "  txt(ctx,'나도 해보기 · '+SHARE_HOST,CX,fy+51,{font:FONT.b(31,900),color:th.ai,max:620});"
+  },
+  {
+    "id": "허브 화면 문서 제목",
+    "from": "document.title='킥킥 · 축구 심심풀이 테스트';",
+    "to": "document.title='킥킥 · 축구 심심풀이 테스트 | 피파고수';"
+  },
+  {
+    "id": "각 테스트 화면 문서 제목",
+    "from": "document.title=a.title+' · 킥킥';",
+    "to": "document.title=a.title+' · 킥킥 | 피파고수';"
+  }
+]

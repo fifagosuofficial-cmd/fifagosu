@@ -1,0 +1,13 @@
+{
+  "SITE_URL": "https://fifagosu.pages.dev",
+  "MAX_FILES": 18000,
+  "CONTACT_EMAIL": "fifagosu@gmail.com",
+  "slots": {
+    "_설명": "광고 자리(지금은 비어 있음, 높이 0). 나중에 광고·내부 홍보 카드를 켤 위치만 기록해요. 슬롯은 블록 사이에만 둬요.",
+    "home": ["home-1"],
+    "diag": ["diag-1"],
+    "cards": ["cards-1"],
+    "calc": ["calc-1"],
+    "guide": ["guide-1"]
+  }
+}

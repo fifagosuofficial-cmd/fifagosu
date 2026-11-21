@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 324 64" width="324" height="64" role="img" aria-label="피파고수 fifagosu">
+  <title>피파고수 fifagosu</title>
+  <!--
+    D안 가로형 워드마크: [고 심볼] 피파고수(8도 기울임) fifagosu
+    기본 글자색은 어두운 배경용. 밝은 배경에서는 인라인 SVG로 넣고 CSS 변수로 바꿔요:
+      --logo-ink:#121816; --logo-gold:#C48A00; --logo-sub:#5B6C65
+    좁은 모바일(360px 이하)은 viewBox="0 0 238 64"로 잘라서 영문 생략.
+  -->
+  <rect x="2.5" y="2.5" width="59" height="59" rx="12" fill="#F0B429" stroke="#D99A0B" stroke-width="1"/>
+  <rect x="6" y="6" width="52" height="52" rx="9" fill="none" stroke="#1A1300" stroke-width="1.5" opacity=".5"/>
+  <g fill="#1A1300" transform="translate(4.5 0) skewX(-8)">
+    <path d="M15 12H50V31H42V20H15Z"/>
+    <path d="M13 44H51V52H13Z"/>
+  </g>
+  <circle cx="31.44" cy="36" r="6" fill="#1A1300"/>
+  <path fill="#F0B429" d="M31.44 33.4L33.91 35.2L32.97 38.1H29.91L28.97 35.2Z"/>
+  <path fill="none" stroke="#F0B429" stroke-width="1.1" d="M31.44 33.4V30.6M33.91 35.2L36.58 34.33M32.97 38.1L34.61 40.37M29.91 38.1L28.27 40.37M28.97 35.2L26.3 34.33"/>
+  <g transform="translate(83 14) skewX(-8)">
+    <path style="fill:var(--logo-ink,#E7EEEB)" d="M0 4H24V10H0ZM0 26H24V32H0ZM5 10H10V26H5ZM14 10H19V26H14ZM29 0H35V36H29Z"/>
+    <path style="fill:var(--logo-ink,#E7EEEB)" d="M40 4H64V10H40ZM40 26H64V32H40ZM45 10H50V26H45ZM54 10H59V26H54ZM68 0H74V15H80V21H74V36H68Z"/>
+    <!-- 고: ㅗ의 점이 공 -->
+    <path style="fill:var(--logo-gold,#F0B429)" d="M87 0H113V17H107V6H87ZM85 30H115V36H85Z"/>
+    <circle style="fill:var(--logo-gold,#F0B429)" cx="100" cy="24.5" r="4"/>
+    <path style="fill:var(--logo-gold,#F0B429)" d="M136 0L150 17H142.5L136 9.1L129.5 17H122ZM120 21H152V27H139V36H133V27H120Z"/>
+  </g>
+  <path transform="translate(246 50) scale(1.15)" fill="none" stroke-width="2" stroke-linejoin="round" style="stroke:var(--logo-sub,#8EA199)" d="M2.5 0V-8.5Q2.5-11 5-11H6M0.3-7H5.3M11.5 0V-8M11.5-12V-10M19.5 0V-8.5Q19.5-11 22-11H23M17.3-7H22.3M31.1-4A2.6 3 0 0 0 25.9-4A2.6 3 0 0 0 31.1-4ZM31.1-8V0M39.6-4A2.6 3 0 0 0 34.4-4A2.6 3 0 0 0 39.6-4ZM39.6-8V1.3Q39.6 3.8 37 3.8H34.6M48.1-4A2.6 3 0 0 0 42.9-4A2.6 3 0 0 0 48.1-4ZM56.4-6.3Q55.7-7 54-7Q51.8-7 51.8-5.5Q51.8-4.2 54-4Q56.3-3.8 56.3-2.5Q56.3-1 54-1Q52.2-1 51.5-1.8M60.1-8V-3.4Q60.1-1 62.5-1Q64.9-1 64.9-3.4V-8M64.9-3.5V0"/>
+</svg>

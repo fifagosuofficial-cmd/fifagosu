@@ -98,10 +98,61 @@ async function matches(url, env, waitUntil) {
   return new Response(body, { status: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 }
 
+
+/* ---------- 확률형 아이템(넥슨 공식 공개 페이지) 중계: 팩 오픈 시뮬레이터용 ----------
+ *  /api/prob          → 판매 중 아이템 목록 [{sn,name}]
+ *  /api/prob?sn=123   → {sn,name,period,rows:[{n,amt,p}]}  (p는 % 숫자)
+ *  출처: https://iteminfo.nexon.com/probability/fco  — 6시간 캐시로 호출 최소화 */
+const PROB = 'https://iteminfo.nexon.com/probability/fco';
+const strip = (h) => h.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+async function prob(url, waitUntil) {
+  const sn = url.searchParams.get('sn');
+  if (sn && !/^\d{1,8}$/.test(sn)) return json(400, { message: '잘못된 아이템 번호예요.' });
+  const cache = caches.default;
+  const key = new Request('https://fifagosu.cache/prob/' + (sn || 'list'));
+  const hit = await cache.match(key);
+  if (hit) return hit;
+  const up = await fetch(PROB + (sn ? '?sn=' + sn : ''), { headers: { 'user-agent': 'Mozilla/5.0 (compatible; fifagosu-prob/1.0; +https://fifagosu.pages.dev)', 'accept-language': 'ko-KR,ko;q=0.9' } });
+  if (!up.ok) return json(502, { message: `넥슨 확률 페이지 응답 오류(${up.status})예요.` });
+  const html = await up.text();
+  let body;
+  if (!sn) {
+    const items = []; const seen = new Set();
+    for (const m of html.matchAll(/href="\/probability\/fco\?sn=(\d+)"[^>]*>([\s\S]*?)<\/a>/g)) {
+      if (seen.has(m[1])) continue; seen.add(m[1]);
+      items.push({ sn: +m[1], name: strip(m[2]) });
+    }
+    if (!items.length) return json(502, { message: '확률 목록을 읽지 못했어요.' });
+    body = { source: PROB, items };
+  } else {
+    const name = strip((html.match(/<h3 class="name">([\s\S]*?)<\/h3>/) || [])[1] || '');
+    const period = strip((html.match(/판매 or 획득 가능 기간\s*:\s*([^<]*)/) || [])[1] || '');
+    const tbody = (html.match(/<tbody>([\s\S]*?)<\/tbody>/) || [])[1] || '';
+    const rows = []; let carry = '';
+    for (const tr of tbody.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)) {
+      const cells = [...tr[1].matchAll(/<td([^>]*)>([\s\S]*?)<\/td>/g)].map((c) => ({ a: c[1], t: strip(c[2]) }));
+      if (cells.length < 2) continue;
+      const pct = parseFloat(cells[cells.length - 1].t.replace('%', ''));
+      const amt = cells[cells.length - 2].t;
+      let names = cells.slice(0, -2);
+      if (names.length && /rowspan/.test(names[0].a) && /rating/.test(names[0].a + 'rating')) carry = names[0].t;
+      let n = names.map((c) => c.t).filter(Boolean).join(' · ');
+      if (carry && !n.startsWith(carry) && names.length === 1 && /TOP|기준가|순위/.test(n)) n = carry + ' · ' + n;
+      rows.push({ n, amt, p: isFinite(pct) ? pct : 0 });
+    }
+    if (!rows.length) return json(502, { message: '확률표를 읽지 못했어요.' });
+    body = { source: PROB + '?sn=' + sn, sn: +sn, name, period, rows };
+  }
+  const res = json(200, body, { 'cache-control': 'public, max-age=21600' });
+  waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
 export async function onRequest({ request, env, params, waitUntil }) {
   if (request.method !== 'GET') return json(405, { message: 'GET만 지원해요.' });
   const path = '/' + [].concat(params.path || []).join('/');
   const url = new URL(request.url);
+  if (path === '/prob') return prob(url, waitUntil);
   if (!env.NEXON_API_KEY) return json(500, { message: 'NEXON_API_KEY 환경 변수가 없어요.' });
   if (path === '/summary') return summary(url, env, waitUntil);
   if (path === '/matches') return matches(url, env, waitUntil);

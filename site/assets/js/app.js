@@ -577,7 +577,7 @@ async function loadSeasons(){
 const IMG_BASE='https://fco.dn.nexoncdn.co.kr/live/externalAssets/common/';
 const pimg=(id,cls)=>`<div class="pimgw ${cls||''}"><img loading="lazy" alt="" src="${IMG_BASE}playersAction/p${id}.png" onerror="if(!this.dataset.f){this.dataset.f=1;this.src='${IMG_BASE}players/p${id%1000000}.png'}else{this.remove()}"></div>`;
 /* 데이터센터 상세 페이지(datacenter.js 의 GetPlayerDetail 과 같은 주소) */
-const DC_URL=(id,g,adaptation=5)=>`https://fconline.nexon.com/DataCenter/PlayerInfo?spid=${id}&n1Strong=${g||1}&n1Adaptation=${adaptation}`;
+const DC_URL=(id,g)=>`https://fconline.nexon.com/DataCenter/PlayerInfo?spid=${id}&n1Strong=${g||1}`;
 
 /* ---------- 수집 데이터(data/): 인덱스 + spid%200 샤드 ---------- */
 const DATA_BASE=window.FG_DATA||'/data', SHARDS=200;
@@ -674,7 +674,7 @@ let GRADE_WAVE_RULES={conditions:[
   {name:'금빛 물결',minGrade:8,members:{'5':3,'8':4}},
   {name:'백금빛 물결',minGrade:11,members:{'5':4,'8':5}}
 ]};
-let ADAPTATION_BONUS=[null,-4,-3,-2,-1,0];
+let ADAPTATION_BONUS=[null,0,1,2,3,4];   // 수집 능력치 = 적응도 1단계(데이터센터 기본), 단계당 +1 (2026-11-21 실측)
 if(LIVE){
   fetch(`${DATA_BASE}/teamcolor/teamcolors.json`).then(r=>r.ok?r.json():null).then(j=>{TEAMCOLORS=Array.isArray(j)?j:(j&&(j.items||j.teamcolors)||[]);if(pmCard)renderCard()}).catch(()=>{});
   fetch(`${DATA_BASE}/rules/teamcolor_tiers.json`).then(r=>r.ok?r.json():null).then(j=>{if(j)TC_TIER_RULES=j;if(pmCard)renderCard()}).catch(()=>{});
@@ -744,8 +744,8 @@ function renderCard(){
   const gradeTcLevel=tcLevelFor(gradeTc,pmGradeTcCount), gradeTcBonuses=tcBonusFor(gradeTc,pmGradeTcCount,true);
   const tcCombined={...tcBonuses};Object.entries(gradeTcBonuses).forEach(([k,v])=>{tcCombined[k]=(+tcCombined[k]||0)+(+v||0)});
   const tcOverall=tcValue(tcCombined,'all','전체 능력치');
-  // 대표 확인 규칙: 수집 카드의 기본 능력치는 적응도 5 기준, 단계 차이 1당 모든 스탯 ±1.
-  const adaptDelta=+(ADAPTATION_BONUS[pmAdaptation]??(pmAdaptation-5));
+  // 수집 카드 능력치는 적응도 1단계 기준. 단계마다 모든 능력치 +1 (데이터센터 실측으로 확인).
+  const adaptDelta=+(ADAPTATION_BONUS[pmAdaptation]??(pmAdaptation-1));
   const dtext=v=>v>0?`+${v}`:String(v);
   const tcOptHtml=tcOptions.length?`<option value="">팀컬러 선택</option>${tcOptions.map(x=>`<option value="${esc(x.name)}"${x.name===pmTcName?' selected':''}>${esc(x.name)} (${TC_TYPE(x).includes('nation')||TC_TYPE(x).includes('국가')?'국가':'클럽'})</option>`).join('')}`:'<option value="">적용 가능한 팀컬러 없음</option>';
   const countOpts=count=>Array.from({length:12},(_,i)=>`<option value="${i}"${i===count?' selected':''}>${i===0?'미적용':`${i}명`}</option>`).join('');
@@ -798,7 +798,7 @@ function renderCard(){
      <div class="photo">${bigImg(c.id)}<span class="pb">${bigBadge(c.sid)}</span></div>
     </div>
     <div class="gradebar"><span class="lbl">강화 적용</span>${Array.from({length:MAX_GRADE},(_,i)=>gBtn(i+1)).join('')}</div>
-    <div class="growbar"><label for="pmAdaptation">적응도</label><select id="pmAdaptation">${[1,2,3,4,5].map(n=>`<option value="${n}"${n===pmAdaptation?' selected':''}>${n}단계${n===5?' (기본)':''}</option>`).join('')}</select><span>1단계당 +1 · 기본 카드 능력치는 5단계 기준</span></div>
+    <div class="growbar"><label for="pmAdaptation">적응도</label><select id="pmAdaptation">${[1,2,3,4,5].map(n=>`<option value="${n}"${n===pmAdaptation?' selected':''}>${n}단계${n===5?' (최대)':''}</option>`).join('')}</select><span>1단계당 +1 · 데이터센터 기본값은 1단계</span></div>
     <p class="muted" style="margin:0 0 8px;font-size:12px">강화 ${g}강 ${dtext(b)} · 적응도 ${dtext(adaptDelta)} · 팀컬러는 아래 선택 조건을 반영했어요.</p>
     ${tcCtl}
     ${sum}

@@ -172,8 +172,8 @@
   <section id="g-patch">
     <h2>최신 업데이트 <small>{% if news and news.patch.updated %}{{ news.patch.updated[:10] }} 기준{% else %}자동 갱신 대기 중{% endif %}</small></h2>
     <div class="panel sheet">
-      {% if news and news.patch.items %}
-      <ul class="glist patch-list">{% for p in news.patch.items[:12] %}<li><time datetime="{{ p.date }}">{{ p.date[2:4] }}.{{ p.date[5:7] }}.{{ p.date[8:10] }}</time> <a href="{{ p.url }}" target="_blank" rel="noopener nofollow"><b>{{ p.title }}</b></a>{% if p.summary %}<span> — {{ p.summary if p.summary is string else p.summary|join(' ') }}</span>{% endif %}</li>{% endfor %}</ul>
+      {% if news and news.patch['items'] %}
+      <ul class="glist patch-list">{% for p in news.patch['items'][:12] %}<li><time datetime="{{ p.date }}">{{ p.date[2:4] }}.{{ p.date[5:7] }}.{{ p.date[8:10] }}</time> <a href="{{ p.url }}" target="_blank" rel="noopener nofollow"><b>{{ p.title }}</b></a>{% if p.summary %}<span> — {{ p.summary if p.summary is string else p.summary|join(' ') }}</span>{% endif %}</li>{% endfor %}</ul>
       {% else %}<p class="cl-empty">업데이트 목록을 처음 수집 중이에요. 공식 목록은 여기서 확인할 수 있어요.</p>{% endif %}
       <p class="sub">출처: <a href="https://fconline.nexon.com/news/update/list" target="_blank" rel="noopener">넥슨 FC온라인 업데이트 목록</a>. 자세한 변경 내용은 원문에서 확인해 주세요.</p>
     </div>

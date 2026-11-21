@@ -1,32 +1,26 @@
-﻿/* Layout: dark-first analysis console — sticky header + scrolling nav, one 760px column; home = coach prompt + answer card + quick starts; tools share form-panel / result-panel pattern */
+﻿/* Layout: white + mint analysis console — sticky header + scrolling nav, one 760px column; home = coach prompt + answer card + quick starts; tools share form-panel / result-panel pattern */
 :root{
+  --bg:#F6F8F7; --surface:#FFFFFF; --sunk:#EEF2F0; --raise:#FAFBFB; --line:#DDE5E1;
+  --fg:#111816; --muted:#5E6E67; --accent:#00C775; --accent-ink:#04261A; --accent-soft:#DDFBEC; --brand:#02EA7F;
+  --good:#12A35E; --good-soft:#DDF5E8; --warn:#C25E1E; --warn-soft:#FCE9DA; --crit:#C52A1E; --crit-soft:#FBE4E1;
+  --pitch:#2F7A55; --pitch-line:rgba(255,255,255,.75); --gold:#E2A21A;
+  --v130:#D7263D; --v110:#9A2FC4; --v90:#2C66C9; --v70:#1E8A57; --g-gk:#B07D00; --g-def:#2C66C9; --g-mid:#1E8A57; --g-att:#D7263D;
+  --t-sc:#A86F00; --t-ch:#7A4BD0; --t-cl:#C2412F; --t-ma:#0E8C86; --t-wc:#2C66C9; --t-pr:#1E7F4F; --t-lo:#66736D; --halo:rgba(2,234,127,.10);
+  --f-display:"Black Han Sans","IBM Plex Sans KR",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans KR",system-ui,-apple-system,"Malgun Gothic",sans-serif;
+  --f-data:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+/* 다크는 사용자가 직접 고를 때만 (기본은 화이트 + 민트) */
+:root[data-theme="dark"]{
+
   --bg:#0C1110; --surface:#151C1A; --sunk:#0F1514; --raise:#1C2522; --line:#26322E;
   --fg:#E7EEEB; --muted:#8EA199; --accent:#02EA7F; --accent-ink:#062419; --accent-soft:#123326; --brand:#02EA7F;
   --good:#4CC38A; --good-soft:#163526; --warn:#E8854A; --warn-soft:#3A2416; --crit:#F2766B; --crit-soft:#3A1F1C;
   --pitch:#1D4A36; --pitch-line:rgba(255,255,255,.5); --gold:#F0B429;
   --v130:#FF5A5F; --v110:#C46BF0; --v90:#5C9DFF; --v70:#47C38A; --g-gk:#E8B33A; --g-def:#5C9DFF; --g-mid:#47C38A; --g-att:#FF5A5F;
   --t-sc:#F0B429; --t-ch:#B98CFF; --t-cl:#FF7A6B; --t-ma:#3FD0C9; --t-wc:#6AA8FF; --t-pr:#5CCB7E; --t-lo:#9AA7A1; --halo:rgba(31,224,138,.07);
-  --f-display:"Black Han Sans","IBM Plex Sans KR",system-ui,sans-serif;
-  --f-body:"IBM Plex Sans KR",system-ui,-apple-system,"Malgun Gothic",sans-serif;
-  --f-data:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
-  color-scheme:dark;
-}
-@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){
-  --bg:#F2F5F3; --surface:#FFFFFF; --sunk:#E8EDEA; --raise:#F7F9F8; --line:#D3DCD8;
-  --fg:#121816; --muted:#5B6C65; --accent:#087A49; --accent-ink:#FFFFFF; --accent-soft:#E0F5EA; --brand:#02EA7F;
-  --good:#1E7F4F; --good-soft:#DDF1E6; --warn:#B4541C; --warn-soft:#FCE7D8; --crit:#B42318; --crit-soft:#FBE3E0;
-  --pitch:#2F7A55; --pitch-line:rgba(255,255,255,.75); --gold:#E2A21A;
-  --v130:#D7263D; --v110:#9A2FC4; --v90:#2C66C9; --v70:#1E8A57; --g-gk:#B07D00; --g-def:#2C66C9; --g-mid:#1E8A57; --g-att:#D7263D;
-  --t-sc:#A86F00; --t-ch:#7A4BD0; --t-cl:#C2412F; --t-ma:#0E8C86; --t-wc:#2C66C9; --t-pr:#1E7F4F; --t-lo:#66736D; --halo:rgba(8,122,73,.06);
-  color-scheme:light}}
-:root[data-theme="light"]{
-  --bg:#F2F5F3; --surface:#FFFFFF; --sunk:#E8EDEA; --raise:#F7F9F8; --line:#D3DCD8;
-  --fg:#121816; --muted:#5B6C65; --accent:#087A49; --accent-ink:#FFFFFF; --accent-soft:#E0F5EA; --brand:#02EA7F;
-  --good:#1E7F4F; --good-soft:#DDF1E6; --warn:#B4541C; --warn-soft:#FCE7D8; --crit:#B42318; --crit-soft:#FBE3E0;
-  --pitch:#2F7A55; --pitch-line:rgba(255,255,255,.75); --gold:#E2A21A;
-  --v130:#D7263D; --v110:#9A2FC4; --v90:#2C66C9; --v70:#1E8A57; --g-gk:#B07D00; --g-def:#2C66C9; --g-mid:#1E8A57; --g-att:#D7263D;
-  --t-sc:#A86F00; --t-ch:#7A4BD0; --t-cl:#C2412F; --t-ma:#0E8C86; --t-wc:#2C66C9; --t-pr:#1E7F4F; --t-lo:#66736D; --halo:rgba(8,122,73,.06);
-  color-scheme:light}
+    color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{background:var(--bg)}
@@ -437,7 +431,7 @@ nav.menu a[data-view][aria-current="page"]{color:var(--accent-ink);background:va
 /* 공식 로고 */
 a.logo{text-decoration:none;color:inherit}
 .logo picture{display:block;line-height:0}
-.logo img{display:block;height:34px;width:auto;background:#0b120f;border-radius:9px;padding:3px 9px}
+.logo img{display:block;height:38px;width:auto;filter:drop-shadow(0 1px 1px rgba(0,60,35,.35))}
 .logo small{font-family:var(--f-data);font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:none}
 @media (max-width:360px){.logo small{display:none}}
 .chips a[aria-current="page"]{border-color:var(--accent);color:var(--accent)}
@@ -783,3 +777,19 @@ a.mk-tile:hover{border-color:var(--accent)}
 .mk-chips button:hover{border-color:var(--accent)}.mk-chips em{font:700 12px var(--f-data);font-style:normal;color:var(--muted)}
 .mk-news{display:grid;gap:18px;grid-template-columns:minmax(0,1fr);padding-top:6px;border-top:1px solid var(--line)}
 @media (min-width:980px){.mk-news{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 260px}}
+
+/* ── 패치노트 게시판 ── */
+.patchp{max-width:900px}
+.pt-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.pt-month{font:800 14px var(--f-body);color:var(--muted);padding:14px 2px 2px;border-bottom:1px solid var(--line)}
+.pt-item details{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.pt-item details[open]{border-color:var(--accent)}
+.pt-item summary{display:flex;align-items:center;gap:14px;padding:12px 14px;cursor:pointer;list-style:none}
+.pt-item summary::-webkit-details-marker{display:none}
+.pt-item time{display:grid;place-items:center;min-width:46px;padding:4px 0;border-radius:8px;background:var(--accent-soft);color:var(--fg);line-height:1.1}
+.pt-item time b{font:800 18px var(--f-data)}.pt-item time small{font-size:11px;color:var(--muted)}
+.pt-main{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
+.pt-title{font-weight:700}
+.pt-body{padding:0 14px 12px 74px}
+.pt-body ul{margin:0 0 6px;padding-left:18px;display:grid;gap:4px}
+@media (max-width:600px){.pt-body{padding-left:14px}}

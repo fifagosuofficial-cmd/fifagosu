@@ -28,6 +28,8 @@ KST = dt.timezone(dt.timedelta(hours=9))
 # 고정 페이지: (출력 파일, 템플릿, 경로, 제목, 설명, sitemap 포함 여부, 추가 값)
 MAIN_T = "index.html"
 VIEW_PAGES = [
+    ("sim/index.html", "/sim/", "sim", "FC온라인 강화·팩 오픈 시뮬레이터 | 피파고수",
+     "선수를 골라 강화 확률대로 강화해 보고, 웹 상점 판매 팩을 넥슨 공개 확률표 그대로 열어 BP·선수 가치·실수령 수익까지 계산해요."),
     ("index.html", "/", "home", "피파고수 — FC온라인 전적 진단·전체 카드 검색",
      "FC온라인 공식경기·감독모드 최근 30~100경기로 약점을 진단하고, 모든 시즌 선수 카드를 검색하세요. "
   "강화별 시세·능력치, BP·강화 계산기, 게임 가이드까지."),
@@ -49,8 +51,6 @@ GUIDE_PAGES = [
     ("market", "FC온라인 급여·이적시장 — 급여 상한·판매 수수료 계산", "FC온라인 급여 상한 310과 판매 수수료 계산식, 수수료 쿠폰 지급 방식을 정리했어요."),
 ]
 PAGES = [
-    ("sim/index.html", "sim.html", "/sim/", "FC온라인 강화·팩 오픈 시뮬레이터 | 피파고수",
-     "FC온라인 강화 성공 확률과 넥슨 공개 확률표 그대로 캐시 아이템(팩) 오픈을 미리 체험해 보세요.", True),
     ("patch/index.html", "patch.html", "/patch/", "FC온라인 패치노트 — 업데이트·밸런스·개선 내역 | 피파고수",
      "FC온라인 공식 업데이트·패치·밸런스 조정 공지를 날짜순으로 모아 핵심만 요약했어요. 매일 자동 갱신.", True),
     ("news/index.html", "news.html", "/news/", "FC온라인 소식 — 공지·점검·업데이트·축구 뉴스 | 피파고수",
@@ -183,7 +183,7 @@ def main(argv=None):
                    desc, x["kind"] == "official", root="../", post=post, active="news")
     for fname, tpl, path, title, desc, in_map in PAGES:
         render(fname, tpl, path, title, desc, in_map, root="/" if fname == "404.html" else ("../" if "/" in fname else ""),
-               active="news" if fname.startswith("news/") else ("patch" if fname.startswith("patch/") else ("sim" if fname.startswith("sim/") else "")))
+               active="news" if fname.startswith("news/") else ("patch" if fname.startswith("patch/") else ""))
     if (out / "fun" / "index.html").exists():
         sitemap.append(site_url + "/fun/")
 

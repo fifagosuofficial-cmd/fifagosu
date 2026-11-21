@@ -16,7 +16,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: crawl
+  # 코드 수정(push) 배포는 긴 수집이 도는 중에도 바로 나가도록 수집과 줄을 따로 서요.
+  group: ${{ github.event_name == 'push' && format('deploy-{0}', github.ref_name) || 'crawl' }}
   cancel-in-progress: false
 
 env:
@@ -67,6 +68,12 @@ jobs:
       - name: 배포 폴더 만들기
         if: env.CF_TOKEN != ''
         run: |
+          # 긴 수집 중에 사이트 코드가 바뀌었을 수 있으니, 수집 실행은 최신 사이트 코드로 빌드해요.
+          if [ "${{ github.event_name }}" != "push" ]; then
+            if git fetch -q --depth=1 origin "${{ github.ref_name }}"; then
+              for p in site functions; do git checkout -q FETCH_HEAD -- "$p" 2>/dev/null || true; done
+            fi
+          fi
           mkdir -p dist
           if [ -f site/build.py ]; then
             pip install -q -r site/requirements.txt

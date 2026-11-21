@@ -28,6 +28,20 @@ class TeamColorTests(unittest.TestCase):
         self.assertEqual(korea["type"], "nation")
         self.assertEqual(korea["effects"][0]["stats"]["crossing"], 2)
 
+    def test_parse_real_card_layout(self):
+        html = (ROOT / "tests" / "fixtures" / "teamcolor_cards.html").read_text("utf-8")
+        rows = {x["name"]: x for x in teamcolor.parse_teamcolors(html)}
+        spurs = rows["토트넘 홋스퍼"]
+        self.assertEqual((spurs["type"], spurs["clubId"], spurs["maxLevel"]), ("club", 18, 4))
+        self.assertEqual(spurs["requiredCounts"], [11])
+        self.assertEqual(spurs["effects"][0]["stats"], {"all": 4, "reactions": 3, "positioning": 3})
+        korea = rows["대한민국"]
+        self.assertEqual((korea["type"], korea["nationId"]), ("nation", 167))
+        self.assertEqual(rows["금빛 물결"]["type"], "grade")
+        self.assertEqual(rows["금빛 물결"]["effects"][0]["stats"], {"all": 4})
+        self.assertEqual(rows["2002 대한민국"]["type"], "special")
+        self.assertEqual(rows["초심자 가호"]["type"], "event")
+
     def test_collect_rejects_drop_and_keeps_previous_file(self):
         # 50건 최소 기준을 만족하는 응답이지만 기존 목록보다 급감하므로 저장하면 안 돼요.
         rows = "".join(

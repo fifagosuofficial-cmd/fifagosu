@@ -238,7 +238,7 @@ def parse_list(html: str) -> list[dict]:
     return out
 
 
-def parse_preview(html: str, spid: int, adaptation: int = 5) -> dict | None:
+def parse_preview(html: str, spid: int, adaptation: int = 1) -> dict | None:
     """데이터센터 PlayerPreView 응답 → 세부 정보(신체·개인기·특성·요약/세부 능력치·클럽 경력)"""
     soup = BeautifulSoup(html, "html.parser")
     stats_el = soup.select(".content_bottom li.ab")
@@ -461,8 +461,8 @@ def cmd_detail(client, store, max_n, minutes):
             log("시간 예산 소진 — 다음 실행에서 이어서")
             break
         html = client.post("/datacenter/PlayerPreView",
-                           {"spid": r["spid"], "n1strong": 1, "n1Grow": 0, "n1Adaptation": 5, "n1TeamColor": 0})
-        rec = parse_preview(html, r["spid"], adaptation=5)
+                           {"spid": r["spid"], "n1strong": 1, "n1Grow": 0, "n1TeamColor": 0})   # n1Grow=0 → 적응도 1단계
+        rec = parse_preview(html, r["spid"], adaptation=1)
         if rec:
             rec["at"] = now_iso()
             store.put("detail", rec)

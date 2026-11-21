@@ -26,9 +26,9 @@
         <div class="bd-row bd-th" role="row"><span role="columnheader">번호</span><span role="columnheader">분류</span><span role="columnheader">제목</span><span role="columnheader">출처</span><span role="columnheader">날짜</span></div>
         <div id="bdBody">
         {% for x in news.board %}
-          <a class="bd-row" role="row" href="{{ root }}news/{{ x.id }}" data-cat="{{ x.cat }}" data-league="{{ x.league or '기타' }}" data-date="{{ x.date }}" data-q="{{ (x.title ~ ' ' ~ (x.summary|join(' ')) ~ ' ' ~ x.source)|lower|e }}">
+          <a class="bd-row" role="row" href="{{ root }}news/{{ x.id }}" data-cat="{{ x.cat }}" data-league="{{ x.league|default('기타') }}" data-date="{{ x.date }}" data-q="{{ (x.title ~ ' ' ~ (x.summary|join(' ')) ~ ' ' ~ x.source)|lower|e }}">
             <span class="bd-no" role="cell">{{ news.board|length - loop.index0 }}</span>
-            <span role="cell"><b class="cl-badge cat-{{ x.cat }}">{{ x.label }}</b>{% if x.cat in ['world','korea'] %}<small class="bd-league">{{ x.league or '기타' }}</small>{% endif %}</span>
+            <span role="cell"><b class="cl-badge cat-{{ x.cat }}">{{ x.label }}</b>{% if x.cat in ['world','korea'] %}<small class="bd-league">{{ x.league|default('기타') }}</small>{% endif %}</span>
             <span class="bd-t" role="cell">{{ x.title }}<i class="bd-new" hidden>N</i></span>
             <span class="bd-src" role="cell">{{ x.source }}</span>
             <span class="bd-d" role="cell"><time datetime="{{ x.date }}">{{ x.date[2:4] }}.{{ x.date[5:7] }}.{{ x.date[8:10] }}</time></span>

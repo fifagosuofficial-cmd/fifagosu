@@ -109,3 +109,34 @@ def test_run_no_meta(tmp_path):
     put_list(tmp_path, [rec(101, "2026-11-21")])
     s = derive.run(tmp_path, "2026-11-21", no_meta=True)
     assert s["hist"] == "ok" and s["meta"] == "skip" and (tmp_path / "run.json").exists()
+
+
+def test_market_summary_movers_popular_and_new(tmp_path):
+        if True:
+            d = tmp_path
+            (d / "hist").mkdir(); (d / "list").mkdir(); (d / "meta").mkdir()
+            derive.save(d / "hist" / "dates.json", {"dates": ["2026-11-21", "2026-11-22"], "counts": [3, 3], "grades": derive.GRADES})
+            def lst(k, name, games, p1):
+                return {"spid": k, "name": name, "ovr": 120, "pos": [["ST", 120]], "games": games,
+                        "price": [p1 * (i + 1) for i in range(13)]}
+            listed = {"100000001": lst(100000001, "올라", 300, 120_000_000),
+                      "100000002": lst(100000002, "내려", 200, 80_000_000),
+                      "100000003": lst(100000003, "싸구려", 500, 1_000_000)}
+            hist = {"100000001": [[100_000_000, 120_000_000], None, None, None, None],
+                    "100000002": [[100_000_000, 80_000_000], None, None, None, None],
+                    "100000003": [[900_000, 1_000_000], None, None, None, None]}
+            for k, v in listed.items():
+                derive.save(d / "list" / f"{int(k) % 200}.json", {k: v})
+                derive.save(d / "hist" / f"{int(k) % 200}.json", {k: hist[k]})
+            derive.save(d / "meta" / "new_today.json", {"date": "2026-11-22", "ids": [300000009]})
+            derive.save(d / "meta" / "spid.json", [{"id": 300000009, "name": "신입"}])
+            res = derive.step_market(d, "2026-11-22")
+            assert res["market"] == "ok"
+            out = json.loads((d / "market" / "summary.json").read_text("utf-8"))
+            g1 = out["byGrade"]["1"]
+            assert [x["n"] for x in g1["risers"]] == ["올라"]
+            assert g1["risers"][0]["c"] == 20.0
+            assert [x["n"] for x in g1["fallers"]] == ["내려"]
+            assert g1["popular"][0]["n"] == "싸구려"          # 인기 순위는 가격 필터 없이 사용량 기준
+            assert out["newCards"][0]["n"] == "신입"
+            assert out["index"]["up"] == 1

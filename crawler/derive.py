@@ -11,6 +11,7 @@
   hist/dates.json                      이력 날짜 목록·날짜별 갱신 카드 수
   hist/{spid%200}.json                 {spid: [[1강…], [5강…], [8강…], [11강…], [13강…]]} 날짜 순서와 같은 위치
   rules/*.json                         crawler/rules/ 손 관리 규칙표 사본
+  market/summary.json                  홈 '오늘의 시장': 강화별 급등·급락·인기 TOP, 시장 지수, 신규 카드
   run.json                             오늘 실행 요약
 
 데이터센터 요청은 하나도 늘지 않아요(이미 받은 13단계 시세에서 고르기만 함).
@@ -201,6 +202,107 @@ def step_history(data, date):
     return res
 
 
+# ---------------------------------------------------------------- 시장 요약 (홈 '오늘의 시장 브리핑')
+
+MARKET_GRADES = [1, 5, 8]            # 홈에서 고를 수 있는 강화 기준 (GRADES 안의 값)
+MARKET_MIN_PRICE = 5_000_000         # 이보다 싼 카드는 등락률이 튀기 쉬워 순위에서 제외
+MARKET_MIN_GAMES = 10                # 거래·사용이 거의 없는 카드 제외
+MARKET_TOP = 10
+NEW_KEEP_DAYS = 14
+
+
+def _item(k, r, v, pv):
+    pos = (r.get("pos") or [[None, None]])[0]
+    out = {"id": int(k), "n": r.get("name") or "", "s": int(k) // 1_000_000,
+           "o": r.get("ovr") or (pos[1] if len(pos) > 1 else None), "p": pos[0], "v": v}
+    if pv:
+        out.update(pv=pv, c=round((v - pv) / pv * 100, 1))
+    return out
+
+
+def step_market(data, date):
+    """시세 이력에서 오늘 등락 TOP·인기 카드·시장 지수·신규 카드를 뽑아 market/summary.json 하나로 저장.
+    데이터센터 요청은 늘지 않아요(이미 저장한 list·hist만 읽음)."""
+    hdir = data / "hist"
+    meta = load(hdir / "dates.json", {"dates": []})
+    dates = meta.get("dates") or []
+    listed = {}
+    for n in range(SHARDS):
+        listed.update(load(data / "list" / f"{n}.json", {}))
+    res = {"market": "skip"}
+    if not listed:
+        return res
+    last = len(dates) - 1
+    hist = {}
+    if dates and dates[-1] == date:
+        for n in range(SHARDS):
+            hist.update(load(hdir / f"{n}.json", {}))
+    by_grade = {}
+    idx_pcts = []
+    popular_keys = sorted(listed, key=lambda k: -(listed[k].get("games") or 0))[:300]
+    for g in MARKET_GRADES:
+        gi = GRADES.index(g)
+        moves = []
+        for k, rows in hist.items():
+            row = rows[gi] if rows and len(rows) > gi else None
+            if not row or len(row) <= last or not row[last]:
+                continue
+            prev = next((row[i] for i in range(last - 1, max(-1, last - 8), -1) if row[i]), None)
+            r = listed.get(k)
+            if not prev or not r:
+                continue
+            if row[last] < MARKET_MIN_PRICE or (r.get("games") or 0) < MARKET_MIN_GAMES:
+                continue
+            moves.append(_item(k, r, row[last], prev))
+        moves.sort(key=lambda x: x["c"])
+        risers = [x for x in reversed(moves) if x["c"] > 0][:MARKET_TOP]
+        fallers = [x for x in moves if x["c"] < 0][:MARKET_TOP]
+        mv = {x["id"]: x for x in moves}
+        popular = []
+        for k in popular_keys[:MARKET_TOP * 2]:
+            r = listed[k]
+            p = r.get("price") or []
+            v = p[g - 1] if len(p) >= g else None
+            if not v:
+                continue
+            popular.append(mv.get(int(k)) or _item(k, r, v, None))
+            if len(popular) >= MARKET_TOP:
+                break
+        by_grade[str(g)] = {"risers": risers, "fallers": fallers, "popular": popular, "moved": len(moves)}
+        if g == 1:
+            pk = {int(k) for k in popular_keys}
+            idx_pcts = [x["c"] for x in moves if x["id"] in pk]
+    index = None
+    if idx_pcts:
+        sp = sorted(idx_pcts)
+        index = {"median": sp[len(sp) // 2], "avg": round(sum(sp) / len(sp), 2), "n": len(sp),
+                 "up": sum(1 for x in sp if x > 0), "down": sum(1 for x in sp if x < 0), "flat": sum(1 for x in sp if x == 0)}
+    # 신규 카드: 오늘 감지분을 14일 동안 보관
+    newp = data / "market" / "new_cards.json"
+    keep = load(newp, {"items": []})["items"]
+    today_new = load(data / "meta" / "new_today.json", {})
+    if today_new.get("date") == date:
+        names = {int(x["id"]): x.get("name", "") for x in load(data / "meta" / "spid.json", [])}
+        have = {x["id"] for x in keep}
+        for i in today_new.get("ids", []):
+            if i not in have:
+                r = listed.get(str(i)) or {}
+                keep.append({"id": i, "n": r.get("name") or names.get(i, ""), "s": i // 1_000_000,
+                             "o": r.get("ovr"), "d": date})
+    cut = (dt.date.fromisoformat(date) - dt.timedelta(days=NEW_KEEP_DAYS)).isoformat()
+    keep = [x for x in keep if x["d"] >= cut]
+    keep.sort(key=lambda x: (x["d"], x.get("o") or 0), reverse=True)
+    save(newp, {"items": keep})
+    out = {"date": date, "prev": dates[-2] if len(dates) >= 2 else None, "days": len(dates),
+           "grades": MARKET_GRADES, "index": index, "byGrade": by_grade,
+           "newCards": keep[:24], "newCount": len(keep),
+           "rule": f"{MARKET_MIN_PRICE // 10000:,}만 BP 이상·사용 {MARKET_MIN_GAMES}경기 이상 카드, 직전 기록일 대비"}
+    save(data / "market" / "summary.json", out)
+    res = {"market": "ok", "market_moved": by_grade.get("1", {}).get("moved", 0), "market_new": len(keep)}
+    log(f"시장 요약: 1강 등락 집계 {res['market_moved']}장 · 신규 카드 {len(keep)}장")
+    return res
+
+
 # ---------------------------------------------------------------- 규칙표 복사
 
 def step_rules(data, src=RULES_SRC):
@@ -236,6 +338,11 @@ def run(data=DATA, date=None, meta_get=None, no_meta=False, client=None):
     summary = {"date": date, "at": dt.datetime.now(KST).isoformat(timespec="seconds")}
     summary.update(step_meta(data, date, None if no_meta else fetch_meta(meta_get)))
     summary.update(step_history(data, date))
+    try:
+        summary.update(step_market(data, date))
+    except Exception as e:  # 홈 요약 실패가 수집 저장을 막지 않게
+        log("시장 요약 실패:", e.__class__.__name__, str(e)[:180])
+        summary["market"] = "error"
     summary.update(step_rules(data))
     summary.update(step_teamcolors(data, client))
     if client is not None:

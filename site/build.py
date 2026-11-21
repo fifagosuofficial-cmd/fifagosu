@@ -97,7 +97,8 @@ def load_news(data_dir, today):
         events.append({**e, "pct": pct})
     events.sort(key=lambda e: e["end"])
     timeline = sorted(official + updates[:1], key=lambda x: x.get("date") or "", reverse=True)
-    return {"updated": feed.get("updated", ""), "official": timeline[:8], "press": press[:7], "events": events[:6], "patch": patch,
+    world = [x for x in press if x["cat"] == "world"] or press
+    return {"updated": feed.get("updated", ""), "official": timeline[:8], "press": press[:7], "world": world[:8], "events": events[:6], "patch": patch,
             "check": check, "upd": updates[0] if updates else None,
             "all_official": sorted(official + updates, key=lambda x: x.get("date") or "", reverse=True)[:150],
             "all_press": press[:150],
@@ -140,7 +141,10 @@ def main(argv=None):
     data_dir = (ROOT / a.data) if not Path(a.data).is_absolute() else Path(a.data)
     today = dt.datetime.now(KST).strftime("%Y-%m-%d")
     news = load_news(data_dir, today)
-    common = dict(news=news, SITE_URL=site_url, ver=ver, cfg=cfg, contact=cfg.get("CONTACT_EMAIL") or "",
+    market = _load(data_dir / "market" / "summary.json")
+    if market and not market.get("byGrade"):
+        market = None
+    common = dict(news=news, market=market, SITE_URL=site_url, ver=ver, cfg=cfg, contact=cfg.get("CONTACT_EMAIL") or "",
                   updated=dt.datetime.now(KST).strftime("%Y-%m-%d"), og_title=None, og_description=None)
     sitemap = []
     titles = json.dumps({v: t for _, _, v, t, _ in VIEW_PAGES}, ensure_ascii=False)

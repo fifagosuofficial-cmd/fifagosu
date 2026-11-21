@@ -520,6 +520,14 @@ def main(argv=None):
         log("넥슨 서버가 요청을 막았어요:", e, "— 받은 데이터만 저장하고 종료")
         store.save()
     cmd_index(store)
+    if args.cmd == "daily":
+        # 파생 데이터(메타 정적화·신규 카드 기준선·시세 이력·규칙표). 실패해도 수집 결과는 그대로 저장돼요.
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            import derive
+            derive.run(DATA)
+        except Exception as e:  # noqa: BLE001
+            log("파생 데이터 만들기 실패:", e)
 
 
 if __name__ == "__main__":

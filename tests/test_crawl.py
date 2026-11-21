@@ -41,7 +41,7 @@ def test_parse_preview():
     assert len(d["stats"]) == 34 and all(v is not None for v in d["stats"].values())
     assert d["stats"]["sprintspeed"] == 108 and d["stats"]["dribbling"] == 111 and d["stats"]["gkpositioning"] == 16
     assert d["clubs"][1] == ["2014 ~ 2015", "맨체스터 시티", 1]
-    assert d["adaptation"] == 5
+    assert d["adaptation"] == 1          # 데이터센터 기본(n1Grow=0) = 적응도 1단계
     assert fgcrawl.parse_preview((FX / "preview.html").read_text("utf-8"), 886005471, 2)["adaptation"] == 2
 
 
@@ -98,3 +98,10 @@ def test_fetch_traits_parses_new_group():
     class C: s = S()
     tr = fgcrawl.fetch_traits(C())
     assert tr["new"] == ["크로스 포쳐", "트릭스터", "체이서"] and tr["all"][-1] == "승부욕"
+
+
+def test_adaptation_rule_matches_datacenter():
+    """2026-11-21 실측: 수집 기준 적응도 1, 단계마다 +1"""
+    import json
+    rule = json.loads((Path(__file__).resolve().parent.parent / "crawler" / "rules" / "adaptation_bonus.json").read_text("utf-8"))
+    assert rule["baseLevel"] == 1 and rule["bonusFromBase"] == [None, 0, 1, 2, 3, 4] and rule["verified"] is True

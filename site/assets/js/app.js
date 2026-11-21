@@ -870,3 +870,15 @@ initCards();
  if(VIEWS.includes(h))show(h);else if(bv&&bv!=='home'&&VIEWS.includes(bv))show(bv,true);}
 window.addEventListener('popstate',()=>{const R=window.FG_ROUTES||{};const p=location.pathname.replace(/\.html$/,'').replace(/(.)\/$/,'$1');const v=Object.keys(R).find(k=>R[k]===p)||(p.startsWith('/guide')?'guide':'home');show(v,true);if(window.FG_TITLES&&FG_TITLES[v])document.title=FG_TITLES[v]});
 
+/* 홈 '오늘의 시장': 강화 기준 탭 · 시즌 배지 · 누르면 선수 정보창 */
+(function(){
+  const home=document.getElementById('v-home'); if(!home)return;
+  home.querySelectorAll('.mk-ssn[data-sid]').forEach(el=>{el.innerHTML=sch(+el.dataset.sid)});
+  const tabs=home.querySelector('.mk-grade');
+  if(tabs)tabs.addEventListener('click',e=>{const b=e.target.closest('[data-mg]');if(!b)return;
+    tabs.querySelectorAll('[data-mg]').forEach(x=>x.setAttribute('aria-selected',x===b));
+    home.querySelectorAll('.mk-panel').forEach(p=>p.hidden=p.dataset.mp!==b.dataset.mg)});
+  home.addEventListener('click',e=>{const b=e.target.closest('[data-card]');if(!b)return;
+    const g=+(tabs&&tabs.querySelector('[aria-selected="true"]')?.dataset.mg)||1;
+    openCard(+b.dataset.card); if(g>1){pmGrade=g;renderCard()}});
+})();

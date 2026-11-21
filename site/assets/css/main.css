@@ -793,3 +793,66 @@ a.mk-tile:hover{border-color:var(--accent)}
 .pt-body{padding:0 14px 12px 74px}
 .pt-body ul{margin:0 0 6px;padding-left:18px;display:grid;gap:4px}
 @media (max-width:600px){.pt-body{padding-left:14px}}
+
+/* 전적 진단: 닉네임 옆 역대 최고 등급 아이콘 */
+.board .nick-wrap{display:flex;align-items:center;gap:10px}
+.divimg{width:52px;height:52px;object-fit:contain;flex:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.18))}
+.tier-max{display:inline-flex;align-items:center;gap:6px}
+.divimg-sm{width:26px;height:26px;object-fit:contain}
+
+/* 선수 정보창: 강화 단계 버튼 줄 · 전 포지션 OVR 경기장 */
+.pm2-gbar{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.pm2-gbar>span{font-size:13px;color:var(--muted);margin-right:4px}
+.pm2-gbar .gb{min-width:30px;height:28px;border-radius:5px;border:1px solid var(--line);background:#5a4334;color:#fff;font:700 13px var(--f-data);cursor:pointer}
+.pm2-gbar .gb.g-silver{background:#c9ced6;color:#222}.pm2-gbar .gb.g-gold{background:#e7bf3c;color:#222}.pm2-gbar .gb.g-plat{background:linear-gradient(135deg,#f3eaff,#bcd2ff 50%,#ffd2ea);color:#222}
+.pm2-gbar .gb[aria-pressed=true]{outline:2px solid var(--accent);outline-offset:1px}
+.pm2-opts{grid-template-columns:repeat(2,minmax(0,1fr))}
+.pm2-pitch{position:relative;aspect-ratio:2/1.05;border-radius:10px;background:#2f3a35;overflow:hidden;
+  background-image:linear-gradient(90deg,transparent 49.8%,rgba(255,255,255,.18) 49.8% 50.2%,transparent 50.2%),radial-gradient(circle at 50% 50%,transparent 13%,rgba(255,255,255,.18) 13% 13.6%,transparent 13.6%),linear-gradient(90deg,rgba(255,255,255,.04) 50%,transparent 50%);background-size:100% 100%,100% 100%,20% 100%}
+.pm2-pos{position:absolute;transform:translate(-50%,-50%);width:13%;max-width:58px;aspect-ratio:1;border-radius:50%;display:grid;place-content:center;text-align:center;background:#3a4440;border:2px solid #5C9DFF;color:#fff;line-height:1.05}
+.pm2-pos b{font:800 11px var(--f-data)}.pm2-pos span{font:800 14px var(--f-data)}
+.pm2-pos.pg-gk{border-color:#E8B33A}.pm2-pos.pg-mid{border-color:#2ED3A0}.pm2-pos.pg-att{border-color:#FF5A5F}
+.pm2-pos.real{border-width:3px;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
+@media (max-width:760px){.pm2-pos b{font-size:9px}.pm2-pos span{font-size:12px}}
+
+/* ── 시뮬 (강화 · 팩 오픈) ── */
+.simp{max-width:1000px}
+.sim-tabs{display:flex;gap:6px}
+.sim-tabs button{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:8px 18px;font:700 15px var(--f-body);cursor:pointer}
+.sim-tabs button[aria-selected=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.sim-panel{display:grid;gap:14px}
+.sim-grid{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:860px){.sim-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)}}
+.sim-box{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:16px;display:grid;gap:12px;align-content:start;min-width:0}
+.sim-box h2{margin:0;font-size:16px}.sim-box h2 small{font-weight:400;color:var(--muted);font-size:12px;margin-left:6px}
+.sim-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sim-form label,.sim-box>label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.sim-form select,.sim-box select,.sim-box input[type=search]{width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--sunk);color:var(--fg);font-size:14px}
+.sim-btns{display:flex;flex-wrap:wrap;gap:8px}
+.sim-btns button{padding:9px 16px;border-radius:8px;font-weight:700;cursor:pointer}
+.sim-btns .ghost{border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.sim-btns button:disabled{opacity:.45;cursor:default}
+.sim-note{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
+.sim-stage{justify-items:center;text-align:center}
+.sim-card{width:150px;height:190px;border-radius:14px;display:grid;place-content:center;gap:4px;background:#5a4334;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.15);transition:transform .15s}
+.sim-card.g-silver{background:linear-gradient(160deg,#eef1f5,#b9c0ca);color:#222}.sim-card.g-gold{background:linear-gradient(160deg,#ffe38a,#d9a51d);color:#2a2000}.sim-card.g-plat{background:linear-gradient(135deg,#f3eaff,#bcd2ff 50%,#ffd2ea);color:#222}
+.sim-g{font:800 64px/1 var(--f-data)}.sim-card small{font-weight:700}
+.sim-card.fx-ok{animation:simpop .35s}.sim-card.fx-ng{animation:simshake .35s}.sim-card.fx-win{box-shadow:0 0 0 4px var(--accent),0 8px 24px rgba(0,199,117,.35)}
+@keyframes simpop{50%{transform:scale(1.08)}}@keyframes simshake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.sim-msg{margin:0;font-weight:700}
+.sim-cnt,.sim-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;width:100%}
+.sim-cnt div,.sim-stats div{background:var(--sunk);border-radius:8px;padding:8px;display:grid;gap:2px;text-align:center}
+.sim-cnt span,.sim-stats span{font-size:12px;color:var(--muted)}.sim-cnt b,.sim-stats b{font:800 18px var(--f-data)}
+.sim-stats .wide{grid-column:span 2;text-align:left}.sim-stats .wide b{font-size:14px}
+.sim-log{list-style:none;margin:0;padding:0;width:100%;max-height:180px;overflow:auto;text-align:left;font-size:13px}
+.sim-log li{padding:4px 6px;border-bottom:1px solid var(--line)}.sim-log li.ok{color:var(--good)}.sim-log li.ng{color:var(--muted)}.sim-log small{float:right;color:var(--muted)}
+#pSel{min-height:220px;padding:4px}
+.sim-chk{display:flex!important;align-items:center;gap:6px}
+.sim-results{display:grid;gap:6px}
+.sim-pull{display:grid;grid-template-columns:1fr auto;gap:2px 8px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--raise)}
+.sim-pull b{grid-column:1;grid-row:1}.sim-pull em{font:700 12px var(--f-data);color:var(--muted);font-style:normal;grid-column:2;grid-row:1;text-align:right}
+.sim-pull .via{grid-column:1/-1;color:var(--muted);font-size:11px}
+.sim-pull.rare{border-color:var(--gold);background:linear-gradient(90deg,rgba(242,181,28,.18),transparent)}
+.sim-table{max-height:360px;overflow:auto}
+.sim-table table{width:100%;border-collapse:collapse;font-size:13px}.sim-table th,.sim-table td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
+.sim-table .n{text-align:right;font-family:var(--f-data)}.sim-table tr.rare td{color:var(--warn)}.sim-table em{font-style:normal;font-size:11px;background:var(--accent-soft);border-radius:4px;padding:0 4px}

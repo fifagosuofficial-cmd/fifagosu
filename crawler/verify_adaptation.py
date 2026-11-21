@@ -1,4 +1,8 @@
-"""PlayerPreView의 n1Adaptation 1~5 응답을 비교해 규칙을 검증해요."""
+"""PlayerPreView의 적응도 1~5(n1Grow=0~4) 응답을 비교해 규칙을 검증해요.
+
+데이터센터 화면(datacenter.js)은 적응도를 n1Grow 값(0=+1 … 4=+5)으로 보내요.
+2026-11-21 실측: 단계마다 34개 세부 능력치·요약·포지션 OVR이 모두 +1.
+"""
 from __future__ import annotations
 
 import json
@@ -36,8 +40,7 @@ def verify(client, data):
     rows = {}
     for level in range(1, 6):
         html = client.post("/datacenter/PlayerPreView", {
-            "spid": spid, "n1strong": 1, "n1Grow": 0,
-            "n1Adaptation": level, "n1TeamColor": 0,
+            "spid": spid, "n1strong": 1, "n1Grow": level - 1, "n1TeamColor": 0,
         })
         parsed = parse_preview(html, spid, adaptation=level)
         if not parsed:
@@ -51,7 +54,7 @@ def verify(client, data):
     confirmed = len(common) >= 34 and deltas == expected
     result = {
         "source": "https://fconline.nexon.com/datacenter/PlayerPreView",
-        "parameter": "n1Adaptation", "sampleSpid": spid,
+        "parameter": "n1Grow", "sampleSpid": spid,
         "fieldsCompared": len(common), "deltasFromLevel1": deltas,
         "confirmedPlusOnePerLevel": confirmed,
         "basis": "적응도 1단계 기준", "at": __import__("datetime").datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -61,8 +64,8 @@ def verify(client, data):
     out.write_text(json.dumps(result, ensure_ascii=False, separators=(",", ":")), "utf-8")
     if confirmed:
         rule = {"source": result["source"], "verified": True, "sampleSpid": spid,
-                "basis": "적응도 1단계", "bonusByLevel": [0, 0, 1, 2, 3, 4],
-                "appliesTo": sorted(common), "at": result["at"]}
+                "baseLevel": 1, "bonusFromBase": [None, 0, 1, 2, 3, 4],
+                "applies_to": ["stats", "summary", "pos_ovr"], "at": result["at"]}
         (Path(data) / "rules" / "adaptation_bonus.json").write_text(
             json.dumps(rule, ensure_ascii=False, separators=(",", ":")), "utf-8")
     result["adaptation_probe"] = "confirmed" if confirmed else "mismatch"

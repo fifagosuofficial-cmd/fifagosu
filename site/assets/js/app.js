@@ -372,7 +372,13 @@ function show(v,nopush){
   if(window.FG_TITLES&&FG_TITLES[v]&&!nopush)document.title=FG_TITLES[v];
   window.scrollTo({top:0});
 }
-$('menu').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(!b||e.ctrlKey||e.metaKey||e.shiftKey||e.button)return;e.preventDefault();show(b.dataset.view)});
+$('menu').addEventListener('click',e=>{
+  const link=e.target.closest('a[href]');
+  if(link&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey&&e.button===0&&(/(?:^|\/)news\/?$/.test(new URL(link.href,location.href).pathname)||link.textContent.trim()==='소식')){
+    e.preventDefault();location.assign(new URL(link.getAttribute('href'),location.href).href);return;
+  }
+  const b=e.target.closest('[data-view]');if(!b||e.ctrlKey||e.metaKey||e.shiftKey||e.button)return;e.preventDefault();show(b.dataset.view)
+});
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.go)));
 
 const gch=g=>`<span class="grade g-${GRADE_CLS(g)}" title="${GRADE_TIER(g)}">${g}강</span>`;
@@ -571,7 +577,7 @@ async function loadSeasons(){
 const IMG_BASE='https://fco.dn.nexoncdn.co.kr/live/externalAssets/common/';
 const pimg=(id,cls)=>`<div class="pimgw ${cls||''}"><img loading="lazy" alt="" src="${IMG_BASE}playersAction/p${id}.png" onerror="if(!this.dataset.f){this.dataset.f=1;this.src='${IMG_BASE}players/p${id%1000000}.png'}else{this.remove()}"></div>`;
 /* 데이터센터 상세 페이지(datacenter.js 의 GetPlayerDetail 과 같은 주소) */
-const DC_URL=(id,g)=>`https://fconline.nexon.com/DataCenter/PlayerInfo?spid=${id}&n1Strong=${g||1}`;
+const DC_URL=(id,g,adaptation=5)=>`https://fconline.nexon.com/DataCenter/PlayerInfo?spid=${id}&n1Strong=${g||1}&n1Adaptation=${adaptation}`;
 
 /* ---------- 수집 데이터(data/): 인덱스 + spid%200 샤드 ---------- */
 const DATA_BASE=window.FG_DATA||'/data', SHARDS=200;
@@ -659,10 +665,69 @@ let NEW_TRAITS=new Set(['크로스 포쳐','아크로바틱 피니셔','타이�
 if(LIVE)fetch(DATA_BASE+'/traits.json').then(r=>r.ok?r.json():null).then(j=>{if(j&&j.new&&j.new.length)NEW_TRAITS=new Set(j.new)}).catch(()=>{});
 const bigBadge=sid=>{const u=seasonImg(sid),n=sname(sid);return u?`<img class="sbig" src="${esc(u)}" alt="${esc(n)}" title="${esc(n)}" onerror="this.nextElementSibling.hidden=false;this.remove()"><span class="ssn ssn-${(SEASONS[sid]||['','special'])[1]}" hidden>${esc(n)}</span>`:sch(sid)};
 const fcCls=v=>v>=130?'v130':v>=120?'v120':v>=110?'v110':v>=100?'v100':v>=90?'v90':v>=80?'v80':v>=70?'v70':'vlow';
-let pmCard=null, pmGrade=1, pmData=null, pmTabL='feat', pmTabR='stat';
+let pmCard=null, pmGrade=1, pmAdaptation=5, pmData=null, pmTabL='feat', pmTabR='stat', pmTcName='', pmTcCount=0, pmGradeTcName='', pmGradeTcCount=0;
+let TEAMCOLORS=[];
+let TC_TIER_RULES={club:{members:[3,6,8,11]},nation:{members:[3,6,8,11]},grade:{members:[5,8]}};
+let GRADE_WAVE_RULES={conditions:[
+  {name:'동빛 물결',minGrade:3,members:{'5':1,'8':null}},
+  {name:'은빛 물결',minGrade:5,members:{'5':1,'8':3}},
+  {name:'금빛 물결',minGrade:8,members:{'5':3,'8':4}},
+  {name:'백금빛 물결',minGrade:11,members:{'5':4,'8':5}}
+]};
+let ADAPTATION_BONUS=[null,-4,-3,-2,-1,0];
+if(LIVE){
+  fetch(`${DATA_BASE}/teamcolor/teamcolors.json`).then(r=>r.ok?r.json():null).then(j=>{TEAMCOLORS=Array.isArray(j)?j:(j&&(j.items||j.teamcolors)||[]);if(pmCard)renderCard()}).catch(()=>{});
+  fetch(`${DATA_BASE}/rules/teamcolor_tiers.json`).then(r=>r.ok?r.json():null).then(j=>{if(j)TC_TIER_RULES=j;if(pmCard)renderCard()}).catch(()=>{});
+  fetch(`${DATA_BASE}/rules/grade_teamcolor.json`).then(r=>r.ok?r.json():null).then(j=>{if(j)GRADE_WAVE_RULES=j;if(pmCard)renderCard()}).catch(()=>{});
+  fetch(`${DATA_BASE}/rules/adaptation_bonus.json`).then(r=>r.ok?r.json():null).then(j=>{if(j&&Array.isArray(j.bonusFromBase))ADAPTATION_BONUS=j.bonusFromBase;if(pmCard)renderCard()}).catch(()=>{});
+}
+const TC_TYPE=x=>String(x.type||x.kind||x.category||'').toLowerCase();
+const TC_KEYS=Object.fromEntries(STAT_LABELS.map(([k,l])=>[norm(l),k]));
+function tcStats(tc){return tc&&(tc.effects||tc.tiers||[])}
+function tcEligible(tc){const t=TC_TYPE(tc);return /club|nation|국가|클럽|소속/.test(t)&&!/grade|enhance|강화/.test(t)}
+function tcGradeEligible(tc){return /grade|enhance|강화/.test(TC_TYPE(tc))}
+function tcMembersFor(tc,level){
+  const type=TC_TYPE(tc),group=/grade|enhance|강화/.test(type)?'grade':/nation|국가/.test(type)?'nation':'club';
+  const configured=TC_TIER_RULES[group]&&(TC_TIER_RULES[group].members||TC_TIER_RULES[group].counts);
+  if(Array.isArray(configured)&&configured[level-1])return +configured[level-1];
+  return null;
+}
+function gradeWaveRule(tc){return (GRADE_WAVE_RULES.conditions||[]).find(x=>norm(x.name)===norm(tc&&tc.name))||null}
+function gradeWaveMeets(tc){const rule=gradeWaveRule(tc);return !rule||pmGrade>=+(rule.minGrade||0)}
+function tcBonusFor(tc,count,applyGradeGate=false){
+  if(!tc||count<1||(applyGradeGate&&!gradeWaveMeets(tc)))return {};
+  const effects=tcStats(tc), levels=[...new Set(effects.map(x=>+(x.level||x.tier||x.step)).filter(Boolean))].sort((a,b)=>a-b);
+  let chosen=null;
+  for(const level of levels){const need=tcMembersFor(tc,level);if(need&&count>=need)chosen=effects.find(x=>+(x.level||x.tier||x.step)===level)}
+  if(!chosen)return {};
+  const stats=chosen.stats||chosen.bonuses||chosen.effect||{};
+  if(Array.isArray(stats))return Object.fromEntries(stats.map(x=>[x.key||x.stat||TC_KEYS[norm(x.name||'')]||'',+(x.bonus||x.value||0)]).filter(([k,v])=>k&&v));
+  return stats;
+}
+function tcValue(stats,key,label){
+  if(!stats)return 0;
+  const specific=+(stats[key]??stats[label]??stats[norm(label)]??0);
+  const all=+(stats.all??stats.allStats??stats.all_stats??stats.allStat??0);
+  const n=label==='전체 능력치'?all:all+specific;
+  return Number.isFinite(n)?n:0;
+}
+function tcOptionsFor(D){
+  if(!D||!TEAMCOLORS.length)return [];
+  const clubs=(D.clubs||[]).map(x=>x[1]).filter(Boolean), names=[...clubs,D.nation].filter(Boolean).map(norm);
+  return TEAMCOLORS.filter(tc=>{
+    if(!tcEligible(tc))return false;
+    const known=[tc.name,...(tc.aliases||[])].filter(Boolean).map(norm);
+    return names.some(n=>known.includes(n));
+  });
+}
+function tcLevelFor(tc,count){
+  const effects=tcStats(tc)||[];let level=0;
+  effects.forEach(x=>{const l=+(x.level||x.tier||x.step),need=tcMembersFor(tc,l);if(l&&need&&count>=need)level=Math.max(level,l)});
+  return level;
+}
 function openCard(id){
   const c=CARDS.find(x=>x.id===id)||{id,name:'',sid:Math.floor(id/1e6),pid:id%1e6};
-  pmCard=c;pmGrade=1;pmData=null;pmTabL='feat';pmTabR='stat';
+  pmCard=c;pmGrade=1;pmAdaptation=5;pmData=null;pmTabL='feat';pmTabR='stat';pmTcName='';pmTcCount=0;pmGradeTcName='';pmGradeTcCount=0;
   renderCard();
   $('pmodal').hidden=false;document.body.style.overflow='hidden';
   cardData(id).then(d=>{if(pmCard&&pmCard.id===id){pmData=d;renderCard()}});
@@ -671,6 +736,21 @@ function renderCard(){
   const c=pmCard, g=pmGrade, b=GRADE_BONUS[g]||0, d=pmData, L=d&&d.l, D=d&&d.d;
   const name=c.name||(D&&D.name)||(L&&L.name)||'';
   const pos=(D&&D.pos&&D.pos.length?D.pos:L&&L.pos)||[], pay=(D&&D.pay)||(L&&L.pay), foot=(D&&D.foot)||(L&&L.foot);
+  const tcOptions=tcOptionsFor(D), tc=tcOptions.find(x=>x.name===pmTcName)||null;
+  if(tc&&!pmTcName)pmTcName=tc.name;
+  const gradeTcOptions=TEAMCOLORS.filter(tcGradeEligible), gradeTc=gradeTcOptions.find(x=>x.name===pmGradeTcName)||null;
+  const tcLevel=tcLevelFor(tc,pmTcCount), tcBonuses=tcBonusFor(tc,pmTcCount);
+  const gradeTcRule=gradeWaveRule(gradeTc);
+  const gradeTcLevel=tcLevelFor(gradeTc,pmGradeTcCount), gradeTcBonuses=tcBonusFor(gradeTc,pmGradeTcCount,true);
+  const tcCombined={...tcBonuses};Object.entries(gradeTcBonuses).forEach(([k,v])=>{tcCombined[k]=(+tcCombined[k]||0)+(+v||0)});
+  const tcOverall=tcValue(tcCombined,'all','전체 능력치');
+  // 대표 확인 규칙: 수집 카드의 기본 능력치는 적응도 5 기준, 단계 차이 1당 모든 스탯 ±1.
+  const adaptDelta=+(ADAPTATION_BONUS[pmAdaptation]??(pmAdaptation-5));
+  const dtext=v=>v>0?`+${v}`:String(v);
+  const tcOptHtml=tcOptions.length?`<option value="">팀컬러 선택</option>${tcOptions.map(x=>`<option value="${esc(x.name)}"${x.name===pmTcName?' selected':''}>${esc(x.name)} (${TC_TYPE(x).includes('nation')||TC_TYPE(x).includes('국가')?'국가':'클럽'})</option>`).join('')}`:'<option value="">적용 가능한 팀컬러 없음</option>';
+  const countOpts=count=>Array.from({length:12},(_,i)=>`<option value="${i}"${i===count?' selected':''}>${i===0?'미적용':`${i}명`}</option>`).join('');
+  const gradeTcOptHtml=gradeTcOptions.length?`<option value="">강화 물결 선택</option>${gradeTcOptions.map(x=>`<option value="${esc(x.name)}"${x.name===pmGradeTcName?' selected':''}>${esc(x.name)}</option>`).join('')}`:'<option value="">강화 물결 데이터 없음</option>';
+  const tcCtl=`<div class="tc-box"><div class="tc-row"><label for="pmTc">소속 팀컬러</label><select id="pmTc"${tcOptions.length?'':' disabled'}>${tcOptHtml}</select><label for="pmTcCount">적용 인원</label><select id="pmTcCount"${tc?'':' disabled'}>${countOpts(pmTcCount)}</select></div><p class="tc-note">${!D?'선수 정보를 불러오는 중이에요.':!TEAMCOLORS.length?'팀컬러 효과 데이터를 아직 받지 못했어요.':!tcOptions.length?'선수 클럽 경력·국가와 연결되는 팀컬러가 없어요.':!tc?'선택한 팀컬러 없음':!tcLevel?'인원 조건 미충족':`${tc.name} ${tcLevel}단계 적용`}</p><div class="tc-row"><label for="pmGradeTc">강화 물결</label><select id="pmGradeTc"${gradeTcOptions.length?'':' disabled'}>${gradeTcOptHtml}</select><label for="pmGradeTcCount">조건 인원</label><select id="pmGradeTcCount"${gradeTc?'':' disabled'}>${countOpts(pmGradeTcCount)}</select></div><p class="tc-note">${!gradeTc?'강화 물결을 선택해 주세요.':!gradeWaveMeets(gradeTc)?`${gradeTc.name}은 ${gradeTcRule.minGrade}강 이상 선수에게 적용돼요.`:!gradeTcLevel?'강화 물결 인원 조건 미충족':`${gradeTc.name} ${gradeTcLevel}단계 · 전체 +${tcValue(gradeTcBonuses,'all','전체 능력치')} 적용`}</p><p class="tc-note">수집된 데이터센터 효과와 정해진 인원·강화 조건으로 계산한 값이에요. 조합 규칙에 따라 게임 화면과 다를 수 있어요.</p></div>`;
   const main=pos[0], price=L&&L.price?L.price[g-1]:null, at=L&&L.at?new Date(L.at):null;
   const others=CARDS.filter(x=>x.pid===c.pid&&x.id!==c.id).sort((a,b2)=>((ix(b2.id)||[])[0]||0)-((ix(a.id)||[])[0]||0)||b2.sid-a.sid);
   const fmtAt=t=>`${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
@@ -696,13 +776,13 @@ function renderCard(){
   let tabR='';
   if(D&&D.stats){
     if(pmTabR==='stat'){
-      const row=([k,l])=>D.stats[k]==null?'':`<div class="st"><span>${l}</span><b class="${fcCls(D.stats[k]+b)}">${D.stats[k]+b}</b></div>`;
+      const row=([k,l])=>D.stats[k]==null?'':(()=>{const t=tcValue(tcCombined,k,l),v=D.stats[k]+b+adaptDelta+t,ds=[b,adaptDelta,t].filter(Boolean).map(dtext).join(' ');return `<div class="st"><span>${l}</span><b class="${fcCls(v)}">${v}<small class="st-delta">${ds?` ${ds}`:''}</small></b></div>`})() ;
       tabR=`<div class="stcols"><div>${STAT_LABELS.slice(0,17).map(row).join('')}</div><div>${STAT_LABELS.slice(17).map(row).join('')}</div></div>`;
     }else{
-      tabR=`<div class="poslist">${pos.map(p=>`<div class="st"><span>${esc(p[0])}</span><b class="${fcCls((p[1]||0)+b)}">${(p[1]||0)+b}</b></div>`).join('')}</div><p class="muted" style="margin-top:10px">데이터센터가 보여주는 선호 포지션 OVR이에요${g>1?` (${g}강 +${b} 반영)`:''}.</p>`;
+      tabR=`<div class="poslist">${pos.map(p=>{const v=(p[1]||0)+b+adaptDelta+tcOverall,ds=[b,adaptDelta,tcOverall].filter(Boolean).map(dtext).join(' ');return `<div class="st"><span>${esc(p[0])}</span><b class="${fcCls(v)}">${v}<small class="st-delta">${ds?` ${ds}`:''}</small></b></div>`}).join('')}</div><p class="muted" style="margin-top:10px">데이터센터 선호 포지션 OVR에 강화·적응도·팀컬러 전체 능력치를 반영했어요.</p>`;
     }
   }else tabR=`<p class="muted">${loading?'불러오는 중이에요…':none?'아직 능력치를 수집하지 않은 카드예요. 매일 조금씩 늘어나요.':'세부 능력치는 아직 수집 대기 중이에요.'}</p>`;
-  const sum=D&&D.summary&&D.summary.length?`<div class="sum">${D.summary.map(([k,v])=>`<div><small>${esc(k)}</small><b class="${fcCls(v+b)}">${v+b}</b></div>`).join('')}</div>`:'';
+  const sum=D&&D.summary&&D.summary.length?`<div class="sum">${D.summary.map(([k,v])=>{const t=tcValue(tcCombined,TC_KEYS[norm(k)]||norm(k),k),value=v+b+adaptDelta+t;return `<div><small>${esc(k)}</small><b class="${fcCls(value)}">${value}</b></div>`}).join('')}</div>`:'';
   $('pmBody').innerHTML=`<div class="fcm">
   <div class="fcm-top"><b class="brand">피파고수</b><span class="bar"></span><b>선수 정보</b></div>
   <div class="fcm-main">
@@ -710,14 +790,17 @@ function renderCard(){
     <div class="idbox">
      <div class="idtxt">
       <div class="nm2">${bigBadge(c.sid)}<b id="pmTitle">${esc(name)}</b></div>
-      ${main?`<div class="ovr2"><span class="mp">${esc(main[0])}</span><b>${(main[1]||0)+b}</b>${pos.slice(1).map(p=>`<span class="op"><span>${esc(p[0])}</span> ${(p[1]||0)+b}</span>`).join('')}</div>`:''}
+      ${main?`<div class="ovr2"><span class="mp">${esc(main[0])}</span><b>${(main[1]||0)+b+adaptDelta+tcOverall}</b>${pos.slice(1).map(p=>`<span class="op"><span>${esc(p[0])}</span> ${(p[1]||0)+b+adaptDelta+tcOverall}</span>`).join('')}</div>`:''}
       ${D?`<div class="org">${leagueImg(D.leagueId)}${crestImg(D.teamId)}${flagImg(D.nationId)}<span>${esc(D.nation||'')}</span></div>
       <div class="phys">${pay?`<span class="hex">${pay}</span>`:''}<span>${D.height||'-'}cm</span><i>|</i><span>${D.weight||'-'}kg</span><i>|</i><span>${esc(D.body||'-')}</span>${ftxt}</div>`
       :(pay||foot?`<div class="phys">${pay?`<span class="hex">${pay}</span>`:''}${ftxt}</div>`:'')}
      </div>
      <div class="photo">${bigImg(c.id)}<span class="pb">${bigBadge(c.sid)}</span></div>
     </div>
-    <div class="gradebar"><span class="lbl">강화</span>${Array.from({length:MAX_GRADE},(_,i)=>gBtn(i+1)).join('')}</div>
+    <div class="gradebar"><span class="lbl">강화 적용</span>${Array.from({length:MAX_GRADE},(_,i)=>gBtn(i+1)).join('')}</div>
+    <div class="growbar"><label for="pmAdaptation">적응도</label><select id="pmAdaptation">${[1,2,3,4,5].map(n=>`<option value="${n}"${n===pmAdaptation?' selected':''}>${n}단계${n===5?' (기본)':''}</option>`).join('')}</select><span>1단계당 +1 · 기본 카드 능력치는 5단계 기준</span></div>
+    <p class="muted" style="margin:0 0 8px;font-size:12px">강화 ${g}강 ${dtext(b)} · 적응도 ${dtext(adaptDelta)} · 팀컬러는 아래 선택 조건을 반영했어요.</p>
+    ${tcCtl}
     ${sum}
     <div class="tabs2" data-side="L"><button type="button" data-t="feat" aria-selected="${pmTabL==='feat'}">특징</button><button type="button" data-t="price" aria-selected="${pmTabL==='price'}">시세</button><button type="button" data-t="club" aria-selected="${pmTabL==='club'}">클럽 경력</button></div>
     <div class="tabp">${tabL}</div>
@@ -725,7 +808,7 @@ function renderCard(){
    <section class="fcm-r">
     <div class="tabs2" data-side="R"><button type="button" data-t="stat" aria-selected="${pmTabR==='stat'}">능력치</button><button type="button" data-t="pos" aria-selected="${pmTabR==='pos'}">포지션 OVR</button></div>
     <div class="tabp">${tabR}</div>
-    <div class="fcm-actions"><a class="dcbtn" href="${DC_URL(c.id,g)}" target="_blank" rel="noopener">데이터센터 ↗</a></div>
+    <div class="fcm-actions"><a class="dcbtn" href="${DC_URL(c.id,g,pmAdaptation)}" target="_blank" rel="noopener">데이터센터 ↗</a></div>
    </section>
   </div>
   <div class="fcm-alt"><div class="alt-h">같은 선수 다른 시즌 <small>${others.length}장</small></div>${others.length?`<div class="altrow">${others.map(o=>{const x=ix(o.id);return `<button type="button" data-sp="${o.id}">${bigBadge(o.sid)}${x&&x[0]?`<b class="${fcCls(x[0])}">${x[0]}</b>`:''}</button>`}).join('')}</div>`:'<p class="muted">다른 시즌 카드가 없어요.</p>'}</div>
@@ -738,6 +821,13 @@ $('pmodal').addEventListener('click',e=>{
   const gb=e.target.closest('[data-g]');if(gb){pmGrade=+gb.dataset.g;return renderCard()}
   const tb=e.target.closest('.tabs2 [data-t]');if(tb){if(tb.parentNode.dataset.side==='L')pmTabL=tb.dataset.t;else pmTabR=tb.dataset.t;return renderCard()}
   const b=e.target.closest('.altrow [data-sp]');if(b)openCard(+b.dataset.sp)});
+ $('pmodal').addEventListener('change',e=>{
+  if(e.target.id==='pmTc'){pmTcName=e.target.value;pmTcCount=0;renderCard()}
+  if(e.target.id==='pmTcCount'){pmTcCount=+e.target.value||0;renderCard()}
+  if(e.target.id==='pmGradeTc'){pmGradeTcName=e.target.value;pmGradeTcCount=0;renderCard()}
+  if(e.target.id==='pmGradeTcCount'){pmGradeTcCount=+e.target.value||0;renderCard()}
+  if(e.target.id==='pmAdaptation'){pmAdaptation=+e.target.value||5;renderCard()}
+ });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('pmodal').hidden)closeCard()});
 /* 미리보기: 예시 카드의 시즌 이름 */
 if(!LIVE&&window.FG_PREVIEW_DATA)FG_PREVIEW_DATA.list.forEach(r=>{const sid=Math.floor(r.spid/1e6);if(!SEASONS[sid]&&r.season){const n=r.season.replace(/^(\d+)([A-Z])/,'$1 $2');SEASONS[sid]=[n,SEASON_FAM(n),r.season]}});

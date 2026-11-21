@@ -41,6 +41,8 @@ def test_parse_preview():
     assert len(d["stats"]) == 34 and all(v is not None for v in d["stats"].values())
     assert d["stats"]["sprintspeed"] == 108 and d["stats"]["dribbling"] == 111 and d["stats"]["gkpositioning"] == 16
     assert d["clubs"][1] == ["2014 ~ 2015", "맨체스터 시티", 1]
+    assert d["adaptation"] == 5
+    assert fgcrawl.parse_preview((FX / "preview.html").read_text("utf-8"), 886005471, 2)["adaptation"] == 2
 
 
 class FakeClient:

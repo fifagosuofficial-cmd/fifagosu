@@ -1,0 +1,8 @@
+{
+  "_설명": "데이터센터 PlayerPreView 능력치는 적응도 5 기준으로 저장합니다. UI에서 적응도를 바꾸면 기준값에 차이를 더합니다.",
+  "_출처": "FC온라인 데이터센터 PlayerInfo의 적응도 선택(1~5) 및 대표 확인 규칙. 일일 PlayerPreView 비교 모니터는 data/rules/adaptation_verification.json에 기록합니다.",
+  "_확인일": "2026-11-21",
+  "baseLevel": 5,
+  "bonusFromBase": [null, -4, -3, -2, -1, 0],
+  "applies_to": ["stats", "summary", "pos_ovr"]
+}

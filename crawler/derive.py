@@ -214,13 +214,37 @@ def step_rules(data, src=RULES_SRC):
 
 # ---------------------------------------------------------------- 실행
 
-def run(data=DATA, date=None, meta_get=None, no_meta=False):
+def step_teamcolors(data, client=None):
+    """공식 팀컬러 전체 목록을 하루 1회 갱신해요. 문제면 기존 데이터는 유지합니다."""
+    if client is None:
+        return {"teamcolors_status": "skip"}
+    try:
+        import teamcolor
+        p = Path(data) / "teamcolor" / "teamcolors.json"
+        old = load(p, {})
+        result = teamcolor.collect(client, data, old)
+        log(f"공식 팀컬러 목록 갱신: {result['teamcolors']}건")
+        return result
+    except Exception as e:  # 파생 수집 실패는 기존 일일 선수 수집을 훼손하지 않아요.
+        log("팀컬러 목록 갱신 실패(기존 파일 유지):", e.__class__.__name__, str(e)[:180])
+        return {"teamcolors_status": "held", "teamcolors_error": e.__class__.__name__}
+
+
+def run(data=DATA, date=None, meta_get=None, no_meta=False, client=None):
     data = Path(data)
     date = date or today_kst()
     summary = {"date": date, "at": dt.datetime.now(KST).isoformat(timespec="seconds")}
     summary.update(step_meta(data, date, None if no_meta else fetch_meta(meta_get)))
     summary.update(step_history(data, date))
     summary.update(step_rules(data))
+    summary.update(step_teamcolors(data, client))
+    if client is not None:
+        try:
+            import verify_adaptation
+            summary.update(verify_adaptation.verify(client, data))
+        except Exception as e:  # 적응도 검증 오류는 데이터 수집 성공에 영향을 주지 않아요.
+            log("적응도 검증 실패:", e.__class__.__name__, str(e)[:180])
+            summary["adaptation_probe"] = "error"
     save(data / "run.json", summary)
     step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if step_summary:

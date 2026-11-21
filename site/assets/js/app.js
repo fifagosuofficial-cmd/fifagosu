@@ -361,6 +361,9 @@ const VIEWS=['home','diag','cards','calc','guide'];
 /* 등급 계열 색 */
 const TIER_FAM=n=>/슈퍼 ?챔피언스/.test(n)?'--t-sc':/챔피언스/.test(n)?'--t-ch':/챌린/.test(n)?'--t-cl':/마스터/.test(n)?'--t-ma':/월드클래스/.test(n)?'--t-wc':/^프로/.test(n)?'--t-pr':'--t-lo';
 const tierBadge=n=>`<span class="tierb" style="--tc:var(${TIER_FAM(n)})">${esc(n)}</span>`;
+/* 공식 등급 아이콘: DIVISION 순서(슈퍼 챔피언스=0 … 유망주3=20)가 넥슨 ico_rank 번호와 같아요(데이터센터 랭킹 화면 확인) */
+const DIV_NAMES=Object.values(DIVISION);
+const divImg=(n,cls)=>{const i=DIV_NAMES.indexOf(n);return i<0?'':`<img class="${cls||'divimg'}" src="https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank${i}.png" alt="${esc(n)}" title="역대 최고 등급 · ${esc(n)}" onerror="this.remove()">`};
 function show(v,nopush){
   VIEWS.forEach(x=>$('v-'+x).hidden=x!==v);
   document.querySelectorAll('#menu [data-view]').forEach(b=>{if(b.dataset.view===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
@@ -433,8 +436,8 @@ let dMode='50', dCur=null, dTab='stats', dCount=30;
 const DTABS={'50':[['stats','세부 지표'],['pstats','선수별 기록'],['time','시간대별 득실'],['shot','슈팅 맵']],'52':[['stats','세부 지표'],['pstats','선수별 기록'],['squad','감독모드 스쿼드'],['form','포메이션 상성'],['line','라인별 평점'],['time','시간대별 득실'],['shot','슈팅 맵']]};
 let dTabInit='stats';
 function dRenderBoard(d,a){
-  $('dBoard').innerHTML=`<div><div class="nick">${esc(d.basic.nickname)}</div><div class="meta">Lv.${d.basic.level} · ${a.dm?'감독모드 · '+esc(a.myForm):'공식경기'}</div></div>
-  <div class="tier">${d.current?`<span class="lbl">최근 경기 등급</span>${tierBadge(d.current)}`:''}<span class="lbl">${a.dm?'감독모드 ':''}역대 최고 등급</span>${tierBadge(d.maxdivision.division)}</div>
+  $('dBoard').innerHTML=`<div><div class="nick nick-wrap">${divImg(d.maxdivision.division)}<span>${esc(d.basic.nickname)}</span></div><div class="meta">Lv.${d.basic.level} · ${a.dm?'감독모드 · '+esc(a.myForm):'공식경기'}</div></div>
+  <div class="tier">${d.current?`<span class="lbl">최근 경기 등급</span>${tierBadge(d.current)}`:''}<span class="lbl">${a.dm?'감독모드 ':''}역대 최고 등급</span><span class="tier-max">${divImg(d.maxdivision.division,'divimg-sm')}${tierBadge(d.maxdivision.division)}</span></div>
   <div class="record">${d.real?`<div><span class="k">데이터</span><span class="v" style="font-size:13px">넥슨 Open API${d.snapDate?' · '+esc(d.snapDate):''}</span></div>`:d.sample?'<div><span class="k">데이터</span><span class="v" style="font-size:13px;color:var(--warn,#e0a030)">예시(가상)</span></div>':''}<div><span class="k">최근</span><span class="v">${a.n}경기${d.forfeit?`<small style="display:block;font-size:11px;font-weight:400;color:var(--muted)">몰수 ${d.forfeit}경기 제외</small>`:''}</span></div><div><span class="k">승·무·패</span><span class="v">${a.W}·${a.D}·${a.L}</span></div><div><span class="k">승률</span><span class="v">${Math.round(a.W/a.n*100)}%</span></div><div><span class="k">득실</span><span class="v">${a.gf}:${a.ga}</span></div></div>`;
 }
 function cmpRows(x){const mn=x.min??0,mx=x.max??Math.max(x.me,x.opp,0.0001)*1.15,w=v=>Math.max(3,Math.min(100,(v-mn)/(mx-mn)*100));
@@ -665,7 +668,7 @@ let NEW_TRAITS=new Set(['크로스 포쳐','아크로바틱 피니셔','타이�
 if(LIVE)fetch(DATA_BASE+'/traits.json').then(r=>r.ok?r.json():null).then(j=>{if(j&&j.new&&j.new.length)NEW_TRAITS=new Set(j.new)}).catch(()=>{});
 const bigBadge=sid=>{const u=seasonImg(sid),n=sname(sid);return u?`<img class="sbig" src="${esc(u)}" alt="${esc(n)}" title="${esc(n)}" onerror="this.nextElementSibling.hidden=false;this.remove()"><span class="ssn ssn-${(SEASONS[sid]||['','special'])[1]}" hidden>${esc(n)}</span>`:sch(sid)};
 const fcCls=v=>v>=130?'v130':v>=120?'v120':v>=110?'v110':v>=100?'v100':v>=90?'v90':v>=80?'v80':v>=70?'v70':'vlow';
-let pmCard=null, pmGrade=1, pmAdaptation=5, pmData=null, pmTabL='feat', pmTabR='stat', pmTcName='', pmTcCount=0, pmGradeTcName='', pmGradeTcCount=0;
+let pmCard=null, pmGrade=1, pmAdaptation=5, pmData=null, pmTabL='feat', pmTabR='stat', pmTcName='', pmTcCount=0, pmGradeTcName='', pmGradeTcCount=0, pmRelName='';
 let TEAMCOLORS=[];
 let TC_TIER_RULES={club:{members:[3,6,8,11]},nation:{members:[3,6,8,11]},grade:{members:[5,8]}};
 let GRADE_WAVE_RULES={conditions:[
@@ -717,6 +720,38 @@ function tcMaxBonus(tc,applyGradeGate=false){
   if(Array.isArray(stats))return Object.fromEntries(stats.map(x=>[x.key||x.stat||TC_KEYS[norm(x.name||'')]||'',+(x.bonus||x.value||0)]).filter(([k,v])=>k&&v));
   return stats;
 }
+/* 관계(스페셜) 팀컬러: 이름에 선수의 클럽 경력·국가가 들어간 후보만 (예: '20-21 토트넘 홋스퍼', '2002 대한민국') */
+function relOptionsFor(D){
+  if(!D||!TEAMCOLORS.length)return [];
+  const nation=String(D.nation||'').split(',')[0].trim();
+  const keys=[...new Set([...(D.clubs||[]).map(x=>x[1]),nation].filter(Boolean).map(norm))].filter(k=>k.length>=2);
+  return TEAMCOLORS.filter(tc=>/special|relation|관계|스페셜/.test(TC_TYPE(tc))&&keys.some(k=>norm(tc.name).includes(k)))
+    .sort((a,b)=>String(b.name).localeCompare(String(a.name),'ko'));
+}
+/* 전 포지션 OVR: 세부 능력치 가중 평균(FIFA 계열 포지션 공식) + 선호 포지션 실제값으로 보정 */
+const POS_W={
+  ST:{finishing:18,positioning:13,heading:10,shotpower:10,reactions:8,dribbling:7,ballcontrol:10,volleys:2,longshots:3,acceleration:4,sprintspeed:5,strength:5},
+  CF:{finishing:11,positioning:13,heading:2,shotpower:5,reactions:9,dribbling:14,ballcontrol:15,longshots:4,shortpassing:9,vision:8,acceleration:5,sprintspeed:5},
+  LW:{crossing:9,dribbling:16,ballcontrol:14,shortpassing:9,finishing:10,positioning:9,reactions:7,vision:6,longshots:4,acceleration:7,sprintspeed:6,agility:3},
+  LM:{crossing:10,dribbling:15,ballcontrol:13,shortpassing:11,longpassing:5,vision:7,reactions:7,positioning:8,finishing:6,acceleration:7,sprintspeed:6,stamina:5},
+  CAM:{shortpassing:16,vision:14,ballcontrol:15,dribbling:13,positioning:9,reactions:7,finishing:7,longshots:5,shotpower:5,agility:3,acceleration:4},
+  CM:{shortpassing:17,longpassing:13,vision:13,ballcontrol:14,dribbling:7,reactions:8,interceptions:5,positioning:6,standingtackle:5,longshots:4,stamina:6},
+  CDM:{shortpassing:14,longpassing:10,interceptions:14,marking:9,standingtackle:12,slidingtackle:5,ballcontrol:10,reactions:7,vision:4,strength:6,aggression:5,stamina:6},
+  LWB:{crossing:12,dribbling:4,ballcontrol:8,shortpassing:10,interceptions:12,marking:8,standingtackle:11,slidingtackle:14,reactions:8,stamina:10,sprintspeed:6},
+  LB:{crossing:9,ballcontrol:7,shortpassing:7,interceptions:12,marking:8,heading:4,standingtackle:11,slidingtackle:14,reactions:8,stamina:8,sprintspeed:7,acceleration:5},
+  CB:{marking:14,standingtackle:17,slidingtackle:13,interceptions:13,heading:10,strength:10,reactions:5,aggression:7,shortpassing:5,ballcontrol:4,jumping:3},
+  SW:{marking:12,standingtackle:15,slidingtackle:11,interceptions:14,heading:8,strength:8,reactions:7,aggression:5,shortpassing:8,longpassing:6,ballcontrol:6},
+  GK:{gkdiving:21,gkhandling:21,gkkicking:5,gkreflexes:21,gkpositioning:21,reactions:11}};
+const POS_ALIAS={RW:'LW',RM:'LM',RWB:'LWB',RB:'LB'};
+const PITCH=[['GK',7,50,'gk'],['LB',19,27,'def'],['SW',19,50,'def'],['RB',19,73,'def'],['LWB',31,15,'def'],['CB',31,50,'def'],['RWB',31,85,'def'],
+  ['CDM',43,50,'mid'],['LM',55,29,'mid'],['CM',55,50,'mid'],['RM',55,71,'mid'],['CAM',67,50,'mid'],['LW',80,15,'att'],['CF',80,50,'att'],['RW',80,85,'att'],['ST',92,50,'att']];
+function posRaw(stats,p){const w=POS_W[POS_ALIAS[p]||p];let t=0,s2=0;for(const k in w){if(stats[k]!=null){t+=w[k]*stats[k];s2+=w[k]}}return s2?t/s2:0}
+function allPosOvr(D,add){
+  const st=D.stats||{},known=Object.fromEntries((D.pos||[]).map(p=>[p[0],+p[1]]));
+  const offs=Object.keys(known).filter(p=>POS_W[POS_ALIAS[p]||p]).map(p=>known[p]-posRaw(st,p));
+  const off=offs.length?offs.reduce((a,b)=>a+b,0)/offs.length:0;
+  return PITCH.map(([p,x,y,g])=>({p,x,y,g,v:Math.round(known[p]!=null?known[p]:posRaw(st,p)+off)+add,real:known[p]!=null}));
+}
 function tcValue(stats,key,label){
   if(!stats)return 0;
   const specific=+(stats[key]??stats[label]??stats[norm(label)]??0);
@@ -745,7 +780,7 @@ function tcLevelFor(tc,count){
 }
 function openCard(id){
   const c=CARDS.find(x=>x.id===id)||{id,name:'',sid:Math.floor(id/1e6),pid:id%1e6};
-  pmCard=c;pmGrade=1;pmAdaptation=5;pmData=null;pmTabL='feat';pmTabR='stat';pmTcName='';pmTcCount=0;pmGradeTcName='';pmGradeTcCount=0;
+  pmCard=c;pmGrade=1;pmAdaptation=5;pmData=null;pmTabL='feat';pmTabR='stat';pmTcName='';pmTcCount=0;pmGradeTcName='';pmGradeTcCount=0;pmRelName='';
   renderCard();
   $('pmodal').hidden=false;document.body.style.overflow='hidden';
   cardData(id).then(d=>{if(pmCard&&pmCard.id===id){pmData=d;renderCard()}});
@@ -761,7 +796,8 @@ function renderCard(){
   const tcLevel=tc?(+((tcMaxEffect(tc)||{}).level)||tc.maxLevel||0):0, tcBonuses=tcMaxBonus(tc);
   const gradeTcRule=gradeWaveRule(gradeTc);
   const gradeTcLevel=gradeTc?(+((tcMaxEffect(gradeTc)||{}).level)||gradeTc.maxLevel||0):0, gradeTcBonuses=tcMaxBonus(gradeTc,true);
-  const tcCombined={...tcBonuses};Object.entries(gradeTcBonuses).forEach(([k,v])=>{tcCombined[k]=(+tcCombined[k]||0)+(+v||0)});
+  const relOptions=relOptionsFor(D), relTc=relOptions.find(x=>x.name===pmRelName)||null, relBonuses=tcMaxBonus(relTc);
+  const tcCombined={...tcBonuses};[gradeTcBonuses,relBonuses].forEach(src=>Object.entries(src).forEach(([k,v])=>{tcCombined[k]=(+tcCombined[k]||0)+(+v||0)}));
   const tcOverall=tcValue(tcCombined,'all','전체 능력치');
   // 수집 카드 능력치는 적응도 1단계 기준. 단계마다 모든 능력치 +1 (데이터센터 실측으로 확인).
   const adaptDelta=+(ADAPTATION_BONUS[pmAdaptation]??(pmAdaptation-1));
@@ -796,7 +832,8 @@ function renderCard(){
     if(pmTabR==='stat'){
       tabR=`<div class="pm2-stats">${STAT_LABELS.map(([k,l])=>{if(D.stats[k]==null)return '';const t=tcValue(tcCombined,k,l),v=D.stats[k]+b+adaptDelta+t;return `<div class="pm2-st"><span>${l}</span><b class="${fcCls(v)}">${v}</b>${delta(b,adaptDelta,t)}</div>`}).join('')}</div>`;
     }else{
-      tabR=`<div class="pm2-stats">${pos.map(p=>{const v=(p[1]||0)+b+adaptDelta+tcOverall;return `<div class="pm2-st"><span>${esc(p[0])}</span><b class="${fcCls(v)}">${v}</b>${delta(b,adaptDelta,tcOverall)}</div>`}).join('')}</div><p class="muted pm2-foot">선호 포지션 OVR에 강화·적응도·팀컬러 전체 능력치를 더한 값이에요.</p>`;
+      const ps=allPosOvr(D,b+adaptDelta+tcOverall);
+      tabR=`<div class="pm2-pitch">${ps.map(o=>`<div class="pm2-pos pg-${o.g}${o.real?' real':''}" style="left:${o.x}%;top:${o.y}%"><b>${o.p}</b><span>${o.v}</span></div>`).join('')}</div><p class="muted pm2-foot">테두리가 굵은 칸은 데이터센터 선호 포지션 값, 나머지는 세부 능력치로 계산한 추정값이에요. 강화·적응도·팀컬러 전체 능력치를 더했어요.</p>`;
     }
   }else tabR=`<p class="muted pm2-empty">${loading?'불러오는 중이에요…':none?'아직 능력치를 수집하지 않은 카드예요. 매일 수집 중이라 곧 채워져요.':'세부 능력치는 아직 수집 대기 중이에요.'}</p>`;
   const sumCells=D&&D.summary&&D.summary.length?D.summary.map(([k,v])=>{const t=tcValue(tcCombined,TC_KEYS[norm(k)]||norm(k),k),value=v+b+adaptDelta+t;return `<div><small>${esc(k)}</small><b class="${fcCls(value)}">${value}</b></div>`}).join(''):['스피드','슛','패스','드리블','수비','피지컬'].map(k=>`<div><small>${k}</small><b class="vlow">-</b></div>`).join('');
@@ -806,7 +843,8 @@ function renderCard(){
      <label>적응도<select id="pmAdaptation">${[1,2,3,4,5].map(n=>`<option value="${n}"${n===pmAdaptation?' selected':''}>${n}${n===5?' (최대)':''}</option>`).join('')}</select></label>
      <label>소속 팀컬러<select id="pmTc"${tcOptions.length?'':' disabled'}>${tcOptHtml}</select></label>
      <label>강화 물결<select id="pmGradeTc"${gradeTcOptions.length?'':' disabled'}>${gradeTcOptHtml}</select></label>
-     <p class="pm2-note">${[`강화 ${g} ${dtext(b)}`,`적응도 ${pmAdaptation} ${dtext(adaptDelta)}`,tc?`${esc(tc.name)} ${tcLevel}단계`:'',gradeTc?(gradeWaveMeets(gradeTc)?`${esc(gradeTc.name)} 전체 +${tcValue(gradeTcBonuses,'all','전체 능력치')}`:`${esc(gradeTc.name)}은 ${gradeTcRule&&gradeTcRule.minGrade}강부터`):''].filter(Boolean).join(' · ')}<br>팀컬러는 데이터센터 최고 단계 효과 기준이에요.</p>
+     <label>관계 팀컬러<select id="pmRel"${relOptions.length?'':' disabled'}>${relOptions.length?`<option value="">관계 팀컬러 선택</option>${relOptions.map(x=>`<option value="${esc(x.name)}"${x.name===pmRelName?' selected':''}>${esc(x.name)}</option>`).join('')}`:'<option value="">후보 없음</option>'}</select></label>
+     <p class="pm2-note">${[`강화 ${g} ${dtext(b)}`,`적응도 ${pmAdaptation} ${dtext(adaptDelta)}`,tc?`${esc(tc.name)} ${tcLevel}단계`:'',relTc?`${esc(relTc.name)} 적용`:'',gradeTc?(gradeWaveMeets(gradeTc)?`${esc(gradeTc.name)} 전체 +${tcValue(gradeTcBonuses,'all','전체 능력치')}`:`${esc(gradeTc.name)}은 ${gradeTcRule&&gradeTcRule.minGrade}강부터`):''].filter(Boolean).join(' · ')}<br>팀컬러는 데이터센터 최고 단계 효과 기준이에요. 관계 팀컬러는 이름에 선수 클럽·국가가 들어간 후보예요(실제 명단은 데이터센터 확인).</p>
    </div>`;
   $('pmBody').innerHTML=`<div class="pm2">
   <div class="pm2-h"><b>선수 정보</b></div>
@@ -822,12 +860,13 @@ function renderCard(){
      </div>
      <div class="pm2-photo">${D&&D.teamId?`<span class="pm2-crest">${crestImg(D.teamId)}</span>`:''}${bigImg(c.id)}${gradeSel}</div>
     </div>
+    <div class="pm2-gbar"><span>강화</span>${Array.from({length:MAX_GRADE},(_,i)=>`<button type="button" data-g="${i+1}" class="gb g-${GRADE_CLS(i+1)}" aria-pressed="${i+1===g}">${i+1}</button>`).join('')}</div>
     <div class="pm2-sum">${sumCells}</div>
     <div class="pm2-tabs" data-side="L"><button type="button" data-t="feat" aria-selected="${pmTabL==='feat'}">특징</button><button type="button" data-t="price" aria-selected="${pmTabL==='price'}">시세</button><button type="button" data-t="club" aria-selected="${pmTabL==='club'}">클럽 경력</button></div>
     <div class="pm2-tabp">${tabL}</div>
    </section>
    <section class="pm2-r">
-    <div class="pm2-tabs pm2-tabs-r" data-side="R"><button type="button" data-t="stat" aria-selected="${pmTabR==='stat'}">총 능력치</button><button type="button" data-t="pos" aria-selected="${pmTabR==='pos'}">${main?esc(main[0]):'포지션'} OVR</button></div>
+    <div class="pm2-tabs pm2-tabs-r" data-side="R"><button type="button" data-t="stat" aria-selected="${pmTabR==='stat'}">총 능력치</button><button type="button" data-t="pos" aria-selected="${pmTabR==='pos'}">OVR</button></div>
     ${optsBox}
     <div class="pm2-tabp">${tabR}</div>
     <div class="pm2-actions"><a class="pm2-dc" href="${DC_URL(c.id,g,pmAdaptation)}" target="_blank" rel="noopener">넥슨 데이터센터에서 보기 ↗</a></div>
@@ -848,6 +887,7 @@ $('pmodal').addEventListener('click',e=>{
   if(e.target.id==='pmGradeTc'){pmGradeTcName=e.target.value;pmGradeTcCount=0;renderCard()}
   if(e.target.id==='pmAdaptation'){pmAdaptation=+e.target.value||5;renderCard()}
   if(e.target.id==='pmGradeSel'){pmGrade=+e.target.value||1;renderCard()}
+  if(e.target.id==='pmRel'){pmRelName=e.target.value;renderCard()}
  });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('pmodal').hidden)closeCard()});
 /* 미리보기: 예시 카드의 시즌 이름 */

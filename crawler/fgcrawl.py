@@ -528,9 +528,10 @@ def main(argv=None):
             stale = (store.state.get("full_started") is not None or not full_at
                      or (dt.datetime.now(KST) - dt.datetime.fromisoformat(full_at)).days >= 7)
             t0 = time.time()
-            cmd_list(client, store, "hot", args.minutes * 0.3, args.hot)      # 인기 시즌 시세는 매일
-            if stale:                                                         # 주 1회 전체 갱신(여러 날에 나눠 진행)
-                cmd_list(client, store, "full", args.minutes * 0.4, args.hot)
+            # 시간을 늘려도 시세 수집은 상한까지만 쓰고, 남는 시간은 능력치(세부) 수집에 몰아줘요.
+            cmd_list(client, store, "hot", min(args.minutes * 0.3, 20), args.hot)   # 인기 시즌 시세는 매일
+            if stale:                                                                # 주 1회 전체 갱신(여러 날에 나눠 진행)
+                cmd_list(client, store, "full", min(args.minutes * 0.4, 45), args.hot)
             left = args.minutes - (time.time() - t0) / 60
             if left > 2:
                 cmd_detail(client, store, 100000, left - 1)

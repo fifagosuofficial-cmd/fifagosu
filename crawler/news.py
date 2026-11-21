@@ -329,7 +329,7 @@ def run(data=DATA, http=None):
         patch_items = []
         for u in updates[:8]:
             previous = old_patch_by_url.get(u["url"], {})
-            if previous.get("date") == u["date"] and previous.get("summary"):
+            if previous.get("date") == u["date"]:
                 summary = previous["summary"]
             else:
                 try:

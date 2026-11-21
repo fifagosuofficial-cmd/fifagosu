@@ -24,7 +24,7 @@
 {% block head %}{% endblock %}
 </head><body data-view="{{ view or '' }}"{% if (view or '')=='home' or (active is defined and active=='news') %} class="page-wide"{% endif %}>
 <header class="top">
-  <div class="row"><a class="logo" href="{{ root or './' }}" aria-label="피파고수 홈"><picture><source srcset="{{ root }}site/brand/fifagosu-logo-480.webp" type="image/webp"><img src="{{ root }}site/brand/fifagosu-logo-480.png" width="480" height="135" alt="피파고수"></picture><small>fifagosu</small></a><span class="tag">FC온라인 전적 진단</span></div>
+  <div class="row"><a class="logo" href="{{ root or './' }}" aria-label="피파고수 홈"><picture><source srcset="{{ root }}site/brand/fifagosu-logo-480.webp" type="image/webp"><img src="{{ root }}site/brand/fifagosu-logo-480.png" width="480" height="135" alt="피파고수"></picture></a><span class="tag">FC온라인 전적 진단</span></div>
 {% block nav %}
   <nav class="menu" aria-label="메뉴">
     <a href="{{ root }}">홈</a>
@@ -32,8 +32,8 @@
     <a href="{{ root }}diag">전적 진단</a>
     <a href="{{ root }}cards">카드 검색</a>
     <a href="{{ root }}calc">BP·강화 계산기</a>
-    <a href="{{ root }}guide/">시스템 가이드</a>
-    <a class="fun" href="{{ root }}fun/">심심풀이 테스트</a>
+    <a href="{{ root }}guide/">패치 가이드</a>
+    <a class="fun" href="{{ SITE_URL }}/fun/" target="_self">심심풀이 테스트</a>
   </nav>
 {% endblock %}
 </header>

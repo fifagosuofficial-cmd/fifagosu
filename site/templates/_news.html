@@ -21,12 +21,12 @@
 {%- endmacro %}
 
 {% macro press_item(x, n) -%}
-<li class="nw-item" data-cat="{{ x.cat }}">
+<li class="nw-item" data-cat="{{ x.cat }}" data-league="{{ x.league or '기타' }}">
   <details>
     <summary>
       <span class="nw-n">{{ '%02d'|format(n) }}</span>
       <span class="nw-main"><span class="nw-title">{{ x.title }}</span>
-        <span class="nw-meta"><b class="nw-src">{{ x.source }}</b> · <span class="nw-cat">{{ x.label }}</span> · <time datetime="{{ x.date }}" data-rel>{{ date_md(x.date) }}</time></span></span>
+        <span class="nw-meta"><b class="nw-src">{{ x.source }}</b> · <span class="nw-cat">{{ x.league if x.cat in ['world','korea'] else x.label }}</span> · <time datetime="{{ x.date }}" data-rel>{{ date_md(x.date) }}</time></span></span>
     </summary>
     <div class="nw-body">
       {% for l in x.summary %}<p>{{ l }}</p>{% endfor %}
@@ -43,6 +43,10 @@
   <button type="button" role="tab" aria-selected="false" data-f="fcgame">FC온라인</button>
   <button type="button" role="tab" aria-selected="false" data-f="world">해외축구</button>
   <button type="button" role="tab" aria-selected="false" data-f="korea">국내축구</button>
+</div>
+<div class="nw-subtabs" data-subtabs="{{ prefix }}" hidden>
+  <div data-subgroup="world" hidden>{% for l in ['전체','EPL','라리가','분데스리가','세리에A','리그앙','기타'] %}<button type="button" data-league="{{ l }}" aria-pressed="{{ 'true' if l=='전체' else 'false' }}">{{ l }}</button>{% endfor %}</div>
+  <div data-subgroup="korea" hidden>{% for l in ['전체','KFA','K리그','기타'] %}<button type="button" data-league="{{ l }}" aria-pressed="{{ 'true' if l=='전체' else 'false' }}">{{ l }}</button>{% endfor %}</div>
 </div>
 {%- endmacro %}
 

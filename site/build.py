@@ -30,18 +30,18 @@ MAIN_T = "index.html"
 VIEW_PAGES = [
     ("index.html", "/", "home", "피파고수 — FC온라인 전적 진단·전체 카드 검색",
      "FC온라인 공식경기·감독모드 최근 30~100경기로 약점을 진단하고, 모든 시즌 선수 카드를 검색하세요. "
-     "강화별 시세·능력치, BP·강화 계산기, 시스템 가이드까지."),
+  "강화별 시세·능력치, BP·강화 계산기, 패치 가이드까지."),
     ("diag.html", "/diag", "diag", "FC온라인 전적 진단 — 최근 경기로 내 팀 약점 찾기 | 피파고수",
      "구단주 닉네임만 넣으면 공식경기·감독모드 최근 30~100경기를 분석해 득점·실점 패턴과 약점을 알려줘요."),
     ("cards.html", "/cards", "cards", "FC온라인 선수 카드 검색 — OVR·능력치·강화별 시세 | 피파고수",
      "FC온라인 전체 시즌 선수 카드를 검색하고 OVR, 세부 능력치 34개, 1~13강 강화별 시세를 확인하세요."),
     ("calc.html", "/calc", "calc", "FC온라인 BP·강화 계산기 — 강화 비용·확률·판매 수수료 | 피파고수",
      "FC온라인 강화 단계별 OVR 상승, 강화 성공 확률, 판매 수수료를 계산해요."),
-    ("guide/index.html", "/guide/", "guide", "FC온라인 시스템 가이드 — 등급·감독모드·강화·팀컬러 | 피파고수",
-     "FC온라인 공식경기 등급, 감독모드, 강화, 팀컬러, 시즌, 급여·이적시장 규칙을 한곳에 정리했어요."),
+    ("guide/index.html", "/guide/", "guide", "FC온라인 패치 가이드 — 등급·감독모드·강화·팀컬러 | 피파고수",
+     "FC온라인 공식경기 등급, 감독모드, 강화, 팀컬러, 시즌, 급여·이적시장 규칙과 최신 업데이트를 정리했어요."),
 ]
 GUIDE_PAGES = [
-    ("patch", "FC온라인 최근 패치 정리", "FC온라인 최근 업데이트·밸런스 조정·신규 클래스 출시 내역을 정리했어요."),
+    ("patch", "FC온라인 패치 가이드", "FC온라인 최신 업데이트와 밸런스 조정 내역을 공식 소식으로 자동 갱신해요."),
     ("official", "FC온라인 공식경기 등급 정리 — 승급 점수·시즌 보상", "유망주부터 슈퍼 챔피언스까지 FC온라인 공식경기 등급과 승급 점수, 시즌 규칙을 정리했어요."),
     ("manager", "FC온라인 감독모드 공략 — 전술·선수 고르기", "FC온라인 감독모드 상위권 전술 경향, 포지션별 신체 기준, 순위 보상을 정리했어요."),
     ("grade", "FC온라인 강화 정리 — 단계별 OVR 상승·성공 확률", "FC온라인 1~13강 강화 단계별 OVR 상승값, 성공 확률, 카드 색을 정리했어요."),
@@ -78,6 +78,7 @@ def load_news(data_dir, today):
     official = [x for x in items if x["cat"] in OFFICIAL and x["cat"] != "update"]
     updates = [x for x in items if x["cat"] == "update"]
     press = [x for x in items if x["cat"] in PRESS]
+    patch = _load(data_dir / "news" / "patch.json") or {"updated": "", "items": []}
     check = next((x for x in official if x["cat"] == "check"), None)
     if check:
         t = check["title"]
@@ -96,7 +97,7 @@ def load_news(data_dir, today):
         events.append({**e, "pct": pct})
     events.sort(key=lambda e: e["end"])
     timeline = sorted(official + updates[:1], key=lambda x: x.get("date") or "", reverse=True)
-    return {"updated": feed.get("updated", ""), "official": timeline[:8], "press": press[:7], "events": events[:6],
+    return {"updated": feed.get("updated", ""), "official": timeline[:8], "press": press[:7], "events": events[:6], "patch": patch,
             "check": check, "upd": updates[0] if updates else None,
             "all_official": sorted(official + updates, key=lambda x: x.get("date") or "", reverse=True)[:150],
             "all_press": press[:150],

@@ -140,3 +140,5 @@ def test_market_summary_movers_popular_and_new(tmp_path):
             assert g1["popular"][0]["n"] == "싸구려"          # 인기 순위는 가격 필터 없이 사용량 기준
             assert out["newCards"][0]["n"] == "신입"
             assert out["index"]["up"] == 1
+            pool = json.loads((d / "market" / "pool.json").read_text("utf-8"))["items"]
+            assert len(pool) == 3 and len(pool[0][3]) == 13

@@ -49,6 +49,8 @@ GUIDE_PAGES = [
     ("market", "FC온라인 급여·이적시장 — 급여 상한·판매 수수료 계산", "FC온라인 급여 상한 310과 판매 수수료 계산식, 수수료 쿠폰 지급 방식을 정리했어요."),
 ]
 PAGES = [
+    ("sim/index.html", "sim.html", "/sim/", "FC온라인 강화·팩 오픈 시뮬레이터 | 피파고수",
+     "FC온라인 강화 성공 확률과 넥슨 공개 확률표 그대로 캐시 아이템(팩) 오픈을 미리 체험해 보세요.", True),
     ("patch/index.html", "patch.html", "/patch/", "FC온라인 패치노트 — 업데이트·밸런스·개선 내역 | 피파고수",
      "FC온라인 공식 업데이트·패치·밸런스 조정 공지를 날짜순으로 모아 핵심만 요약했어요. 매일 자동 갱신.", True),
     ("news/index.html", "news.html", "/news/", "FC온라인 소식 — 공지·점검·업데이트·축구 뉴스 | 피파고수",
@@ -181,7 +183,7 @@ def main(argv=None):
                    desc, x["kind"] == "official", root="../", post=post, active="news")
     for fname, tpl, path, title, desc, in_map in PAGES:
         render(fname, tpl, path, title, desc, in_map, root="/" if fname == "404.html" else ("../" if "/" in fname else ""),
-               active="news" if fname.startswith("news/") else ("patch" if fname.startswith("patch/") else ""))
+               active="news" if fname.startswith("news/") else ("patch" if fname.startswith("patch/") else ("sim" if fname.startswith("sim/") else "")))
     if (out / "fun" / "index.html").exists():
         sitemap.append(site_url + "/fun/")
 

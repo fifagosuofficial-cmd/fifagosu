@@ -148,11 +148,39 @@ async function prob(url, waitUntil) {
   return res;
 }
 
+/* 웹 상점 판매 목록 (이미지·이름·가격·기간) — /api/shop, 6시간 캐시. 출처: https://shop.fconline.nexon.com/ */
+async function shop(waitUntil) {
+  const cache = caches.default;
+  const key = new Request('https://fifagosu.cache/shop/list');
+  const hit = await cache.match(key);
+  if (hit) return hit;
+  const up = await fetch('https://shop.fconline.nexon.com/', { headers: { 'user-agent': 'Mozilla/5.0 (compatible; fifagosu-shop/1.0; +https://fifagosu.pages.dev)', 'accept-language': 'ko-KR,ko;q=0.9' } });
+  if (!up.ok) return json(502, { message: `넥슨 웹 상점 응답 오류(${up.status})예요.` });
+  const html = await up.text();
+  const items = []; const seen = new Set();
+  for (const blk of html.split('class="product-inner').slice(1)) {
+    const pid = (blk.match(/strPid=(\d+)/) || [])[1];
+    if (!pid || seen.has(pid)) continue;
+    const img = (blk.match(/<div class="thumb">\s*<img src="([^"]+)"/) || [])[1] || '';
+    const name = strip((blk.match(/<p class="text">([\s\S]*?)<\/p>/) || [])[1] || '');
+    const price = strip((blk.match(/<p class="price[^"]*">([\s\S]*?)<\/p>/) || [])[1] || '');
+    const date = strip((blk.match(/<div class="date[^"]*">([\s\S]*?)<\/div>/) || [])[1] || '');
+    if (!name) continue;
+    seen.add(pid);
+    items.push({ pid: +pid, name, img, price, date });
+  }
+  if (!items.length) return json(502, { message: '상점 목록을 읽지 못했어요.' });
+  const res = json(200, { source: 'https://shop.fconline.nexon.com/', items }, { 'cache-control': 'public, max-age=21600' });
+  waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
 export async function onRequest({ request, env, params, waitUntil }) {
   if (request.method !== 'GET') return json(405, { message: 'GET만 지원해요.' });
   const path = '/' + [].concat(params.path || []).join('/');
   const url = new URL(request.url);
   if (path === '/prob') return prob(url, waitUntil);
+  if (path === '/shop') return shop(waitUntil);
   if (!env.NEXON_API_KEY) return json(500, { message: 'NEXON_API_KEY 환경 변수가 없어요.' });
   if (path === '/summary') return summary(url, env, waitUntil);
   if (path === '/matches') return matches(url, env, waitUntil);

@@ -422,3 +422,13 @@ footer a{color:inherit}
 .doc h2{font-size:17px;margin:24px 0 8px}
 .doc p,.doc li{color:var(--fg);font-size:15px}
 .doc .meta{color:var(--muted);font-size:13px}
+/* 메뉴 링크(고유 주소) — 버튼과 같은 모양 */
+nav.menu a[data-view]{cursor:pointer}
+nav.menu a[data-view][aria-current="page"]{color:var(--accent-ink);background:var(--accent);font-weight:600}
+/* 공식 로고 */
+a.logo{text-decoration:none;color:inherit}
+.logo picture{display:block;line-height:0}
+.logo img{display:block;height:34px;width:auto;background:#0b120f;border-radius:9px;padding:3px 9px}
+.logo small{font-family:var(--f-data);font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:none}
+@media (max-width:360px){.logo small{display:none}}
+.chips a[aria-current="page"]{border-color:var(--accent);color:var(--accent)}

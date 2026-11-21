@@ -24,11 +24,31 @@ SITE = Path(__file__).resolve().parent
 ROOT = SITE.parent
 KST = dt.timezone(dt.timedelta(hours=9))
 
-# 고정 페이지: (출력 파일, 템플릿, 경로, 제목, 설명, sitemap 포함 여부)
-PAGES = [
-    ("index.html", "index.html", "/", "피파고수 — FC온라인 전적 진단·전체 카드 검색",
+# 고정 페이지: (출력 파일, 템플릿, 경로, 제목, 설명, sitemap 포함 여부, 추가 값)
+MAIN_T = "index.html"
+VIEW_PAGES = [
+    ("index.html", "/", "home", "피파고수 — FC온라인 전적 진단·전체 카드 검색",
      "FC온라인 공식경기·감독모드 최근 30~100경기로 약점을 진단하고, 모든 시즌 선수 카드를 검색하세요. "
-     "강화별 시세·능력치, BP·강화 계산기, 시스템 가이드까지.", True),
+     "강화별 시세·능력치, BP·강화 계산기, 시스템 가이드까지."),
+    ("diag.html", "/diag", "diag", "FC온라인 전적 진단 — 최근 경기로 내 팀 약점 찾기 | 피파고수",
+     "구단주 닉네임만 넣으면 공식경기·감독모드 최근 30~100경기를 분석해 득점·실점 패턴과 약점을 알려줘요."),
+    ("cards.html", "/cards", "cards", "FC온라인 선수 카드 검색 — OVR·능력치·강화별 시세 | 피파고수",
+     "FC온라인 전체 시즌 선수 카드를 검색하고 OVR, 세부 능력치 34개, 1~13강 강화별 시세를 확인하세요."),
+    ("calc.html", "/calc", "calc", "FC온라인 BP·강화 계산기 — 강화 비용·확률·판매 수수료 | 피파고수",
+     "FC온라인 강화 단계별 OVR 상승, 강화 성공 확률, 판매 수수료를 계산해요."),
+    ("guide/index.html", "/guide/", "guide", "FC온라인 시스템 가이드 — 등급·감독모드·강화·팀컬러 | 피파고수",
+     "FC온라인 공식경기 등급, 감독모드, 강화, 팀컬러, 시즌, 급여·이적시장 규칙을 한곳에 정리했어요."),
+]
+GUIDE_PAGES = [
+    ("patch", "FC온라인 최근 패치 정리", "FC온라인 최근 업데이트·밸런스 조정·신규 클래스 출시 내역을 정리했어요."),
+    ("official", "FC온라인 공식경기 등급 정리 — 승급 점수·시즌 보상", "유망주부터 슈퍼 챔피언스까지 FC온라인 공식경기 등급과 승급 점수, 시즌 규칙을 정리했어요."),
+    ("manager", "FC온라인 감독모드 공략 — 전술·선수 고르기", "FC온라인 감독모드 상위권 전술 경향, 포지션별 신체 기준, 순위 보상을 정리했어요."),
+    ("grade", "FC온라인 강화 정리 — 단계별 OVR 상승·성공 확률", "FC온라인 1~13강 강화 단계별 OVR 상승값, 성공 확률, 카드 색을 정리했어요."),
+    ("tc", "FC온라인 팀컬러 정리 — 소속·특성·강화 팀컬러", "FC온라인 클럽·국가 팀컬러, 특성 팀컬러, 강화 팀컬러(물결) 조건과 보너스를 정리했어요."),
+    ("season", "FC온라인 시즌과 선수 카드 — spid·시즌 배지", "같은 선수도 시즌마다 다른 카드인 이유와 선수 고유 ID(spid), 시즌 이미지를 설명해요."),
+    ("market", "FC온라인 급여·이적시장 — 급여 상한·판매 수수료 계산", "FC온라인 급여 상한 310과 판매 수수료 계산식, 수수료 쿠폰 지급 방식을 정리했어요."),
+]
+PAGES = [
     ("about.html", "pages/about.html", "/about", "피파고수 소개", "피파고수가 어떤 사이트인지, 데이터는 어디서 오는지 소개해요.", True),
     ("privacy.html", "pages/privacy.html", "/privacy", "개인정보처리방침 — 피파고수", "피파고수의 개인정보 처리 방침이에요.", True),
     ("terms.html", "pages/terms.html", "/terms", "이용약관 — 피파고수", "피파고수 이용약관이에요.", True),
@@ -66,14 +86,26 @@ def main(argv=None):
     common = dict(SITE_URL=site_url, ver=ver, cfg=cfg, contact=cfg.get("CONTACT_EMAIL") or "",
                   updated=dt.datetime.now(KST).strftime("%Y-%m-%d"), og_title=None, og_description=None)
     sitemap = []
-    for fname, tpl, path, title, desc, in_map in PAGES:
-        root = "/" if fname == "404.html" else ""      # 404는 어느 경로에서든 열리므로 절대 경로
-        html = env.get_template(tpl).render(**common, title=title, description=desc, root=root,
-                                            canonical=site_url + ("/" if path == "/" else path),
-                                            noindex=not in_map)
-        (out / fname).write_text(html, encoding="utf-8")
+    titles = json.dumps({v: t for _, _, v, t, _ in VIEW_PAGES}, ensure_ascii=False)
+    url = lambda path: site_url + ("/" if path == "/" else path)
+
+    def render(fname, tpl, path, title, desc, in_map, root="", **extra):
+        ctx = dict(common, title=title, description=desc, root=root, canonical=url(path),
+                   noindex=not in_map, view=extra.pop("view", ""), guide_only=extra.pop("guide_only", ""),
+                   titles=titles, **extra)
+        f = out / fname
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(env.get_template(tpl).render(**ctx), encoding="utf-8")
         if in_map:
-            sitemap.append(site_url + ("/" if path == "/" else path))
+            sitemap.append(url(path))
+
+    for fname, path, view, title, desc in VIEW_PAGES:
+        render(fname, MAIN_T, path, title, desc, True, view=view, root="../" if "/" in fname else "")
+    for slug, title, desc in GUIDE_PAGES:
+        render(f"guide/{slug}.html", MAIN_T, f"/guide/{slug}", title + " | 피파고수", desc, True,
+               root="../", view="guide", guide_only="g-" + slug)
+    for fname, tpl, path, title, desc, in_map in PAGES:
+        render(fname, tpl, path, title, desc, in_map, root="/" if fname == "404.html" else "")
     if (out / "fun" / "index.html").exists():
         sitemap.append(site_url + "/fun/")
 

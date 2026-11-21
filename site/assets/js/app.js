@@ -336,13 +336,18 @@ const VIEWS=['home','diag','cards','calc','guide'];
 /* 등급 계열 색 */
 const TIER_FAM=n=>/슈퍼 ?챔피언스/.test(n)?'--t-sc':/챔피언스/.test(n)?'--t-ch':/챌린/.test(n)?'--t-cl':/마스터/.test(n)?'--t-ma':/월드클래스/.test(n)?'--t-wc':/^프로/.test(n)?'--t-pr':'--t-lo';
 const tierBadge=n=>`<span class="tierb" style="--tc:var(${TIER_FAM(n)})">${esc(n)}</span>`;
-function show(v){
+function show(v,nopush){
   VIEWS.forEach(x=>$('v-'+x).hidden=x!==v);
-  document.querySelectorAll('#menu button').forEach(b=>{if(b.dataset.view===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
-  try{history.replaceState(null,'',v==='home'?location.pathname+location.search:'#'+v)}catch(e){}
+  document.querySelectorAll('#menu [data-view]').forEach(b=>{if(b.dataset.view===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
+  const R=window.FG_ROUTES;
+  try{
+    if(window.FG_LIVE&&R){if(!nopush&&location.pathname!==R[v])history.pushState({v},'',R[v]+location.search)}
+    else history.replaceState(null,'',v==='home'?location.pathname+location.search:'#'+v);
+  }catch(e){}
+  if(window.FG_TITLES&&FG_TITLES[v]&&!nopush)document.title=FG_TITLES[v];
   window.scrollTo({top:0});
 }
-$('menu').addEventListener('click',e=>{const b=e.target.closest('button[data-view]');if(b)show(b.dataset.view)});
+$('menu').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(!b||e.ctrlKey||e.metaKey||e.shiftKey||e.button)return;e.preventDefault();show(b.dataset.view)});
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.go)));
 
 const gch=g=>`<span class="grade g-${GRADE_CLS(g)}" title="${GRADE_TIER(g)}">${g}강</span>`;
@@ -365,8 +370,8 @@ function runEnhance(){
 ['eFrom','eTo','eGauge'].forEach(id=>{$(id).addEventListener('input',runEnhance);$(id).addEventListener('change',runEnhance)});
 $('eFrom').value='5';$('eTo').value='8';
 /* 가이드 */
-$('gLadder').innerHTML=['유망주','세미프로','프로','월드클래스','마스터','챌린저','슈퍼 챌린지','챔피언스','슈퍼 챔피언스'].map(n=>`<span style="--tc:var(${TIER_FAM(n)})">${n}</span>`).join('<span style="border:0;background:none;color:var(--muted);padding:4px 0">›</span>');
-$('gGrade').innerHTML=`<table><thead><tr><th>단계</th><th class="n">1강 대비 OVR</th><th class="n">다음 강화 성공</th><th>색</th></tr></thead><tbody>${Array.from({length:MAX_GRADE},(_,i)=>i+1).map(g=>`<tr><td style="white-space:nowrap">${gch(g)}</td><td class="n">+${GRADE_BONUS[g]}</td><td class="n">${g<MAX_GRADE?GRADE_SUCCESS[g]+'%':'-'}</td><td style="white-space:nowrap">${GRADE_TIER(g)}</td></tr>`).join('')}</tbody></table>`;
+if($('gLadder'))$('gLadder').innerHTML=['유망주','세미프로','프로','월드클래스','마스터','챌린저','슈퍼 챌린지','챔피언스','슈퍼 챔피언스'].map(n=>`<span style="--tc:var(${TIER_FAM(n)})">${n}</span>`).join('<span style="border:0;background:none;color:var(--muted);padding:4px 0">›</span>');
+if($('gGrade'))$('gGrade').innerHTML=`<table><thead><tr><th>단계</th><th class="n">1강 대비 OVR</th><th class="n">다음 강화 성공</th><th>색</th></tr></thead><tbody>${Array.from({length:MAX_GRADE},(_,i)=>i+1).map(g=>`<tr><td style="white-space:nowrap">${gch(g)}</td><td class="n">+${GRADE_BONUS[g]}</td><td class="n">${g<MAX_GRADE?GRADE_SUCCESS[g]+'%':'-'}</td><td style="white-space:nowrap">${GRADE_TIER(g)}</td></tr>`).join('')}</tbody></table>`;
 ['kPrice','kBase','kCoupon','kPc','kPcRate','kTop','kTopRate','xHave','xSell','xBuy'].forEach(id=>$(id).addEventListener('input',runCalc));
 ['kCoupon','kPc','kTop'].forEach(id=>$(id).addEventListener('change',runCalc));
 
@@ -716,5 +721,7 @@ if(LIVE){
   else{$('dBoard').innerHTML='<div><div class="nick">구단주 검색</div><div class="meta">닉네임을 넣고 진단하기를 누르세요.</div></div>'}
 }
 initCards();
-{const h=location.hash.replace('#','');if(VIEWS.includes(h))show(h);}
+{const h=location.hash.replace('#',''),bv=document.body.dataset.view;
+ if(VIEWS.includes(h))show(h);else if(bv&&bv!=='home'&&VIEWS.includes(bv))show(bv,true);}
+window.addEventListener('popstate',()=>{const R=window.FG_ROUTES||{};const p=location.pathname.replace(/\.html$/,'').replace(/(.)\/$/,'$1');const v=Object.keys(R).find(k=>R[k]===p)||(p.startsWith('/guide')?'guide':'home');show(v,true);if(window.FG_TITLES&&FG_TITLES[v])document.title=FG_TITLES[v]});
 

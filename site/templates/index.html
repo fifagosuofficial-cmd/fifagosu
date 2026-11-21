@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block nav %}
   <nav class="menu" aria-label="메뉴" id="menu">
-    <button type="button" data-view="home" aria-current="page">홈</button>
-    <button type="button" data-view="diag">전적 진단</button>
-    <button type="button" data-view="cards">카드 검색</button>
-    <button type="button" data-view="calc">BP·강화 계산기</button>
-    <button type="button" data-view="guide">시스템 가이드</button>
+    <a href="{{ root or './' }}" data-view="home"{% if view=='home' %} aria-current="page"{% endif %}>홈</a>
+    <a href="{{ root }}diag" data-view="diag"{% if view=='diag' %} aria-current="page"{% endif %}>전적 진단</a>
+    <a href="{{ root }}cards" data-view="cards"{% if view=='cards' %} aria-current="page"{% endif %}>카드 검색</a>
+    <a href="{{ root }}calc" data-view="calc"{% if view=='calc' %} aria-current="page"{% endif %}>BP·강화 계산기</a>
+    <a href="{{ root }}guide/" data-view="guide"{% if view=='guide' %} aria-current="page"{% endif %}>시스템 가이드</a>
     <a class="fun" href="{{ root }}fun/">심심풀이 테스트</a>
   </nav>
 {% endblock %}
@@ -13,7 +13,7 @@
 <div class="notice" id="notice"><b>미리보기</b> · 이 화면은 넥슨 서버에 접속할 수 없어서 미리 불러온 구단주 전적과 일부 카드(능력치·시세는 손흥민 카드 예시)만 보여요. 배포한 사이트에서는 누구나 실시간으로 조회되고 전체 카드가 검색돼요.</div>
 
 <!-- ================= 홈 ================= -->
-<main id="v-home" class="wrap">
+<main id="v-home" class="wrap"{% if view!='home' %} hidden{% endif %}>
   <div class="hero">
     <h1>최근 경기로 <em>내 팀 약점</em>을 찾고<br>모든 카드를 한 번에 검색해요</h1>
     <form class="ask" id="hForm" autocomplete="off">
@@ -39,7 +39,7 @@
 </main>
 
 <!-- ================= 전적 진단 ================= -->
-<main id="v-diag" class="wrap" hidden>
+<main id="v-diag" class="wrap"{% if view!='diag' %} hidden{% endif %}>
   <form class="ask" id="dForm" autocomplete="off">
     <input id="dNick" value="" placeholder="구단주 닉네임" aria-label="구단주 닉네임">
     <div class="seg" role="group" aria-label="경기 모드" id="dMode">
@@ -58,7 +58,7 @@
 
 
 <!-- ================= 카드 검색 ================= -->
-<main id="v-cards" class="wrap" hidden>
+<main id="v-cards" class="wrap"{% if view!='cards' %} hidden{% endif %}>
   <section>
     <h2>카드 검색 <small id="cMeta"></small></h2>
     <div class="panel sheet">
@@ -74,7 +74,7 @@
 </main>
 
 <!-- ================= 계산기 ================= -->
-<main id="v-calc" class="wrap" hidden>
+<main id="v-calc" class="wrap"{% if view!='calc' %} hidden{% endif %}>
   <section>
     <h2>판매 실수령 BP</h2>
     <div class="panel sheet">
@@ -122,9 +122,10 @@
 
 
 <!-- ================= 시스템 가이드 ================= -->
-<main id="v-guide" class="wrap" hidden>
+<main id="v-guide" class="wrap"{% if view!='guide' %} hidden{% endif %}>
   <div class="hero" style="padding-top:0"><h1 style="font-size:clamp(24px,5vw,32px)">FC온라인 <em>시스템 가이드</em></h1><p class="sub">피파고수가 진단에 쓰는 게임 규칙을 공식 공지와 커뮤니티 자료로 정리했어요. 게임 업데이트로 바뀔 수 있어요.</p></div>
-  <nav class="chips" aria-label="가이드 목차"><a class="chip" href="#g-patch">최근 패치</a><a class="chip" href="#g-official">공식경기 등급</a><a class="chip" href="#g-manager">감독모드</a><a class="chip" href="#g-grade">강화</a><a class="chip" href="#g-tc">팀컬러</a><a class="chip" href="#g-season">시즌·이미지</a><a class="chip" href="#g-market">급여·이적시장</a></nav>
+  {% if guide_only %}<p class="sub" style="margin:0 0 8px"><a href="{{ root }}guide/">← 시스템 가이드 전체 보기</a></p>{% endif %}<nav class="chips" aria-label="가이드 목차"><a class="chip" href="{{ root }}guide/patch"{% if guide_only=='g-patch' %} aria-current="page"{% endif %}>최근 패치</a><a class="chip" href="{{ root }}guide/official"{% if guide_only=='g-official' %} aria-current="page"{% endif %}>공식경기 등급</a><a class="chip" href="{{ root }}guide/manager"{% if guide_only=='g-manager' %} aria-current="page"{% endif %}>감독모드</a><a class="chip" href="{{ root }}guide/grade"{% if guide_only=='g-grade' %} aria-current="page"{% endif %}>강화</a><a class="chip" href="{{ root }}guide/tc"{% if guide_only=='g-tc' %} aria-current="page"{% endif %}>팀컬러</a><a class="chip" href="{{ root }}guide/season"{% if guide_only=='g-season' %} aria-current="page"{% endif %}>시즌·이미지</a><a class="chip" href="{{ root }}guide/market"{% if guide_only=='g-market' %} aria-current="page"{% endif %}>급여·이적시장</a></nav>
+{% if not guide_only or guide_only=='g-patch' %}
   <section id="g-patch">
     <h2>최근 패치 반영 내역 <small>2026년 10월 15일 기준</small></h2>
     <div class="panel sheet">
@@ -137,6 +138,8 @@
       <p class="sub">출처: <a href="https://fconline.nexon.com/news/update/list" target="_blank" rel="noopener">넥슨 업데이트 목록</a>, <a href="https://fconline.nexon.com/news/notice/view?n4ArticleSN=6110" target="_blank" rel="noopener">26년 7월 밸런스 조정</a>, <a href="https://www.gamevu.co.kr/news/articleView.html?idxno=58926" target="_blank" rel="noopener">게임뷰 기사</a></p>
     </div>
   </section>
+  {% endif %}
+{% if not guide_only or guide_only=='g-official' %}
   <section id="g-official">
     <h2>공식경기 등급</h2>
     <div class="panel sheet">
@@ -152,6 +155,8 @@
       <p class="sub">출처: <a href="https://fconline.nexon.com/news/notice/view?n4ArticleSN=5456" target="_blank" rel="noopener">넥슨 공식경기 업데이트 공지</a>, <a href="https://open.api.nexon.com/static/fconline/meta/division.json" target="_blank" rel="noopener">넥슨 Open API 등급 메타데이터</a></p>
     </div>
   </section>
+  {% endif %}
+{% if not guide_only or guide_only=='g-manager' %}
   <section id="g-manager">
     <h2>감독모드</h2>
     <div class="panel sheet">
@@ -165,6 +170,8 @@
       <p class="sub">피파고수 스쿼드 추천의 '감독모드' 설정은 위 신체 기준을 가산점으로 반영해요. 출처: <a href="https://www.invenglobal.com/articles/23536/boost-your-win-rate-with-a-click-manager-mode-tactics-guide-coupon-event" target="_blank" rel="noopener">인벤 감독모드 전술 가이드</a>, <a href="https://www.inven.co.kr/board/fifaonline4/3145/37967" target="_blank" rel="noopener">인벤 감독모드 팁</a>, <a href="https://fc-info.com/posts/706" target="_blank" rel="noopener">FC INFO 감독모드 정리</a> (커뮤니티 자료)</p>
     </div>
   </section>
+  {% endif %}
+{% if not guide_only or guide_only=='g-grade' %}
   <section id="g-grade">
     <h2>강화</h2>
     <div class="panel sheet">
@@ -173,6 +180,8 @@
       <p class="sub">출처: <a href="https://fconline.nexon.com/news/notice/view?n4ArticleSN=5106" target="_blank" rel="noopener">넥슨 선수 강화 확률 안내(26.4 기준)</a></p>
     </div>
   </section>
+  {% endif %}
+{% if not guide_only or guide_only=='g-tc' %}
   <section id="g-tc">
     <h2>팀컬러</h2>
     <div class="panel sheet">
@@ -187,6 +196,8 @@
       <p class="sub">출처: <a href="https://namu.wiki/w/FC%20%EC%98%A8%EB%9D%BC%EC%9D%B8/%ED%8C%80%EC%BB%AC%EB%9F%AC" target="_blank" rel="noopener">나무위키 FC 온라인/팀컬러</a> (커뮤니티 자료). 클럽·국가 팀컬러의 단계별 수치는 팀마다 달라 피파고수는 단계만 표시해요.</p>
     </div>
   </section>
+  {% endif %}
+{% if not guide_only or guide_only=='g-season' %}
   <section id="g-season">
     <h2>시즌과 선수 이미지</h2>
     <div class="panel sheet">
@@ -198,6 +209,8 @@
       <p class="sub">출처: <a href="https://open.api.nexon.com/static/fconline/meta/seasonid.json" target="_blank" rel="noopener">넥슨 Open API 시즌 메타데이터</a>, <a href="https://openapi.nexon.com/ko/game/fconline/?id=6" target="_blank" rel="noopener">이미지 정보 조회 문서</a></p>
     </div>
   </section>
+  {% endif %}
+{% if not guide_only or guide_only=='g-market' %}
   <section id="g-market">
     <h2>급여·이적시장</h2>
     <div class="panel sheet">
@@ -209,6 +222,7 @@
       <p class="sub">출처: <a href="https://www.inven.co.kr/board/fifaonline4/4711/3851" target="_blank" rel="noopener">6/25 정기점검 공지(인벤 소식 게시판)</a>, <a href="https://www.gamevu.co.kr/news/articleView.html?idxno=58926" target="_blank" rel="noopener">게임뷰 2026.6.24 기사</a>, <a href="https://fc-info.com/commission" target="_blank" rel="noopener">FC INFO 수수료 계산식</a></p>
     </div>
   </section>
+  {% endif %}
   <div class="slot" data-slot="guide-1"></div>
 </main>
 
@@ -217,5 +231,6 @@
 {% endblock %}
 {% block scripts %}
 <script>if(!window.FG_LIVE)document.write('<script src="{{ root }}preview/data.js?v={{ ver }}"><\/script>')</script>
+<script>window.FG_ROUTES={"home":"/","diag":"/diag","cards":"/cards","calc":"/calc","guide":"/guide/"};window.FG_TITLES={{ titles }};</script>
 <script src="{{ root }}assets/js/app.js?v={{ ver }}"></script>
 {% endblock %}

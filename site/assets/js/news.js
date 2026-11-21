@@ -4,14 +4,27 @@
   // 분류 탭: data-tabs="x" 버튼 → data-list="x" 목록의 data-cat 필터
   $$('[data-tabs]').forEach(tabs=>{
     const list=document.querySelector(`[data-list="${tabs.dataset.tabs}"]`); if(!list)return;
+    const subs=document.querySelector(`[data-subtabs="${tabs.dataset.tabs}"]`);
+    let league='전체';
+    const apply=(f)=>{
+      const group=subs&&subs.querySelector(`[data-subgroup="${f}"]`);
+      if(subs){subs.hidden=!group;subs.querySelectorAll('[data-subgroup]').forEach(g=>g.hidden=g!==group)}
+      if(!group)league='전체';
+      let n=0;
+      $$(':scope > li',list).forEach(li=>{
+        const show=(f==='all'||li.dataset.cat===f)&&(!group||league==='전체'||li.dataset.league===league);
+        li.hidden=!show;if(show){n++;const num=li.querySelector('.nw-n');if(num)num.textContent=String(n).padStart(2,'0')}
+      });
+      let empty=list.nextElementSibling&&list.nextElementSibling.classList.contains('nw-empty')?list.nextElementSibling:null;
+      if(!n){if(!empty){empty=document.createElement('p');empty.className='nw-empty cl-empty';empty.textContent='이 분류의 새 소식이 아직 없어요.';list.after(empty)}}else if(empty)empty.remove();
+    };
     tabs.addEventListener('click',e=>{
       const b=e.target.closest('button[data-f]'); if(!b)return;
       $$('button',tabs).forEach(x=>x.setAttribute('aria-selected',x===b));
-      const f=b.dataset.f; let n=0;
-      $$(':scope > li',list).forEach(li=>{const show=f==='all'||li.dataset.cat===f;li.hidden=!show;if(show){n++;const num=li.querySelector('.nw-n');if(num)num.textContent=String(n).padStart(2,'0')}});
-      let empty=list.nextElementSibling&&list.nextElementSibling.classList.contains('nw-empty')?list.nextElementSibling:null;
-      if(!n){if(!empty){empty=document.createElement('p');empty.className='nw-empty cl-empty';empty.textContent='이 분류의 새 소식이 아직 없어요.';list.after(empty)}}else if(empty)empty.remove();
+      league='전체';if(subs)subs.querySelectorAll('[data-league]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.league==='전체'));
+      apply(b.dataset.f);
     });
+    if(subs)subs.addEventListener('click',e=>{const b=e.target.closest('button[data-league]');if(!b)return;league=b.dataset.league;subs.querySelectorAll('[data-league]').forEach(x=>x.setAttribute('aria-pressed',x===b));apply(tabs.querySelector('[aria-selected="true"]')?.dataset.f||'all')});
   });
   // 상대 시간
   const now=Date.now();
@@ -25,7 +38,8 @@
   $$('.ev-list li').forEach(li=>{
     const s=day(li.dataset.start), e=day(li.dataset.end); if(!e)return;
     const left=Math.round((e-today)/864e5), el=li.querySelector('[data-dday]');
-    if(el){el.textContent=left<0?'종료':left===0?'오늘 마감':'D-'+left; if(left<=3)el.classList.add('soon')}
+    if(el){el.textContent=left<0?'종료':left===0?'오늘 마감':'D-'+left; if(left<=5&&left>=0)el.classList.add('soon')}
+    li.classList.toggle('ev-critical',left<=5&&left>=0);
     const bar=li.querySelector('.ev-bar i'); if(bar&&s)bar.style.width=Math.max(4,Math.min(100,(today-s)/(e-s||1)*100))+'%';
     if(left<0)li.hidden=true;
   });
@@ -38,12 +52,15 @@
         pages=document.getElementById('bdPages'), none=document.getElementById('bdNone'), PER=20;
   const now=Date.now();
   rows.forEach(r=>{const d=Date.parse(r.dataset.date);if(d&&now-d<864e5)r.querySelector('.bd-new').hidden=false});
-  let cat='all', page=1;
+  let cat='all', league='전체', page=1;
   const valid=new Set([...tabs.querySelectorAll('button')].map(b=>b.dataset.f));
+  const subbar=document.getElementById('bdSubtabs');
   const h=location.hash.slice(1); if(valid.has(h))cat=h;
   function draw(){
     const kw=(q.value||'').trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const hit=rows.filter(r=>(cat==='all'||r.dataset.cat===cat)&&kw.every(k=>r.dataset.q.includes(k)));
+    if(subbar){const group=subbar.querySelector(`[data-subgroup="${cat}"]`);subbar.hidden=!group;subbar.querySelectorAll('[data-subgroup]').forEach(g=>g.hidden=g!==group)}
+    const hasLeague=cat==='world'||cat==='korea';
+    const hit=rows.filter(r=>(cat==='all'||r.dataset.cat===cat)&&(!hasLeague||league==='전체'||r.dataset.league===league)&&kw.every(k=>r.dataset.q.includes(k)));
     const n=Math.max(1,Math.ceil(hit.length/PER)); page=Math.min(page,n);
     rows.forEach(r=>r.hidden=true);
     hit.forEach((r,i)=>{r.hidden=!(i>=(page-1)*PER&&i<page*PER);r.querySelector('.bd-no').textContent=hit.length-i});
@@ -59,8 +76,10 @@
     }
     pages.innerHTML=html;
   }
-  tabs.addEventListener('click',e=>{const b=e.target.closest('button[data-f]');if(!b)return;cat=b.dataset.f;page=1;
+  tabs.addEventListener('click',e=>{const b=e.target.closest('button[data-f]');if(!b)return;cat=b.dataset.f;league='전체';page=1;
+    if(subbar)subbar.querySelectorAll('[data-league]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.league==='전체'));
     try{history.replaceState(null,'',cat==='all'?location.pathname:'#'+cat)}catch(_){}draw()});
+  if(subbar)subbar.addEventListener('click',e=>{const b=e.target.closest('button[data-league]');if(!b)return;league=b.dataset.league;page=1;subbar.querySelectorAll('[data-league]').forEach(x=>x.setAttribute('aria-pressed',x===b));draw()});
   q.addEventListener('input',()=>{page=1;draw()});
   pages.addEventListener('click',e=>{const b=e.target.closest('button[data-p]');if(!b)return;page=+b.dataset.p;draw();
     document.querySelector('.bd-table').scrollIntoView({block:'start',behavior:'smooth'})});

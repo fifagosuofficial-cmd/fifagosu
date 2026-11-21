@@ -5,7 +5,7 @@
   <div class="bd-head">
     <div>
       <h1 class="bd-h1">소식 게시판</h1>
-      <p class="sub">FC온라인 공식 공지·점검·업데이트와 축구·게임 기사를 하루 4번 모아요.{% if news %} 마지막 갱신 <time datetime="{{ news.updated }}" data-rel>{{ news.updated[5:7]|int }}.{{ news.updated[8:10]|int }} {{ news.updated[11:16] }}</time>{% endif %}</p>
+      <p class="sub">읽기 전용 게시판이에요. 이용자 글쓰기 기능은 없고, 운영자가 관리하는 자동 수집 목록으로 소식을 게시해요.{% if news %} 마지막 갱신 <time datetime="{{ news.updated }}" data-rel>{{ news.updated[5:7]|int }}.{{ news.updated[8:10]|int }} {{ news.updated[11:16] }}</time>{% endif %}</p>
     </div>
     <form class="bd-search" role="search" onsubmit="return false">
       <input type="search" id="bdQ" placeholder="제목·내용 검색 (예: 점검, 강화, 손흥민)" aria-label="소식 검색" autocomplete="off">
@@ -18,13 +18,17 @@
         <button type="button" role="tab" aria-selected="true" data-f="all">전체 <small>{{ news.board|length }}</small></button>
         {% for c, label in news.cats %}<button type="button" role="tab" aria-selected="false" data-f="{{ c }}">{{ label }} <small>{{ news.counts[c] }}</small></button>{% endfor %}
       </div>
+      <div class="nw-subtabs" id="bdSubtabs" hidden>
+        <div data-subgroup="world" hidden>{% for l in ['전체','EPL','라리가','분데스리가','세리에A','리그앙','기타'] %}<button type="button" data-league="{{ l }}" aria-pressed="{{ 'true' if l=='전체' else 'false' }}">{{ l }}</button>{% endfor %}</div>
+        <div data-subgroup="korea" hidden>{% for l in ['전체','KFA','K리그','기타'] %}<button type="button" data-league="{{ l }}" aria-pressed="{{ 'true' if l=='전체' else 'false' }}">{{ l }}</button>{% endfor %}</div>
+      </div>
       <div class="bd-table" role="table" aria-label="소식 목록">
         <div class="bd-row bd-th" role="row"><span role="columnheader">번호</span><span role="columnheader">분류</span><span role="columnheader">제목</span><span role="columnheader">출처</span><span role="columnheader">날짜</span></div>
         <div id="bdBody">
         {% for x in news.board %}
-          <a class="bd-row" role="row" href="{{ root }}news/{{ x.id }}" data-cat="{{ x.cat }}" data-date="{{ x.date }}" data-q="{{ (x.title ~ ' ' ~ (x.summary|join(' ')) ~ ' ' ~ x.source)|lower|e }}">
+          <a class="bd-row" role="row" href="{{ root }}news/{{ x.id }}" data-cat="{{ x.cat }}" data-league="{{ x.league|default('기타') }}" data-date="{{ x.date }}" data-q="{{ (x.title ~ ' ' ~ (x.summary|join(' ')) ~ ' ' ~ x.source)|lower|e }}">
             <span class="bd-no" role="cell">{{ news.board|length - loop.index0 }}</span>
-            <span role="cell"><b class="cl-badge cat-{{ x.cat }}">{{ x.label }}</b></span>
+            <span role="cell"><b class="cl-badge cat-{{ x.cat }}">{{ x.label }}</b>{% if x.cat in ['world','korea'] %}<small class="bd-league">{{ x.league|default('기타') }}</small>{% endif %}</span>
             <span class="bd-t" role="cell">{{ x.title }}<i class="bd-new" hidden>N</i></span>
             <span class="bd-src" role="cell">{{ x.source }}</span>
             <span class="bd-d" role="cell"><time datetime="{{ x.date }}">{{ x.date[2:4] }}.{{ x.date[5:7] }}.{{ x.date[8:10] }}</time></span>

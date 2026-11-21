@@ -25,6 +25,7 @@ import sys
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -47,6 +48,15 @@ FEEDS = [
     ("게임톡", "https://www.gametoc.co.kr/rss/allArticle.xml", "fcgame", r"FC\s?온라인|피파\s?온라인|EA\s?SPORTS\s?FC|FC\s?모바일|피파"),
 ]
 DOMESTIC = re.compile(r"K리그|K1|K2|한국 대표팀|대한민국 대표팀|대표팀 소집|A매치|홍명보|코리아컵|WK리그|울산|전북|포항|FC서울|수원|대구FC|광주FC|강원FC|제주|인천|대전|김천|경남FC|부천|안양")
+KFA_NEWS = re.compile(r"KFA|대한축구협회|축구협회|국가대표|대표팀|A매치|월드컵 예선|아시안컵|올림픽 대표|U-1[789]|여자 대표팀")
+KLEAGUE_NEWS = re.compile(r"K리그|K League|K1|K2|K3|K4|코리아컵|WK리그|울산|전북|포항|FC서울|수원(?:삼성|FC)?|대구FC|광주FC|강원FC|제주(?:SK)?|인천유나이티드|대전하나|김천상무|경남FC|부천FC|안양FC|충남아산|성남FC|부산아이파크|서울이랜드")
+LEAGUES = [
+    ("EPL", re.compile(r"\bEPL\b|프리미어리그|Premier League|맨체스터 시티|맨시티|맨체스터 유나이티드|맨유|토트넘|리버풀|첼시|아스널|아스날|뉴캐슬|애스턴 빌라|브라이턴|웨스트햄", re.I)),
+    ("라리가", re.compile(r"라리가|La Liga|바르셀로나|레알 마드리드|아틀레티코 마드리드|세비야|비야레알|레알 소시에다드", re.I)),
+    ("분데스리가", re.compile(r"분데스리가|Bundesliga|바이에른 뮌헨|도르트문트|레버쿠젠|라이프치히|프랑크푸르트", re.I)),
+    ("세리에A", re.compile(r"세리에 ?A|Serie A|유벤투스|인터 밀란|인테르|AC 밀란|나폴리|AS 로마|아탈란타", re.I)),
+    ("리그앙", re.compile(r"리그앙|Ligue 1|파리 생제르맹|PSG|마르세유|모나코|릴 OSC", re.I)),
+]
 CAT_LABEL = {"notice": "공지", "check": "점검", "update": "업데이트", "event": "이벤트",
              "fcgame": "FC온라인 기사", "world": "해외축구", "korea": "국내축구"}
 SKIP_LINE = re.compile(r"^(안녕하세요|감사합니다|이용에 불편|앞으로도|항상 .*노력|많은 관심|구단주님들의 .*부탁)|[─━═\-=_]{6,}")
@@ -156,9 +166,43 @@ def parse_update_list(text):
         if not (y and d and sub):
             continue
         mm, dd = clean(d.get_text()).split(".")[:2]
-        url = re.sub(r"[?&]utm_[^&]+", "", a["href"]).rstrip("?&")
+        url = urljoin(NX, re.sub(r"[?&]utm_[^&]+", "", a["href"]).rstrip("?&"))
         out.append({"title": clean(sub.get_text()), "url": url, "date": f"{clean(y.get_text())}-{mm.zfill(2)}-{dd.zfill(2)}"})
     return out
+
+
+def classify_league(title, summary, category):
+    """축구 RSS 기사 제목·RSS 요약만 사용해 세부 분류해요. 판단이 어려우면 기타예요."""
+    text = clean(title + " " + " ".join(summary or []))
+    if category == "korea":
+        if KFA_NEWS.search(text):
+            return "KFA"
+        if KLEAGUE_NEWS.search(text):
+            return "K리그"
+        return "기타"
+    if category == "world":
+        for label, pattern in LEAGUES:
+            if pattern.search(text):
+                return label
+    return "기타"
+
+
+def parse_update_summary(text, limit=5):
+    """패치 페이지의 소제목·목록 머리말을 짧게 발췌해요. 원문 링크로 전체 내용을 안내해요."""
+    soup = BeautifulSoup(text, "html.parser")
+    for node in soup.select("script, style, img, s, strike, del, nav, footer"):
+        node.decompose()
+    candidates = []
+    for node in soup.select("h2, h3, h4, li, .content_body p, .view_content p, article p"):
+        value = clean(node.get_text(" "))
+        if not value or value in candidates or len(value) < 5:
+            continue
+        if SKIP_LINE.search(value):
+            continue
+        # 긴 문단은 원문 복제를 피하고 섹션 머리말에 가까운 짧은 항목만 사용해요.
+        if len(value) <= 110:
+            candidates.append(value)
+    return candidates[:limit]
 
 
 def parse_event_list(text):
@@ -208,6 +252,7 @@ def parse_rss(text, source, base_cat, keyword=None):
             cat = "korea" if DOMESTIC.search(title) else "world"
         summary = desc if len(desc) <= SUMMARY_CHARS else desc[:SUMMARY_CHARS].rsplit(" ", 1)[0] + "…"
         out.append({"id": uid(link), "cat": cat, "kind": "press", "title": title, "summary": [summary] if summary else [],
+                    "league": classify_league(title, [summary] if summary else [], cat),
                     "source": source, "url": link, "date": parse_date(it.findtext("pubDate"))})
     return out
 
@@ -272,13 +317,29 @@ def run(data=DATA, http=None):
         errors.append(f"notice list: {e.__class__.__name__}")
 
     # 2) 업데이트 페이지(제목·날짜만, 원문은 넥슨 이벤트 페이지)
+    patch_items = None
+    old_patch_data = load(data / "news" / "patch.json", {"items": []})
+    old_patch_by_url = {x.get("url"): x for x in old_patch_data.get("items", []) if x.get("url")}
     try:
-        for u in parse_update_list(http.get(NX + "/news/update/list"))[:10]:
+        updates = parse_update_list(http.get(NX + "/news/update/list"))
+        for u in updates[:10]:
             new.append({"id": uid(u["url"]), "cat": "update", "kind": "official", "title": u["title"],
                         "summary": [], "source": "FC온라인 공식", "url": u["url"], "date": u["date"] + "T00:00:00+09:00"})
+        # 같은 업데이트 요약은 재사용해 하루 네 번 수집할 때 중복 요청하지 않아요.
+        patch_items = []
+        for u in updates[:8]:
+            previous = old_patch_by_url.get(u["url"], {})
+            if previous.get("date") == u["date"]:
+                summary = previous["summary"]
+            else:
+                try:
+                    summary = parse_update_summary(http.get(u["url"]))
+                except Exception as e:  # noqa: BLE001
+                    errors.append(f"patch {u['date']}: {e.__class__.__name__}")
+                    summary = []
+            patch_items.append({**u, "summary": summary})
     except Exception as e:  # noqa: BLE001
         errors.append(f"update list: {e.__class__.__name__}")
-
     # 3) 진행 중 이벤트
     events = None
     try:
@@ -296,9 +357,13 @@ def run(data=DATA, http=None):
     items = merge(feed["items"], new)
     for x in items:
         x["label"] = CAT_LABEL.get(x["cat"], x["cat"])
+        if x.get("cat") in ("world", "korea") and not x.get("league"):
+            x["league"] = classify_league(x.get("title", ""), x.get("summary", []), x["cat"])
     save(data / "news" / "feed.json", {"updated": now_iso(), "items": items})
     if events is not None:
         save(data / "news" / "events.json", {"updated": now_iso(), "items": events})
+    if patch_items is not None:
+        save(data / "news" / "patch.json", {"updated": now_iso(), "items": patch_items})
     added = len([x for x in new if x["id"] not in known])
     log(f"새 글 {added}개 · 전체 {len(items)}개 · 진행 중 이벤트 {len(events or [])}개 · 요청 {http.count}회"
         + (f" · 오류 {errors}" if errors else ""))

@@ -101,9 +101,52 @@ def _row_record(el):
     }
 
 
+def _card_kind(src: str):
+    """팀컬러 카드 아이콘 경로로 종류와 공식 ID를 판별해요."""
+    name = src.rsplit("/", 1)[-1]
+    if m := re.fullmatch(r"l(\d+)\.png", name):
+        return "club", {"clubId": int(m.group(1))}
+    if m := re.fullmatch(r"f_(\d+)\.png", name):
+        return "nation", {"nationId": int(m.group(1))}
+    if re.fullmatch(r"tc_u_[bsgp]\.png", name):
+        return "grade", {}
+    if name.startswith("tc_"):
+        return "event", {}
+    return "special", {}
+
+
+def _parse_cards(soup):
+    """2026년 데이터센터 카드형 목록(.teamcolor_item) 파싱. 각 카드는 최고 단계 효과를 보여줘요."""
+    out = []
+    for el in soup.select(".teamcolor_item"):
+        name_el, level_el = el.select_one(".name"), el.select_one(".level")
+        if not name_el or not level_el:
+            continue
+        name = re.sub(r"\s+", " ", name_el.get_text(" ", strip=True)).strip()
+        lv = _LEVEL.search(level_el.get_text(" ", strip=True))
+        effects_txt = " ".join(x.get_text(" ", strip=True) for x in el.select(".desc .item"))
+        stats = _effect_stats(effects_txt)
+        if not name or not lv or not stats:
+            continue
+        num = el.select_one(".crests .num")
+        cnt = int(num.get_text(strip=True)) if num and num.get_text(strip=True).isdigit() else None
+        img = el.select_one(".crests img")
+        kind, ids = _card_kind(img.get("src", "") if img else "")
+        detail = re.search(r"GetTeamColorDetail\((\d+)\)", str(el))
+        level = int(lv.group(1))
+        rec = {"id": int(detail.group(1)) if detail else None, "name": name, "type": kind, **ids,
+               "requiredCounts": [cnt] if cnt is not None else [], "maxLevel": level,
+               "effects": [{"level": level, "requiredCount": cnt, "stats": stats, "raw": effects_txt}]}
+        out.append(rec)
+    return sorted(out, key=lambda x: (x["type"], x["name"]))
+
+
 def parse_teamcolors(html: str) -> list[dict]:
     """페이지 내 팀컬러 행을 뽑고 이름·종류별 단계/효과로 묶어요."""
     soup = BeautifulSoup(html, "html.parser")
+    cards = _parse_cards(soup)
+    if cards:
+        return cards
     candidates = list(soup.select("tr"))
     records = [r for el in candidates if (r := _row_record(el))]
     # Nexon can change from table rows to cards. Search compact list/card containers as fallback.

@@ -1,0 +1,20 @@
+{# 홈 '오늘의 시장' 조각 — 데이터는 build.py가 data/market/summary.json에서 넣어요. #}
+
+{% macro bp(n) -%}
+{%- if not n -%}-{%- else -%}
+{%- set jo = (n // 1000000000000)|int -%}{%- set eok = ((n % 1000000000000) // 100000000)|int -%}{%- set man = ((n % 100000000) // 10000)|int -%}
+{%- if jo %}{{ jo }}조{% if eok %} {{ eok }}억{% endif %}{% elif eok %}{{ eok }}억{% if man %} {{ '{:,}'.format(man) }}만{% endif %}{% else %}{{ '{:,}'.format(man) }}만{% endif -%}
+{%- endif -%}
+{%- endmacro %}
+
+{% macro pct(c) -%}{% if c is none %}-{% elif c > 0 %}+{{ '%.1f'|format(c) }}%{% else %}{{ '%.1f'|format(c) }}%{% endif %}{%- endmacro %}
+
+{% macro row(x, n) -%}
+<li><button type="button" class="mk-row" data-card="{{ x.id }}">
+  <span class="mk-n">{{ n }}</span>
+  <span class="mk-ssn" data-sid="{{ x.s }}"></span>
+  <span class="mk-nm"><b>{{ x.n }}</b>{% if x.p %}<small>{{ x.p }} {{ x.o or '' }}</small>{% endif %}</span>
+  <span class="mk-pr">{{ bp(x.v) }}</span>
+  {% if x.c is defined %}<span class="mk-c {{ 'up' if x.c > 0 else ('down' if x.c < 0 else '') }}">{{ pct(x.c) }}</span>{% else %}<span class="mk-c">-</span>{% endif %}
+</button></li>
+{%- endmacro %}

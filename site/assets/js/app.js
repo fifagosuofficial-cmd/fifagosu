@@ -756,7 +756,8 @@ function renderCard(){
   const pos=(D&&D.pos&&D.pos.length?D.pos:L&&L.pos)||[], pay=(D&&D.pay)||(L&&L.pay), foot=(D&&D.foot)||(L&&L.foot);
   const tcOptions=tcOptionsFor(D), tc=tcOptions.find(x=>x.name===pmTcName)||null;
   if(tc&&!pmTcName)pmTcName=tc.name;
-  const gradeTcOptions=TEAMCOLORS.filter(tcGradeEligible), gradeTc=gradeTcOptions.find(x=>x.name===pmGradeTcName)||null;
+  const WAVE_ORDER=['동빛 물결','은빛 물결','금빛 물결','백금빛 물결'], waveRank=x=>{const i=WAVE_ORDER.indexOf(String(x.name||'').trim());return i<0?99:i};
+  const gradeTcOptions=TEAMCOLORS.filter(tcGradeEligible).sort((a,b)=>waveRank(a)-waveRank(b)), gradeTc=gradeTcOptions.find(x=>x.name===pmGradeTcName)||null;
   const tcLevel=tc?(+((tcMaxEffect(tc)||{}).level)||tc.maxLevel||0):0, tcBonuses=tcMaxBonus(tc);
   const gradeTcRule=gradeWaveRule(gradeTc);
   const gradeTcLevel=gradeTc?(+((tcMaxEffect(gradeTc)||{}).level)||gradeTc.maxLevel||0):0, gradeTcBonuses=tcMaxBonus(gradeTc,true);

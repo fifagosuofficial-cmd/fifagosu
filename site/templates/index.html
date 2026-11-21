@@ -5,10 +5,11 @@
   <nav class="menu" aria-label="메뉴" id="menu">
     <a href="{{ root or './' }}" data-view="home"{% if view=='home' %} aria-current="page"{% endif %}>홈</a>
     <a href="{{ root }}news/">소식</a>
+    <a href="{{ root }}patch/">패치노트</a>
     <a href="{{ root }}diag" data-view="diag"{% if view=='diag' %} aria-current="page"{% endif %}>전적 진단</a>
     <a href="{{ root }}cards" data-view="cards"{% if view=='cards' %} aria-current="page"{% endif %}>카드 검색</a>
     <a href="{{ root }}calc" data-view="calc"{% if view=='calc' %} aria-current="page"{% endif %}>BP·강화 계산기</a>
-    <a href="{{ root }}guide/" data-view="guide"{% if view=='guide' %} aria-current="page"{% endif %}>패치 가이드</a>
+    <a href="{{ root }}guide/" data-view="guide"{% if view=='guide' %} aria-current="page"{% endif %}>게임 가이드</a>
     <a class="fun" href="{{ SITE_URL }}/fun/" target="_self">심심풀이 테스트</a>
   </nav>
 {% endblock %}
@@ -100,7 +101,7 @@
       <button type="button" data-go="diag"><b>내 전적 진단</b><span>최근 30·50·100경기로 약점 찾기</span></button>
       <button type="button" data-go="cards"><b>전체 카드 검색</b><span>모든 시즌 카드와 공식 시즌 배지</span></button>
       <button type="button" data-go="calc"><b>BP·강화 계산기</b><span>판매 실수령, 교체 비용, 강화 확률</span></button>
-      <button type="button" data-go="guide"><b>패치 가이드</b><span>최신 패치·등급·감독모드·강화</span></button>
+      <button type="button" data-go="guide"><b>게임 가이드</b><span>등급·감독모드·강화·팀컬러</span></button>
     </div>
   </section>
   <a class="funlink" href="{{ SITE_URL }}/fun/" target="_self"><b>심심할 땐 축구 테스트 한 판</b><span>닮은 선수 찾기·내 몸값·감독 유형 등 12종, 1분이면 끝나요</span><em>해보기 →</em></a>
@@ -191,21 +192,10 @@
 </main>
 
 
-<!-- ================= 패치 가이드 ================= -->
+<!-- ================= 게임 가이드 ================= -->
 <main id="v-guide" class="wrap"{% if view!='guide' %} hidden{% endif %}>
-  <div class="hero" style="padding-top:0"><h1 style="font-size:clamp(24px,5vw,32px)">FC온라인 <em>패치 가이드</em></h1><p class="sub">공식 업데이트 목록을 매일 수집해 최신 패치 내용을 갱신해요. 게임 규칙은 공식 출처를 함께 표시합니다.</p></div>
-  {% if guide_only %}<p class="sub" style="margin:0 0 8px"><a href="{{ root }}guide/">← 패치 가이드 전체 보기</a></p>{% endif %}<nav class="chips" aria-label="가이드 목차"><a class="chip" href="{{ root }}guide/patch"{% if guide_only=='g-patch' %} aria-current="page"{% endif %}>패치 가이드</a><a class="chip" href="{{ root }}guide/official"{% if guide_only=='g-official' %} aria-current="page"{% endif %}>공식경기 등급</a><a class="chip" href="{{ root }}guide/manager"{% if guide_only=='g-manager' %} aria-current="page"{% endif %}>감독모드</a><a class="chip" href="{{ root }}guide/grade"{% if guide_only=='g-grade' %} aria-current="page"{% endif %}>강화</a><a class="chip" href="{{ root }}guide/tc"{% if guide_only=='g-tc' %} aria-current="page"{% endif %}>팀컬러</a><a class="chip" href="{{ root }}guide/season"{% if guide_only=='g-season' %} aria-current="page"{% endif %}>시즌·이미지</a><a class="chip" href="{{ root }}guide/market"{% if guide_only=='g-market' %} aria-current="page"{% endif %}>급여·이적시장</a></nav>
-{% if not guide_only or guide_only=='g-patch' %}
-  <section id="g-patch">
-    <h2>최신 업데이트 <small>{% if news and news.patch.updated %}{{ news.patch.updated[:10] }} 기준{% else %}자동 갱신 대기 중{% endif %}</small></h2>
-    <div class="panel sheet">
-      {% if news and news.patch['items'] %}
-      <ul class="glist patch-list">{% for p in news.patch['items'][:12] %}<li><time datetime="{{ p.date }}">{{ p.date[2:4] }}.{{ p.date[5:7] }}.{{ p.date[8:10] }}</time> <a href="{{ p.url }}" target="_blank" rel="noopener nofollow"><b>{{ p.title }}</b></a>{% if p.summary %}<span> — {{ p.summary if p.summary is string else p.summary|join(' ') }}</span>{% endif %}</li>{% endfor %}</ul>
-      {% else %}<p class="cl-empty">업데이트 목록을 처음 수집 중이에요. 공식 목록은 여기서 확인할 수 있어요.</p>{% endif %}
-      <p class="sub">출처: <a href="https://fconline.nexon.com/news/update/list" target="_blank" rel="noopener">넥슨 FC온라인 업데이트 목록</a>. 자세한 변경 내용은 원문에서 확인해 주세요.</p>
-    </div>
-  </section>
-  {% endif %}
+  <div class="hero" style="padding-top:0"><h1 style="font-size:clamp(24px,5vw,32px)">FC온라인 <em>게임 가이드</em></h1><p class="sub">등급·감독모드·강화·팀컬러 등 게임 규칙을 공식 출처와 함께 정리해요. 업데이트 내역은 <a href="{{ root }}patch/">패치노트</a>에서 볼 수 있어요.</p></div>
+  {% if guide_only %}<p class="sub" style="margin:0 0 8px"><a href="{{ root }}guide/">← 게임 가이드 전체 보기</a></p>{% endif %}<nav class="chips" aria-label="가이드 목차"><a class="chip" href="{{ root }}guide/official"{% if guide_only=='g-official' %} aria-current="page"{% endif %}>공식경기 등급</a><a class="chip" href="{{ root }}guide/manager"{% if guide_only=='g-manager' %} aria-current="page"{% endif %}>감독모드</a><a class="chip" href="{{ root }}guide/grade"{% if guide_only=='g-grade' %} aria-current="page"{% endif %}>강화</a><a class="chip" href="{{ root }}guide/tc"{% if guide_only=='g-tc' %} aria-current="page"{% endif %}>팀컬러</a><a class="chip" href="{{ root }}guide/season"{% if guide_only=='g-season' %} aria-current="page"{% endif %}>시즌·이미지</a><a class="chip" href="{{ root }}guide/market"{% if guide_only=='g-market' %} aria-current="page"{% endif %}>급여·이적시장</a></nav>
 {% if not guide_only or guide_only=='g-official' %}
   <section id="g-official">
     <h2>공식경기 등급</h2>

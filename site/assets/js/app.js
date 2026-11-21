@@ -355,7 +355,7 @@ async function realData(nick,mode,count,fetchJSON,names,BATCH=8){
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
-const VIEWS=['home','diag','cards','calc','guide'];
+const VIEWS=['home','diag','cards','calc','guide','sim'];
 ['eFrom','eTo'].forEach(id=>{const el=$(id);if(el)el.innerHTML=Array.from({length:MAX_GRADE},(_,i)=>`<option value="${i+1}">${i+1}강${i+1>=8?' ('+GRADE_TIER(i+1)+')':''}</option>`).join('')});
 
 /* 등급 계열 색 */
@@ -909,7 +909,7 @@ if(LIVE){
 initCards();
 {const h=location.hash.replace('#',''),bv=document.body.dataset.view;
  if(VIEWS.includes(h))show(h);else if(bv&&bv!=='home'&&VIEWS.includes(bv))show(bv,true);}
-window.addEventListener('popstate',()=>{const R=window.FG_ROUTES||{};const p=location.pathname.replace(/\.html$/,'').replace(/(.)\/$/,'$1');const v=Object.keys(R).find(k=>R[k]===p)||(p.startsWith('/guide')?'guide':'home');show(v,true);if(window.FG_TITLES&&FG_TITLES[v])document.title=FG_TITLES[v]});
+window.addEventListener('popstate',()=>{const R=window.FG_ROUTES||{};const p=location.pathname.replace(/\.html$/,'').replace(/(.)\/$/,'$1');const v=Object.keys(R).find(k=>R[k]===p)||(p.startsWith('/guide')?'guide':p.startsWith('/sim')?'sim':'home');show(v,true);if(window.FG_TITLES&&FG_TITLES[v])document.title=FG_TITLES[v]});
 
 /* 홈 '오늘의 시장': 강화 기준 탭 · 시즌 배지 · 누르면 선수 정보창 */
 (function(){

@@ -1,8 +1,10 @@
 {
-  "_설명": "데이터센터 PlayerPreView 능력치는 적응도 5 기준으로 저장합니다. UI에서 적응도를 바꾸면 기준값에 차이를 더합니다.",
-  "_출처": "FC온라인 데이터센터 PlayerInfo의 적응도 선택(1~5) 및 대표 확인 규칙. 일일 PlayerPreView 비교 모니터는 data/rules/adaptation_verification.json에 기록합니다.",
+  "_설명": "수집한 카드 능력치는 데이터센터 기본값(n1Grow=0) = 적응도 1단계 기준이에요. 적응도를 올리면 단계마다 모든 능력치가 +1.",
+  "_출처": "FC온라인 데이터센터 PlayerPreView 실제 응답 비교 (n1Grow 0~4 = 적응도 1~5)",
+  "_검증": "2026-11-21 홀란(854239085)·야신 GK(100238380) × 적응도 1~5: 34개 세부 능력치·요약 6개·포지션 OVR 모두 단계당 +1, 불일치 0",
   "_확인일": "2026-11-21",
-  "baseLevel": 5,
-  "bonusFromBase": [null, -4, -3, -2, -1, 0],
+  "verified": true,
+  "baseLevel": 1,
+  "bonusFromBase": [null, 0, 1, 2, 3, 4],
   "applies_to": ["stats", "summary", "pos_ovr"]
 }

@@ -21,12 +21,12 @@
 {%- endmacro %}
 
 {% macro press_item(x, n) -%}
-<li class="nw-item" data-cat="{{ x.cat }}" data-league="{{ x.league or '기타' }}">
+<li class="nw-item" data-cat="{{ x.cat }}" data-league="{{ x.league|default('기타') }}">
   <details>
     <summary>
       <span class="nw-n">{{ '%02d'|format(n) }}</span>
       <span class="nw-main"><span class="nw-title">{{ x.title }}</span>
-        <span class="nw-meta"><b class="nw-src">{{ x.source }}</b> · <span class="nw-cat">{{ x.league if x.cat in ['world','korea'] else x.label }}</span> · <time datetime="{{ x.date }}" data-rel>{{ date_md(x.date) }}</time></span></span>
+        <span class="nw-meta"><b class="nw-src">{{ x.source }}</b> · <span class="nw-cat">{{ (x.league|default('기타')) if x.cat in ['world','korea'] else x.label }}</span> · <time datetime="{{ x.date }}" data-rel>{{ date_md(x.date) }}</time></span></span>
     </summary>
     <div class="nw-body">
       {% for l in x.summary %}<p>{{ l }}</p>{% endfor %}

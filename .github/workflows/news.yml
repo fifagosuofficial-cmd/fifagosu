@@ -1,0 +1,70 @@
+name: news-and-deploy
+
+on:
+  schedule:
+    # 한국 시간 06:50, 11:50, 17:50, 21:50 (GitHub Actions cron은 UTC)
+    - cron: "50 21 * * *"
+    - cron: "50 2 * * *"
+    - cron: "50 8 * * *"
+    - cron: "50 12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: news-and-deploy
+  cancel-in-progress: false
+
+jobs:
+  collect-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Load previous data
+        run: |
+          if git fetch --depth=1 origin data:refs/remotes/origin/data 2>/dev/null; then
+            git checkout origin/data -- data
+          fi
+          mkdir -p data/news
+
+      - name: Collect FC Online and football news
+        run: |
+          pip install -q -r crawler/requirements.txt
+          python crawler/news.py
+
+      - name: Save updated data branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tmp=$(mktemp -d)
+          cp -r data "$tmp/"
+          cd "$tmp"
+          git init -q -b data
+          git config user.name "fifagosu-bot"
+          git config user.email "fifagosu-bot@users.noreply.github.com"
+          git add data
+          git commit -qm "news $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
+
+      - name: Build site
+        run: |
+          pip install -q -r site/requirements.txt
+          python site/build.py --data data --out dist
+          cp -r functions dist/
+          cp -r data dist/
+          rm -f dist/data/state.json
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: dist
+          command: pages deploy . --project-name=fifagosu --branch=main

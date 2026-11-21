@@ -318,24 +318,28 @@ def run(data=DATA, http=None):
 
     # 2) 업데이트 페이지(제목·날짜만, 원문은 넥슨 이벤트 페이지)
     patch_items = None
+    old_patch_data = load(data / "news" / "patch.json", {"items": []})
+    old_patch_by_url = {x.get("url"): x for x in old_patch_data.get("items", []) if x.get("url")}
     try:
         updates = parse_update_list(http.get(NX + "/news/update/list"))
         for u in updates[:10]:
             new.append({"id": uid(u["url"]), "cat": "update", "kind": "official", "title": u["title"],
                         "summary": [], "source": "FC온라인 공식", "url": u["url"], "date": u["date"] + "T00:00:00+09:00"})
-        # 최신 패치 가이드 원천 데이터. 목록을 성공적으로 받았을 때만 갱신하고,
-        # 세부 본문은 짧은 소제목·목록 머리말만 인용하며 원문 링크를 함께 보존해요.
+        # 같은 업데이트 요약은 재사용해 하루 네 번 수집할 때 중복 요청하지 않아요.
         patch_items = []
         for u in updates[:8]:
-            try:
-                summary = parse_update_summary(http.get(u["url"]))
-            except Exception as e:  # noqa: BLE001
-                errors.append(f"patch {u['date']}: {e.__class__.__name__}")
-                summary = []
+            previous = old_patch_by_url.get(u["url"], {})
+            if previous.get("date") == u["date"] and previous.get("summary"):
+                summary = previous["summary"]
+            else:
+                try:
+                    summary = parse_update_summary(http.get(u["url"]))
+                except Exception as e:  # noqa: BLE001
+                    errors.append(f"patch {u['date']}: {e.__class__.__name__}")
+                    summary = []
             patch_items.append({**u, "summary": summary})
     except Exception as e:  # noqa: BLE001
         errors.append(f"update list: {e.__class__.__name__}")
-
     # 3) 진행 중 이벤트
     events = None
     try:

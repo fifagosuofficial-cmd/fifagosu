@@ -767,68 +767,72 @@ function renderCard(){
   const dtext=v=>v>0?`+${v}`:String(v);
   const tcOptHtml=tcOptions.length?`<option value="">팀컬러 선택</option>${tcOptions.map(x=>`<option value="${esc(x.name)}"${x.name===pmTcName?' selected':''}>${esc(x.name)} (${TC_TYPE(x).includes('nation')||TC_TYPE(x).includes('국가')?'국가':'클럽'})</option>`).join('')}`:'<option value="">적용 가능한 팀컬러 없음</option>';
   const gradeTcOptHtml=gradeTcOptions.length?`<option value="">강화 물결 선택</option>${gradeTcOptions.map(x=>`<option value="${esc(x.name)}"${x.name===pmGradeTcName?' selected':''}>${esc(x.name)}</option>`).join('')}`:'<option value="">강화 물결 데이터 없음</option>';
-  const tcCtl=`<div class="tc-box"><div class="tc-row"><label for="pmTc">소속 팀컬러</label><select id="pmTc"${tcOptions.length?'':' disabled'}>${tcOptHtml}</select></div><p class="tc-note">${!D?'선수 정보를 불러오는 중이에요.':!TEAMCOLORS.length?'팀컬러 효과 데이터를 아직 받지 못했어요.':!tcOptions.length?'선수 클럽 경력·국가와 연결되는 팀컬러가 없어요.':!tc?'선택한 팀컬러 없음':`${tc.name} 최고 ${tcLevel}단계 효과 적용`}</p><div class="tc-row"><label for="pmGradeTc">강화 물결</label><select id="pmGradeTc"${gradeTcOptions.length?'':' disabled'}>${gradeTcOptHtml}</select></div><p class="tc-note">${!gradeTc?'강화 물결을 선택해 주세요.':!gradeWaveMeets(gradeTc)?`${gradeTc.name}은 ${gradeTcRule.minGrade}강 이상 선수에게 적용돼요.`:`${gradeTc.name} 최고 ${gradeTcLevel}단계 · 전체 +${tcValue(gradeTcBonuses,'all','전체 능력치')} 적용`}</p><p class="tc-note">팀컬러는 데이터센터의 최고 단계 효과 기준이에요. 조합 규칙에 따라 게임 화면과 다를 수 있어요.</p></div>`;
   const main=pos[0], price=L&&L.price?L.price[g-1]:null, at=L&&L.at?new Date(L.at):null;
   const others=CARDS.filter(x=>x.pid===c.pid&&x.id!==c.id).sort((a,b2)=>((ix(b2.id)||[])[0]||0)-((ix(a.id)||[])[0]||0)||b2.sid-a.sid);
   const fmtAt=t=>`${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
-  const ftxt=foot?`<span class="ft">${foot.main==='L'?`<em>L${foot.l}</em> - R${foot.r}`:`L${foot.l} - <em>R${foot.r}</em>`}</span>`:'';
-  const gBtn=i=>`<button type="button" data-g="${i}" class="gb g-${GRADE_CLS(i)}" aria-pressed="${i===g}">${i}</button>`;
   const loading=!d, none=d&&!L&&!D;
-  /* 왼쪽 탭 */
+  /* 왼쪽 탭: 특징 · 시세 · 클럽 경력 */
+  const row2=(k,v)=>`<div class="pm2-kv"><span>${k}</span><div>${v}</div></div>`;
+  const trIcons=list=>(list||[]).map(t=>{const [n,ic]=Array.isArray(t)?t:[t,null];const nw=NEW_TRAITS.has(n);return `<span class="pm2-tr${nw?' new':''}" title="${esc(n)}">${ic!=null?`<img src="${traitIcon(ic)}" alt="${esc(n)}" ${hideBad}>`:''}<b>${esc(n)}</b></span>`}).join('');
   let tabL='';
   if(pmTabL==='feat'){
-    tabL=D?`<div class="kv"><span>생년월일</span><b>${esc(D.birth||'-')}</b></div>
-      <div class="kv"><span>개인기</span><b class="stars">${'★'.repeat(D.skill||0)}<i>${'★'.repeat(Math.max(0,6-(D.skill||0)))}</i></b></div>
-      <div class="kv"><span>명성</span><b>${esc(D.rep||'-')}</b></div>
-      <div class="kv kv-tr"><span>특성</span><div class="trgrid">${(D.traits||[]).map(t=>{const [n,ic]=Array.isArray(t)?t:[t,null];const nw=NEW_TRAITS.has(n);return `<div class="tr${nw?' tr-new':''}">${ic!=null?`<img src="${traitIcon(ic)}" alt="" ${hideBad}>`:'<i class="tr-dot"></i>'}<b>${esc(n)}</b>${nw?'<em>신특</em>':''}</div>`}).join('')||'<span class="muted">없음</span>'}</div></div>`
-      :`<p class="muted">${loading?'불러오는 중이에요…':'세부 정보는 아직 수집 대기 중이에요.'}</p>`;
+    tabL=D?row2('출생',`<b>${esc(D.birth||'-')}</b>`)
+      +row2('개인기',`<b class="pm2-stars">${'★'.repeat(D.skill||0)}<i>${'★'.repeat(Math.max(0,6-(D.skill||0)))}</i></b>`)
+      +row2('명성',`<b>${esc(D.rep||'-')}</b>`)
+      +row2('특성',`<div class="pm2-trs">${trIcons(D.traits)||'<span class="muted">없음</span>'}</div>`)
+      :`<p class="muted pm2-empty">${loading?'불러오는 중이에요…':'세부 정보는 아직 수집 대기 중이에요.'}</p>`;
   }else if(pmTabL==='price'){
-    tabL=L&&L.price?`<div class="pnow"><span>${g}강 현재가</span><b>${price>0?fmtBP(price):'거래 불가'}</b>${at?`<small>${fmtAt(at)} 기준</small>`:''}</div>
-      <div class="ptable">${L.price.map((p,i)=>`<button type="button" data-g="${i+1}" class="${i+1===g?'on':''}"><span class="g-${GRADE_CLS(i+1)}">${i+1}</span><b>${p>0?fmtBP(p):'-'}</b></button>`).join('')}</div>`
-      :`<p class="muted">${loading?'불러오는 중이에요…':'시세를 아직 수집하지 않았어요.'}</p>`;
+    tabL=L&&L.price?`<div class="pm2-pnow"><span>${g}강 현재가</span><b>${price>0?fmtBP(price):'거래 불가'}</b>${at?`<small>${fmtAt(at)} 기준</small>`:''}</div>
+      <div class="pm2-ptable">${L.price.map((p,i)=>`<button type="button" data-g="${i+1}" class="${i+1===g?'on':''}"><span class="gchip g-${GRADE_CLS(i+1)}">${i+1}</span><b>${p>0?fmtBP(p):'-'}</b></button>`).join('')}</div>`
+      :`<p class="muted pm2-empty">${loading?'불러오는 중이에요…':'시세를 아직 수집하지 않았어요.'}</p>`;
   }else{
-    tabL=D&&D.clubs&&D.clubs.length?`<div class="clubs">${D.clubs.map(x=>`<div><span>${esc(x[0])}</span><b>${esc(x[1])}</b>${x[2]?'<em>임대</em>':''}</div>`).join('')}</div>`:`<p class="muted">${loading?'불러오는 중이에요…':'클럽 경력 정보가 없어요.'}</p>`;
+    tabL=D&&D.clubs&&D.clubs.length?D.clubs.map(x=>row2(esc(x[0]),`<b>${esc(x[1])}</b>${x[2]?' <em class="pm2-rent">임대</em>':''}`)).join(''):`<p class="muted pm2-empty">${loading?'불러오는 중이에요…':'클럽 경력 정보가 없어요.'}</p>`;
   }
-  /* 오른쪽 탭 */
+  /* 오른쪽: 총 능력치(한 줄 목록) · 포지션 OVR */
+  const delta=(...xs)=>{const t=xs.reduce((a,x)=>a+(+x||0),0);return t?`<em class="pm2-d">${t>0?'+':''}${t}</em>`:''};
   let tabR='';
   if(D&&D.stats){
     if(pmTabR==='stat'){
-      const row=([k,l])=>D.stats[k]==null?'':(()=>{const t=tcValue(tcCombined,k,l),v=D.stats[k]+b+adaptDelta+t,ds=[b,adaptDelta,t].filter(Boolean).map(dtext).join(' ');return `<div class="st"><span>${l}</span><b class="${fcCls(v)}">${v}<small class="st-delta">${ds?` ${ds}`:''}</small></b></div>`})() ;
-      tabR=`<div class="stcols"><div>${STAT_LABELS.slice(0,17).map(row).join('')}</div><div>${STAT_LABELS.slice(17).map(row).join('')}</div></div>`;
+      tabR=`<div class="pm2-stats">${STAT_LABELS.map(([k,l])=>{if(D.stats[k]==null)return '';const t=tcValue(tcCombined,k,l),v=D.stats[k]+b+adaptDelta+t;return `<div class="pm2-st"><span>${l}</span><b class="${fcCls(v)}">${v}</b>${delta(b,adaptDelta,t)}</div>`}).join('')}</div>`;
     }else{
-      tabR=`<div class="poslist">${pos.map(p=>{const v=(p[1]||0)+b+adaptDelta+tcOverall,ds=[b,adaptDelta,tcOverall].filter(Boolean).map(dtext).join(' ');return `<div class="st"><span>${esc(p[0])}</span><b class="${fcCls(v)}">${v}<small class="st-delta">${ds?` ${ds}`:''}</small></b></div>`}).join('')}</div><p class="muted" style="margin-top:10px">데이터센터 선호 포지션 OVR에 강화·적응도·팀컬러 전체 능력치를 반영했어요.</p>`;
+      tabR=`<div class="pm2-stats">${pos.map(p=>{const v=(p[1]||0)+b+adaptDelta+tcOverall;return `<div class="pm2-st"><span>${esc(p[0])}</span><b class="${fcCls(v)}">${v}</b>${delta(b,adaptDelta,tcOverall)}</div>`}).join('')}</div><p class="muted pm2-foot">선호 포지션 OVR에 강화·적응도·팀컬러 전체 능력치를 더한 값이에요.</p>`;
     }
-  }else tabR=`<p class="muted">${loading?'불러오는 중이에요…':none?'아직 능력치를 수집하지 않은 카드예요. 매일 조금씩 늘어나요.':'세부 능력치는 아직 수집 대기 중이에요.'}</p>`;
-  const sum=D&&D.summary&&D.summary.length?`<div class="sum">${D.summary.map(([k,v])=>{const t=tcValue(tcCombined,TC_KEYS[norm(k)]||norm(k),k),value=v+b+adaptDelta+t;return `<div><small>${esc(k)}</small><b class="${fcCls(value)}">${value}</b></div>`}).join('')}</div>`:'';
-  $('pmBody').innerHTML=`<div class="fcm">
-  <div class="fcm-top"><b class="brand">피파고수</b><span class="bar"></span><b>선수 정보</b></div>
-  <div class="fcm-main">
-   <section class="fcm-l">
-    <div class="idbox">
-     <div class="idtxt">
-      <div class="nm2">${bigBadge(c.sid)}<b id="pmTitle">${esc(name)}</b></div>
-      ${main?`<div class="ovr2"><span class="mp">${esc(main[0])}</span><b>${(main[1]||0)+b+adaptDelta+tcOverall}</b>${pos.slice(1).map(p=>`<span class="op"><span>${esc(p[0])}</span> ${(p[1]||0)+b+adaptDelta+tcOverall}</span>`).join('')}</div>`:''}
-      ${D?`<div class="org">${leagueImg(D.leagueId)}${crestImg(D.teamId)}${flagImg(D.nationId)}<span>${esc(D.nation||'')}</span></div>
-      <div class="phys">${pay?`<span class="hex">${pay}</span>`:''}<span>${D.height||'-'}cm</span><i>|</i><span>${D.weight||'-'}kg</span><i>|</i><span>${esc(D.body||'-')}</span>${ftxt}</div>`
-      :(pay||foot?`<div class="phys">${pay?`<span class="hex">${pay}</span>`:''}${ftxt}</div>`:'')}
+  }else tabR=`<p class="muted pm2-empty">${loading?'불러오는 중이에요…':none?'아직 능력치를 수집하지 않은 카드예요. 매일 수집 중이라 곧 채워져요.':'세부 능력치는 아직 수집 대기 중이에요.'}</p>`;
+  const sumCells=D&&D.summary&&D.summary.length?D.summary.map(([k,v])=>{const t=tcValue(tcCombined,TC_KEYS[norm(k)]||norm(k),k),value=v+b+adaptDelta+t;return `<div><small>${esc(k)}</small><b class="${fcCls(value)}">${value}</b></div>`}).join(''):['스피드','슛','패스','드리블','수비','피지컬'].map(k=>`<div><small>${k}</small><b class="vlow">-</b></div>`).join('');
+  const ovrNow=main?(main[1]||0)+b+adaptDelta+tcOverall:null;
+  const gradeSel=`<label class="pm2-grade g-${GRADE_CLS(g)}" title="강화 단계"><select id="pmGradeSel" aria-label="강화 단계">${Array.from({length:MAX_GRADE},(_,i)=>`<option value="${i+1}"${i+1===g?' selected':''}>${i+1}</option>`).join('')}</select></label>`;
+  const optsBox=`<div class="pm2-opts">
+     <label>적응도<select id="pmAdaptation">${[1,2,3,4,5].map(n=>`<option value="${n}"${n===pmAdaptation?' selected':''}>${n}${n===5?' (최대)':''}</option>`).join('')}</select></label>
+     <label>소속 팀컬러<select id="pmTc"${tcOptions.length?'':' disabled'}>${tcOptHtml}</select></label>
+     <label>강화 물결<select id="pmGradeTc"${gradeTcOptions.length?'':' disabled'}>${gradeTcOptHtml}</select></label>
+     <p class="pm2-note">${[`강화 ${g} ${dtext(b)}`,`적응도 ${pmAdaptation} ${dtext(adaptDelta)}`,tc?`${esc(tc.name)} ${tcLevel}단계`:'',gradeTc?(gradeWaveMeets(gradeTc)?`${esc(gradeTc.name)} 전체 +${tcValue(gradeTcBonuses,'all','전체 능력치')}`:`${esc(gradeTc.name)}은 ${gradeTcRule&&gradeTcRule.minGrade}강부터`):''].filter(Boolean).join(' · ')}<br>팀컬러는 데이터센터 최고 단계 효과 기준이에요.</p>
+   </div>`;
+  $('pmBody').innerHTML=`<div class="pm2">
+  <div class="pm2-h"><b>선수 정보</b></div>
+  <div class="pm2-main">
+   <section class="pm2-l">
+    <div class="pm2-id">
+     <div class="pm2-txt">
+      <div class="pm2-name">${bigBadge(c.sid)}<b id="pmTitle">${esc(name)}</b></div>
+      ${main?`<div class="pm2-ovr"><span class="mp">${esc(main[0])}</span><b>${ovrNow}</b></div>`:''}
+      <div class="pm2-meta"><span>${esc(sname(c.sid))}</span>${D?`<i>|</i><span>${esc(String(D.nation||'').split(',')[0])}</span>${flagImg(D.nationId)}`:''}</div>
+      <div class="pm2-phys">${pay?`<span>급여</span><span class="hex">${pay}</span>`:''}${D?`<i>|</i><span>${D.height||'-'}cm</span><i>|</i><span>${D.weight||'-'}kg</span><i>|</i><span>${esc(D.body||'-')}</span>`:''}${foot?`<span class="pm2-foot2"><b class="${foot.main==='L'?'on':''}">${foot.l}</b><b class="${foot.main==='R'?'on':''}">${foot.r}</b></span>`:''}</div>
+      ${pos.length>1?`<div class="pm2-alt">${pos.slice(1).map(p=>`<span>${esc(p[0])} <b>${(p[1]||0)+b+adaptDelta+tcOverall}</b></span>`).join('')}</div>`:''}
      </div>
-     <div class="photo">${bigImg(c.id)}<span class="pb">${bigBadge(c.sid)}</span></div>
+     <div class="pm2-photo">${D&&D.teamId?`<span class="pm2-crest">${crestImg(D.teamId)}</span>`:''}${bigImg(c.id)}${gradeSel}</div>
     </div>
-    <div class="gradebar"><span class="lbl">강화 적용</span>${Array.from({length:MAX_GRADE},(_,i)=>gBtn(i+1)).join('')}</div>
-    <div class="growbar"><label for="pmAdaptation">적응도</label><select id="pmAdaptation">${[1,2,3,4,5].map(n=>`<option value="${n}"${n===pmAdaptation?' selected':''}>${n}단계${n===5?' (최대)':''}</option>`).join('')}</select><span>1단계당 +1 · 데이터센터 기본값은 1단계</span></div>
-    <p class="muted" style="margin:0 0 8px;font-size:12px">강화 ${g}강 ${dtext(b)} · 적응도 ${dtext(adaptDelta)} · 팀컬러는 아래 선택 조건을 반영했어요.</p>
-    ${tcCtl}
-    ${sum}
-    <div class="tabs2" data-side="L"><button type="button" data-t="feat" aria-selected="${pmTabL==='feat'}">특징</button><button type="button" data-t="price" aria-selected="${pmTabL==='price'}">시세</button><button type="button" data-t="club" aria-selected="${pmTabL==='club'}">클럽 경력</button></div>
-    <div class="tabp">${tabL}</div>
+    <div class="pm2-sum">${sumCells}</div>
+    <div class="pm2-tabs" data-side="L"><button type="button" data-t="feat" aria-selected="${pmTabL==='feat'}">특징</button><button type="button" data-t="price" aria-selected="${pmTabL==='price'}">시세</button><button type="button" data-t="club" aria-selected="${pmTabL==='club'}">클럽 경력</button></div>
+    <div class="pm2-tabp">${tabL}</div>
    </section>
-   <section class="fcm-r">
-    <div class="tabs2" data-side="R"><button type="button" data-t="stat" aria-selected="${pmTabR==='stat'}">능력치</button><button type="button" data-t="pos" aria-selected="${pmTabR==='pos'}">포지션 OVR</button></div>
-    <div class="tabp">${tabR}</div>
-    <div class="fcm-actions"><a class="dcbtn" href="${DC_URL(c.id,g,pmAdaptation)}" target="_blank" rel="noopener">데이터센터 ↗</a></div>
+   <section class="pm2-r">
+    <div class="pm2-tabs pm2-tabs-r" data-side="R"><button type="button" data-t="stat" aria-selected="${pmTabR==='stat'}">총 능력치</button><button type="button" data-t="pos" aria-selected="${pmTabR==='pos'}">${main?esc(main[0]):'포지션'} OVR</button></div>
+    ${optsBox}
+    <div class="pm2-tabp">${tabR}</div>
+    <div class="pm2-actions"><a class="pm2-dc" href="${DC_URL(c.id,g,pmAdaptation)}" target="_blank" rel="noopener">넥슨 데이터센터에서 보기 ↗</a></div>
    </section>
   </div>
-  <div class="fcm-alt"><div class="alt-h">같은 선수 다른 시즌 <small>${others.length}장</small></div>${others.length?`<div class="altrow">${others.map(o=>{const x=ix(o.id);return `<button type="button" data-sp="${o.id}">${bigBadge(o.sid)}${x&&x[0]?`<b class="${fcCls(x[0])}">${x[0]}</b>`:''}</button>`}).join('')}</div>`:'<p class="muted">다른 시즌 카드가 없어요.</p>'}</div>
+  <div class="pm2-others"><div class="pm2-oh">같은 선수 다른 시즌 <small>${others.length}장</small></div>${others.length?`<div class="pm2-orow">${others.map(o=>{const x=ix(o.id);return `<button type="button" data-sp="${o.id}">${bigBadge(o.sid)}${x&&x[0]?`<b class="${fcCls(x[0])}">${x[0]}</b>`:''}</button>`}).join('')}</div>`:'<p class="muted">다른 시즌 카드가 없어요.</p>'}</div>
  </div>`;
 }
 function closeCard(){$('pmodal').hidden=true;document.body.style.overflow='';pmCard=null}
@@ -836,12 +840,13 @@ $('pmClose').addEventListener('click',closeCard);
 $('pmodal').addEventListener('click',e=>{
   if(e.target.id==='pmodal')return closeCard();
   const gb=e.target.closest('[data-g]');if(gb){pmGrade=+gb.dataset.g;return renderCard()}
-  const tb=e.target.closest('.tabs2 [data-t]');if(tb){if(tb.parentNode.dataset.side==='L')pmTabL=tb.dataset.t;else pmTabR=tb.dataset.t;return renderCard()}
-  const b=e.target.closest('.altrow [data-sp]');if(b)openCard(+b.dataset.sp)});
+  const tb=e.target.closest('.pm2-tabs [data-t]');if(tb){if(tb.parentNode.dataset.side==='L')pmTabL=tb.dataset.t;else pmTabR=tb.dataset.t;return renderCard()}
+  const b=e.target.closest('.pm2-orow [data-sp]');if(b)openCard(+b.dataset.sp)});
  $('pmodal').addEventListener('change',e=>{
   if(e.target.id==='pmTc'){pmTcName=e.target.value;renderCard()}
   if(e.target.id==='pmGradeTc'){pmGradeTcName=e.target.value;pmGradeTcCount=0;renderCard()}
   if(e.target.id==='pmAdaptation'){pmAdaptation=+e.target.value||5;renderCard()}
+  if(e.target.id==='pmGradeSel'){pmGrade=+e.target.value||1;renderCard()}
  });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('pmodal').hidden)closeCard()});
 /* 미리보기: 예시 카드의 시즌 이름 */

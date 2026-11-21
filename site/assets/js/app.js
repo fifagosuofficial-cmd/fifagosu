@@ -704,6 +704,19 @@ function tcBonusFor(tc,count,applyGradeGate=false){
   if(Array.isArray(stats))return Object.fromEntries(stats.map(x=>[x.key||x.stat||TC_KEYS[norm(x.name||'')]||'',+(x.bonus||x.value||0)]).filter(([k,v])=>k&&v));
   return stats;
 }
+// 팀컬러는 데이터센터에 표시된 최고 단계 효과를 그대로 적용해요(인원 입력 없음).
+function tcMaxEffect(tc){
+  const effects=tcStats(tc)||[];let best=null;
+  effects.forEach(x=>{const l=+(x.level||x.tier||x.step)||0;if(!best||l>(+(best.level||best.tier||best.step)||0))best=x});
+  return best;
+}
+function tcMaxBonus(tc,applyGradeGate=false){
+  if(!tc||(applyGradeGate&&!gradeWaveMeets(tc)))return {};
+  const chosen=tcMaxEffect(tc);if(!chosen)return {};
+  const stats=chosen.stats||chosen.bonuses||chosen.effect||{};
+  if(Array.isArray(stats))return Object.fromEntries(stats.map(x=>[x.key||x.stat||TC_KEYS[norm(x.name||'')]||'',+(x.bonus||x.value||0)]).filter(([k,v])=>k&&v));
+  return stats;
+}
 function tcValue(stats,key,label){
   if(!stats)return 0;
   const specific=+(stats[key]??stats[label]??stats[norm(label)]??0);
@@ -713,12 +726,17 @@ function tcValue(stats,key,label){
 }
 function tcOptionsFor(D){
   if(!D||!TEAMCOLORS.length)return [];
-  const clubs=(D.clubs||[]).map(x=>x[1]).filter(Boolean), names=[...clubs,D.nation].filter(Boolean).map(norm);
-  return TEAMCOLORS.filter(tc=>{
+  // 데이터센터 국가 표기는 "대한민국, 국가대표"처럼 붙어 나와서 쉼표 앞만 써요.
+  const nation=String(D.nation||'').split(',')[0].trim();
+  const clubs=(D.clubs||[]).map(x=>x[1]).filter(Boolean), names=[...clubs,nation].filter(Boolean).map(norm);
+  const opts=TEAMCOLORS.filter(tc=>{
     if(!tcEligible(tc))return false;
+    if(tc.nationId&&D.nationId&&+tc.nationId===+D.nationId)return true;
+    if(tc.clubId&&D.teamId&&+tc.clubId===+D.teamId)return true;
     const known=[tc.name,...(tc.aliases||[])].filter(Boolean).map(norm);
     return names.some(n=>known.includes(n));
   });
+  const seen=new Set();return opts.filter(x=>!seen.has(x.name)&&seen.add(x.name));
 }
 function tcLevelFor(tc,count){
   const effects=tcStats(tc)||[];let level=0;
@@ -739,18 +757,17 @@ function renderCard(){
   const tcOptions=tcOptionsFor(D), tc=tcOptions.find(x=>x.name===pmTcName)||null;
   if(tc&&!pmTcName)pmTcName=tc.name;
   const gradeTcOptions=TEAMCOLORS.filter(tcGradeEligible), gradeTc=gradeTcOptions.find(x=>x.name===pmGradeTcName)||null;
-  const tcLevel=tcLevelFor(tc,pmTcCount), tcBonuses=tcBonusFor(tc,pmTcCount);
+  const tcLevel=tc?(+((tcMaxEffect(tc)||{}).level)||tc.maxLevel||0):0, tcBonuses=tcMaxBonus(tc);
   const gradeTcRule=gradeWaveRule(gradeTc);
-  const gradeTcLevel=tcLevelFor(gradeTc,pmGradeTcCount), gradeTcBonuses=tcBonusFor(gradeTc,pmGradeTcCount,true);
+  const gradeTcLevel=gradeTc?(+((tcMaxEffect(gradeTc)||{}).level)||gradeTc.maxLevel||0):0, gradeTcBonuses=tcMaxBonus(gradeTc,true);
   const tcCombined={...tcBonuses};Object.entries(gradeTcBonuses).forEach(([k,v])=>{tcCombined[k]=(+tcCombined[k]||0)+(+v||0)});
   const tcOverall=tcValue(tcCombined,'all','전체 능력치');
   // 수집 카드 능력치는 적응도 1단계 기준. 단계마다 모든 능력치 +1 (데이터센터 실측으로 확인).
   const adaptDelta=+(ADAPTATION_BONUS[pmAdaptation]??(pmAdaptation-1));
   const dtext=v=>v>0?`+${v}`:String(v);
   const tcOptHtml=tcOptions.length?`<option value="">팀컬러 선택</option>${tcOptions.map(x=>`<option value="${esc(x.name)}"${x.name===pmTcName?' selected':''}>${esc(x.name)} (${TC_TYPE(x).includes('nation')||TC_TYPE(x).includes('국가')?'국가':'클럽'})</option>`).join('')}`:'<option value="">적용 가능한 팀컬러 없음</option>';
-  const countOpts=count=>Array.from({length:12},(_,i)=>`<option value="${i}"${i===count?' selected':''}>${i===0?'미적용':`${i}명`}</option>`).join('');
   const gradeTcOptHtml=gradeTcOptions.length?`<option value="">강화 물결 선택</option>${gradeTcOptions.map(x=>`<option value="${esc(x.name)}"${x.name===pmGradeTcName?' selected':''}>${esc(x.name)}</option>`).join('')}`:'<option value="">강화 물결 데이터 없음</option>';
-  const tcCtl=`<div class="tc-box"><div class="tc-row"><label for="pmTc">소속 팀컬러</label><select id="pmTc"${tcOptions.length?'':' disabled'}>${tcOptHtml}</select><label for="pmTcCount">적용 인원</label><select id="pmTcCount"${tc?'':' disabled'}>${countOpts(pmTcCount)}</select></div><p class="tc-note">${!D?'선수 정보를 불러오는 중이에요.':!TEAMCOLORS.length?'팀컬러 효과 데이터를 아직 받지 못했어요.':!tcOptions.length?'선수 클럽 경력·국가와 연결되는 팀컬러가 없어요.':!tc?'선택한 팀컬러 없음':!tcLevel?'인원 조건 미충족':`${tc.name} ${tcLevel}단계 적용`}</p><div class="tc-row"><label for="pmGradeTc">강화 물결</label><select id="pmGradeTc"${gradeTcOptions.length?'':' disabled'}>${gradeTcOptHtml}</select><label for="pmGradeTcCount">조건 인원</label><select id="pmGradeTcCount"${gradeTc?'':' disabled'}>${countOpts(pmGradeTcCount)}</select></div><p class="tc-note">${!gradeTc?'강화 물결을 선택해 주세요.':!gradeWaveMeets(gradeTc)?`${gradeTc.name}은 ${gradeTcRule.minGrade}강 이상 선수에게 적용돼요.`:!gradeTcLevel?'강화 물결 인원 조건 미충족':`${gradeTc.name} ${gradeTcLevel}단계 · 전체 +${tcValue(gradeTcBonuses,'all','전체 능력치')} 적용`}</p><p class="tc-note">수집된 데이터센터 효과와 정해진 인원·강화 조건으로 계산한 값이에요. 조합 규칙에 따라 게임 화면과 다를 수 있어요.</p></div>`;
+  const tcCtl=`<div class="tc-box"><div class="tc-row"><label for="pmTc">소속 팀컬러</label><select id="pmTc"${tcOptions.length?'':' disabled'}>${tcOptHtml}</select></div><p class="tc-note">${!D?'선수 정보를 불러오는 중이에요.':!TEAMCOLORS.length?'팀컬러 효과 데이터를 아직 받지 못했어요.':!tcOptions.length?'선수 클럽 경력·국가와 연결되는 팀컬러가 없어요.':!tc?'선택한 팀컬러 없음':`${tc.name} 최고 ${tcLevel}단계 효과 적용`}</p><div class="tc-row"><label for="pmGradeTc">강화 물결</label><select id="pmGradeTc"${gradeTcOptions.length?'':' disabled'}>${gradeTcOptHtml}</select></div><p class="tc-note">${!gradeTc?'강화 물결을 선택해 주세요.':!gradeWaveMeets(gradeTc)?`${gradeTc.name}은 ${gradeTcRule.minGrade}강 이상 선수에게 적용돼요.`:`${gradeTc.name} 최고 ${gradeTcLevel}단계 · 전체 +${tcValue(gradeTcBonuses,'all','전체 능력치')} 적용`}</p><p class="tc-note">팀컬러는 데이터센터의 최고 단계 효과 기준이에요. 조합 규칙에 따라 게임 화면과 다를 수 있어요.</p></div>`;
   const main=pos[0], price=L&&L.price?L.price[g-1]:null, at=L&&L.at?new Date(L.at):null;
   const others=CARDS.filter(x=>x.pid===c.pid&&x.id!==c.id).sort((a,b2)=>((ix(b2.id)||[])[0]||0)-((ix(a.id)||[])[0]||0)||b2.sid-a.sid);
   const fmtAt=t=>`${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
@@ -822,10 +839,8 @@ $('pmodal').addEventListener('click',e=>{
   const tb=e.target.closest('.tabs2 [data-t]');if(tb){if(tb.parentNode.dataset.side==='L')pmTabL=tb.dataset.t;else pmTabR=tb.dataset.t;return renderCard()}
   const b=e.target.closest('.altrow [data-sp]');if(b)openCard(+b.dataset.sp)});
  $('pmodal').addEventListener('change',e=>{
-  if(e.target.id==='pmTc'){pmTcName=e.target.value;pmTcCount=0;renderCard()}
-  if(e.target.id==='pmTcCount'){pmTcCount=+e.target.value||0;renderCard()}
+  if(e.target.id==='pmTc'){pmTcName=e.target.value;renderCard()}
   if(e.target.id==='pmGradeTc'){pmGradeTcName=e.target.value;pmGradeTcCount=0;renderCard()}
-  if(e.target.id==='pmGradeTcCount'){pmGradeTcCount=+e.target.value||0;renderCard()}
   if(e.target.id==='pmAdaptation'){pmAdaptation=+e.target.value||5;renderCard()}
  });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('pmodal').hidden)closeCard()});

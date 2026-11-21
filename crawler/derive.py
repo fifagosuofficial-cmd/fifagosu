@@ -209,6 +209,8 @@ MARKET_MIN_PRICE = 5_000_000         # 이보다 싼 카드는 등락률이 튀�
 MARKET_MIN_GAMES = 10                # 거래·사용이 거의 없는 카드 제외
 MARKET_TOP = 10
 NEW_KEEP_DAYS = 14
+POOL_TOP_LOW = 7000                  # 1강 가격 상위 (Top Price 6530 같은 저강 팩 대응)
+POOL_TOP_HIGH = 4000                 # 최고 강화 가격 상위 (고강 팩 대응)
 
 
 def _item(k, r, v, pv):
@@ -298,6 +300,16 @@ def step_market(data, date):
            "newCards": keep[:24], "newCount": len(keep),
            "rule": f"{MARKET_MIN_PRICE // 10000:,}만 BP 이상·사용 {MARKET_MIN_GAMES}경기 이상 카드, 직전 기록일 대비"}
     save(data / "market" / "summary.json", out)
+    # 팩 오픈 시뮬용 시세 풀: '기준가 TOP N'을 실제 선수로 바꾸려면 강화별 가격 순위가 필요해요.
+    priced = [(k, r) for k, r in listed.items() if r.get("price")]
+    def p_at(r, g):
+        p = r.get("price") or []
+        return p[g - 1] if len(p) >= g and p[g - 1] else 0
+    keep_ids = {k for k, _ in sorted(priced, key=lambda kr: -p_at(kr[1], 1))[:POOL_TOP_LOW]}
+    keep_ids |= {k for k, _ in sorted(priced, key=lambda kr: -max(kr[1].get("price") or [0]))[:POOL_TOP_HIGH]}
+    pool = [[int(k), listed[k].get("name") or "", listed[k].get("ovr") or 0,
+             [sig3(x) if x else 0 for x in (listed[k].get("price") or [])[:13]]] for k in keep_ids]
+    save(data / "market" / "pool.json", {"date": date, "items": pool})
     res = {"market": "ok", "market_moved": by_grade.get("1", {}).get("moved", 0), "market_new": len(keep)}
     log(f"시장 요약: 1강 등락 집계 {res['market_moved']}장 · 신규 카드 {len(keep)}장")
     return res

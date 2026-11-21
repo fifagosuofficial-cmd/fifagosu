@@ -9,6 +9,7 @@
     <a href="{{ root }}diag" data-view="diag"{% if view=='diag' %} aria-current="page"{% endif %}>전적 진단</a>
     <a href="{{ root }}cards" data-view="cards"{% if view=='cards' %} aria-current="page"{% endif %}>카드 검색</a>
     <a href="{{ root }}calc" data-view="calc"{% if view=='calc' %} aria-current="page"{% endif %}>BP·강화 계산기</a>
+    <a href="{{ root }}sim/" data-view="sim"{% if view=='sim' %} aria-current="page"{% endif %}>시뮬</a>
     <a href="{{ root }}guide/" data-view="guide"{% if view=='guide' %} aria-current="page"{% endif %}>게임 가이드</a>
     <a class="fun" href="{{ SITE_URL }}/fun/" target="_self">심심풀이 테스트</a>
   </nav>
@@ -192,6 +193,90 @@
 </main>
 
 
+<!-- ================= 시뮬 (강화 · 팩 오픈) ================= -->
+<main id="v-sim" class="wrap newsp simp"{% if view!='sim' %} hidden{% endif %}>
+  <div class="sim-head">
+    <h1 class="bd-h1">시뮬</h1>
+    <nav class="sim-tabs" role="tablist" aria-label="시뮬 종류">
+      <button type="button" role="tab" aria-selected="true" data-sim="enh">강화</button>
+      <button type="button" role="tab" aria-selected="false" data-sim="pack">팩 오픈</button>
+    </nav>
+  </div>
+
+  <section class="sim-panel" id="simEnh">
+    <div class="sim-pick">
+      <input type="search" id="smEQ" placeholder="강화할 선수 검색 (예: 손흥민, 앙리 ICON TM)" autocomplete="off" aria-label="선수 검색">
+      <div class="sim-sug" id="smESug" hidden></div>
+    </div>
+    <div class="sim-grid">
+      <div class="sim-box sim-stage">
+        <div class="sim-player" id="smEPlayer"><p class="sim-note">먼저 선수를 골라 주세요. 고른 선수의 능력치가 강화 단계에 맞춰 바뀌어요.</p></div>
+        <div class="sim-card" id="smECard"><span class="sim-g" id="smEGrade">1</span><small id="smETier">동카</small></div>
+        <p class="sim-msg" id="smEMsg">강화 버튼을 눌러 보세요.</p>
+        <div class="sim-btns sim-btns-c">
+          <button type="button" class="go" id="smEOne">1회 강화</button>
+          <button type="button" class="ghost" id="smEAuto">목표까지 자동</button>
+          <button type="button" class="ghost" id="smEReset">처음부터</button>
+        </div>
+        <div class="sim-cnt"><div><span>시도</span><b id="smETry">0</b></div><div><span>성공</span><b id="smEOk">0</b></div><div><span>실패</span><b id="smENg">0</b></div><div><span>다음 확률</span><b id="smEP">-</b></div></div>
+      </div>
+      <div class="sim-box">
+        <h2>강화 설정</h2>
+        <div class="sim-form">
+          <label>시작 강화<select id="smEFrom"></select></label>
+          <label>목표 강화<select id="smETo"></select></label>
+          <label>게이지 <b id="smEGaugeV">100%</b><input type="range" id="smEGauge" min="10" max="100" step="5" value="100"></label>
+          <label>실패하면<select id="smEFail"><option value="keep">단계 유지</option><option value="down">1단계 하락 (5강 이상)</option></select></label>
+        </div>
+        <div id="smEStatsBox"><p class="sim-note">선수를 고르면 34개 세부 능력치가 여기 표시돼요.</p></div>
+        <ol class="sim-log" id="smELog"></ol>
+        <p class="sim-note">성공 확률 = 풀 게이지 확률 × 게이지 비율(넥슨 공지). 실패 시 하락 확률은 공식 수치가 이미지로만 공개돼 '1단계 하락'은 가정이에요. 능력치는 적응도 5단계 기준.</p>
+      </div>
+    </div>
+    <div class="sim-box">
+      <h2>2,000번 돌려 보기 <small>지금 설정으로 목표까지 걸리는 시도 횟수</small></h2>
+      <button type="button" class="ghost sim-wide" id="smEMany">2,000번 시뮬레이션</button>
+      <div id="smEStats" class="sim-stats"></div>
+    </div>
+  </section>
+
+  <section class="sim-panel" id="simPack" hidden>
+    <div class="sim-shelf-h"><h2>지금 웹 상점에서 파는 팩</h2><small id="smPSrc">불러오는 중…</small></div>
+    <div class="sim-shelf" id="smPShelf"></div>
+    <div class="sim-shelf-h"><h2>크리스탈 상점 상자</h2><small>크리스탈로 바꾸는 상자</small></div>
+    <div class="sim-shelf sim-shelf-sm" id="smPShelf2"></div>
+    <div class="sim-open" id="smPOpen" hidden>
+      <div class="sim-box sim-stage2">
+        <div class="sim-pack-top"><img id="smPImg" alt=""><div><h2 id="smPName"></h2><p class="sim-note" id="smPMeta"></p></div></div>
+        <div class="sim-btns">
+          <button type="button" class="go" data-open="1">1개 열기</button>
+          <button type="button" class="ghost" data-open="10">10개 열기</button>
+          <button type="button" class="ghost" data-open="100">100개 빠르게</button>
+          <button type="button" class="ghost" id="smPClear">기록 초기화</button>
+        </div>
+        <div class="sim-reveal" id="smPReveal"></div>
+      </div>
+      <div class="sim-box">
+        <h2>수익 계산</h2>
+        <div class="sim-fee">
+          <label><input type="checkbox" id="smfTop"> TOP CLASS <small>−20%p</small></label>
+          <label><input type="checkbox" id="smfPc"> PC방 <small>−30%p</small></label>
+          <label>수수료 쿠폰<select id="smfCoupon"><option value="0">없음</option><option value="10">10%</option><option value="20">20%</option><option value="30">30%</option><option value="40">40%</option><option value="50">50%</option></select></label>
+        </div>
+        <div class="sim-ledger" id="smPLedger"></div>
+        <ol class="sim-hist" id="smPHist"></ol>
+        <p class="sim-note">선수 가치는 피파고수가 매일 수집한 데이터센터 시세(해당 강화)예요. 판매 시 수수료 = 40% × (100% − PC방 30% − TOP CLASS 20% − 쿠폰). BP 카드는 수수료 없이 그대로 더해요.</p>
+      </div>
+    </div>
+    <details class="sim-box sim-adv"><summary>확률표 보기 · 다른 확률형 아이템 찾기</summary>
+      <input type="search" id="smPQ" placeholder="넥슨 확률 공개 아이템 검색" autocomplete="off">
+      <div class="sim-qres" id="smPQres"></div>
+      <div class="sim-table" id="smPTable"></div>
+    </details>
+    <p class="sim-note">확률 출처: <a href="https://iteminfo.nexon.com/probability/fco" target="_blank" rel="noopener nofollow">넥슨 확률형 아이템 정보</a> · 상품 출처: <a href="https://shop.fconline.nexon.com/" target="_blank" rel="noopener nofollow">FC온라인 웹 상점</a>. 선수팩은 넥슨이 '기준가 TOP N' 순위로 공개해서, 피파고수 시세로 순위를 실제 선수에 맞춰 보여줘요(실제 게임과 다를 수 있어요). 재미로 보는 체험이며 구매를 권하지 않아요.</p>
+  </section>
+</main>
+
 <!-- ================= 게임 가이드 ================= -->
 <main id="v-guide" class="wrap"{% if view!='guide' %} hidden{% endif %}>
   <div class="hero" style="padding-top:0"><h1 style="font-size:clamp(24px,5vw,32px)">FC온라인 <em>게임 가이드</em></h1><p class="sub">등급·감독모드·강화·팀컬러 등 게임 규칙을 공식 출처와 함께 정리해요. 업데이트 내역은 <a href="{{ root }}patch/">패치노트</a>에서 볼 수 있어요.</p></div>
@@ -282,6 +367,7 @@
 {% block scripts %}
 <script>if(!window.FG_LIVE)document.write('<script src="{{ root }}preview/data.js?v={{ ver }}"><\/script>')</script>
 <script src="{{ root }}assets/js/news.js?v={{ ver }}" defer></script>
-<script>window.FG_ROUTES={"home":"/","diag":"/diag","cards":"/cards","calc":"/calc","guide":"/guide/"};window.FG_TITLES={{ titles }};</script>
+<script>window.FG_ROUTES={"home":"/","diag":"/diag","cards":"/cards","calc":"/calc","guide":"/guide/","sim":"/sim/"};window.FG_TITLES={{ titles }};</script>
 <script src="{{ root }}assets/js/app.js?v={{ ver }}"></script>
+<script src="{{ root }}assets/js/sim.js?v={{ ver }}"></script>
 {% endblock %}

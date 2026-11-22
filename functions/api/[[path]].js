@@ -16,7 +16,6 @@ const ALLOW = [
   /^\/fconline\/v1\/match-detail$/,
   /^\/static\/fconline\/meta\/(spid|seasonid|spposition|division|matchtype)\.json$/,
   /^\/fconline\/v1\/ranker-stats$/,          // TOP 10,000 랭커가 쓴 같은 선수·포지션의 20경기 평균 (약점 진단 비교 기준)
-  /^\/fconline\/v1\/match$/,                 // 전체 최근 경기 ID 목록 (매일 챔피언스 평균 평점 수집용)
 ];
 const MATCH_TYPES = new Set(['30', '40', '50', '52', '60', '204', '214']);
 const MAX_IDS = 10;

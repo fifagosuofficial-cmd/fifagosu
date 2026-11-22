@@ -343,7 +343,15 @@ def run(data=DATA, http=None):
     # 3) 진행 중 이벤트
     events = None
     try:
-        events = parse_event_list(http.get(NX + "/news/events/list"))
+        # 진행 중 이벤트가 여러 페이지(한 페이지 10개)에 걸쳐 있어요. 진행 중이 하나도 없는 페이지가 나오면 멈춰요.
+        events, seen = [], set()
+        for page in range(1, 6):
+            got = parse_event_list(http.get(NX + "/news/events/list" + (f"?n4PageNo={page}" if page > 1 else "")))
+            fresh = [e for e in got if e["url"] not in seen]
+            if not fresh:
+                break
+            seen.update(e["url"] for e in fresh)
+            events += fresh
     except Exception as e:  # noqa: BLE001
         errors.append(f"events: {e.__class__.__name__}")
 

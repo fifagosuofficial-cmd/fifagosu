@@ -24,6 +24,7 @@ import datetime as dt
 import json
 import math
 import os
+import re
 import shutil
 import sys
 import time
@@ -324,8 +325,43 @@ RECO_GROUP = {
     "RW": "W", "LW": "W", "RF": "W", "LF": "W", "ST": "ST", "RS": "ST", "LS": "ST", "CF": "ST",
 }
 RECO_GROUPS = ["GK", "CB", "FB", "DM", "CM", "WM", "AM", "W", "ST"]
-RECO_MAX_BYTES = 300_000             # 그룹 파일 하나의 목표 크기(진단 화면에서 한 번 받는 양)
-RECO_FIELDS = ["spid", "name", "ovr", "price", "height", "weight", "newTraits", "traits", "pay", "games"]
+RECO_MAX_BYTES = 450_000             # 그룹 파일 하나의 목표 크기(진단 화면에서 한 번 받는 양, gzip 약 1/3)
+RECO_FIELDS = ["spid", "name", "ovr", "price", "height", "weight", "newTraits", "traits", "pay", "games", "teamcolors"]
+
+
+def _tnorm(s):
+    return re.sub(r"[\s·.\-]", "", str(s or "")).lower()
+
+
+def reco_teamcolor_index(data):
+    """소속 팀컬러(클럽·국가) 목록과 매칭표. app.js tcOptionsFor 와 같은 규칙:
+    nationId·clubId(현재 팀) 일치, 또는 클럽 경력 이름·국가 이름이 팀컬러 이름과 같으면 소속."""
+    raw = load(data / "teamcolor" / "teamcolors.json", {})
+    items = raw if isinstance(raw, list) else (raw.get("items") or raw.get("teamcolors") or [])
+    tcs = [x for x in items if str(x.get("type")) in ("club", "nation")]
+    by_name, by_nat, by_club = {}, {}, {}
+    for i, x in enumerate(tcs):
+        for n in [x.get("name")] + list(x.get("aliases") or []):
+            if n:
+                by_name.setdefault(_tnorm(n), set()).add(i)
+        if x.get("nationId"):
+            by_nat.setdefault(int(x["nationId"]), set()).add(i)
+        if x.get("clubId"):
+            by_club.setdefault(int(x["clubId"]), set()).add(i)
+
+    def of(d):
+        out = set()
+        nat = str(d.get("nation") or "").split(",")[0].strip()
+        names = [c[1] for c in (d.get("clubs") or []) if isinstance(c, list) and len(c) > 1] + [nat]
+        for n in names:
+            out |= by_name.get(_tnorm(n), set()) if n else set()
+        try:
+            out |= by_nat.get(int(d.get("nationId") or 0), set())
+            out |= by_club.get(int(d.get("teamId") or 0), set())
+        except (TypeError, ValueError):
+            pass
+        return sorted(out)
+    return [x.get("name") for x in tcs], of
 
 
 def pcode(v):
@@ -359,6 +395,7 @@ def step_reco(data, max_bytes=None):
     if not listed:
         return res
     new_set = set(load(data / "traits.json", {}).get("new") or [])
+    tc_names, tc_of = reco_teamcolor_index(data)
     traits, tix = [], {}
 
     def trait_ids(lst):
@@ -390,7 +427,7 @@ def step_reco(data, max_bytes=None):
             by_group[g].append([int(k), r.get("name") or d.get("name") or "", ovr,
                                 [pcode(x) for x in price[:13]] + [0] * max(0, 13 - len(price)),
                                 int(d.get("height") or 0), int(d.get("weight") or 0), new_n, tid,
-                                int(r.get("pay") or d.get("pay") or 0), int(r.get("games") or 0)])
+                                int(r.get("pay") or d.get("pay") or 0), int(r.get("games") or 0), tc_of(d)])
     out_dir = data / "reco"
     sizes = {}
     for g, rows in by_group.items():
@@ -408,9 +445,12 @@ def step_reco(data, max_bytes=None):
             used = sorted({i for x in items for i in x[7]})
             remap = {o: i for i, o in enumerate(used)}
             items = [x[:7] + [[remap[i] for i in x[7]]] + x[8:] for x in items]
+            tused = sorted({i for x in items for i in x[10]})
+            tmap = {o: i for i, o in enumerate(tused)}
+            items = [x[:10] + [[tmap[i] for i in x[10]]] for x in items]
             obj = {"g": g, "updated": dt.datetime.now(KST).isoformat(timespec="seconds"), "fields": RECO_FIELDS,
                    "price": "code: (c%1000)*10**(c//1000), 1~13강", "traits": [traits[i] for i in used],
-                   "total": len(rows), "items": items}
+                   "teamcolors": [tc_names[i] for i in tused], "total": len(rows), "items": items}
             return obj, len(json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
 
         longest = max((len(v) for v in buckets.values()), default=0)

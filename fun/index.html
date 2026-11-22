@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>킥킥 · 축구 심심풀이 테스트 | 피파고수</title>
+<title>킥킥 · 내가 선수라면? 축구 테스트 | 피파고수</title>
 <meta name="description" content="닮은 축구선수 찾기, 몇 부 리그 선수인지, 내 몸값, 감독 유형, 이름 축구선수 생성기까지. 1분이면 끝나는 축구 심심풀이 테스트 12종">
 <link rel="canonical" href="https://fifagosu.pages.dev/fun/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="피파고수">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:url" content="https://fifagosu.pages.dev/fun/">
-<meta property="og:title" content="킥킥 · 축구 심심풀이 테스트 | 피파고수">
+<meta property="og:title" content="킥킥 · 내가 선수라면? 축구 테스트 | 피파고수">
 <meta property="og:description" content="닮은 축구선수 찾기, 내 몸값, 감독 유형, 이름 축구선수 생성기까지. 1분이면 끝나는 축구 테스트 12종">
 <meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#0f1512">
@@ -165,7 +165,7 @@ footer a{color:inherit;font-weight:700}
     <a class="site-home" href="../index.html">← 전적·카드 검색</a>
   </nav>
   <header class="top">
-    <a class="brand" href="#/"><i aria-hidden="true"></i>킥킥<small>피파고수 축구 심심풀이</small></a>
+    <a class="brand" href="#/"><i aria-hidden="true"></i>킥킥<small>내가 선수라면?</small></a>
     <a class="allbtn" href="#/" id="allBtn" hidden>전체 테스트</a>
   </header>
   <div class="ad" id="adTop"></div>
@@ -2669,8 +2669,8 @@ async function makeCard(th,title,draw){await fontsReady();const c=newCanvas(),ct
 /* =================== 첫 화면(허브)과 주소 이동 =================== */
 const HUB_TH={bg:'#0f1512',bg2:'#141c18',acc:'#f5c518',ai:'#1d1a05',tx:'#eef3ea',dim:'#9fb0a6',line:'rgba(238,243,234,.14)',qb:'#eef3ea',qt:'#14261d',qline:'#cfdad1',qsel:'#f5c518',css:'repeating-linear-gradient(180deg,#0f1512 0 72px,#121a16 72px 144px)'};
 function hubView(){
-  applyTheme(HUB_TH);$('allBtn').hidden=true;document.title='킥킥 · 축구 심심풀이 테스트 | 피파고수';
-  $('app').innerHTML=`<section class="hub-hero"><h1>심심할 땐<br>축구 테스트 한 판</h1><p>1분이면 끝나는 축구 심심풀이 ${APPS.length}종. 결과는 전부 인스타 스토리 사이즈 이미지로 저장돼요.</p></section>
+  applyTheme(HUB_TH);$('allBtn').hidden=true;document.title='킥킥 · 내가 선수라면? 축구 테스트 | 피파고수';
+  $('app').innerHTML=`<section class="hub-hero"><h1>내가<br>축구선수라면?</h1><p>1분이면 끝나는 축구 심심풀이 ${APPS.length}종. 결과는 전부 인스타 스토리 사이즈 이미지로 저장돼요.</p></section>
    <div class="grid" style="margin-top:16px">${APPS.map((a,i)=>tileHTML(a,i===0||(i===APPS.length-1&&APPS.length%2===0))).join('')}</div>`;
   window.scrollTo({top:0});renderAds();
 }

@@ -383,7 +383,7 @@ $('menu').addEventListener('click',e=>{
   if(link&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey&&e.button===0&&(/(?:^|\/)news\/?$/.test(new URL(link.href,location.href).pathname)||link.textContent.trim()==='소식')){
     e.preventDefault();location.assign(new URL(link.getAttribute('href'),location.href).href);return;
   }
-  const b=e.target.closest('[data-view]');if(!b||e.ctrlKey||e.metaKey||e.shiftKey||e.button)return;e.preventDefault();show(b.dataset.view)
+  const b=e.target.closest('#menu [data-view]');if(!b||e.ctrlKey||e.metaKey||e.shiftKey||e.button)return;e.preventDefault();show(b.dataset.view)   // body의 data-view까지 잡히지 않게 메뉴 안에서만 찾아요
 });
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.go)));
 
@@ -459,7 +459,7 @@ function dRenderSummary(d,a){
   const W=Math.max(320,n*14),H=86,mid=46,mx=Math.max(3,...seq.map(x=>Math.abs(x.gf-x.ga))),bw=W/n,sc=v=>v/mx*34;
   let svg=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="ds-chart" role="img" aria-label="경기별 득실 차"><line x1="0" x2="${W}" y1="${mid}" y2="${mid}" stroke="var(--line)"/>`;
   seq.forEach((x,i)=>{const df=x.gf-x.ga,h=Math.max(3,sc(Math.abs(df))),cx=i*bw+bw*0.15,w=bw*0.7,c=x.r==='승'?'var(--good)':x.r==='패'?'var(--crit)':'var(--muted)';
-    svg+=`<rect x="${cx}" y="${df>=0?mid-h:mid}" width="${w}" height="${h}" rx="2" fill="${c}"><title>${md(x.date)} vs ${esc(x.opp)} ${x.gf}:${x.ga} (${x.r})</title></rect>`});
+    svg+=`<rect x="${cx}" y="${df>=0?mid-h:mid}" width="${w}" height="${h}" rx="2" fill="${c}"/><rect class="ds-hit" data-i="${i}" x="${i*bw}" y="0" width="${bw}" height="${H}" fill="transparent"/>`});
   svg+='</svg>';
   const f=Object.fromEntries(a.flow.map(x=>[x[0],x])),pct=v=>v==null?'-':Math.round(v*100)+'%';
   const w5=seq.slice(-5).filter(x=>x.r==='승').length,w10=seq.slice(-10).filter(x=>x.r==='승').length;
@@ -467,9 +467,15 @@ function dRenderSummary(d,a){
     ['최근 10경기',`${w10}승`,`최근 5경기 ${w5}승`],['선제골 시 승률',pct(f['선제골 넣은 경기 승률'][1]),`${f['선제골 넣은 경기 승률'][2]}경기`],['역전승 · 역전패',`${f['역전승'][1]} · ${f['역전패'][1]}`,`무실점 ${f['무실점 경기'][1]}경기`]];
   const stTxt=last.r==='승'?`${st}연승 중`:last.r==='패'?`${st}연패 중`:st>1?`${st}경기 연속 무승부`:'최근 경기 무승부';
   $('dSum').innerHTML=`<div class="ds-flow"><div class="ds-h"><b>최근 ${n}경기 흐름</b><span class="ds-streak ${RCLS[last.r]}">${stTxt}</span><small>왼쪽이 오래된 경기 · 막대에 마우스를 올리면 상대·스코어</small></div>
-    ${svg}<div class="ds-dots">${seq.map(x=>`<i class="${RCLS[x.r]}" title="${md(x.date)} vs ${esc(x.opp)} ${x.gf}:${x.ga}">${x.r}</i>`).join('')}</div></div>
+    ${svg}<div class="ds-dots">${seq.map((x,i)=>`<i class="${RCLS[x.r]}" data-i="${i}">${x.r}</i>`).join('')}</div><div class="ds-tip" id="dsTip" hidden></div></div>
     <div class="ds-kpi">${kpi.map(([k,v,s2])=>`<div><span>${k}</span><b>${v}</b><small>${s2}</small></div>`).join('')}</div>`;
 }
+/* 막대·칸에 마우스를 올리면 그 경기의 날짜·상대·스코어 */
+$('dSum').addEventListener('mouseover',e=>{const t=e.target.closest('[data-i]'),tip=$('dsTip');if(!tip||!dCur)return;if(!t){tip.hidden=true;return}
+  const x=dCur.a.seq[+t.dataset.i];if(!x)return;const dt=new Date(x.date),box=t.closest('.ds-flow').getBoundingClientRect(),r=t.getBoundingClientRect();
+  tip.innerHTML=`<span class="res ${RCLS[x.r]}">${x.r}</span><b>${x.gf} : ${x.ga}</b> vs ${esc(x.opp)}<small>${dt.getMonth()+1}/${dt.getDate()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} · 점유 ${x.poss}%</small>`;
+  tip.hidden=false;const left=Math.max(4,Math.min(box.width-tip.offsetWidth-4,r.left-box.left+r.width/2-tip.offsetWidth/2));tip.style.left=left+'px';tip.style.top=(r.top-box.top-tip.offsetHeight-6)+'px'});
+$('dSum').addEventListener('mouseleave',()=>{const tip=$('dsTip');if(tip)tip.hidden=true});
 /* ---------- 피파고수의 한마디: 약점·흐름·랭커 비교를 종합한 조언 ---------- */
 function dAdvice(a){
   const pct=v=>Math.round(v*100),seq=a.seq,n=seq.length,last=seq[n-1];let st=1;for(let i=n-2;i>=0&&seq[i].r===last.r;i--)st++;

@@ -1125,3 +1125,9 @@ nav.menu a.core:not([aria-current]):hover{background:var(--accent);color:var(--a
 .rc-empty{margin:0;padding:12px;border-radius:10px;background:var(--sunk);font-size:13px;line-height:1.5}
 .rc-note{margin:0;font-size:11px;color:var(--muted);line-height:1.45}
 @media (max-width:560px){.rc-pop{place-items:end stretch;padding:0}.rc-panel{width:100%;border-radius:16px 16px 0 0;max-height:84vh;padding:14px 12px calc(12px + env(safe-area-inset-bottom))}}
+
+/* 대체 추천: 내 팀컬러 요약 · 후보의 공유 팀컬러 칩 */
+.rc-tc{display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:12px}.rc-tc b{margin-right:2px}
+.rc-tc span{padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--fg);font-weight:700}
+.rc-tc span.wv{background:#f7e7a6;color:#5a4300}.rc-tc span.muted{background:var(--sunk);color:var(--muted)}
+.rc-tcs{display:flex;flex-wrap:wrap;gap:4px}.rc-tcs i{font-style:normal;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--accent)}

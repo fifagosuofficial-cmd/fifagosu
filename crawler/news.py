@@ -6,7 +6,7 @@
 
 저작권 원칙
   - 넥슨 공지: 제목·날짜·분류 + 본문에서 핵심 줄(날짜·대상·변경점 등) 최대 10줄을 뽑아 정리, 원문 링크 필수.
-  - 언론 기사: 제목 + 언론사가 RSS로 공식 배포한 요약(최대 220자) + 출처·원문 링크만. 본문·사진은 가져오지 않아요.
+  - 언론 기사: 제목·분류·출처·원문 링크·발행일만 저장해요. 기사 설명문과 사진은 저장하거나 게시하지 않아요.
 
 만드는 파일
   data/news/feed.json    {updated, items:[{id, cat, title, summary:[줄…], source, url, date, tags, kind}]}
@@ -38,8 +38,6 @@ UA = os.environ.get("FG_UA", "Mozilla/5.0 (compatible; FIFAGOSU-NewsBot/1.0; +ht
 KEEP = 400                 # 보관할 게시글 수
 MAX_VIEWS = 15             # 한 번에 새로 읽을 넥슨 공지 본문 수
 DELAY = float(os.environ.get("FG_NEWS_DELAY", 1.5))
-SUMMARY_CHARS = 220
-
 # 언론 RSS: (출처 이름, 주소, 기본 분류, 키워드 필터(정규식, 없으면 전부))
 FEEDS = [
     ("인터풋볼", "https://www.interfootball.co.kr/rss/allArticle.xml", "football", None),
@@ -171,9 +169,9 @@ def parse_update_list(text):
     return out
 
 
-def classify_league(title, summary, category):
-    """축구 RSS 기사 제목·RSS 요약만 사용해 세부 분류해요. 판단이 어려우면 기타예요."""
-    text = clean(title + " " + " ".join(summary or []))
+def classify_league(title, category):
+    """축구 기사 제목으로만 세부 분류해요. 판단이 어려우면 기타예요."""
+    text = clean(title)
     if category == "korea":
         if KFA_NEWS.search(text):
             return "KFA"
@@ -240,19 +238,15 @@ def parse_rss(text, source, base_cat, keyword=None):
     for it in root.iter("item"):
         title = clean(it.findtext("title"))
         link = (it.findtext("link") or "").strip()
-        desc = clean(re.sub(r"<[^>]+>", " ", it.findtext("description") or ""))
-        desc = re.sub(r"^\[[^\]]{2,30}\]\s*([^=\s]{1,10}\s?기자=\s*)?", "", desc)   # [매체=기자] / [매체] 기자= 머리말 제거
-        desc = re.sub(r"([.!?\"”’])(?=[가-힣A-Z\"“‘])", r"\1 ", desc)   # RSS가 붙여 쓴 문장 사이 띄우기
-        if not title or not link or (kw and not kw.search(title + " " + desc)):
+        if not title or not link or (kw and not kw.search(title)):
             continue
         if title.startswith("[포토]") or title.startswith("[영상]"):
             continue
         cat = base_cat
         if base_cat == "football":
             cat = "korea" if DOMESTIC.search(title) else "world"
-        summary = desc if len(desc) <= SUMMARY_CHARS else desc[:SUMMARY_CHARS].rsplit(" ", 1)[0] + "…"
-        out.append({"id": uid(link), "cat": cat, "kind": "press", "title": title, "summary": [summary] if summary else [],
-                    "league": classify_league(title, [summary] if summary else [], cat),
+        out.append({"id": uid(link), "cat": cat, "kind": "press", "title": title, "summary": [],
+                    "league": classify_league(title, cat),
                     "source": source, "url": link, "date": parse_date(it.findtext("pubDate"))})
     return out
 
@@ -364,9 +358,11 @@ def run(data=DATA, http=None):
 
     items = merge(feed["items"], new)
     for x in items:
+        if x.get("kind") == "press" or x.get("cat") in ("world", "korea", "fcgame"):
+            x["summary"] = []  # 기존 RSS 요약도 저장 데이터에서 함께 제거해요.
         x["label"] = CAT_LABEL.get(x["cat"], x["cat"])
         if x.get("cat") in ("world", "korea") and not x.get("league"):
-            x["league"] = classify_league(x.get("title", ""), x.get("summary", []), x["cat"])
+            x["league"] = classify_league(x.get("title", ""), x["cat"])
     save(data / "news" / "feed.json", {"updated": now_iso(), "items": items})
     if events is not None:
         save(data / "news" / "events.json", {"updated": now_iso(), "items": events})

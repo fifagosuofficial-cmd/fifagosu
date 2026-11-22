@@ -10,7 +10,7 @@
       <p class="sub">{{ '해외축구·국내축구·FC온라인 관련 기사를 모아요.' if P else 'FC온라인 공식 공지·점검·업데이트·이벤트를 모아요.' }} 읽기 전용 자동 수집 게시판이에요.{% if news %} 마지막 갱신 <time datetime="{{ news.updated }}" data-rel>{{ news.updated[5:7]|int }}.{{ news.updated[8:10]|int }} {{ news.updated[11:16] }}</time>{% endif %}</p>
     </div>
     <form class="bd-search" role="search" onsubmit="return false">
-      <input type="search" id="bdQ" placeholder="{{ '제목·내용 검색 (예: 손흥민, EPL, K리그)' if P else '제목·내용 검색 (예: 점검, 강화, 이벤트)' }}" aria-label="{{ '뉴스' if P else '소식' }} 검색" autocomplete="off">
+      <input type="search" id="bdQ" placeholder="{{ '제목·출처 검색 (예: 손흥민, EPL, K리그)' if P else '제목·내용 검색 (예: 점검, 강화, 이벤트)' }}" aria-label="{{ '뉴스' if P else '소식' }} 검색" autocomplete="off">
     </form>
   </div>
 {% if news %}
@@ -28,7 +28,7 @@
         <div class="bd-row bd-th" role="row"><span role="columnheader">번호</span><span role="columnheader">분류</span><span role="columnheader">제목</span><span role="columnheader">출처</span><span role="columnheader">날짜</span></div>
         <div id="bdBody">
         {% for x in board %}
-          <a class="bd-row" role="row" href="{{ root }}news/{{ x.id }}" data-cat="{{ x.cat }}" data-league="{{ x.league|default('기타') }}" data-date="{{ x.date }}" data-q="{{ (x.title ~ ' ' ~ (x.summary|join(' ')) ~ ' ' ~ x.source)|lower|e }}">
+          <a class="bd-row" role="row" href="{{ root }}news/{{ x.id }}" data-cat="{{ x.cat }}" data-league="{{ x.league|default('기타') }}" data-date="{{ x.date }}" data-q="{{ (x.title ~ ' ' ~ ('' if P else x.summary|join(' ')) ~ ' ' ~ x.source)|lower|e }}">
             <span class="bd-no" role="cell">{{ board|length - loop.index0 }}</span>
             <span role="cell"><b class="cl-badge cat-{{ x.cat }}">{{ x.label }}</b>{% if x.cat in ['world','korea'] %}<small class="bd-league">{{ x.league|default('기타') }}</small>{% endif %}</span>
             <span class="bd-t" role="cell">{{ x.title }}<i class="bd-new" hidden>N</i></span>
@@ -50,7 +50,7 @@
           <li><b>경향게임스·게임톡</b> FC온라인 관련 기사</li>
           {% else %}<li><b>FC온라인 공식 홈페이지</b> 공지·점검 핵심 줄 요약, 업데이트·이벤트</li>{% endif %}
         </ul>
-        <p>{% if P %}기사 본문은 옮기지 않고 언론사 제공 요약과 원문 링크만 보여줘요. {% endif %}하루 4번(06:50·11:50·17:50·21:50) 갱신돼요.</p>
+        <p>{% if P %}기사 제목·출처·날짜와 원문 링크만 안내해요. {% endif %}하루 4번(06:50·11:50·17:50·21:50) 갱신돼요.</p>
         <p><a href="{{ root }}{{ 'news/' if P else 'press/' }}">{{ '→ FC온라인 공지·점검은 소식 게시판' if P else '→ 축구 기사는 뉴스 게시판' }}</a></p>
       </section>
     </aside>

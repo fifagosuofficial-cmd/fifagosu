@@ -5,7 +5,8 @@
   python site/build.py --data data --out dist     (저장소 루트에서)
 
 - 주소는 site/config.json 의 SITE_URL 한 곳에서만 관리해요(canonical·sitemap·OG·robots 모두 여기서 생성).
-- data/ 는 읽기만 해요. functions/·data/ 를 dist/ 로 복사하는 건 워크플로가 해요.
+- data/ 는 읽기 전용으로 쓰되, 기존 언론 RSS 요약 제거 마이그레이션은 feed.json에 저장해요.
+- functions/·data/ 를 dist/ 로 복사하는 건 워크플로가 해요.
 - 파일 수가 MAX_FILES(18,000)를 넘으면 빌드 실패(Cloudflare Pages 사이트당 20,000개 한도 보호).
 """
 from __future__ import annotations
@@ -58,7 +59,7 @@ PAGES = [
     ("news/index.html", "news.html", "/news/", "FC온라인 소식 — 공지·점검·업데이트·이벤트 | 피파고수",
      "넥슨 FC온라인 공식 공지·점검·업데이트·이벤트를 핵심만 요약해 하루 4번 모아 보여줘요.", True),
     ("press/index.html", "news.html", "/press/", "축구 뉴스 — 해외축구·국내축구·FC온라인 기사 | 피파고수",
-     "EPL·라리가 등 해외축구와 K리그 국내축구, FC온라인 관련 기사를 하루 4번 모아 요약과 원문 링크로 보여줘요.", True),
+     "EPL·라리가 등 해외축구와 K리그 국내축구, FC온라인 관련 기사 제목과 원문 링크를 모아요.", True),
     ("about.html", "pages/about.html", "/about", "피파고수 소개", "피파고수가 어떤 사이트인지, 데이터는 어디서 오는지 소개해요.", True),
     ("privacy.html", "pages/privacy.html", "/privacy", "개인정보처리방침 — 피파고수", "피파고수의 개인정보 처리 방침이에요.", True),
     ("terms.html", "pages/terms.html", "/terms", "이용약관 — 피파고수", "피파고수 이용약관이에요.", True),
@@ -83,6 +84,17 @@ def load_news(data_dir, today):
         return None
     ev = (_load(data_dir / "news" / "events.json") or {}).get("items", [])
     items = feed["items"]
+    # RSS에 남아 있는 과거 언론사 요약도 게시 페이지·공개 데이터에서 지워요.
+    cleaned = False
+    for item in items:
+        if (item.get("kind") == "press" or item.get("cat") in PRESS) and item.get("summary"):
+            item["summary"] = []
+            cleaned = True
+    if cleaned:
+        feed_path = data_dir / "news" / "feed.json"
+        tmp = feed_path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(feed, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        tmp.replace(feed_path)
     official = [x for x in items if x["cat"] in OFFICIAL and x["cat"] != "update"]
     updates = [x for x in items if x["cat"] == "update"]
     press = [x for x in items if x["cat"] in PRESS]
@@ -180,15 +192,16 @@ def main(argv=None):
     for slug, title, desc in GUIDE_PAGES:
         render(f"guide/{slug}.html", MAIN_T, f"/guide/{slug}", title + " | 피파고수", desc, True,
                root="../", view="guide", guide_only="g-" + slug)
-    # 게시글 페이지: /news/{id} — 공식 소식만 검색 색인, 기사 요약 글은 noindex(얇은 중복 콘텐츠 방지)
+    # 게시글 페이지: /news/{id} — 공식 소식만 검색 색인, 언론사 상세 페이지는 noindex 처리해요.
     if news:
         for board in news["boards"].values():
           for i, x in enumerate(board):
             same = [y for y in board if y["cat"] == x["cat"] and y["id"] != x["id"]][:5]
             post = {**x, "prev": board[i + 1] if i + 1 < len(board) else None,
                     "next": board[i - 1] if i > 0 else None, "related": same}
-            desc = (" ".join(x.get("summary") or []) or x["title"])[:150]
             press = x["cat"] in PRESS
+            desc = x["title"] if press else (" ".join(x.get("summary") or []) or x["title"])
+            desc = desc[:150]
             render(f"news/{x['id']}.html", "post.html", f"/news/{x['id']}", f"{x['title']} | 피파고수 {'뉴스' if press else '소식'}",
                    desc, x["kind"] == "official", root="../", post=post, active="press" if press else "news",
                    board_url="press/" if press else "news/", board_name="뉴스 게시판" if press else "소식 게시판")

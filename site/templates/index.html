@@ -34,9 +34,9 @@
 {% if market %}{% set ix = market.index %}
   <section class="mk-strip" aria-label="시장 요약">
     <div class="mk-tile">
-      <span class="mk-k">피파고수 시장지수 <small>{{ market.rankLabel or '상위 랭커 사용 기준' }} · 1강 최근 7일{% if ix %} · 표본 {{ ix.n }}장{% endif %}</small></span>
+      <span class="mk-k">피파고수 시장지수 <small>{{ market.rankLabel|default('상위 랭커 사용 기준') }} · 1강 최근 7일{% if ix %} · 표본 {{ ix.n }}장{% endif %}</small></span>
       {% if ix %}<span class="mk-v {{ 'up' if ix.median > 0 else ('down' if ix.median < 0 else '') }}">{{ M.pct(ix.median) }}</span>
-      {% else %}<span class="mk-v mk-wait">표본 {{ market.indexSample or 0 }}/{{ market.indexMinimum or 30 }}장</span>{% endif %}
+      {% else %}<span class="mk-v mk-wait">표본 {{ market.indexSample|default(0) }}/{{ market.indexMinimum|default(30) }}장</span>{% endif %}
     </div>
     <div class="mk-tile">
       <span class="mk-k">최근 7일 오른 카드 · 내린 카드</span>
@@ -64,16 +64,16 @@
     <section class="mk-box mk-up">
       <h2>최근 7일 급등 TOP {{ B.risers|length or 10 }}</h2>
       {% if B.risers %}<ol class="mk-list">{% for x in B.risers %}{{ M.row(x, loop.index) }}{% endfor %}</ol>
-      {% else %}<p class="mk-empty">{{ market.rankLabel or '상위 랭커' }} 시세를 모으고 있어요.</p>{% endif %}
+      {% else %}<p class="mk-empty">{{ market.rankLabel|default('상위 랭커') }} 시세를 모으고 있어요.</p>{% endif %}
     </section>
     <section class="mk-box mk-down">
       <h2>최근 7일 급락 TOP {{ B.fallers|length or 10 }}</h2>
       {% if B.fallers %}<ol class="mk-list">{% for x in B.fallers %}{{ M.row(x, loop.index) }}{% endfor %}</ol>
-      {% else %}<p class="mk-empty">{{ market.rankLabel or '상위 랭커' }} 시세를 모으고 있어요.</p>{% endif %}
+      {% else %}<p class="mk-empty">{{ market.rankLabel|default('상위 랭커') }} 시세를 모으고 있어요.</p>{% endif %}
     </section>
     <section class="mk-box">
       <h2>인기 카드 시세</h2>
-      <p class="mk-empty mk-pop-note">{{ market.rankLabel or '상위 랭커 사용 기준' }}</p>
+      <p class="mk-empty mk-pop-note">{{ market.rankLabel|default('상위 랭커 사용 기준') }}</p>
       {% if B.popular %}<ol class="mk-list">{% for x in B.popular %}{{ M.row(x, loop.index) }}{% endfor %}</ol>
       {% else %}<p class="mk-empty">상위 랭커 사용 표본을 모으고 있어요.</p>{% endif %}
     </section>

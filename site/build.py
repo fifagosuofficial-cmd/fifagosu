@@ -106,7 +106,7 @@ def load_news(data_dir, today):
     world = [x for x in press if x["cat"] == "world"] or press
     patches = sorted([x for x in items if x["cat"] == "update" or (x["cat"] in ("notice", "check") and PATCH_RE.search(x["title"]))],
                      key=lambda x: x.get("date") or "", reverse=True)
-    return {"updated": feed.get("updated", ""), "official": timeline[:8], "press": press[:7], "world": world[:8], "patches": patches, "events": events[:6], "patch": patch,
+    return {"updated": feed.get("updated", ""), "official": timeline[:8], "press": press[:7], "world": world[:8], "patches": patches, "events": events, "patch": patch,
             "check": check, "upd": updates[0] if updates else None,
             "all_official": sorted(official + updates, key=lambda x: x.get("date") or "", reverse=True)[:150],
             "all_press": press[:150],

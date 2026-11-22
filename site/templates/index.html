@@ -12,7 +12,7 @@
     <a href="{{ root }}sim/" data-view="sim"{% if view=='sim' %} aria-current="page"{% endif %}>시뮬</a>
     <a href="{{ root }}trade/" data-view="trade"{% if view=='trade' %} aria-current="page"{% endif %}>선수장터</a>
     <a href="{{ root }}guide/" data-view="guide"{% if view=='guide' %} aria-current="page"{% endif %}>게임 가이드</a>
-    <a class="fun" href="{{ SITE_URL }}/fun/" target="_self">심심풀이 테스트</a>
+    <a class="fun" href="{{ SITE_URL }}/fun/" target="_self">킥킥 · 내가 선수라면?</a>
   </nav>
 {% endblock %}
 {% block content %}
@@ -94,7 +94,7 @@
       <h2 id="nwH" class="h2-sec">해외축구 뉴스<a class="h2-more" href="{{ root }}news/#world">더 보기 →</a></h2>
       <ol class="nw">{% for x in news.world[:6] %}{{ N.press_item(x, loop.index) }}{% endfor %}</ol>
     </section>
-    {% if news.events %}<aside class="mk-ev">{{ N.events_box(news.events[:4]) }}</aside>{% endif %}
+    {% if news.events %}<aside class="mk-ev">{{ N.events_box(news.events[:4], news.events|length) }}</aside>{% endif %}
   </div>
 {% else %}
   <section>
@@ -106,7 +106,7 @@
       <button type="button" data-go="guide"><b>게임 가이드</b><span>등급·감독모드·강화·팀컬러</span></button>
     </div>
   </section>
-  <a class="funlink" href="{{ SITE_URL }}/fun/" target="_self"><b>심심할 땐 축구 테스트 한 판</b><span>닮은 선수 찾기·내 몸값·감독 유형 등 12종, 1분이면 끝나요</span><em>해보기 →</em></a>
+  <a class="funlink" href="{{ SITE_URL }}/fun/" target="_self"><b>킥킥 · 내가 선수라면?</b><span>닮은 선수 찾기·내 몸값·감독 유형 등 12종, 1분이면 끝나요</span><em>해보기 →</em></a>
 {% endif %}
   <div class="slot" data-slot="home-1"></div>
 </main>

@@ -278,6 +278,9 @@ svg text{font-family:var(--f-body)}
 .ladder span{flex:none;font-size:12px;padding:4px 9px;border-radius:999px;border:1px solid color-mix(in srgb,var(--tc) 55%,transparent);color:var(--tc);background:color-mix(in srgb,var(--tc) 12%,transparent);white-space:nowrap}
 .glist{margin:0;padding-left:18px;display:grid;gap:8px;font-size:14px}
 .glist b{color:var(--fg)}
+.gsub{font-size:14.5px;margin:14px 0 8px}.gsub:first-child{margin-top:0}
+/* 모바일: 메뉴 탭을 옆으로 넘기지 않고 줄바꿈해서 한 번에 보이게 */
+@media (max-width:760px){nav.menu{flex-wrap:wrap;justify-content:center;overflow:visible;gap:4px;padding:0 8px 10px}nav.menu a,nav.menu a.fun,nav.menu a:not(.fun){padding:5px 10px!important;font-size:13px!important}}
 .sub a,.glist a{color:var(--accent)}
 a.chip{text-decoration:none;color:var(--fg)}
 .tablewrap th.n{min-width:96px}

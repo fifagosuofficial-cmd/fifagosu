@@ -1,5 +1,5 @@
 /**
- * 피파고수 선수장터 API (Cloudflare Pages Functions + D1 무료 요금제)
+ * 피파고수 선수 거래소 API (Cloudflare Pages Functions + D1 무료 요금제)
  *
  *   GET  /api/trade?kind=sell|buy&q=이름&open=1&before=글번호   → {items:[…], more}
  *   POST /api/trade  {action:"create", kind, spid, pname, grade, price, nick, body, pw, hp}
@@ -133,7 +133,7 @@ async function change(db, b, action) {
 
 export async function onRequest({ request, env }) {
   const db = env.TRADE_DB;
-  if (!db) return json(503, { code: 'no_db', message: '선수장터 저장소가 아직 연결되지 않았어요. 곧 열려요!' });
+  if (!db) return json(503, { code: 'no_db', message: '선수 거래소 저장소가 아직 연결되지 않았어요. 곧 열려요!' });
   const url = new URL(request.url);
   try {
     if (request.method === 'GET') return await list(db, url);

@@ -491,7 +491,9 @@ function dAdvice(a){
   if(one[2]>=4&&one[1]!=null&&one[1]<0.4)ins.push(`1골 차 접전 승률이 ${pct(one[1])}%로 낮아요. 막판 10분 집중력이 승부를 갈라요.`);
   const lateA=a.bins[5].a;if(a.ga>=5&&lateA/a.ga>=0.3&&!(w&&/후반/.test(w.weak)))ins.push(`실점의 ${pct(lateA/a.ga)}%가 75분 이후에 나와요. 후반 체력 관리가 필요해요.`);
   if(ins.length)out.push(ins[0]);
-  if(a.under&&a.under.length)out.push(`상위 랭커가 같은 선수를 같은 자리에 썼을 때보다 기록이 낮은 선수가 <b>${a.under.length}명</b>이에요(${a.under.slice(0,3).map(x=>esc(x.name)).join(', ')}${a.under.length>3?' 등':''}). 선수별 기록의 <span class="rk-ic">!</span> 표시를 확인해 보세요.`);
+  const rtU=(a.players||[]).filter(x=>x.rtLow), recoHint=' 이름 옆 <span class="rk-ic">!</span>를 누르면 같은 가격대 대체 추천을 볼 수 있어요.';
+  if(a.under&&a.under.length)out.push(`상위 랭커가 같은 선수를 같은 자리에 썼을 때보다 기록이 낮은 선수가 <b>${a.under.length}명</b>이에요(${a.under.slice(0,3).map(x=>esc(x.name)).join(', ')}${a.under.length>3?' 등':''}).${rtU.length?` 평점이 챔피언스 같은 포지션 평균보다 낮은 선수는 <b>${rtU.length}명</b>이에요.`:''} 선수별 기록의 <span class="rk-ic">!</span> 표시를 확인해 보세요.${recoHint}`);
+  else if(rtU.length)out.push(`챔피언스 같은 포지션 평균보다 평점이 낮은 선수가 <b>${rtU.length}명</b>이에요(${rtU.slice(0,3).map(x=>esc(x.name)).join(', ')}${rtU.length>3?' 등':''}).${recoHint}`);
   else if(a.strong)out.push(`잘하고 있는 점 — <b>${esc(a.strong.strong)}</b>. 이 부분은 계속 살리세요.`);
   return out.slice(0,4);
 }
@@ -517,6 +519,103 @@ async function dLoadRanker(a,mode,seq){
 }
 const rkCell=(x,k,html)=>{const L=x.rkLow&&x.rkLow[k];if(!L)return html;const f=v=>v>=10?v.toFixed(0):v.toFixed(2);
   return `<span class="rk-low" data-tip="${RK_TIP} (${L.lb} 경기당 ${f(L.mine)} · 상위 랭커 평균 ${f(L.avg)})" tabindex="0">${html}<span class="rk-ic" aria-hidden="true">!</span></span>`};
+/* ---------- 챔피언스 평균 평점 비교 (data/rating.json — crawler/rating.py 가 하루 1회, 챔피언스 이상 경기 표본으로 생성) ---------- */
+const RT_GROUP={GK:'GK',SW:'CB',RCB:'CB',CB:'CB',LCB:'CB',RB:'FB',LB:'FB',RWB:'FB',LWB:'FB',RDM:'DM',CDM:'DM',LDM:'DM',RCM:'CM',CM:'CM',LCM:'CM',RM:'WM',LM:'WM',RAM:'AM',CAM:'AM',LAM:'AM',RW:'W',LW:'W',RF:'W',LF:'W',RS:'ST',ST:'ST',LS:'ST',CF:'ST'};
+const RT_GNAME={GK:'골키퍼',CB:'센터백',FB:'풀백',DM:'수비형 미드필더',CM:'중앙 미드필더',WM:'측면 미드필더',AM:'공격형 미드필더',W:'윙어',ST:'스트라이커'};
+let ratingP=null;
+const loadRating=()=>ratingP||(ratingP=fetch(DATA_BASE+'/rating.json').then(r=>r.ok?r.json():null).catch(()=>null));
+async function dLoadRating(a,mode,seq){
+  const R=await loadRating();if(seq!==diagSeq||!R||!R[mode]||!R[mode].groups)return;
+  const G=R[mode].groups;let n=0;
+  a.players.forEach(x=>{const g=RT_GROUP[x.pos],s=g&&G[g];if(!s||!(s.avg>0)||(s.n||0)<30||x.apps<3)return;
+    if(s.avg-x.avg>=0.1-1e-9){x.rtLow={avg:s.avg,n:s.n,basis:s.basis||'≤900',g};n++}});
+  a.rtN=n;
+  if(['pstats','squad','player'].includes(dTab))dRenderPanel();
+  dRenderTip(a);
+}
+const rtLabel=b=>b==='≤1000'?'슈퍼 챌린지 이상':'챔피언스';
+const rtCell=x=>{if(!x.rtLow)return x.avg.toFixed(2);const L=x.rtLow;
+  return `<span class="rk-low" data-tip="${esc(`${rtLabel(L.basis)} 기준 같은 포지션(${RT_GNAME[L.g]}) 평균 평점 ${L.avg.toFixed(2)}보다 낮아요 (내 ${x.avg.toFixed(2)})`)}" tabindex="0">${x.avg.toFixed(2)}<span class="rk-ic" aria-hidden="true">!</span></span>`};
+const rtNote=a=>a.rtN?` 평점의 빨간 숫자는 챔피언스 경기 표본의 같은 포지션 평균보다 0.1 이상 낮은 평점이에요(3경기 이상 출전). 이름 옆 <span class="rk-ic">!</span>를 누르면 같은 가격대 대체 추천을 볼 수 있어요.`:a.under&&a.under.length?' 이름 옆 <span class="rk-ic">!</span>를 누르면 같은 가격대 대체 추천을 볼 수 있어요.':'';
+const lowSummary=x=>{const p=[];if(x.rtLow)p.push(`평점 ${x.avg.toFixed(2)} (${rtLabel(x.rtLow.basis)} 평균 ${x.rtLow.avg.toFixed(2)})`);
+  const k=x.rkLow?Object.values(x.rkLow).map(v=>v.lb):[];if(k.length)p.push(`${k.join('·')} (상위 랭커 대비)`);return p};
+/* 이름 옆 '!' 버튼: 평점 또는 공격·수비 지표가 낮은 선수 → 누르면 같은 가격대 대체 추천 */
+const recoFlag=x=>{const p=lowSummary(x);if(!p.length)return '';
+  return `<button type="button" class="rc-flag" data-reco="${x.spId}" aria-label="대체 추천 보기" aria-haspopup="dialog" data-tip="${esc('낮은 수치: '+p.join(' · ')+' — 눌러서 대체 추천 보기')}">!</button>`};
+
+/* ---------- 대체 추천 (data/reco/{포지션 묶음}.json — crawler/derive.py step_reco) ---------- */
+const RECO_P={};
+const loadReco=g=>RECO_P[g]||(RECO_P[g]=fetch(`${DATA_BASE}/reco/${g}.json`).then(r=>r.ok?r.json():null).catch(()=>null));
+const pdec=c=>c?(c%1000)*10**Math.floor(c/1000):0;   // 시세 코드(유효숫자 3자리) → BP
+// 포지션 묶음별 신체 가중치 [키 1cm당, 몸무게 1kg당, 몸무게 상한(넘는 만큼 감점: 측면은 가벼운 편이 유리)]
+const RC_BODY={GK:[0.15,0.02,0],CB:[0.14,0.06,0],ST:[0.10,0.06,0],DM:[0.07,0.04,0],CM:[0.05,0.03,0],AM:[0.03,0,82],FB:[0.03,0,82],WM:[0.02,0,80],W:[0.02,0,80]};
+const RC_LO=0.6, RC_HI=1.6;   // 같은 강화 단계 시세가 내 카드의 0.6~1.6배인 카드만
+function recoScore(g,me,c,ratio){
+  const [hw,ww,wcap]=RC_BODY[g]||[0.05,0.03,0],why=[];let s=0;
+  const dO=me.ovr?c.ovr-me.ovr:0;s+=dO;if(dO>0)why.push([dO,`OVR +${dO}`]);
+  const dn=c.nw-me.nw;s+=dn*0.9;if(c.nw>0&&dn>0)why.push([dn+0.2,`신규 특성 ${c.nw}개`]);
+  if(c.h&&me.h){const dh=c.h-me.h,v=Math.max(-1.5,Math.min(1.5,dh*hw));s+=v;if(dh>=3&&hw>=0.05)why.push([v,`키 +${dh}cm`]);
+    if(ww){const dw=c.w-me.w,v2=Math.max(-0.8,Math.min(0.8,dw*ww));s+=v2;if(dw>=4)why.push([v2,`몸무게 +${dw}kg`])}
+    if(wcap){const ov=w=>Math.max(0,w-wcap),v3=-(ov(c.w)-ov(me.w))*0.08;s+=v3;if(v3>=0.2)why.push([v3,`몸무게 ${c.w}kg (가벼움)`])}}
+  else if(!c.h)s-=0.3;   // 키·몸무게를 아직 모르는 카드는 살짝 뒤로
+  if(ratio){if(ratio>1)s-=(ratio-1)*2.2;else{s+=(1-ratio)*0.8;if(ratio<=0.9)why.push([(1-ratio)+0.3,`시세 -${Math.round((1-ratio)*100)}%`])}}
+  const pop=v=>Math.min(1,Math.log10((v||0)+1)/3)*0.3;s+=pop(c.games)-pop(me.games);   // 데이터센터 사용량(유행) 약간
+  return {s,why:why.sort((a,b)=>b[0]-a[0]).slice(0,3).map(w=>w[1])};
+}
+async function recoFor(x){
+  const g=RT_GROUP[x.pos];if(!g)return {err:'포지션 정보를 몰라 추천할 수 없어요.'};
+  const [F,cd]=await Promise.all([loadReco(g),cardData(x.spId).catch(()=>({}))]);
+  if(!F||!F.items||!F.items.length)return {g,err:'추천 데이터를 준비 중이에요. 매일 새벽 수집이 끝나면 볼 수 있어요.'};
+  const L=cd&&cd.l,D=cd&&cd.d,grade=Math.max(1,Math.min(13,x.grade||1)),gi=grade-1,T=F.traits||[];
+  const items=F.items.map(r=>({id:r[0],name:r[1],ovr:r[2],pc:r[3]||[],h:r[4],w:r[5],nw:r[6],tr:r[7]||[],pay:r[8],games:r[9]}));
+  const mine=items.find(c=>c.id===x.spId), I=ix(x.spId)||[];
+  const posOvr=((L&&L.pos)||(D&&D.pos)||[]).filter(p=>RT_GROUP[p[0]]===g).map(p=>+p[1]||0);
+  const myOvr=posOvr.length?Math.max(...posOvr):mine?mine.ovr:(L&&L.ovr)||(D&&D.ovr)||I[0]||0;   // 1강 기준
+  let myPrice=(L&&L.price&&L.price[gi])||(mine&&pdec(mine.pc[gi]))||0,approx=false;
+  if(!myPrice){const p1=(L&&L.price&&L.price[0])||I[3]||(mine&&pdec(mine.pc[0]));   // 그 강화 시세가 없으면 1강 시세 × 후보들의 강화 배율 중앙값
+    if(p1){const rs=items.map(c=>{const a=pdec(c.pc[0]),b=pdec(c.pc[gi]);return a&&b?b/a:0}).filter(Boolean).sort((a,b)=>a-b);if(rs.length){myPrice=Math.round(p1*rs[rs.length>>1]);approx=grade>1}}}
+  if(!myPrice&&!myOvr)return {g,grade,err:'이 카드는 시세·능력치 데이터가 아직 없어 추천할 수 없어요.'};
+  const nw=D&&D.traits?D.traits.filter(t=>NEW_TRAITS.has(Array.isArray(t)?t[0]:t)).length:mine?mine.nw:0;
+  const me={ovr:myOvr,h:(D&&D.height)||(mine&&mine.h)||0,w:(D&&D.weight)||(mine&&mine.w)||0,nw,games:(L&&L.games)||(mine&&mine.games)||0};
+  const out=[];
+  items.forEach(c=>{if(c.id===x.spId)return;const p=pdec(c.pc[gi]);if(!p)return;let ratio=0;
+    if(myPrice){ratio=p/myPrice;if(ratio<RC_LO||ratio>RC_HI)return}else if(Math.abs(c.ovr-myOvr)>3)return;
+    if(myOvr&&c.ovr<myOvr-1)return;
+    const sc=recoScore(g,me,c,ratio);if(sc.s>=0.5)out.push({...c,price:p,ratio,...sc})});
+  out.sort((a,b)=>b.s-a.s);
+  const list=[],per={};for(const c of out){const pid=c.id%1e6;if((per[pid]=(per[pid]||0)+1)>2)continue;list.push(c);if(list.length>=5)break}   // 같은 선수는 2장까지
+  return {g,grade,me,myPrice,approx,list,T};
+}
+function recoHead(x){const g=RT_GROUP[x.pos];return `<div class="rc-h"><div><b id="rcTitle">${sch(x.seasonId)}${esc(x.name)}${gch(x.grade||1)}</b><small>${esc(x.pos)}${g?' · '+RT_GNAME[g]:''} 대체 추천</small></div><button type="button" class="rc-x" data-rc-close aria-label="닫기">×</button></div>${lowSummary(x).length?`<div class="rc-low">${lowSummary(x).map(t=>`<span>${esc(t)}</span>`).join('')}</div>`:''}`}
+function recoHTML(x,R){
+  const note='<p class="rc-note">추천은 피파고수 시세·능력치 기준 참고용이에요. 팀컬러·급여·실제 거래가는 선수 정보에서 확인해 주세요.</p>';
+  if(R.err)return recoHead(x)+`<p class="rc-empty">${esc(R.err)}</p>`+note;
+  const gn=RT_GNAME[R.g],base=`<p class="rc-base">기준: 내 카드 ${R.grade}강 시세 <b>${fmtBP(R.myPrice)}</b>${R.approx?' (1강 시세로 추정)':''} · ${gn} OVR <b>${R.me.ovr||'-'}</b>(1강 기준). ${R.myPrice?`같은 ${R.grade}강 시세가 ${RC_LO}~${RC_HI}배인 카드 중 OVR·신규 특성·신체 조건이 더 좋은 순서예요.`:'시세를 몰라 OVR ±3 안에서 골랐어요.'}</p>`;
+  if(!R.list.length)return recoHead(x)+base+`<p class="rc-empty">같은 가격대에서 이 카드보다 확실히 나은 후보를 찾지 못했어요. 강화 단계를 올리거나 예산을 조금 늘려 보세요.</p>`+note;
+  const pc=r=>{const v=Math.round((r-1)*100);return v>0?`+${v}%`:v<0?`${v}%`:'±0%'};
+  const rows=R.list.map(c=>{const d=R.me.ovr?c.ovr-R.me.ovr:null;
+    const nt=c.tr.map(i=>R.T[i]).filter(t=>t&&(t[2]||NEW_TRAITS.has(t[0]))).map(t=>t[1]!=null?`<img class="rc-tr" src="${traitIcon(t[1])}" alt="${esc(t[0])}" title="${esc(t[0])}" ${hideBad}>`:`<span class="rc-trn">${esc(t[0])}</span>`).join('');
+    return `<li><button type="button" class="rc-item" data-rc-sp="${c.id}" data-g="${R.grade}"><span class="rc-nm">${sch(Math.floor(c.id/1e6))}<b>${esc(c.name)}</b>${nt}</span>
+<span class="rc-meta"><span>OVR <b>${c.ovr}</b>${d!=null?` <em class="${d>0?'up':d<0?'dn':''}">${d>0?'+'+d:d===0?'±0':d}</em>`:''}</span><span>${R.grade}강 <b>${fmtBP(c.price)}</b>${c.ratio?` <em class="${c.ratio<1?'up':c.ratio>1.05?'dn':''}">${pc(c.ratio)}</em>`:''}</span><span>${c.h?`${c.h}cm · ${c.w}kg`:'키·몸무게 정보 없음'}</span></span>
+${c.why.length?`<span class="rc-why">${c.why.map(w=>`<i>${esc(w)}</i>`).join('')}</span>`:''}</button></li>`}).join('');
+  return recoHead(x)+base+`<ul class="rc-list">${rows}</ul>`+note;
+}
+let rcLast=null,rcTk=0;
+function recoClose(){const pop=$('rcPop');if(!pop||pop.hidden)return;pop.hidden=true;rcTk++;
+  const b=rcLast&&document.contains(rcLast)?rcLast:rcLast&&$('dPanel').querySelector(`[data-reco="${rcLast.dataset.reco}"]`);if(b)b.focus()}
+function recoOpen(spId,btn){
+  const x=dCur&&dCur.a.players.find(p=>p.spId===spId);if(!x)return;
+  let pop=$('rcPop');
+  if(!pop){pop=document.createElement('div');pop.id='rcPop';pop.className='rc-pop';pop.hidden=true;
+    pop.innerHTML='<div class="rc-panel" role="dialog" aria-modal="true" aria-labelledby="rcTitle" tabindex="-1"></div>';document.body.appendChild(pop);
+    pop.addEventListener('click',e=>{if(e.target===pop||e.target.closest('[data-rc-close]'))return recoClose();
+      const b=e.target.closest('[data-rc-sp]');if(b){const g=+b.dataset.g||1;openCard(+b.dataset.rcSp);if(g>1){pmGrade=g;renderCard()}}})}
+  rcLast=btn;const P=pop.firstElementChild,tk=++rcTk;
+  P.innerHTML=recoHead(x)+'<p class="rc-empty">같은 포지션 후보를 찾는 중이에요…</p>';pop.hidden=false;P.scrollTop=0;P.focus();
+  recoFor(x).catch(()=>({err:'추천을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'})).then(R=>{if(tk===rcTk&&!pop.hidden)P.innerHTML=recoHTML(x,R)});
+}
+$('dPanel').addEventListener('click',e=>{const b=e.target.closest('[data-reco]');if(b){e.preventDefault();recoOpen(+b.dataset.reco,b)}});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('pmodal').hidden)recoClose()},true);   // 선수 정보창이 위에 있으면 그것부터 닫혀요
 function timeChart(a){
   const W=640,H=260,l=40,rr=12,t=24,b=34,mid=t+(H-t-b)/2,max=Math.max(1,...a.bins.map(x=>Math.max(x.f,x.a))),sc=v=>v/max*((H-t-b)/2-6),bw=(W-l-rr)/6;
   let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="15분 단위 득점과 실점">`;
@@ -537,7 +636,7 @@ function shotMap(a){
   const ins=a.shots.filter(x=>x.inPenalty),out=a.shots.filter(x=>!x.inPenalty),gr=v=>v.length?Math.round(v.filter(x=>x.result===3).length/v.length*100):0;
   return `<div class="legend"><span><i style="background:var(--gold)"></i>골</span><span><i style="background:var(--muted)"></i>슈팅</span></div>${s}</svg><p class="note">박스 안 슈팅 ${ins.length}개 중 ${gr(ins)}% 득점 · 박스 밖 ${out.length}개 중 ${gr(out)}% 득점</p>`;
 }
-function dPlayerTable(a){return `<div class="tablewrap"><table><thead><tr><th>선수</th><th class="n">출전</th><th class="n">승률</th><th class="n">평점</th><th class="n">골</th><th class="n">도움</th></tr></thead><tbody>${a.players.map(x=>`<tr class="${x.low?'low':''}"><td><span class="pos">${x.pos}</span>${sch(x.seasonId)}${esc(x.name)}${a.dm?`${gch(x.grade)}`:''}</td><td class="n">${x.apps}</td><td class="n">${Math.round(x.wr*100)}%</td><td class="n">${x.avg.toFixed(2)}</td><td class="n">${rkCell(x,'goal',x.g)}</td><td class="n">${rkCell(x,'assist',x.a)}</td></tr>`).join('')}</tbody></table></div><p class="note">팀 평균 평점 ${a.teamAvg.toFixed(2)} · 빨간 줄은 팀 평균보다 0.5 이상 낮은 선수</p>`}
+function dPlayerTable(a){return `<div class="tablewrap"><table><thead><tr><th>선수</th><th class="n">출전</th><th class="n">승률</th><th class="n">평점</th><th class="n">골</th><th class="n">도움</th></tr></thead><tbody>${a.players.map(x=>`<tr class="${x.low?'low':''}"><td><span class="pos">${x.pos}</span>${sch(x.seasonId)}${esc(x.name)}${recoFlag(x)}${a.dm?`${gch(x.grade)}`:''}</td><td class="n">${x.apps}</td><td class="n">${Math.round(x.wr*100)}%</td><td class="n">${rtCell(x)}</td><td class="n">${rkCell(x,'goal',x.g)}</td><td class="n">${rkCell(x,'assist',x.a)}</td></tr>`).join('')}</tbody></table></div><p class="note">팀 평균 평점 ${a.teamAvg.toFixed(2)} · 빨간 줄은 팀 평균보다 0.5 이상 낮은 선수${rtNote(a)}</p>`}
 function dSquadView(a){
   const lines=`<svg viewBox="0 0 300 400" preserveAspectRatio="none" aria-hidden="true"><g fill="none" stroke="var(--pitch-line)" stroke-width="1.5" opacity=".7"><rect x="8" y="8" width="284" height="384"/><line x1="8" y1="200" x2="292" y2="200"/><circle cx="150" cy="200" r="38"/><rect x="80" y="8" width="140" height="56"/><rect x="80" y="336" width="140" height="56"/></g></svg>`;
   return `<div class="formation" role="img" aria-label="감독모드 스쿼드">${lines}${a.players.map(x=>{const [px,py]=XY[x.pos]||[50,50];return `<div class="pl" style="left:${px}%;top:${py}%"><span class="dot ${x.low?'low':''}">${x.avg.toFixed(1)}</span><span class="nm">${sch(x.seasonId)}${esc(x.name)}</span><span class="nm">${gch(x.grade)}</span></div>`}).join('')}</div><p class="note">포메이션 <b>${esc(a.myForm)}</b> · 칸 안 숫자는 평균 평점, 옆 숫자는 강화 단계예요.</p>${dPlayerTable(a)}`;
@@ -561,11 +660,11 @@ function dPStatsView(a){
   const wrc=v=>v>=0.6?'wr-hi':v<0.4?'wr-lo':'';
   const rkNote=!LIVE?'':a.rkN==null?' 상위 랭커 비교 데이터를 불러오는 중이에요…':a.rkN?` <span class="rk-ic">!</span> 빨간 숫자는 상위 랭커(TOP 10,000)가 같은 선수를 같은 포지션으로 썼을 때 경기당 평균의 70%에 못 미치는 기록이에요(넥슨 Open API 랭커 통계). 공격수·미드필더는 공격 지표, 수비수·미드필더는 수비 지표를 비교해요.`:' 이 스쿼드 선수들은 상위 랭커 비교 데이터가 없어요.';
   return `<div class="tablewrap"><table class="pst"><thead><tr><th>선수</th><th class="n">출전</th><th class="n">승률</th><th class="n">평점</th><th class="n">골</th><th class="n">도움</th><th class="n">슈팅(유효)</th><th class="n">패스</th><th class="n">드리블</th><th class="n">볼 경합 승</th><th class="n">공중볼 승</th><th class="n">태클</th><th class="n">가로채기</th><th class="n">블락</th></tr></thead><tbody>
-  ${a.players.map(x=>{const t=st(x);return `<tr class="${x.low?'low':''}"><td style="white-space:nowrap"><span class="pos">${x.pos}</span>${sch(x.seasonId)}${esc(x.name)}${a.dm||x.grade>1?`${gch(x.grade)}`:''}</td><td class="n">${x.apps}</td><td class="n"><span class="${wrc(x.wr)}">${Math.round(x.wr*100)}%</span><span class="why">${x.w}승</span></td><td class="n">${x.avg.toFixed(2)}</td><td class="n">${rkCell(x,'goal',x.g)}</td><td class="n">${rkCell(x,'assist',x.a)}</td>
+  ${a.players.map(x=>{const t=st(x);return `<tr class="${x.low?'low':''}"><td style="white-space:nowrap"><span class="pos">${x.pos}</span>${sch(x.seasonId)}${esc(x.name)}${recoFlag(x)}${a.dm||x.grade>1?`${gch(x.grade)}`:''}</td><td class="n">${x.apps}</td><td class="n"><span class="${wrc(x.wr)}">${Math.round(x.wr*100)}%</span><span class="why">${x.w}승</span></td><td class="n">${rtCell(x)}</td><td class="n">${rkCell(x,'goal',x.g)}</td><td class="n">${rkCell(x,'assist',x.a)}</td>
     <td class="n">${rkCell(x,'shoot',t.shoot)}(${rkCell(x,'effectiveShoot',t.effectiveShoot)})</td><td class="n">${rkCell(x,'passSuccess',pc(t.passSuccess,t.passTry))}</td><td class="n">${rkCell(x,'dribbleSuccess',pc(t.dribbleSuccess,t.dribbleTry))}</td>
     <td class="n">${t.ballPossesionSuccess}/${t.ballPossesionTry} <span class="why">${pc(t.ballPossesionSuccess,t.ballPossesionTry)}</span></td><td class="n">${t.aerialSuccess}/${t.aerialTry} <span class="why">${pc(t.aerialSuccess,t.aerialTry)}</span></td>
     <td class="n">${rkCell(x,'tackle',`${t.tackle}/${t.tackleTry}`)}</td><td class="n">${t.intercept}</td><td class="n">${rkCell(x,'block',t.block)}</td></tr>`}).join('')}
-  </tbody></table></div><p class="note">최근 ${a.n}경기 합계예요. 승률은 그 선수가 출전한 경기 기준이에요. 표가 넓으면 옆으로 밀어서 보세요. 빨간 줄은 팀 평균 평점보다 0.5 이상 낮은 선수예요.${rkNote}</p>`;
+  </tbody></table></div><p class="note">최근 ${a.n}경기 합계예요. 승률은 그 선수가 출전한 경기 기준이에요. 표가 넓으면 옆으로 밀어서 보세요. 빨간 줄은 팀 평균 평점보다 0.5 이상 낮은 선수예요.${rkNote}${rtNote(a)}</p>`;
 }
 function dRenderTabs(){const list=DTABS[dMode];if(!list.some(t=>t[0]===dTab))dTab=list[0][0];$('dTabs').innerHTML=list.map(([k,l])=>`<button role="tab" data-tab="${k}" aria-selected="${k===dTab}">${l}</button>`).join('')}
 function dRenderPanel(){$('dPanel').innerHTML={stats:dStatsView,pstats:dPStatsView,time:timeChart,shot:shotMap,player:dPlayerTable,squad:dSquadView,form:dFormView,line:dLineView}[dTab](dCur.a);$('dTabs').querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===dTab))}
@@ -610,7 +709,7 @@ async function loadSeasons(){
 let diagSeq=0;
 async function runDiag(nick){
   nick=(nick||'').trim();if(!nick)return;
-  const seq=++diagSeq;
+  const seq=++diagSeq;recoClose();
   let d;
   if(LIVE){
     try{runDiag.ctrl&&runDiag.ctrl.abort()}catch(e){}
@@ -630,7 +729,7 @@ async function runDiag(nick){
   dTab=a.dm?'pstats':(dTab==='pstats'?'stats':dTab);   // 감독모드는 선수별 기록이 메인
   const secs=$('dSecs');if(a.dm)secs.prepend($('dDetailSec'));else secs.prepend($('dWeakSec'));
   dRenderBoard(d,a);dRenderSummary(d,a);dRenderTip(a);dRenderCards(a);dRenderTabs();dRenderPanel();dRenderMatches(d,a);
-  dLoadRanker(a,dMode,seq);
+  dLoadRanker(a,dMode,seq);dLoadRating(a,dMode,seq);
 }
 function dClear(){['dCards','dPanel','dMatches','dSum'].forEach(id=>$(id).innerHTML='');$('dTip').hidden=true;$('dAllN').textContent=''}
 $('dForm').addEventListener('submit',e=>{e.preventDefault();runDiag($('dNick').value)});

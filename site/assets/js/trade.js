@@ -1,4 +1,4 @@
-/* 피파고수 선수장터 — 선수 검색·선택 → 팝니다/삽니다 희망가 글쓰기, 목록에 피파고수 시세 비교
+/* 피파고수 선수 거래소 — 선수 검색·선택 → 팝니다/삽니다 희망가 글쓰기, 목록에 피파고수 시세 비교
    app.js 다음에 실행돼서 CARDS·ix·cardData·bigImg·bigBadge·sname·norm·fcCls·fmtBP·GRADE_BONUS·GRADE_CLS를 같이 써요. */
 (function(){
 const $=id=>document.getElementById(id);
@@ -75,7 +75,7 @@ async function load(more){
   if(loading)return;loading=true;$('trMore').hidden=true;if(!more)$('trList').innerHTML='<p class="sim-note">불러오는 중…</p>';
   const u=new URLSearchParams();if(F.kind)u.set('kind',F.kind);if(F.q)u.set('q',F.q);if(F.open)u.set('open','1');if(more&&ITEMS.length)u.set('before',ITEMS[ITEMS.length-1].id);
   try{const r=await fetch(API+'?'+u);const j=await r.json().catch(()=>({}));
-    if(!r.ok){if(j.code==='no_db'){$('trList').innerHTML=`<div class="tr-empty"><b>선수장터 오픈 준비 중이에요</b><p class="sim-note">${H(j.message)}</p></div>`;$('trWriteBtn').disabled=true;loading=false;return}throw new Error(j.message||('오류 '+r.status))}
+    if(!r.ok){if(j.code==='no_db'){$('trList').innerHTML=`<div class="tr-empty"><b>선수 거래소 오픈 준비 중이에요</b><p class="sim-note">${H(j.message)}</p></div>`;$('trWriteBtn').disabled=true;loading=false;return}throw new Error(j.message||('오류 '+r.status))}
     ITEMS=ITEMS.concat(j.items||[]);MORE=!!j.more;render();
   }catch(e){$('trList').innerHTML=`<p class="sim-note">불러오지 못했어요: ${H(e.message)}</p>`}
   loading=false;

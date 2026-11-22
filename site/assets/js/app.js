@@ -575,7 +575,8 @@ async function squadTC(a){
   let wave=null;for(const [w,g] of WAVES){if(st.filter(p=>(p.grade||1)>=g).length>=5){wave={name:w,min:g};break}}
   return a._tc={of,active,main:active[0]||null,wave,known:ds.filter(Boolean).length,n:st.length};
 }
-async function recoFor(x){
+async function recoFor(x,opt={}){
+  const budget=+opt.budget||0;
   const g=RT_GROUP[x.pos];if(!g)return {err:'포지션 정보를 몰라 추천할 수 없어요.'};
   const [F,cd,S]=await Promise.all([loadReco(g),cardData(x.spId).catch(()=>({})),squadTC(dCur.a).catch(()=>null)]);
   if(!F||!F.items||!F.items.length)return {g,err:'추천 데이터를 준비 중이에요. 매일 새벽 수집이 끝나면 볼 수 있어요.'};
@@ -599,9 +600,10 @@ async function recoFor(x){
   const pick=(lo,hi,reqTc)=>{const out=[];
     items.forEach(c=>{if(c.id===x.spId)return;const p=pdec(c.pc[gi]);if(!p)return;let ratio=0;
       if(reqTc&&!c.tc.includes(reqTc.name))return;
-      if(myPrice){ratio=p/myPrice;if(ratio<lo||ratio>hi)return}else if(Math.abs(c.ovr-myOvr)>3)return;
+      if(budget){if(p>budget)return;ratio=myPrice?p/myPrice:0}   // 예산 모드: 입력한 금액 이하 전부
+      else if(myPrice){ratio=p/myPrice;if(ratio<lo||ratio>hi)return}else if(Math.abs(c.ovr-myOvr)>3)return;
       if(myOvr&&c.ovr<myOvr-1)return;
-      const sc=recoScore(g,me,c,ratio);
+      const sc=recoScore(g,me,c,budget?0:ratio);
       const shared=keep.filter(t=>c.tc.includes(t.name)).map(t=>t.name);
       if(bonusTc&&c.tc.includes(bonusTc.name)){sc.s+=3;shared.push(bonusTc.name)}
       sc.s+=shared.length*0.6;
@@ -611,8 +613,13 @@ async function recoFor(x){
     for(const c of out){const pid=c.id%1e6;if((per[pid]=(per[pid]||0)+1)>2)continue;list.push(c);if(list.length>=5)break}
     return list};
   let list=pick(RC_LO,RC_HI,need),wide=false;
-  if(!list.length&&need){list=pick(0.4,2.5,need);wide=true}
-  return {g,grade:G,myG,me,myPrice,myNow,approx,list,wide,T,S,need,bonusTc,keep};
+  if(!list.length&&need&&!budget){list=pick(0.4,2.5,need);wide=true}
+  return {g,grade:G,myG,me,myPrice,myNow,approx,list,wide,T,S,need,bonusTc,keep,budget};
+}
+/* 예산 수정: 기본은 같은 강화 시세 0.6~1.6배, 예산을 넣으면 그 금액 이하 카드 중에서 추천 */
+function recoBudgetBox(R){
+  return `<div class="rc-bud"><div class="rc-bud-row"><button type="button" class="rc-bud-btn" data-rc-budget aria-expanded="false">${R.budget?'예산 바꾸기':'예산 수정'}</button>${R.budget?`<button type="button" class="rc-bud-btn ghost" data-rc-reset>기본 추천으로</button>`:''}</div>
+<form class="rc-bud-form" data-rc-form hidden><label>${R.grade}강 카드 예산 (BP)<input type="text" inputmode="numeric" autocomplete="off" placeholder="예: 5000000" value="${R.budget||''}" data-rc-in></label><output data-rc-out>${R.budget?fmtBP(R.budget)+' BP':'금액을 숫자로 입력해 주세요'}</output><button type="submit" class="rc-bud-btn">이 예산으로 추천</button></form></div>`;
 }
 function recoHead(x){const g=RT_GROUP[x.pos];return `<div class="rc-h"><div><b id="rcTitle">${sch(x.seasonId)}${esc(x.name)}${gch(x.grade||1)}</b><small>${esc(x.pos)}${g?' · '+RT_GNAME[g]:''} 대체 추천</small></div><button type="button" class="rc-x" data-rc-close aria-label="닫기">×</button></div>${lowSummary(x).length?`<div class="rc-low">${lowSummary(x).map(t=>`<span>${esc(t)}</span>`).join('')}</div>`:''}`}
 function recoHTML(x,R){
@@ -620,7 +627,7 @@ function recoHTML(x,R){
   if(R.err)return recoHead(x)+`<p class="rc-empty">${esc(R.err)}</p>`+note;
   const S=R.S,tcLine=S?`<div class="rc-tc"><b>내 팀컬러</b>${S.active.length?S.active.slice(0,3).map(t=>`<span>${esc(t.name)} ${t.n}명${t.lv?` (${t.lv}단계)`:''}</span>`).join(''):'<span class="muted">소속 팀컬러 없음</span>'}${S.wave?`<span class="wv">${esc(S.wave.name)}</span>`:''}</div>`:'';
   const rule=[R.need?`<b>${esc(R.need.name)}</b> 팀컬러를 유지하는 선수만`:R.bonusTc?`<b>${esc(R.bonusTc.name)}</b> 팀컬러 선수를 우선`:'',S&&S.wave?`<b>${esc(S.wave.name)}</b> 유지를 위해 <b>${R.grade}강</b> 기준`:''].filter(Boolean).join(', ');
-  const base=`<p class="rc-base">${rule?rule+'으로 골랐어요. ':''}내 카드 ${R.myG}강 시세 <b>${fmtBP(R.myNow)}</b>${R.grade!==R.myG?` (${R.grade}강이면 <b>${fmtBP(R.myPrice)}</b>${R.approx?' 추정':''})`:R.approx?' (추정)':''} · 급여 <b>${R.me.pay||'-'}</b> · OVR <b>${R.me.ovr||'-'}</b>(1강 기준). ${R.myPrice?`같은 ${R.grade}강 시세가 ${R.wide?'0.4~2.5':RC_LO+'~'+RC_HI}배인 카드예요.`:'시세를 몰라 OVR ±3 안에서 골랐어요.'}</p>`;
+  const base=`<p class="rc-base">${rule?rule+'으로 골랐어요. ':''}내 카드 ${R.myG}강 시세 <b>${fmtBP(R.myNow)}</b>${R.grade!==R.myG?` (${R.grade}강이면 <b>${fmtBP(R.myPrice)}</b>${R.approx?' 추정':''})`:R.approx?' (추정)':''} · 급여 <b>${R.me.pay||'-'}</b> · OVR <b>${R.me.ovr||'-'}</b>(1강 기준). ${R.budget?`예산 <b>${fmtBP(R.budget)}</b> 안의 ${R.grade}강 카드예요.`:R.myPrice?`같은 ${R.grade}강 시세가 ${R.wide?'0.4~2.5':RC_LO+'~'+RC_HI}배인 카드예요.`:'시세를 몰라 OVR ±3 안에서 골랐어요.'}</p>`+recoBudgetBox(R);
   if(!R.list.length)return recoHead(x)+tcLine+base+`<p class="rc-empty">${R.need?`${esc(R.need.name)} 팀컬러를 유지하면서 이 카드보다 나은 후보를 찾지 못했어요.`:'같은 가격대에서 이 카드보다 확실히 나은 후보를 찾지 못했어요.'} 강화 단계를 올리거나 예산을 조금 늘려 보세요.</p>`+note;
   const pc=r=>{const v=Math.round((r-1)*100);return v>0?`+${v}%`:v<0?`${v}%`:'±0%'};
   const rows=R.list.map(c=>{const d=R.me.ovr?c.ovr-R.me.ovr:null,dp=R.me.pay&&c.pay?c.pay-R.me.pay:null;
@@ -639,10 +646,18 @@ function recoOpen(spId,btn){
   if(!pop){pop=document.createElement('div');pop.id='rcPop';pop.className='rc-pop';pop.hidden=true;
     pop.innerHTML='<div class="rc-panel" role="dialog" aria-modal="true" aria-labelledby="rcTitle" tabindex="-1"></div>';document.body.appendChild(pop);
     pop.addEventListener('click',e=>{if(e.target===pop||e.target.closest('[data-rc-close]'))return recoClose();
-      const b=e.target.closest('[data-rc-sp]');if(b){const g=+b.dataset.g||1;openCard(+b.dataset.rcSp);if(g>1){pmGrade=g;renderCard()}}})}
-  rcLast=btn;const P=pop.firstElementChild,tk=++rcTk;
-  P.innerHTML=recoHead(x)+'<p class="rc-empty">같은 포지션 후보를 찾는 중이에요…</p>';pop.hidden=false;P.scrollTop=0;P.focus();
-  recoFor(x).catch(()=>({err:'추천을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'})).then(R=>{if(tk===rcTk&&!pop.hidden)P.innerHTML=recoHTML(x,R)});
+      if(e.target.closest('[data-rc-budget]')){const f=pop.querySelector('[data-rc-form]'),b=e.target.closest('[data-rc-budget]');f.hidden=!f.hidden;b.setAttribute('aria-expanded',!f.hidden);if(!f.hidden)f.querySelector('[data-rc-in]').focus();return}
+      if(e.target.closest('[data-rc-reset]'))return recoRun(rcX,{});
+      const b=e.target.closest('[data-rc-sp]');if(b){const g=+b.dataset.g||1;openCard(+b.dataset.rcSp);if(g>1){pmGrade=g;renderCard()}}});
+    pop.addEventListener('input',e=>{const i=e.target.closest('[data-rc-in]');if(!i)return;const v=+i.value.replace(/[^0-9]/g,'')||0;i.value=v?String(v):'';pop.querySelector('[data-rc-out]').textContent=v?fmtBP(v)+' BP':'금액을 숫자로 입력해 주세요'});
+    pop.addEventListener('submit',e=>{e.preventDefault();const v=+(pop.querySelector('[data-rc-in]').value||0);if(v>0)recoRun(rcX,{budget:v})})}
+  rcLast=btn;pop.hidden=false;recoRun(x,{});
+}
+let rcX=null;
+function recoRun(x,opt){
+  const pop=$('rcPop');if(!pop||!x)return;rcX=x;const P=pop.firstElementChild,tk=++rcTk;
+  P.innerHTML=recoHead(x)+`<p class="rc-empty">${opt.budget?'예산 안에서 ':'같은 포지션 '}후보를 찾는 중이에요…</p>`;P.scrollTop=0;P.focus();
+  recoFor(x,opt).catch(()=>({err:'추천을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'})).then(R=>{if(tk===rcTk&&!pop.hidden)P.innerHTML=recoHTML(x,R)});
 }
 $('dPanel').addEventListener('click',e=>{const b=e.target.closest('[data-reco]');if(b){e.preventDefault();recoOpen(+b.dataset.reco,b)}});
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('pmodal').hidden)recoClose()},true);   // 선수 정보창이 위에 있으면 그것부터 닫혀요
@@ -928,7 +943,20 @@ function relOptionsFor(D){
   if(!D||!TEAMCOLORS.length)return [];
   const nation=String(D.nation||'').split(',')[0].trim();
   const keys=[...new Set([...(D.clubs||[]).map(x=>x[1]),nation].filter(Boolean).map(norm))].filter(k=>k.length>=2);
-  return TEAMCOLORS.filter(tc=>/special|relation|관계|스페셜/.test(TC_TYPE(tc))&&keys.some(k=>norm(tc.name).includes(k)))
+  // 이름 앞 시즌(예: '25-26', '01-03', '2002')이 있으면 그 기간에 실제로 그 팀에 있었던 경우만
+  const span=s=>{const m=String(s||'').match(/(\d{4})\s*~\s*(\d{4})?/);return m?[+m[1],m[2]?+m[2]:9999]:null};
+  const yrs=name=>{let m=String(name).match(/^(\d{2})-(\d{2})(?!\d)/);if(m){const f=v=>(+v>50?1900:2000)+ +v;return [f(m[1]),f(m[2])]}m=String(name).match(/^((?:19|20)\d{2})(?!\d)/);return m?[+m[1],+m[1]]:null};
+  // 시즌(19-20)·기간(01-03)은 시즌 시작 해까지 입단하고 끝나는 해까지 있었던 경우, 한 해(2002)는 그해 소속인 경우
+  const hit=(a,b,y)=>y[0]===y[1]?(a<=y[0]&&b>=y[0]):(a<=y[1]-1&&b>=y[0]+1);
+  const careers=(D.clubs||[]).map(x=>({k:norm(x[1]||''),s:span(x[0])})).filter(x=>x.k.length>=2);
+  const natK=norm(nation),allSpan=careers.filter(x=>x.s).map(x=>x.s);
+  return TEAMCOLORS.filter(tc=>{if(!/special|relation|관계|스페셜/.test(TC_TYPE(tc)))return false;const nm=norm(tc.name),y=yrs(tc.name);
+      if(!y)return keys.some(k=>nm.includes(k));
+      if(careers.some(c=>nm.includes(c.k)&&c.s&&hit(c.s[0],c.s[1],y)))return true;
+      if(!(natK.length>=2&&nm.includes(natK)&&allSpan.some(s=>hit(s[0],s[1],y))))return false;   // 국가 관계 팀컬러: 그 해에 현역이었을 때만
+      if(/U-?\d{2}/i.test(tc.name)){const first=Math.min(...allSpan.map(s=>s[0]));return first>=y[0]-4}   // 연령별 대표(U-20 등): 그 무렵 데뷔한 선수만
+      return true;
+    })
     .sort((a,b)=>String(b.name).localeCompare(String(a.name),'ko'));
 }
 /* 전 포지션 OVR: 세부 능력치 가중 평균(FIFA 계열 포지션 공식) + 선호 포지션 실제값으로 보정 */

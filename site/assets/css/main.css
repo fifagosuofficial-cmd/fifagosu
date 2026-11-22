@@ -1089,3 +1089,7 @@ a.mk-tile:hover{border-color:var(--accent)}
 .mtab .res{display:inline-grid;place-items:center;width:24px;height:22px;border-radius:5px;font-weight:800;font-size:12px}
 .page-wide>.wrap>main#v-diag{max-width:1080px}
 .pst td .why{margin-left:3px}
+.ev-more{display:block;margin-top:8px;font-size:13px;font-weight:700;color:var(--accent);text-decoration:none}
+.ds-flow{position:relative}.ds-hit{cursor:pointer}.ds-hit:hover{fill:rgba(0,0,0,.05)}.ds-dots i{cursor:pointer}
+.ds-tip{position:absolute;z-index:20;pointer-events:none;display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:240px;padding:7px 10px;border-radius:8px;background:var(--fg);color:var(--surface);font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.2)}
+.ds-tip .res{width:20px;height:20px;font-size:11px;border-radius:5px}.ds-tip b{font-family:var(--f-data)}.ds-tip small{width:100%;opacity:.75;font-size:11px}

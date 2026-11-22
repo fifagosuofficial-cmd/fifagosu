@@ -43,7 +43,7 @@ META_URLS = {
 }
 GRADES = [1, 5, 8, 11, 13]          # 실사용 강화 단계 (마스터플랜 1-1 #5)
 KEEP_DAYS = 90
-DROP_GUARD = 0.8                     # Partial-history log threshold; refreshed cards are still stored.
+DROP_GUARD = 0.8                     # Skip a suspicious partial legacy snapshot.
 NEW_CARD_CAP = 3000                  # 하루 신규 카드가 이보다 많으면 이상으로 보고 기준선을 덮지 않음
 
 
@@ -155,7 +155,9 @@ def step_history(data, date):
     same_day = bool(dates) and dates[-1] == date
     prev = counts[-2] if same_day and len(counts) >= 2 else (counts[-1] if counts and not same_day else None)
     if prev and n_today < prev * DROP_GUARD:
-        log(f"\uC624\uB298 \uC0C8\uB85C \uAC31\uC2E0\uB41C \uCE74\uB4DC\uAC00 {prev}\uC7A5\uC5D0\uC11C {n_today}\uC7A5\uC73C\uB85C \uC904\uC5B4 \uD30C\uD2B8\uB9CC \uC2DC\uC138 \uC774\uB825\uC5D0 \uCD94\uAC00\uD574\uC694")
+        log(f"Partial legacy history held ({n_today} updated versus {prev} previously).")
+        res["hist"] = "held"
+        return res
     if same_day:
         idx = len(dates) - 1
         counts[idx] = n_today
@@ -223,6 +225,72 @@ def _item(k, r, v, pv):
     if pv:
         out.update(pv=pv, c=round((v - pv) / pv * 100, 1))
     return out
+
+
+def step_market_history(data, date):
+    """Keep sparse daily observations for every card touched by the list crawler."""
+    data = Path(data)
+    market_dir = data / "market"
+    card_dir = market_dir / "all_card_history"
+    meta_path = market_dir / "all_card_history_dates.json"
+    meta = load(meta_path, None)
+    if meta is None:
+        legacy_meta = load(data / "hist" / "dates.json", {"dates": [], "counts": []})
+        dates = legacy_meta.get("dates") or []
+        counts = legacy_meta.get("counts") or []
+        for n in range(SHARDS):
+            legacy = load(data / "hist" / f"{n}.json", {})
+            converted = {}
+            for key, rows in legacy.items():
+                grades = {}
+                for grade in MARKET_GRADES:
+                    gi = GRADES.index(grade)
+                    values = rows[gi] if len(rows) > gi and rows[gi] else []
+                    points = [[day, int(value)] for day, value in zip(dates, values) if day and value is not None]
+                    if points:
+                        grades[str(grade)] = points
+                if grades:
+                    converted[key] = grades
+            if converted:
+                save(card_dir / f"{n}.json", converted)
+        meta = {"dates": dates[-KEEP_DAYS:], "counts": counts[-KEEP_DAYS:]}
+
+    dates = meta.get("dates") or []
+    counts = meta.get("counts") or []
+    today = updated_today(data, date)
+    if not today:
+        return {"market_history_days": len(dates), "market_history_cards": 0}
+    if date not in dates:
+        dates.append(date)
+        counts.append(0)
+    idx = dates.index(date)
+    by_shard = {}
+    for key, values in today.items():
+        by_shard.setdefault(int(key) % SHARDS, {})[key] = values
+    for n, rows in by_shard.items():
+        path = card_dir / f"{n}.json"
+        shard = load(path, {})
+        for key, values in rows.items():
+            grades = shard.setdefault(key, {})
+            for grade in MARKET_GRADES:
+                gi = GRADES.index(grade)
+                value = values[gi] if len(values) > gi else None
+                if value is None:
+                    continue
+                points = grades.setdefault(str(grade), [])
+                replacement = [date, int(value)]
+                if any(point[0] == date for point in points):
+                    points[:] = [point for point in points if point[0] != date]
+                points.append(replacement)
+                points.sort(key=lambda point: point[0])
+                cutoff = (dt.date.fromisoformat(date) - dt.timedelta(days=KEEP_DAYS - 1)).isoformat()
+                grades[str(grade)] = [point for point in points if point[0] >= cutoff]
+        save(path, shard)
+    counts[idx] = len(today)
+    meta["dates"] = dates[-KEEP_DAYS:]
+    meta["counts"] = counts[-KEEP_DAYS:]
+    save(meta_path, meta)
+    return {"market_history_days": len(meta["dates"]), "market_history_cards": len(today)}
 
 
 def step_market(data, date):
@@ -325,7 +393,7 @@ def step_ranker_market(data, date):
     history = {}
     for n in range(SHARDS):
         listed.update(load(data / "list" / f"{n}.json", {}))
-        history.update(load(data / "hist" / f"{n}.json", {}))
+        history.update(load(data / "market" / "all_card_history" / f"{n}.json", {}))
 
     top_usage = load(data / "market" / "ranker_top_usage.json", {})
     usage = load(data / "market" / "ranker_usage.json", {})
@@ -341,17 +409,15 @@ def step_ranker_market(data, date):
     ranked = [x for x in ranked
               if str(x.get("id")) in listed and int(x.get("uses") or 0) > 0][:MARKET_RANKER_CAP]
 
-    history_meta = load(data / "hist" / "dates.json", {"dates": []})
+    history_meta = load(data / "market" / "all_card_history_dates.json", {"dates": []})
     history_dates = history_meta.get("dates") or []
     latest_history_date = min(dt.date.fromisoformat(date), dt.date.fromisoformat(history_dates[-1])) if history_dates else dt.date.fromisoformat(date)
     by_grade, index_pcts, as_of = {}, [], []
 
     def week(card_id, grade):
-        rows = history.get(str(card_id)) or []
-        grade_index = GRADES.index(grade)
-        values = rows[grade_index] if len(rows) > grade_index and rows[grade_index] else []
+        rows = history.get(str(card_id)) or {}
         prices = {}
-        for day, value in zip(history_dates, values):
+        for day, value in rows.get(str(grade), []):
             if not day or value is None:
                 continue
             try:
@@ -646,6 +712,11 @@ def run(data=DATA, date=None, meta_get=None, no_meta=False, client=None):
     summary = {"date": date, "at": dt.datetime.now(KST).isoformat(timespec="seconds")}
     summary.update(step_meta(data, date, None if no_meta else fetch_meta(meta_get)))
     summary.update(step_history(data, date))
+    try:
+        summary.update(step_market_history(data, date))
+    except Exception as e:
+        log("All-card market history save failed:", e.__class__.__name__, str(e)[:180])
+        summary["market_history"] = "error"
     try:
         summary.update(step_market(data, date))
     except Exception as e:  # 홈 요약 실패가 수집 저장을 막지 않게

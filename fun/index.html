@@ -139,6 +139,11 @@ a{color:inherit}
 .answers button.no{background:#ff8a8a;border-color:#a32b2b;color:#2a0606}
 .react{font-weight:700;font-size:15px;line-height:1.55;margin:0;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.06);word-break:keep-all}
 .credit{font-size:11px;opacity:.7;margin:0;text-align:center}
+.coach-match{width:100%;display:grid;grid-template-columns:112px minmax(0,1fr);gap:14px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--bg2)}
+.coach-match img{width:112px;height:112px;object-fit:cover;object-position:center 28%;border-radius:50%;border:2px solid var(--acc);background:var(--bg)}
+.coach-match p{margin:0;color:var(--dim);font-size:13px;line-height:1.5}
+.coach-match h2{margin:3px 0 5px;font-size:20px;color:var(--tx)}
+.coach-disclaimer{width:100%;margin:0;color:var(--dim);font-size:11px;text-align:center}
 
 /* 결과 */
 .res{display:grid;gap:12px;justify-items:center}
@@ -2575,6 +2580,7 @@ function cardFrame(ctx,th,title,opt={}){
   ctx.font=FONT.d(40);const label='킥킥 · '+title;const w=ctx.measureText(label).width;
   ctx.fillStyle=th.acc;ctx.save();ctx.translate(CX-w/2-34,150);ctx.rotate(.16);ctx.fillRect(-12,-18,24,36);ctx.restore();
   txt(ctx,label,CX+10,166,{font:FONT.d(40),color:th.tx});
+  if(opt.photoCredit){txt(ctx,opt.photoCredit,CX,1632,{font:FONT.b(18,500),color:th.dim,max:940});txt(ctx,opt.photoSource||'Wikimedia Commons',CX,1660,{font:FONT.b(16,500),color:th.dim,max:940});txt(ctx,opt.photoLicense||'',CX,1688,{font:FONT.b(16,500),color:th.dim,max:940})}
   const fy=opt.footY||1716;rr(ctx,CX-360,fy,720,80,40);ctx.fillStyle=th.acc;ctx.fill();
   txt(ctx,'너는 뭐 나와? → '+SHARE_HOST,CX,fy+53,{font:FONT.b(34,900),color:th.ai,max:660});
 }
@@ -2585,6 +2591,7 @@ function circlePhoto(ctx,img,x,y,r,{ring,ringW=10,fallback,bg,fg}){
   ctx.restore();if(ring){ctx.lineWidth=ringW;ctx.strokeStyle=ring;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke()}
 }
 function canvasURL(c){try{return c.toDataURL('image/png')}catch{return null}}
+function photoRect(ctx,img,x,y,w,h,r=24){ctx.save();rr(ctx,x,y,w,h,r);ctx.clip();if(img){const sc=Math.max(w/img.width,h/img.height),iw=img.width*sc,ih=img.height*sc;ctx.drawImage(img,x+(w-iw)/2,y+(h-ih)*.28,iw,ih)}else{ctx.fillStyle='#243539';ctx.fillRect(x,y,w,h);txt(ctx,'감독 사진',x+w/2,y+h/2,{font:FONT.b(24),color:'#a8b8b4'})}ctx.restore();ctx.strokeStyle='rgba(255,255,255,.65)';ctx.lineWidth=3;rr(ctx,x,y,w,h,r);ctx.stroke()}
 
 /* =================== 저장/공유 =================== */
 /* 일반 브라우저용 저장·공유: 파일 공유를 지원하면(주로 모바일) 공유 시트, 아니면 PNG 다운로드 */
@@ -2730,7 +2737,7 @@ function setShot(img,c){
   try{c.toBlob(b=>put(b?URL.createObjectURL(b):canvasURL(c)),'image/png')}catch{put(canvasURL(c))}
 }
 const moreTests=a=>`<div class="more"><h3>다른 테스트도 해보기</h3><div class="grid">${sampleN(APPS.filter(x=>x!==a&&!x.hidden),4).map(x=>tileHTML(x)).join('')}</div></div>`;
-function resultView(a,{canvas,filename,share,link,buttons=[],credit='',alt,friend=null,retry=true}){
+function resultView(a,{canvas,filename,share,link,buttons=[],credit='',detail='',alt,friend=null,retry=true}){
   const named=!!(link&&(typeof link==='function'?link():link).named);
   const acts=friend
     ?`<div class="acts"><button class="cta" id="bMine" type="button">나도 해보기</button>${buttons.length?`<div class="row">${buttons.map((b,i)=>`<button class="ghost" data-b="${i}" type="button">${esc(b.label)}</button>`).join('')}</div>`:''}</div>`
@@ -2746,6 +2753,7 @@ function resultView(a,{canvas,filename,share,link,buttons=[],credit='',alt,frien
   $('app').innerHTML=`<section class="res">
     ${friend?`<div class="friend"><small>친구 결과</small>${esc(friend)}</div>`:''}
     <img class="shot" id="rImg" alt="${esc(alt||a.title+' 결과 카드')}">
+    ${detail}
     ${acts}
     ${credit?`<p class="credit">${credit}</p>`:''}
     ${moreTests(a)}
@@ -3454,7 +3462,7 @@ APPS.push(A);
 (function(){
 const th={bg:'#1d2b2f',bg2:'#243539',acc:'#ff8a3d',ai:'#2a1405',tx:'#f1f5f2',dim:'#a8b8b4',line:'rgba(241,245,242,.16)',qb:'#f1f5f2',qt:'#1d2b2f',qline:'#cfd9d6',qsel:'#ffc59a',pat:'grid',
   css:'linear-gradient(#243539 2px,transparent 2px) 0 0/48px 48px,linear-gradient(90deg,#243539 2px,transparent 2px) 0 0/48px 48px'};
-const A={id:'manager',title:'내가 감독이라면?',desc:'버스 주차형? 헤어드라이어형? 나의 감독 스타일과 전술',tag:'테스트',time:'1분',icon:'board',th,kicker:'질문 10개 · 감독 유형 8가지'};
+const A={id:'manager',title:'내가 감독이라면?',desc:'버스 주차형? 헤어드라이어형? 나의 감독 스타일과 전술',tag:'테스트',time:'1분',icon:'board',th,kicker:'질문 10개 · 감독 유형 20가지'};
 const TY={
  bus:{n:'버스 2대 주차형',s:'무리뉴 스타일',f:'5-4-1',d:'1:0 승리가 세상에서 제일 아름답다고 믿어요. 점유율은 상대 주고 승점은 내가 가져갑니다.',line:'"재미? 재미는 우승 퍼레이드에서 찾자."',good:'지지 않는 팀',bad:'관중이 졸아요',fit:'몸으로 막는 센터백'},
  tiki:{n:'점유율 집착형',s:'과르디올라 스타일',f:'4-3-3',d:'패스 600개를 돌려야 마음이 편해요. 공을 뺏기면 개인적으로 상처받습니다.',line:'"공은 우리 거야. 끝까지 돌려."',good:'경기를 지배함',bad:'슛을 안 쏨',fit:'원터치 미드필더'},
@@ -3464,7 +3472,28 @@ const TY={
  data:{n:'데이터 노예형',s:'태블릿 감독',f:'4-2-3-1',d:'엑셀 없이는 선발도 못 정해요. 선수 컨디션을 소수점 둘째 자리까지 관리합니다.',line:'"기대득점 2.3이었으니까 사실상 이긴 경기야."',good:'준비성 최고',bad:'선수들이 숫자로 보임',fit:'시키는 대로 하는 모범생'},
  dad:{n:'선수 멘탈 케어형',s:'안첼로티 스타일',f:'4-4-2',d:'눈썹 하나로 라커룸을 평정해요. 선수들이 감독님 때문에 뛴다고 말합니다.',line:'"괜찮아. 커피 한잔하고 다시 하자."',good:'선수들이 따름',bad:'화낼 줄 모름',fit:'예민한 천재'},
  gamble:{n:'로테이션 도박형',s:'예측 불가 감독',f:'3-5-2',d:'결승전에 어제 처음 본 유스 선수를 선발로 냅니다. 그리고 그게 가끔 통해요.',line:'"오늘의 주인공은... 너야, 막내!"',good:'깜짝 스타 발굴',bad:'주전들 불만 폭발',fit:'기회에 목마른 신인'}
+
+ zidou:{n:'큰 경기 해결사형',s:'지단 스타일',f:'4-3-1-2',d:'큰 경기에서 침착한 판단과 선수 신뢰로 팀을 이끕니다.',line:'"우리가 준비한 걸 믿자."',good:'큰 경기 운영',bad:'전술이 잘 안 보임',fit:'스타를 존중하는 선수'},
+ lucho:{n:'올라운더 압박형',s:'루이스 엔리케 스타일',f:'4-3-3',d:'앞에서부터 압박하고 공격과 수비를 빠르게 오갑니다.',line:'"공을 잃으면 바로 되찾아."',good:'강한 압박',bad:'체력 소모가 큼',fit:'활동량 좋은 선수'},
+ cholo:{n:'전투형 수비 조직가',s:'시메오네 스타일',f:'4-4-2',d:'간격을 좁혀 수비하고 기회가 오면 빠르게 역습합니다.',line:'"끝까지 함께 간다."',good:'조직력과 투지',bad:'공격 전개가 답답할 수 있음',fit:'헌신적인 선수'},
+ tuchel:{n:'전술 실험가형',s:'투헬 스타일',f:'3-4-2-1',d:'상대에 따라 포메이션과 압박 방식을 바꿉니다.',line:'"상대가 바뀌면 우리도 바뀐다."',good:'상대 맞춤 전술',bad:'전술 변화가 잦음',fit:'전술 이해도가 높은 선수'},
+ arteta:{n:'세트피스 설계자형',s:'아르테타 스타일',f:'4-3-3',d:'세밀한 빌드업과 약속된 움직임으로 찬스를 만듭니다.',line:'"우리가 연습한 장면이야."',good:'준비된 전술',bad:'계획이 막히면 고전',fit:'세부 전술을 따르는 선수'},
+ nagelsmann:{n:'유연한 전술가형',s:'나겔스만 스타일',f:'3-4-3',d:'상황에 따라 수비 형태와 공격 숫자를 바꿉니다.',line:'"공간을 읽고 먼저 움직여."',good:'전술적 유연성',bad:'선수에게 요구가 많음',fit:'전술 적응이 빠른 선수'},
+ conte:{n:'강철 체력 훈련형',s:'콘테 스타일',f:'3-5-2',d:'반복 훈련과 역할 분담으로 강한 팀을 만듭니다.',line:'"훈련한 만큼 보여줘."',good:'강한 규율',bad:'훈련 강도가 높음',fit:'성실하고 강인한 선수'},
+ xabi:{n:'라인브레이커형',s:'사비 알론소 스타일',f:'3-4-2-1',d:'정확한 패스로 상대 압박을 벗기고 빠르게 전진합니다.',line:'"한 번에 선을 넘기자."',good:'전진 패스',bad:'패스 실수에 취약',fit:'시야가 넓은 선수'},
+ dezerbi:{n:'빌드업 고집형',s:'데 제르비 스타일',f:'4-2-3-1',d:'후방에서 상대를 끌어낸 뒤 패스로 압박을 풉니다.',line:'"침착하게 끌어내고 나가."',good:'압박을 푸는 빌드업',bad:'후방 실수 위험',fit:'볼 다루는 데 능한 선수'},
+ pochettino:{n:'유스 성장형',s:'포체티노 스타일',f:'4-2-3-1',d:'젊은 선수에게 기회를 주고 압박과 훈련으로 성장시킵니다.',line:'"젊음과 에너지로 밀어붙이자."',good:'선수 성장',bad:'체력 관리 부담',fit:'성장 의지가 강한 선수'},
+ rijkaard:{n:'조용한 조율가형',s:'레이카르트 스타일',f:'4-3-3',d:'차분한 분위기에서 팀 균형과 선수의 창의성을 살립니다.',line:'"즐기면서 네 축구를 해."',good:'선수 자율성',bad:'위기 때 자극이 부족',fit:'창의적인 선수'},
+ capello:{n:'우승 공식 집착형',s:'카펠로 스타일',f:'4-4-2',d:'수비 균형과 규율을 세우고 효율적으로 승점을 챙깁니다.',line:'"먼저 지지 않는 팀을 만들자."',good:'안정적인 운영',bad:'경기가 재미없을 수 있음',fit:'역할을 지키는 선수'}
 };
+const COACHES={"bus":{"name":"José Mourinho","style":"실리와 수비 균형으로 결과를 챙기는 전술 성향","author":"Zafer","license":"CC BY 4.0","licenseUrl":"https://creativecommons.org/licenses/by/4.0","source":"https://commons.wikimedia.org/wiki/File:Jos%C3%A9_Mourinho_20250206_(1).jpg","file":"mourinho.jpg"},"tiki":{"name":"Pep Guardiola","style":"점유율과 위치 조정으로 경기를 설계하는 전술 성향","author":"Alex Tremps","license":"CC BY 2.0","licenseUrl":"https://creativecommons.org/licenses/by/2.0","source":"https://commons.wikimedia.org/wiki/File:Pep_Guardiola_2.jpg","file":"guardiola.jpg"},"hair":{"name":"Alex Ferguson","style":"강한 리더십과 경기 중 대응을 중시하는 전술 성향","author":"Austin Osuide","license":"CC BY 2.0","licenseUrl":"https://creativecommons.org/licenses/by/2.0","source":"https://commons.wikimedia.org/wiki/File:Alex_Ferguson.jpg","file":"ferguson.jpg"},"gegen":{"name":"Jürgen Klopp","style":"전방 압박과 빠른 전환을 중시하는 전술 성향","author":"Дмитрий Голубович","license":"CC BY-SA 3.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/3.0","source":"https://commons.wikimedia.org/wiki/File:J%C3%BCrgen_Klopp_%28cropped%29.jpg","file":"klopp.jpg"},"roman":{"name":"Marcelo Bielsa","style":"공격적인 움직임과 높은 활동량을 중시하는 전술 성향","author":"Alejandro Vásquez Núñez","license":"CC BY 2.0","licenseUrl":"https://creativecommons.org/licenses/by/2.0","source":"https://commons.wikimedia.org/wiki/File:Marcelo_Bielsa_2009-03-03.jpg","file":"bielsa.jpg"},"data":{"name":"Arsène Wenger","style":"데이터와 선수 성장, 기술적인 축구를 중시하는 전술 성향","author":"Gordon Flood","license":"CC BY 2.0","licenseUrl":"https://creativecommons.org/licenses/by/2.0","source":"https://commons.wikimedia.org/wiki/File:Ars%C3%A8ne_Wenger_2008.jpg","file":"wenger.jpg"},"dad":{"name":"Carlo Ancelotti","style":"선수 장점을 살리고 유연하게 운영하는 전술 성향","author":"Doha Stadium Plus Qatar Photograph: Mohan ( www.dohastadiumplusqatar.com )","license":"CC BY 2.0","licenseUrl":"https://creativecommons.org/licenses/by/2.0","source":"https://commons.wikimedia.org/wiki/File:Carlo_Ancelotti_2012-12-29.jpg","file":"ancelotti.jpg"},"gamble":{"name":"Claudio Ranieri","style":"상황에 맞는 과감한 선수 기용을 즐기는 전술 성향","author":"Майоров Владимир; crop: Danyele","license":"CC BY-SA 3.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/3.0","source":"https://commons.wikimedia.org/wiki/File:Claudio_Ranieri_Inter_(cropped).jpg","file":"ranieri.jpg"},"zidou":{"name":"Zinedine Zidane","style":"침착한 리더십과 큰 경기 운영","author":"Hadi Abyar","license":"CC BY 4.0","licenseUrl":"https://creativecommons.org/licenses/by/4.0","source":"https://commons.wikimedia.org/wiki/File:Zinedine_Zidane_by_Tasnim_02.jpg","file":"zidane.jpg"},"lucho":{"name":"Luis Enrique","style":"전방 압박과 빠른 공격 전환","author":"Lluís from Sabadell (Barcelona), España","license":"CC BY 2.0","licenseUrl":"https://creativecommons.org/licenses/by/2.0","source":"https://commons.wikimedia.org/wiki/File:Luis_Enrique_2014.jpg","file":"luis-enrique.jpg"},"cholo":{"name":"Diego Simeone","style":"강한 수비 조직과 투지","author":"Анна Нэсси","license":"CC BY-SA 4.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/4.0","source":"https://commons.wikimedia.org/wiki/File:Diego_Simeone.jpg","file":"simeone.jpg"},"tuchel":{"name":"Thomas Tuchel","style":"상대에 따라 바꾸는 전술","author":"Schnederpelz","license":"CC BY-SA 3.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/3.0","source":"https://commons.wikimedia.org/wiki/File:ThomasTuchel2014.jpg","file":"tuchel.jpg"},"arteta":{"name":"Mikel Arteta","style":"세밀한 빌드업과 훈련된 움직임","author":"Prime Video AU & NZ","license":"CC BY 3.0","licenseUrl":"https://creativecommons.org/licenses/by/3.0","source":"https://commons.wikimedia.org/wiki/File:Mikel_Arteta_2021_(cropped).png","file":"arteta.png"},"nagelsmann":{"name":"Julian Nagelsmann","style":"유연한 전술과 선수 기용","author":"JazzyJoeyD","license":"CC BY-SA 4.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/4.0","source":"https://commons.wikimedia.org/wiki/File:Julian_Nagelsmann.jpg","file":"nagelsmann.jpg"},"conte":{"name":"Antonio Conte","style":"강한 규율과 반복 훈련","author":"Nicola Genati","license":"CC BY-SA 3.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/3.0","source":"https://commons.wikimedia.org/wiki/File:Antonio_Conte.jpg","file":"conte.jpg"},"xabi":{"name":"Xabi Alonso","style":"정확한 전진 패스와 공간 활용","author":"Giovanni Batista Rodriguez","license":"CC BY-SA 2.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/2.0","source":"https://commons.wikimedia.org/wiki/File:Xabi_Alonso_Real_Sociedad_B_(cropped).jpg","file":"xabi-alonso.jpg"},"dezerbi":{"name":"Roberto De Zerbi","style":"후방 빌드업으로 압박을 끌어내기","author":"TVSEI","license":"CC BY 3.0","licenseUrl":"https://creativecommons.org/licenses/by/3.0","source":"https://commons.wikimedia.org/wiki/File:Roberto_De_Zerbi,_2019.png","file":"de-zerbi.png"},"pochettino":{"name":"Mauricio Pochettino","style":"압박과 젊은 선수 성장","author":"Víctor Gutiérrez Navarro from VALENCIA","license":"CC BY 2.0","licenseUrl":"https://creativecommons.org/licenses/by/2.0","source":"https://commons.wikimedia.org/wiki/File:Pochettino_2012.jpg","file":"pochettino.jpg"},"rijkaard":{"name":"Frank Rijkaard","style":"팀 균형과 선수 창의성","author":"Mutari 17:31, 17 September 2007 (UTC)","license":"Public domain","licenseUrl":null,"source":"https://commons.wikimedia.org/wiki/File:Frank_Rijkaard_(2007).jpg","file":"rijkaard.jpg"},"capello":{"name":"Fabio Capello","style":"수비 균형과 규율","author":"Barcex","license":"CC BY-SA 4.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/4.0","source":"https://commons.wikimedia.org/wiki/File:25th_Laureus_World_Sports_Awards_-_Red_Carpet_-_Fabio_Capello_-_240422_181452_(cropped).jpg","file":"capello.jpg"}};
+const COACH_PHOTOS=new Map();
+COACHES.zidou.photoUrl='https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Zinedine_Zidane_by_Tasnim_02.jpg/500px-Zinedine_Zidane_by_Tasnim_02.jpg';
+COACHES.tuchel.photoUrl='https://upload.wikimedia.org/wikipedia/commons/a/a3/ThomasTuchel2014.jpg';
+COACHES.gegen.photoUrl='https://upload.wikimedia.org/wikipedia/commons/9/9d/J%C3%BCrgen_Klopp_%28cropped%29.jpg';
+COACHES.gamble.photoUrl='https://upload.wikimedia.org/wikipedia/commons/2/24/Claudio_Ranieri_Inter_%28cropped%29.jpg';
+COACHES.xabi.photoUrl='https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2f/Xabi_Alonso_Real_Sociedad_B_%28cropped%29.jpg/500px-Xabi_Alonso_Real_Sociedad_B_%28cropped%29.jpg';
+function loadCoachPhoto(k){if(!COACH_PHOTOS.has(k))COACH_PHOTOS.set(k,new Promise(resolve=>{const img=new Image();img.crossOrigin='anonymous';img.onload=()=>resolve(img);img.onerror=()=>resolve(null);img.src=COACHES[k].photoUrl||BASE_PATH+'coaches/'+COACHES[k].file}));return COACH_PHOTOS.get(k)}
 const q=(t,a)=>({type:'mc',t,a});
 const QS=[
  q('1:0으로 이기는 후반 80분, 지시는?',[['전원 수비, 시간 끌어',['bus']],['공 돌리면서 점유',['tiki']],['한 골 더 넣으러 가',['roman']],['압박 강도 더 올려',['gegen']]]),
@@ -3482,30 +3511,24 @@ A.start=()=>introView(A,{lead:'벤치에 앉은 나는 어떤 감독일까요? �
   onStart:()=>runQuiz(QS,{shuffleOpts:true,onQuit:()=>A.start(),onDone:finish})});
 function formation(f){const rows=f.split('-').map(Number);const pts=[[0.5,0.93]];rows.forEach((n,ri)=>{const y=0.78-ri*(0.62/(rows.length-1||1));for(let i=0;i<n;i++)pts.push([(i+1)/(n+1),y])});return pts}
 async function finish(a,qs){
-  const sc={};let order=[];a.forEach((x,i)=>qs[i].a[x][1].forEach(k=>{sc[k]=(sc[k]||0)+1;if(!order.includes(k))order.push(k)}));
-  show(order.sort((p,q)=>sc[q]-sc[p])[0]);
+ const sc={},order=[];a.forEach((x,i)=>qs[i].a[x][1].forEach(k=>{sc[k]=(sc[k]||0)+1;if(!order.includes(k))order.push(k)}));
+ const ranked=order.sort((p,q)=>sc[q]-sc[p]),base=ranked[0],second=ranked[1];
+ const v={bus:{hair:'capello',gegen:'cholo'},tiki:{gegen:'lucho',data:'dezerbi'},hair:{tiki:'tuchel',roman:'zidou'},gegen:{tiki:'nagelsmann',bus:'simeone'},roman:{data:'xabi',bus:'conte'},dad:{gegen:'rijkaard',tiki:'arteta'},gamble:{dad:'pochettino'}};
+ show((v[base]&&v[base][second])||base);
 }
 async function show(k,friend){
-  const t=TY[k];if(!t)return false;
-  const canvas=await makeCard(th,'내가 감독이라면?',ctx=>{
-    txt(ctx,'당신의 감독 유형',CX,282,{font:FONT.b(34),color:th.dim});
-    txt(ctx,t.n,CX,394,{font:FONT.d(100),color:th.acc,max:960});
-    txt(ctx,t.s+' · 주 포메이션 '+t.f,CX,456,{font:FONT.b(32,700),color:th.tx});
-    // 전술판
-    const bx=110,by=500,bw=W-220,bh=640;
-    rr(ctx,bx,by,bw,bh,24);ctx.fillStyle='#2f6b4f';ctx.fill();ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=5;rr(ctx,bx+20,by+20,bw-40,bh-40,8);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(bx+20,by+20);ctx.lineTo(bx+bw-20,by+20);ctx.stroke();ctx.beginPath();ctx.arc(CX,by+20,90,0,Math.PI);ctx.stroke();
-    ctx.strokeRect(CX-180,by+bh-150,360,130);ctx.strokeRect(CX-80,by+bh-70,160,50);
-    formation(t.f).forEach(([fx,fy],i)=>{const x=bx+40+fx*(bw-80),y=by+40+fy*(bh-80);ctx.beginPath();ctx.arc(x,y,30,0,Math.PI*2);ctx.fillStyle=i?th.acc:'#f5c518';ctx.fill();ctx.lineWidth=5;ctx.strokeStyle='#14261d';ctx.stroke();txt(ctx,String(i?i+1:1),x,y+11,{font:FONT.n(28),color:'#14261d'})});
-    ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=5;ctx.setLineDash([16,12]);ctx.beginPath();ctx.moveTo(bx+bw*.3,by+bh*.62);ctx.quadraticCurveTo(bx+bw*.5,by+bh*.35,bx+bw*.72,by+bh*.22);ctx.stroke();ctx.setLineDash([]);
-    let y=para(ctx,t.d,{x:110,y:1170,w:860,size:36,color:th.tx,weight:500,max:3});
-    rr(ctx,90,y+20,W-180,110,22);ctx.fillStyle=th.tx;ctx.fill();
-    txt(ctx,'라커룸 한마디  '+t.line,CX,y+90,{font:FONT.b(32,900),color:th.bg,max:860});
-    txt(ctx,`장점 ${t.good}  ·  단점 ${t.bad}`,CX,y+200,{font:FONT.b(30,500),color:th.dim,max:900});
-  });
-  const text=`나는 '${t.n}' 나옴. 너는?`;
-  resultView(A,{canvas,alt:`감독 유형 ${t.n} (${t.s}). ${t.d} 라커룸 한마디 ${t.line}`,filename:()=>`킥킥_감독유형_${t.n}.png`,share:()=>text,link:{url:mkLink('manager',k,t.n),text},friend:friend?`친구의 감독 유형: ${t.n}`:null});
-  return true;
+ const t=TY[k],coach=COACHES[k];if(!t||!coach)return false;const photo=await loadCoachPhoto(k);
+ const canvas=await makeCard(th,'내가 감독이라면?',ctx=>{
+  txt(ctx,'당신의 감독 유형',380,282,{font:FONT.b(34),color:th.dim,max:600});txt(ctx,t.n,380,390,{font:FONT.d(78),color:th.acc,max:600});txt(ctx,t.s+' · '+t.f,380,448,{font:FONT.b(29,700),color:th.tx,max:600});
+  photoRect(ctx,photo,700,222,290,300,22);txt(ctx,'전술 성향이 비슷한 감독',845,562,{font:FONT.b(23,700),color:th.dim,max:340});txt(ctx,coach.name,845,604,{font:FONT.d(34),color:th.acc,max:340});
+  const bx=110,by=640,bw=W-220,bh=460;rr(ctx,bx,by,bw,bh,24);ctx.fillStyle='#2f6b4f';ctx.fill();ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=5;rr(ctx,bx+20,by+20,bw-40,bh-40,8);ctx.stroke();ctx.beginPath();ctx.moveTo(bx+20,by+20);ctx.lineTo(bx+bw-20,by+20);ctx.stroke();ctx.beginPath();ctx.arc(CX,by+20,90,0,Math.PI);ctx.stroke();ctx.strokeRect(CX-180,by+bh-150,360,130);ctx.strokeRect(CX-80,by+bh-70,160,50);
+  formation(t.f).forEach(([fx,fy],i)=>{const x=bx+40+fx*(bw-80),y=by+40+fy*(bh-80);ctx.beginPath();ctx.arc(x,y,30,0,Math.PI*2);ctx.fillStyle=i?th.acc:'#f5c518';ctx.fill();ctx.lineWidth=5;ctx.strokeStyle='#14261d';ctx.stroke();txt(ctx,String(i?i+1:1),x,y+11,{font:FONT.n(28),color:'#14261d'})});
+  txt(ctx,'이런 감독이에요',110,1170,{font:FONT.b(28,800),color:th.acc});let y=para(ctx,t.d,{x:110,y:1220,w:860,size:32,color:th.tx,weight:500,max:3});y=para(ctx,'전술 성향: '+coach.style,{x:110,y:y+14,w:860,size:28,color:th.dim,weight:500,max:2});rr(ctx,90,y+18,W-180,100,22);ctx.fillStyle=th.tx;ctx.fill();txt(ctx,'라커룸 한마디: '+t.line,CX,y+82,{font:FONT.b(29,900),color:th.bg,max:860});txt(ctx,`장점 ${t.good} · 단점 ${t.bad}`,CX,y+175,{font:FONT.b(27,500),color:th.dim,max:900});
+ },{footY:1740,photoCredit:`Photo: ${coach.author} · ${coach.license}`,photoSource:`Source: ${coach.source} · crop/resized`,photoLicense:coach.licenseUrl||'Public domain'});
+ const text=`나는 '${t.n}' 감독. ${coach.name}과 전술 성향이 비슷해요. ${coach.style}`;
+ const detail=`<article class="coach-match"><img src="${coach.photoUrl||BASE_PATH+'coaches/'+coach.file}" alt="${esc(coach.name)} 감독 사진" loading="lazy"><div><p>테스트 답변에 따른 전술 성향 참고</p><h2>${esc(coach.name)}과 비슷해요</h2><p>${esc(coach.style)}</p></div></article><p class="coach-disclaimer">재미를 위한 참고 결과이며 실제 감독의 성격 판단이나 공식 제휴를 뜻하지 않습니다.</p>`;
+ const credit=`감독 사진: ${esc(coach.author)} · ${esc(coach.license)} · <a href="${coach.source}" target="_blank" rel="noopener">원본 사진</a> · ${coach.licenseUrl?`<a href="${coach.licenseUrl}" target="_blank" rel="noopener">라이선스</a>`:'Public domain'}`;
+ resultView(A,{canvas,detail,credit,alt:`감독 유형 ${t.n} (${t.s}). ${t.d} ${coach.name}과 비슷한 전술 성향: ${coach.style}`,filename:()=>`킥킥_감독유형_${t.n}.png`,share:()=>text,link:{url:mkLink('manager',k,t.n),text},friend:friend?`친구의 감독 유형: ${t.n}`:null});return true;
 }
 A.shared=p=>{if(!TY[p.key])return false;show(p.key,true);return true};
 APPS.push(A);

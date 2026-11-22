@@ -950,7 +950,21 @@ function relOptionsFor(D){
   const hit=(a,b,y)=>y[0]===y[1]?(a<=y[0]&&b>=y[0]):(a<=y[1]-1&&b>=y[0]+1);
   const careers=(D.clubs||[]).map(x=>({k:norm(x[1]||''),s:span(x[0])})).filter(x=>x.k.length>=2);
   const natK=norm(nation),allSpan=careers.filter(x=>x.s).map(x=>x.s);
+  // 별칭형 관계 팀컬러는 선수의 실제 클럽 경력으로 연결해요.
+  const aliasRules=[
+    {name:/갈락티코1기/,club:'레알마드리드',start:2000,end:2006},
+    {name:/갈락티코2기/,club:'레알마드리드',start:2009,end:2018},
+    {name:/강철제국블루스/,club:'첼시',start:2003,end:2014},
+    {name:/블루스영혼의듀오/,players:['디디에드로그바','프랭크램파드']},
+    {name:/블루스의심장/,players:['디디에드로그바','프랭크램파드','마이클에시앙','히카르두카르발류']}
+  ];
+  const aliasMatch=(nm,y)=>aliasRules.some(r=>{
+    if(!r.name.test(nm))return false;
+    if(r.players)return r.players.includes(norm(D.name||''));
+    return careers.some(c=>c.k.includes(norm(r.club))&&(!c.s||(r.start?hit(c.s[0],c.s[1],[r.start,r.end]):(!y||hit(c.s[0],c.s[1],y)))));
+  });
   return TEAMCOLORS.filter(tc=>{if(!/special|relation|관계|스페셜/.test(TC_TYPE(tc)))return false;const nm=norm(tc.name),y=yrs(tc.name);
+      if(aliasMatch(nm,y))return true;
       if(!y)return keys.some(k=>nm.includes(k));
       if(careers.some(c=>nm.includes(c.k)&&c.s&&hit(c.s[0],c.s[1],y)))return true;
       if(!(natK.length>=2&&nm.includes(natK)&&allSpan.some(s=>hit(s[0],s[1],y))))return false;   // 국가 관계 팀컬러: 그 해에 현역이었을 때만

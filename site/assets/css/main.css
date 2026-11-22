@@ -1099,3 +1099,7 @@ a.mk-tile:hover{border-color:var(--accent)}
 .ds-flow{position:relative}.ds-hit{cursor:pointer}.ds-hit:hover{fill:rgba(0,0,0,.05)}.ds-dots i{cursor:pointer}
 .ds-tip{position:absolute;z-index:20;pointer-events:none;display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:240px;padding:7px 10px;border-radius:8px;background:var(--fg);color:var(--surface);font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.2)}
 .ds-tip .res{width:20px;height:20px;font-size:11px;border-radius:5px}.ds-tip b{font-family:var(--f-data)}.ds-tip small{width:100%;opacity:.75;font-size:11px}
+
+/* 전적 진단 = 사이트 핵심 기능: 선택 안 해도 메뉴에서 늘 강조 */
+nav.menu a.core:not([aria-current]){color:var(--fg);font-weight:700;background:var(--accent-soft);border-color:var(--accent)}
+nav.menu a.core:not([aria-current]):hover{background:var(--accent);color:var(--accent-ink)}

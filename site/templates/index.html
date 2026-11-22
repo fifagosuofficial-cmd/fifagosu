@@ -10,6 +10,7 @@
     <a href="{{ root }}cards" data-view="cards"{% if view=='cards' %} aria-current="page"{% endif %}>카드 검색</a>
     <a href="{{ root }}calc" data-view="calc"{% if view=='calc' %} aria-current="page"{% endif %}>BP·강화 계산기</a>
     <a href="{{ root }}sim/" data-view="sim"{% if view=='sim' %} aria-current="page"{% endif %}>시뮬</a>
+    <a href="{{ root }}trade/" data-view="trade"{% if view=='trade' %} aria-current="page"{% endif %}>선수장터</a>
     <a href="{{ root }}guide/" data-view="guide"{% if view=='guide' %} aria-current="page"{% endif %}>게임 가이드</a>
     <a class="fun" href="{{ SITE_URL }}/fun/" target="_self">심심풀이 테스트</a>
   </nav>
@@ -193,17 +194,53 @@
 </main>
 
 
-<!-- ================= 시뮬 (강화 · 팩 오픈) ================= -->
+<!-- ================= 시뮬 (강화 효율 · 강화 · 팩 오픈 · 현질 효율) ================= -->
 <main id="v-sim" class="wrap newsp simp"{% if view!='sim' %} hidden{% endif %}>
   <div class="sim-head">
-    <h1 class="bd-h1">시뮬</h1>
-    <nav class="sim-tabs" role="tablist" aria-label="시뮬 종류">
-      <button type="button" role="tab" aria-selected="true" data-sim="enh">강화</button>
-      <button type="button" role="tab" aria-selected="false" data-sim="pack">팩 오픈</button>
-    </nav>
+    <div>
+      <h1 class="bd-h1">시뮬 · 효율 계산</h1>
+      <p class="sim-note">피파고수가 매일 모으는 데이터센터 시세로 강화 손익과 팩 기댓값을 계산해요.</p>
+    </div>
   </div>
 
-  <section class="sim-panel" id="simEnh">
+  <!-- 판매 조건: 모든 탭이 같이 써요 -->
+  <div class="sim-fee-bar" role="group" aria-label="판매 조건">
+    <span class="sfb-t">판매 조건</span>
+    <label class="sfb-chip"><input type="checkbox" id="smfPc"> PC방 <small>−30%p</small></label>
+    <label class="sfb-chip"><input type="checkbox" id="smfTop"> TOP CLASS <small>−20%p</small></label>
+    <label class="sfb-sel">쿠폰<select id="smfCoupon"><option value="0">없음</option><option value="10">10%</option><option value="20">20%</option><option value="30">30%</option><option value="40">40%</option><option value="50">50%</option></select></label>
+    <span class="sfb-out">최종 수수료 <b id="smfRate">40%</b></span>
+  </div>
+
+  <nav class="sim-tabs" role="tablist" aria-label="시뮬 종류">
+    <button type="button" role="tab" aria-selected="true" data-sim="eff"><b>강화 효율</b><small>어떤 카드가 남을까</small></button>
+    <button type="button" role="tab" aria-selected="false" data-sim="enh"><b>강화 시뮬</b><small>직접 눌러 보기</small></button>
+    <button type="button" role="tab" aria-selected="false" data-sim="pack"><b>팩 오픈</b><small>상점 팩 열어 보기</small></button>
+    <button type="button" role="tab" aria-selected="false" data-sim="cash"><b>현질 효율</b><small>1,000 FC당 BP</small></button>
+  </nav>
+
+  <!-- ===== 강화 효율 ===== -->
+  <section class="sim-panel" id="simEff">
+    <div class="eff-mode" role="tablist" aria-label="강화 효율 보기">
+      <button type="button" data-em="top" aria-selected="true">회수율 TOP</button>
+      <button type="button" data-em="budget" aria-selected="false">예산으로 찾기</button>
+    </div>
+    <div class="eff-opts">
+      <div class="eff-steps" id="effSteps" role="group" aria-label="강화 단계"></div>
+      <label class="eff-chk"><input type="checkbox" id="effMat" checked> 재료비 포함 <small>(같은 OVR 최저가 카드 × 5칸, 추정)</small></label>
+      <label class="eff-chk">실패하면<select id="effFail"><option value="keep">단계 유지</option><option value="down">1단계 하락 (5강 이상)</option></select></label>
+    </div>
+    <div class="eff-budget" id="effBudget" hidden>
+      <label>내 예산<input type="number" id="effMoney" min="0" step="0.1" value="2" inputmode="decimal"><span>억 BP</span></label>
+      <div class="eff-quick" id="effQuick"><button type="button" data-b="0.5">5천만</button><button type="button" data-b="1">1억</button><button type="button" data-b="5">5억</button><button type="button" data-b="10">10억</button><button type="button" data-b="50">50억</button><button type="button" data-b="200">200억</button></div>
+    </div>
+    <p class="sim-note" id="effInfo">시세를 불러오는 중…</p>
+    <div class="eff-cols" id="effOut"></div>
+    <p class="sim-note">회수율 = (성공 확률 × 한 단계 위 시세 × (1 − 수수료) + 실패 확률 × 실패 후 시세 × (1 − 수수료)) ÷ (지금 시세 + 재료비). 사서 강화하고 바로 판다고 가정했어요. 1.00이 넘으면 평균적으로 남는 강화예요. 성공 확률은 넥슨 공지 풀 게이지(5칸) 기준이고, 시세는 하루 1번 수집한 값이라 실제와 다를 수 있어요.</p>
+  </section>
+
+  <!-- ===== 강화 시뮬 ===== -->
+  <section class="sim-panel" id="simEnh" hidden>
     <div class="sim-pick">
       <input type="search" id="smEQ" placeholder="강화할 선수 검색 (예: 손흥민, 앙리 ICON TM)" autocomplete="off" aria-label="선수 검색">
       <div class="sim-sug" id="smESug" hidden></div>
@@ -212,6 +249,11 @@
       <div class="sim-box sim-stage">
         <div class="sim-player" id="smEPlayer"><p class="sim-note">먼저 선수를 골라 주세요. 고른 선수의 능력치가 강화 단계에 맞춰 바뀌어요.</p></div>
         <div class="sim-card" id="smECard"><span class="sim-g" id="smEGrade">1</span><small id="smETier">동카</small></div>
+        <div class="gauge5" id="smEGaugeBox" role="group" aria-label="강화 게이지">
+          <span>게이지</span>
+          <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button><button type="button" data-k="4">4</button><button type="button" data-k="5" class="on">5</button>
+          <b id="smEGaugeV">5칸 · 100%</b>
+        </div>
         <p class="sim-msg" id="smEMsg">강화 버튼을 눌러 보세요.</p>
         <div class="sim-btns sim-btns-c">
           <button type="button" class="go" id="smEOne">1회 강화</button>
@@ -221,25 +263,28 @@
         <div class="sim-cnt"><div><span>시도</span><b id="smETry">0</b></div><div><span>성공</span><b id="smEOk">0</b></div><div><span>실패</span><b id="smENg">0</b></div><div><span>다음 확률</span><b id="smEP">-</b></div></div>
       </div>
       <div class="sim-box">
+        <h2>이번 강화 손익 <small>지금 단계 → 한 단계 위</small></h2>
+        <div class="ev-box" id="smEEv"><p class="sim-note">선수를 고르면 성공·실패 시 시세와 기댓값을 계산해 드려요.</p></div>
         <h2>강화 설정</h2>
         <div class="sim-form">
           <label>시작 강화<select id="smEFrom"></select></label>
           <label>목표 강화<select id="smETo"></select></label>
-          <label>게이지 <b id="smEGaugeV">100%</b><input type="range" id="smEGauge" min="10" max="100" step="5" value="100"></label>
           <label>실패하면<select id="smEFail"><option value="keep">단계 유지</option><option value="down">1단계 하락 (5강 이상)</option></select></label>
+          <label>재료비(1칸, 만 BP)<input type="number" id="smEMat" min="0" step="1" placeholder="자동 추정" inputmode="numeric"></label>
         </div>
         <div id="smEStatsBox"><p class="sim-note">선수를 고르면 34개 세부 능력치가 여기 표시돼요.</p></div>
         <ol class="sim-log" id="smELog"></ol>
-        <p class="sim-note">성공 확률 = 풀 게이지 확률 × 게이지 비율(넥슨 공지). 실패 시 하락 확률은 공식 수치가 이미지로만 공개돼 '1단계 하락'은 가정이에요. 능력치는 적응도 5단계 기준.</p>
+        <p class="sim-note">성공 확률 = 풀 게이지 확률 × 게이지 비율(넥슨 공지, 1칸 = 20%). 실패 시 하락 확률은 공식 수치가 이미지로만 공개돼 '1단계 하락'은 가정이에요. 능력치는 적응도 5단계 기준.</p>
       </div>
     </div>
     <div class="sim-box">
-      <h2>2,000번 돌려 보기 <small>지금 설정으로 목표까지 걸리는 시도 횟수</small></h2>
+      <h2>2,000번 돌려 보기 <small>지금 설정으로 목표까지 걸리는 시도 횟수와 비용</small></h2>
       <button type="button" class="ghost sim-wide" id="smEMany">2,000번 시뮬레이션</button>
       <div id="smEStats" class="sim-stats"></div>
     </div>
   </section>
 
+  <!-- ===== 팩 오픈 ===== -->
   <section class="sim-panel" id="simPack" hidden>
     <div class="sim-shelf-h"><h2>지금 웹 상점에서 파는 팩</h2><small id="smPSrc">불러오는 중…</small></div>
     <div class="sim-shelf" id="smPShelf"></div>
@@ -248,6 +293,7 @@
     <div class="sim-open" id="smPOpen" hidden>
       <div class="sim-box sim-stage2">
         <div class="sim-pack-top"><img id="smPImg" alt=""><div><h2 id="smPName"></h2><p class="sim-note" id="smPMeta"></p></div></div>
+        <div class="pk-parts" id="smPParts" hidden></div>
         <div class="sim-btns">
           <button type="button" class="go" data-open="1">1개 열기</button>
           <button type="button" class="ghost" data-open="10">10개 열기</button>
@@ -257,12 +303,7 @@
         <div class="sim-reveal" id="smPReveal"></div>
       </div>
       <div class="sim-box">
-        <h2>수익 계산</h2>
-        <div class="sim-fee">
-          <label><input type="checkbox" id="smfTop"> TOP CLASS <small>−20%p</small></label>
-          <label><input type="checkbox" id="smfPc"> PC방 <small>−30%p</small></label>
-          <label>수수료 쿠폰<select id="smfCoupon"><option value="0">없음</option><option value="10">10%</option><option value="20">20%</option><option value="30">30%</option><option value="40">40%</option><option value="50">50%</option></select></label>
-        </div>
+        <h2>수익 계산 <small>위 판매 조건 적용</small></h2>
         <div class="sim-ledger" id="smPLedger"></div>
         <ol class="sim-hist" id="smPHist"></ol>
         <p class="sim-note">선수 가치는 피파고수가 매일 수집한 데이터센터 시세(해당 강화)예요. 판매 시 수수료 = 40% × (100% − PC방 30% − TOP CLASS 20% − 쿠폰). BP 카드는 수수료 없이 그대로 더해요.</p>
@@ -273,8 +314,70 @@
       <div class="sim-qres" id="smPQres"></div>
       <div class="sim-table" id="smPTable"></div>
     </details>
-    <p class="sim-note">확률 출처: <a href="https://iteminfo.nexon.com/probability/fco" target="_blank" rel="noopener nofollow">넥슨 확률형 아이템 정보</a> · 상품 출처: <a href="https://shop.fconline.nexon.com/" target="_blank" rel="noopener nofollow">FC온라인 웹 상점</a>. 선수팩은 넥슨이 '기준가 TOP N' 순위로 공개해서, 피파고수 시세로 순위를 실제 선수에 맞춰 보여줘요(실제 게임과 다를 수 있어요). 재미로 보는 체험이며 구매를 권하지 않아요.</p>
+    <p class="sim-note">확률 출처: <a href="https://iteminfo.nexon.com/probability/fco" target="_blank" rel="noopener nofollow">넥슨 확률형 아이템 정보</a> · 상품·구성품 출처: <a href="https://shop.fconline.nexon.com/" target="_blank" rel="noopener nofollow">FC온라인 웹 상점</a>. 패키지는 상점 상세 페이지의 구성품 목록을 넥슨 확률표와 이어 붙여 열어요. 선수팩은 넥슨이 '기준가 TOP N' 순위로 공개해서, 피파고수 시세로 순위를 실제 선수에 맞춰 보여줘요(실제 게임과 다를 수 있어요). 재미로 보는 체험이며 구매를 권하지 않아요.</p>
   </section>
+
+  <!-- ===== 현질 효율 ===== -->
+  <section class="sim-panel" id="simCash" hidden>
+    <div class="sim-shelf-h"><h2>1,000 FC당 기대 BP</h2><small id="cashSrc">계산 준비 중…</small></div>
+    <div class="cash-list" id="cashOut"></div>
+    <p class="sim-note">기대 BP = 확률표의 모든 결과를 '확률 × 실수령 가치'로 더한 값이에요(선수는 위 판매 조건의 수수료를 뺀 시세, BP 카드는 그대로). 상자 안 상자는 끝까지 따라가서 계산하고, 패키지는 구성품을 개수만큼 더해요. 교환권처럼 확률이 없는 구성품은 빼고 계산해서 실제보다 낮게 나올 수 있어요.</p>
+  </section>
+</main>
+
+<!-- ================= 선수장터 ================= -->
+<main id="v-trade" class="wrap newsp trp"{% if view!='trade' %} hidden{% endif %}>
+  <div class="tr-head">
+    <div>
+      <h1 class="bd-h1">선수장터</h1>
+      <p class="sim-note">사고 싶은·팔고 싶은 선수와 희망가를 올려 보세요. 글마다 피파고수 시세와 비교해 보여줘요.</p>
+    </div>
+    <button type="button" class="go tr-write-btn" id="trWriteBtn">글쓰기</button>
+  </div>
+
+  <!-- 글쓰기 -->
+  <section class="tr-form sim-box" id="trForm" hidden aria-label="선수장터 글쓰기">
+    <h2>새 글 <small>현금·계정 거래 글은 바로 지워요</small></h2>
+    <div class="tr-kind" role="radiogroup" aria-label="거래 종류">
+      <label><input type="radio" name="trKind" value="sell" checked><span>팝니다</span></label>
+      <label><input type="radio" name="trKind" value="buy"><span>삽니다</span></label>
+    </div>
+    <div class="sim-pick">
+      <input type="search" id="trQ" placeholder="선수 검색 (예: 손흥민 26UP)" autocomplete="off" aria-label="거래할 선수 검색">
+      <div class="sim-sug" id="trSug" hidden></div>
+    </div>
+    <div class="tr-picked" id="trPicked"><p class="sim-note">선수를 검색해서 골라 주세요.</p></div>
+    <div class="tr-grid">
+      <label>강화 단계<select id="trGrade"></select></label>
+      <label><span id="trPriceLbl">판매희망가</span>
+        <span class="tr-money"><input type="number" id="trEok" min="0" step="1" placeholder="0" inputmode="numeric"><i>억</i><input type="number" id="trMan" min="0" max="9999" step="1" placeholder="0" inputmode="numeric"><i>만 BP</i></span>
+      </label>
+      <label>구단주 닉네임<input type="text" id="trNick" maxlength="20" autocomplete="nickname" placeholder="게임 닉네임"></label>
+      <label>비밀번호 <small>(수정·삭제용 4자 이상)</small><input type="password" id="trPw" maxlength="32" autocomplete="new-password"></label>
+    </div>
+    <p class="tr-cmp" id="trCmp"></p>
+    <label class="tr-body">하고 싶은 말 <small>(선택, 300자)</small><textarea id="trBody" maxlength="300" rows="3" placeholder="예) 급처합니다 / 팀컬러 맞추려고 구해요"></textarea></label>
+    <input type="text" id="trHp" class="tr-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+    <div class="sim-btns">
+      <button type="button" class="go" id="trSubmit">올리기</button>
+      <button type="button" class="ghost" id="trCancel">취소</button>
+    </div>
+    <p class="sim-note" id="trMsg" role="status"></p>
+  </section>
+
+  <!-- 목록 -->
+  <div class="tr-bar">
+    <div class="tr-seg" id="trSeg" role="tablist" aria-label="글 종류">
+      <button type="button" data-k="" aria-selected="true">전체</button>
+      <button type="button" data-k="sell" aria-selected="false">팝니다</button>
+      <button type="button" data-k="buy" aria-selected="false">삽니다</button>
+    </div>
+    <input type="search" id="trFind" placeholder="선수 이름으로 찾기" autocomplete="off" aria-label="글 검색">
+    <label class="eff-chk"><input type="checkbox" id="trOpenOnly" checked> 거래 중만</label>
+  </div>
+  <div class="tr-list" id="trList"><p class="sim-note">불러오는 중…</p></div>
+  <button type="button" class="ghost sim-wide" id="trMore" hidden>더 보기</button>
+  <p class="sim-note">선수장터는 희망가를 공유하는 게시판이에요. FC온라인 안에서의 거래는 이적시장으로만 이뤄지고, 현금·계정 거래는 넥슨 운영정책 위반이라 피파고수도 허용하지 않아요. 글은 14일 뒤 목록에서 사라져요. '시세 대비'는 피파고수가 하루 1번 수집한 데이터센터 시세와 비교한 값이에요.</p>
 </main>
 
 <!-- ================= 게임 가이드 ================= -->
@@ -367,7 +470,8 @@
 {% block scripts %}
 <script>if(!window.FG_LIVE)document.write('<script src="{{ root }}preview/data.js?v={{ ver }}"><\/script>')</script>
 <script src="{{ root }}assets/js/news.js?v={{ ver }}" defer></script>
-<script>window.FG_ROUTES={"home":"/","diag":"/diag","cards":"/cards","calc":"/calc","guide":"/guide/","sim":"/sim/"};window.FG_TITLES={{ titles }};</script>
+<script>window.FG_ROUTES={"home":"/","diag":"/diag","cards":"/cards","calc":"/calc","guide":"/guide/","sim":"/sim/","trade":"/trade/"};window.FG_TITLES={{ titles }};</script>
 <script src="{{ root }}assets/js/app.js?v={{ ver }}"></script>
 <script src="{{ root }}assets/js/sim.js?v={{ ver }}"></script>
+<script src="{{ root }}assets/js/trade.js?v={{ ver }}"></script>
 {% endblock %}

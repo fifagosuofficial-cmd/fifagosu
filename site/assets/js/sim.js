@@ -265,7 +265,9 @@ function packRule(name){
   const sids=new Set();toks.forEach(t=>Object.keys(SEASONS).forEach(id=>{if(norm(sname(+id))===norm(t))sids.add(+id)}));
   return {lo:gm?+gm[1]:1,hi:gm?+(gm[2]||gm[1]):1,min:om?+om[1]:0,only:!inc&&sids.size?sids:null,key:(!inc&&sids.size?[...sids].join('.'):'all')+'|'+(om?om[1]:0)};
 }
-function poolList(R,g){const k=R.key+'|'+g;if(!POOLC[k])POOLC[k]=POOL.filter(([id,,ovr,pr])=>pr[g-1]>0&&(!R.only||R.only.has(Math.floor(id/1e6)))&&(ovr+(GRADE_BONUS[g]||0))>=R.min).sort((a,b)=>b[3][g-1]-a[3][g-1]);return POOLC[k]}
+/* '포함' 팩(여러 클래스)에서는 팩으로 나오지 않는 아이콘 계열을 빼요 */
+const NOGEN=/ICON|^IM|IM -|LKI/;
+function poolList(R,g){const k=R.key+'|'+g;if(!POOLC[k])POOLC[k]=POOL.filter(([id,,ovr,pr])=>pr[g-1]>0&&(R.only?R.only.has(Math.floor(id/1e6)):!NOGEN.test(sname(Math.floor(id/1e6))))&&(ovr+(GRADE_BONUS[g]||0))>=R.min).sort((a,b)=>b[3][g-1]-a[3][g-1]);return POOLC[k]}
 function playerFor(rank,packName){
   if(!POOL)return null;const R=packRule(packName);if(!R)return null;
   const g=R.lo+Math.floor(Math.random()*(R.hi-R.lo+1)),L=poolList(R,g);if(!L.length)return null;const it=L[Math.min(L.length-1,rank-1)];

@@ -36,7 +36,7 @@
     <div class="mk-tile">
       <span class="mk-k">피파고수 시장지수 <small>{{ market.rankLabel|default('상위 랭커 사용 기준') }} · 1강 최근 7일{% if ix %} · 표본 {{ ix.n }}장{% endif %}</small></span>
       {% if ix %}<span class="mk-v {{ 'up' if ix.median > 0 else ('down' if ix.median < 0 else '') }}">{{ M.pct(ix.median) }}</span>
-      {% else %}<span class="mk-v mk-wait">표본 {{ market.indexSample|default(0) }}/{{ market.indexMinimum|default(30) }}장</span>{% endif %}
+      {% else %}<span class="mk-v mk-wait">{% if market.historyDays|default(0) < market.historyRequiredDays|default(8) %}전체 카드 이력 {{ market.historyDays|default(0) }}/{{ market.historyRequiredDays|default(8) }}일 누적{% else %}표본 {{ market.indexSample|default(0) }}/{{ market.indexMinimum|default(30) }}장{% endif %}</span>{% endif %}
     </div>
     <div class="mk-tile">
       <span class="mk-k">최근 7일 오른 카드 · 내린 카드</span>
@@ -73,7 +73,7 @@
     </section>
     <section class="mk-box">
       <h2>인기 카드 시세</h2>
-      <p class="mk-empty mk-pop-note">{{ market.rankLabel|default('상위 랭커 사용 기준') }}</p>
+      <p class="mk-empty mk-pop-note">{{ market.popularLabel|default(market.rankLabel|default('상위 랭커 사용 기준')) }}</p>
       {% if B.popular %}<ol class="mk-list">{% for x in B.popular %}{{ M.row(x, loop.index) }}{% endfor %}</ol>
       {% else %}<p class="mk-empty">상위 랭커 사용 표본을 모으고 있어요.</p>{% endif %}
     </section>

@@ -43,7 +43,7 @@ META_URLS = {
 }
 GRADES = [1, 5, 8, 11, 13]          # 실사용 강화 단계 (마스터플랜 1-1 #5)
 KEEP_DAYS = 90
-DROP_GUARD = 0.8                     # 오늘 갱신 카드 수가 어제의 80% 미만이면 이력 저장 중단
+DROP_GUARD = 0.8                     # Partial-history log threshold; refreshed cards are still stored.
 NEW_CARD_CAP = 3000                  # 하루 신규 카드가 이보다 많으면 이상으로 보고 기준선을 덮지 않음
 
 
@@ -155,9 +155,7 @@ def step_history(data, date):
     same_day = bool(dates) and dates[-1] == date
     prev = counts[-2] if same_day and len(counts) >= 2 else (counts[-1] if counts and not same_day else None)
     if prev and n_today < prev * DROP_GUARD:
-        log(f"갱신 카드가 {prev}장 → {n_today}장으로 20% 넘게 줄어 이력 저장을 멈춰요(차단·부분 수집 의심)")
-        res["hist"] = "held"
-        return res
+        log(f"\uC624\uB298 \uC0C8\uB85C \uAC31\uC2E0\uB41C \uCE74\uB4DC\uAC00 {prev}\uC7A5\uC5D0\uC11C {n_today}\uC7A5\uC73C\uB85C \uC904\uC5B4 \uD30C\uD2B8\uB9CC \uC2DC\uC138 \uC774\uB825\uC5D0 \uCD94\uAC00\uD574\uC694")
     if same_day:
         idx = len(dates) - 1
         counts[idx] = n_today
@@ -321,48 +319,53 @@ def step_market(data, date):
 
 
 def step_ranker_market(data, date):
-    """상위 랭커 사용 카드의 데이터센터 최근 7일 차트를 요약해요."""
+    """?? ?? ????? ?? ?? ???? ?????? ????? ????."""
     data = Path(data)
     listed = {}
+    history = {}
     for n in range(SHARDS):
         listed.update(load(data / "list" / f"{n}.json", {}))
+        history.update(load(data / "hist" / f"{n}.json", {}))
+
     top_usage = load(data / "market" / "ranker_top_usage.json", {})
     usage = load(data / "market" / "ranker_usage.json", {})
     price_data = load(data / "market" / "ranker_prices.json", {})
-    price_cards = price_data.get("cards") or {}
     exact_cards = usage.get("cards") or []
-    basis = price_data.get("basis")
-    if basis == "champion-match-sample":
+    if price_data.get("basis") == "champion-match-sample" or len(exact_cards) >= MARKET_INDEX_MIN:
         ranked = exact_cards
-        rank_label = "챔피언스 이상 공식경기 사용 표본"
-    elif basis == "official-rank-1-1000":
-        ranked = top_usage.get("cards") or []
-        rank_label = "전일 공식 1:1 상위 1,000위 사용 표본"
-    elif len(exact_cards) >= MARKET_INDEX_MIN:
-        ranked, rank_label = exact_cards, "챔피언스 이상 공식경기 사용 표본"
+        popular_label = "\uCC54\uD53C\uC5B8\uC2A4 \uC774\uC0C1 \uACF5\uC2DD\uACBD\uAE30 \uC0AC\uC6A9 \uD45C\uBCF8"
     else:
         ranked = top_usage.get("cards") or exact_cards
-        rank_label = "전일 공식 1:1 상위 1,000위 사용 표본" if top_usage.get("cards") else "챔피언스 이상 공식경기 사용 표본"
+        popular_label = ("\uC804\uC77C \uACF5\uC2DD 1:1 \uC0C1\uC704 1,000\uC704 \uC0AC\uC6A9 \uD45C\uBCF8" if top_usage.get("cards")
+                         else "\uCC54\uD53C\uC5B8\uC2A4 \uC774\uC0C1 \uACF5\uC2DD\uACBD\uAE30 \uC0AC\uC6A9 \uD45C\uBCF8")
     ranked = [x for x in ranked
               if str(x.get("id")) in listed and int(x.get("uses") or 0) > 0][:MARKET_RANKER_CAP]
-    today = dt.date.fromisoformat(date)
+
+    history_meta = load(data / "hist" / "dates.json", {"dates": []})
+    history_dates = history_meta.get("dates") or []
+    latest_history_date = min(dt.date.fromisoformat(date), dt.date.fromisoformat(history_dates[-1])) if history_dates else dt.date.fromisoformat(date)
     by_grade, index_pcts, as_of = {}, [], []
 
-    def week(row, grade):
-        points = row.get("grades", {}).get(str(grade)) or []
+    def week(card_id, grade):
+        rows = history.get(str(card_id)) or []
+        grade_index = GRADES.index(grade)
+        values = rows[grade_index] if len(rows) > grade_index and rows[grade_index] else []
         prices = {}
-        for point in points:
-            if isinstance(point, list) and len(point) >= 2 and point[0]:
-                try:
-                    prices[dt.date.fromisoformat(point[0])] = int(point[1] or 0)
-                except (TypeError, ValueError):
-                    continue
-        ends = [d for d, value in prices.items() if value > 0 and d <= today and (today - d).days <= 3]
+        for day, value in zip(history_dates, values):
+            if not day or value is None:
+                continue
+            try:
+                prices[dt.date.fromisoformat(day)] = int(value)
+            except (TypeError, ValueError):
+                continue
+        ends = [d for d, value in prices.items()
+                if value > 0 and d <= latest_history_date and (latest_history_date - d).days <= 7]
         if not ends:
             return None
         end = max(ends)
         target = end - dt.timedelta(days=MARKET_WEEK_DAYS)
-        starts = [d for d, value in prices.items() if value > 0 and target - dt.timedelta(days=2) <= d <= target]
+        starts = [d for d, value in prices.items()
+                  if value > 0 and target - dt.timedelta(days=2) <= d <= target]
         if not starts:
             return None
         start = max(starts)
@@ -373,30 +376,30 @@ def step_ranker_market(data, date):
 
     for grade in MARKET_GRADES:
         moves, popular = [], []
+        for key, rec in listed.items():
+            change = week(key, grade)
+            if not change:
+                continue
+            start, first, end, last, pct = change
+            item = _item(key, rec, last, first)
+            item.update(c=pct, fromDate=start.isoformat(), toDate=end.isoformat())
+            moves.append(item)
+            as_of.append(end)
+            if grade == 1:
+                index_pcts.append(pct)
+
+        # Popular cards remain a separate ranker-based list; this sample does not
+        # filter the all-card riser/faller lists or the market index above.
         for rnk in ranked:
             key = str(rnk["id"])
             rec = listed.get(key) or {}
-            stored = price_cards.get(key) or {}
-            change = week(stored, grade)
-            if change:
-                start, first, end, last, pct = change
-                item = _item(key, rec, last, first)
-                item.update(c=pct, u=int(rnk.get("uses") or 0), fromDate=start.isoformat(), toDate=end.isoformat())
-                moves.append(item)
-                as_of.append(end)
-                if grade == 1:
-                    index_pcts.append(pct)
-            # Popularity comes from the ranker sample; price may use the latest chart point
-            # or the daily data-center list when a chart is unavailable.
-            chart_points = stored.get("grades", {}).get(str(grade)) or []
-            chart_price = next((int(p[1]) for p in reversed(chart_points)
-                                if isinstance(p, list) and len(p) >= 2 and p[1]), None)
             prices = rec.get("price") or []
-            current = chart_price or (prices[grade - 1] if len(prices) >= grade else None)
+            current = prices[grade - 1] if len(prices) >= grade else None
             if current:
-                x = _item(key, rec, current, None)
-                x["u"] = int(rnk.get("uses") or 0)
-                popular.append(x)
+                item = _item(key, rec, current, None)
+                item["u"] = int(rnk.get("uses") or 0)
+                popular.append(item)
+
         risers = sorted((x for x in moves if x["c"] > 0), key=lambda x: -x["c"])[:MARKET_TOP]
         fallers = sorted((x for x in moves if x["c"] < 0), key=lambda x: x["c"])[:MARKET_TOP]
         by_grade[str(grade)] = {"risers": risers, "fallers": fallers,
@@ -421,23 +424,23 @@ def step_ranker_market(data, date):
                 rec = listed.get(str(spid)) or {}
                 keep.append({"id": spid, "n": rec.get("name") or names.get(spid, ""),
                              "s": spid // 1_000_000, "o": rec.get("ovr"), "d": date})
-    cutoff = (today - dt.timedelta(days=NEW_KEEP_DAYS)).isoformat()
+    cutoff = (dt.date.fromisoformat(date) - dt.timedelta(days=NEW_KEEP_DAYS)).isoformat()
     keep = [x for x in keep if x.get("d", "") >= cutoff]
     keep.sort(key=lambda x: (x.get("d", ""), x.get("o") or 0), reverse=True)
     save(newp, {"items": keep})
 
-    data_dates = list(as_of)
-    data_dates.extend(dt.date.fromisoformat((price_cards.get(str(x["id"])) or {}).get("asOf"))
-                      for x in ranked if (price_cards.get(str(x["id"])) or {}).get("asOf"))
-    as_of_date = max(data_dates).isoformat() if data_dates else date
-    start_date = (dt.date.fromisoformat(as_of_date) - dt.timedelta(days=MARKET_WEEK_DAYS)).isoformat()
+    as_of_date = max(as_of).isoformat() if as_of else (history_dates[-1] if history_dates else date)
+    start_date = None
+    if len(history_dates) >= MARKET_WEEK_DAYS + 1:
+        start_date = (dt.date.fromisoformat(as_of_date) - dt.timedelta(days=MARKET_WEEK_DAYS)).isoformat()
     sample_size = len(index_pcts)
     out = {"date": as_of_date, "prev": start_date, "days": MARKET_WEEK_DAYS,
            "grades": MARKET_GRADES, "index": index, "indexSample": sample_size,
-           "indexMinimum": MARKET_INDEX_MIN, "byGrade": by_grade,
+           "indexMinimum": MARKET_INDEX_MIN, "historyDays": len(history_dates),
+           "historyRequiredDays": MARKET_WEEK_DAYS + 1, "byGrade": by_grade,
            "newCards": keep[:24], "newCount": len(keep),
-           "rankLabel": rank_label,
-           "rule": f"{rank_label} · 3만 BP 이상 · 최근 7일 시세 · 지수 최소 표본 {MARKET_INDEX_MIN}장"}
+           "rankLabel": "\uC804\uCCB4 \uC218\uC9D1 \uC120\uC218\uCE74\uB4DC \uAE30\uC900", "popularLabel": popular_label,
+           "rule": f"\uC804\uCCB4 \uC218\uC9D1 \uC120\uC218\uCE74\uB4DC \u00B7 3\uB9CC BP \uC774\uC0C1 \u00B7 \uCD5C\uADFC 7\uC77C \uC2DC\uC138 \u00B7 \uC9C0\uC218 \uCD5C\uC18C \uD45C\uBCF8 {MARKET_INDEX_MIN}\uC7A5"}
     save(data / "market" / "summary.json", out)
 
     priced = [(k, r) for k, r in listed.items() if r.get("price")]
@@ -446,7 +449,7 @@ def step_ranker_market(data, date):
     save(data / "market" / "pool.json", {"date": date, "items": pool})
     res = {"market": "ok", "market_moved": by_grade.get("1", {}).get("moved", 0),
            "market_new": len(keep), "market_index_sample": sample_size}
-    log(f"주간 시장 요약: 1강 표본 {sample_size}장 · 상위 랭커 카드 {len(ranked)}종")
+    log(f"\uC8FC\uAC04 \uC2DC\uC7A5 \uC694\uC57D: \uC804\uCCB4 \uC120\uC218\uCE74\uB4DC 1\uAC15 \uC720\uD6A8 \uD45C\uBCF8 {sample_size}\uC7A5 \u00B7 \uCD94\uC138 \uCE74\uB4DC {by_grade.get('1', {}).get('moved', 0)}\uC7A5 \u00B7 \uC778\uAE30 \uCE74\uB4DC \uD45C\uBCF8 {len(ranked)}\uC7A5")
     return res
 
 

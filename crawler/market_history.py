@@ -141,7 +141,7 @@ def _ranker_usage(html, data):
 
 
 def update(data, client, today=None):
-    """랭커 사용 상위 100개 카드의 1·5·8강 차트를 하루 한 번 갱신해요."""
+    """Refresh ranker usage only; weekly market moves use all-card daily history."""
     data = Path(data)
     today = today or dt.datetime.now(KST).date()
     if isinstance(today, str):
@@ -173,47 +173,21 @@ def update(data, client, today=None):
     if not ranked:
         return {"cards": 0, "requests": 0, "status": "no-listed-cards"}
 
+    # Weekly movers/index come from the all-card daily history in derive.py.
+    # Keep the usage basis for the separate popular list, but avoid hundreds of
+    # per-player graph requests that cannot expand the full-card market sample.
+    if len(exact_cards) >= 30:
+        ranked, basis = exact_cards, "champion-match-sample"
+    elif direct:
+        ranked, basis = direct, "official-rank-1-1000"
+    else:
+        ranked, basis = exact_cards, "champion-match-sample"
+    ranked = [x for x in ranked if str(x.get("id")) in listed and int(x.get("uses") or 0) > 0][:MAX_CARDS]
+    if not ranked:
+        return {"cards": 0, "requests": 1, "status": "no-listed-cards"}
+
     path = data / "market" / "ranker_prices.json"
     store = _load(path, {"cards": {}})
-    previous = store.get("cards") or {}
-    cards = {}
-    requests = 0
-    stopped = False
-    for row in ranked:
-        spid = int(row["id"])
-        key = str(spid)
-        item = {"uses": int(row.get("uses") or 0), "grades": {}}
-        old = previous.get(key) or {}
-        for grade in GRADES:
-            try:
-                html = client.post("/datacenter/PlayerPriceGraph",
-                                   {"spid": spid, "n1strong": grade, "rd": str(requests + 1)},
-                                   timeout=90)
-                item["grades"][str(grade)] = _chart(html, today)
-                requests += 1
-                if requests % 30 == 0:
-                    print(f"[market-history] 시세 그래프 {requests}회 수집", flush=True)
-                day_keys = [p[0] for rows in item["grades"].values() for p in rows if p and p[0]]
-                item["asOf"] = max(day_keys) if day_keys else None
-                cards[key] = item
-                _save(path, {"updated": dt.datetime.now(KST).isoformat(timespec="seconds"), "basis": basis,
-                             "cards": {**previous, **cards}})
-            except Exception as error:  # noqa: BLE001 — partial data remains usable and the next run retries
-                print(f"[market-history] {spid} {grade}강 조회 중단: {error.__class__.__name__}", flush=True)
-                for missing in GRADES:
-                    item["grades"].setdefault(str(missing), old.get("grades", {}).get(str(missing), []))
-                day_keys = [p[0] for rows in item["grades"].values() for p in rows if p and p[0]]
-                item["asOf"] = max(day_keys) if day_keys else old.get("asOf")
-                cards[key] = item
-                stopped = True
-                break
-        if stopped:
-            break
-
-    # Keep only the current sample so the price history stays small in the data branch.
-    final = {str(x["id"]): cards.get(str(x["id"])) or previous.get(str(x["id"]))
-             for x in ranked if cards.get(str(x["id"])) or previous.get(str(x["id"]))}
     _save(path, {"updated": dt.datetime.now(KST).isoformat(timespec="seconds"),
-                 "basis": basis, "cards": final})
-    return {"cards": len(final), "requests": requests, "status": "partial" if stopped else "ok",
-            "basis": basis}
+                 "basis": basis, "cards": store.get("cards") or {}})
+    return {"cards": len(ranked), "requests": 1, "status": "usage-only", "basis": basis}

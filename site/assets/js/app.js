@@ -887,6 +887,8 @@ if(LIVE)fetch(DATA_BASE+'/traits.json').then(r=>r.ok?r.json():null).then(j=>{if(
 const bigBadge=sid=>{const u=seasonImg(sid),n=sname(sid);return u?`<img class="sbig" src="${esc(u)}" alt="${esc(n)}" title="${esc(n)}" onerror="this.nextElementSibling.hidden=false;this.remove()"><span class="ssn ssn-${(SEASONS[sid]||['','special'])[1]}" hidden>${esc(n)}</span>`:sch(sid)};
 const fcCls=v=>v>=130?'v130':v>=120?'v120':v>=110?'v110':v>=100?'v100':v>=90?'v90':v>=80?'v80':v>=70?'v70':'vlow';
 let pmCard=null, pmGrade=1, pmAdaptation=5, pmData=null, pmTabL='feat', pmTabR='stat', pmTcName='', pmTcCount=0, pmGradeTcName='', pmGradeTcCount=0, pmRelName='';
+let pmRelationList=null, pmRelationLoading=false, pmRelationFailed=false;
+const PLAYER_RELATIONS=new Map();
 let TEAMCOLORS=[];
 let TC_TIER_RULES={club:{members:[3,6,8,11]},nation:{members:[3,6,8,11]},grade:{members:[5,8]}};
 let GRADE_WAVE_RULES={conditions:[
@@ -938,40 +940,27 @@ function tcMaxBonus(tc,applyGradeGate=false){
   if(Array.isArray(stats))return Object.fromEntries(stats.map(x=>[x.key||x.stat||TC_KEYS[norm(x.name||'')]||'',+(x.bonus||x.value||0)]).filter(([k,v])=>k&&v));
   return stats;
 }
-/* 관계(스페셜) 팀컬러: 이름에 선수의 클럽 경력·국가가 들어간 후보만 (예: '20-21 토트넘 홋스퍼', '2002 대한민국') */
-function relOptionsFor(D){
-  if(!D||!TEAMCOLORS.length)return [];
-  const nation=String(D.nation||'').split(',')[0].trim();
-  const keys=[...new Set([...(D.clubs||[]).map(x=>x[1]),nation].filter(Boolean).map(norm))].filter(k=>k.length>=2);
-  // 이름 앞 시즌(예: '25-26', '01-03', '2002')이 있으면 그 기간에 실제로 그 팀에 있었던 경우만
-  const span=s=>{const m=String(s||'').match(/(\d{4})\s*~\s*(\d{4})?/);return m?[+m[1],m[2]?+m[2]:9999]:null};
-  const yrs=name=>{let m=String(name).match(/^(\d{2})-(\d{2})(?!\d)/);if(m){const f=v=>(+v>50?1900:2000)+ +v;return [f(m[1]),f(m[2])]}m=String(name).match(/^((?:19|20)\d{2})(?!\d)/);return m?[+m[1],+m[1]]:null};
-  // 시즌(19-20)·기간(01-03)은 시즌 시작 해까지 입단하고 끝나는 해까지 있었던 경우, 한 해(2002)는 그해 소속인 경우
-  const hit=(a,b,y)=>y[0]===y[1]?(a<=y[0]&&b>=y[0]):(a<=y[1]-1&&b>=y[0]+1);
-  const careers=(D.clubs||[]).map(x=>({k:norm(x[1]||''),s:span(x[0])})).filter(x=>x.k.length>=2);
-  const natK=norm(nation),allSpan=careers.filter(x=>x.s).map(x=>x.s);
-  // 별칭형 관계 팀컬러는 선수의 실제 클럽 경력으로 연결해요.
-  const aliasRules=[
-    {name:/갈락티코1기/,club:'레알마드리드',start:2000,end:2006},
-    {name:/갈락티코2기/,club:'레알마드리드',start:2009,end:2018},
-    {name:/강철제국블루스/,club:'첼시',start:2003,end:2014},
-    {name:/블루스영혼의듀오/,players:['디디에드로그바','프랭크램파드']},
-    {name:/블루스의심장/,players:['디디에드로그바','프랭크램파드','마이클에시앙','히카르두카르발류']}
-  ];
-  const aliasMatch=(nm,y)=>aliasRules.some(r=>{
-    if(!r.name.test(nm))return false;
-    if(r.players)return r.players.includes(norm(D.name||''));
-    return careers.some(c=>c.k.includes(norm(r.club))&&(!c.s||(r.start?hit(c.s[0],c.s[1],[r.start,r.end]):(!y||hit(c.s[0],c.s[1],y)))));
-  });
-  return TEAMCOLORS.filter(tc=>{if(!/special|relation|관계|스페셜/.test(TC_TYPE(tc)))return false;const nm=norm(tc.name),y=yrs(tc.name);
-      if(aliasMatch(nm,y))return true;
-      if(!y)return keys.some(k=>nm.includes(k));
-      if(careers.some(c=>nm.includes(c.k)&&c.s&&hit(c.s[0],c.s[1],y)))return true;
-      if(!(natK.length>=2&&nm.includes(natK)&&allSpan.some(s=>hit(s[0],s[1],y))))return false;   // 국가 관계 팀컬러: 그 해에 현역이었을 때만
-      if(/U-?\d{2}/i.test(tc.name)){const first=Math.min(...allSpan.map(s=>s[0]));return first>=y[0]-4}   // 연령별 대표(U-20 등): 그 무렵 데뷔한 선수만
-      return true;
-    })
-    .sort((a,b)=>String(b.name).localeCompare(String(a.name),'ko'));
+async function loadPlayerRelations(spid){
+  const key=String(spid);
+  if(!PLAYER_RELATIONS.has(key)){
+    const pending=fetch(`/api/player-teamcolors?spid=${encodeURIComponent(key)}`).then(async r=>{
+      if(!r.ok)throw new Error('Official relation teamcolors unavailable');
+      const data=await r.json();
+      if(!Array.isArray(data.items))throw new Error('Invalid relation teamcolor response');
+      return data.items;
+    });
+    PLAYER_RELATIONS.set(key,pending);
+    pending.catch(()=>PLAYER_RELATIONS.delete(key));
+  }
+  return PLAYER_RELATIONS.get(key);
+}
+/* 선수별 관계 팀컬러: 넥슨 선수 상세 화면의 관계 팀컬러 명단만 사용 */
+function relOptionsFor(){
+  if(!Array.isArray(pmRelationList))return [];
+  return pmRelationList.map(item=>{
+    const meta=TEAMCOLORS.find(tc=>String(tc.id||'')===String(item.id))||TEAMCOLORS.find(tc=>norm(tc.name)===norm(item.name));
+    return meta?{...meta,id:item.id,name:item.name,type:'relation'}:{id:item.id,name:item.name,type:'relation',effects:[]};
+  }).filter(x=>x.name);
 }
 /* 전 포지션 OVR: 세부 능력치 가중 평균(FIFA 계열 포지션 공식) + 선호 포지션 실제값으로 보정 */
 const POS_W={
@@ -1026,9 +1015,11 @@ function tcLevelFor(tc,count){
 function openCard(id){
   const c=CARDS.find(x=>x.id===id)||{id,name:'',sid:Math.floor(id/1e6),pid:id%1e6};
   pmCard=c;pmGrade=1;pmAdaptation=5;pmData=null;pmTabL='feat';pmTabR='stat';pmTcName='';pmTcCount=0;pmGradeTcName='';pmGradeTcCount=0;pmRelName='';
+  pmRelationList=null;pmRelationLoading=LIVE;pmRelationFailed=!LIVE;
   renderCard();
   $('pmodal').hidden=false;document.body.style.overflow='hidden';
   cardData(id).then(d=>{if(pmCard&&pmCard.id===id){pmData=d;renderCard()}});
+  if(LIVE)loadPlayerRelations(id).then(items=>{if(pmCard&&pmCard.id===id){pmRelationList=items;pmRelationLoading=false;pmRelationFailed=false;renderCard()}}).catch(()=>{if(pmCard&&pmCard.id===id){pmRelationList=[];pmRelationLoading=false;pmRelationFailed=true;renderCard()}});
 }
 function renderCard(){
   const c=pmCard, g=pmGrade, b=GRADE_BONUS[g]||0, d=pmData, L=d&&d.l, D=d&&d.d;
@@ -1041,7 +1032,7 @@ function renderCard(){
   const tcLevel=tc?(+((tcMaxEffect(tc)||{}).level)||tc.maxLevel||0):0, tcBonuses=tcMaxBonus(tc);
   const gradeTcRule=gradeWaveRule(gradeTc);
   const gradeTcLevel=gradeTc?(+((tcMaxEffect(gradeTc)||{}).level)||gradeTc.maxLevel||0):0, gradeTcBonuses=tcMaxBonus(gradeTc,true);
-  const relOptions=relOptionsFor(D), relTc=relOptions.find(x=>x.name===pmRelName)||null, relBonuses=tcMaxBonus(relTc);
+  const relOptions=relOptionsFor(), relTc=relOptions.find(x=>x.name===pmRelName)||null, relBonuses=tcMaxBonus(relTc);
   const tcCombined={...tcBonuses};[gradeTcBonuses,relBonuses].forEach(src=>Object.entries(src).forEach(([k,v])=>{tcCombined[k]=(+tcCombined[k]||0)+(+v||0)}));
   const tcOverall=tcValue(tcCombined,'all','전체 능력치');
   // 수집 카드 능력치는 적응도 1단계 기준. 단계마다 모든 능력치 +1 (데이터센터 실측으로 확인).
@@ -1049,6 +1040,8 @@ function renderCard(){
   const dtext=v=>v>0?`+${v}`:String(v);
   const tcOptHtml=tcOptions.length?`<option value="">팀컬러 선택</option>${tcOptions.map(x=>`<option value="${esc(x.name)}"${x.name===pmTcName?' selected':''}>${esc(x.name)} (${TC_TYPE(x).includes('nation')||TC_TYPE(x).includes('국가')?'국가':'클럽'})</option>`).join('')}`:'<option value="">적용 가능한 팀컬러 없음</option>';
   const gradeTcOptHtml=gradeTcOptions.length?`<option value="">강화 물결 선택</option>${gradeTcOptions.map(x=>`<option value="${esc(x.name)}"${x.name===pmGradeTcName?' selected':''}>${esc(x.name)}</option>`).join('')}`:'<option value="">강화 물결 데이터 없음</option>';
+  const relTcPlaceholder=pmRelationLoading?'넥슨 관계 팀컬러를 불러오는 중이에요…':pmRelationFailed?'공식 관계 팀컬러 조회 실패':'관계 팀컬러 후보 없음';
+  const relTcOptHtml=relOptions.length?`<option value="">관계 팀컬러 선택</option>${relOptions.map(x=>`<option value="${esc(x.name)}"${x.name===pmRelName?' selected':''}>${esc(x.name)}</option>`).join('')}`:`<option value="">${relTcPlaceholder}</option>`;
   const main=pos[0], price=L&&L.price?L.price[g-1]:null, at=L&&L.at?new Date(L.at):null;
   const others=CARDS.filter(x=>x.pid===c.pid&&x.id!==c.id).sort((a,b2)=>((ix(b2.id)||[])[0]||0)-((ix(a.id)||[])[0]||0)||b2.sid-a.sid);
   const fmtAt=t=>`${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
@@ -1088,8 +1081,8 @@ function renderCard(){
      <label>적응도<select id="pmAdaptation">${[1,2,3,4,5].map(n=>`<option value="${n}"${n===pmAdaptation?' selected':''}>${n}${n===5?' (최대)':''}</option>`).join('')}</select></label>
      <label>소속 팀컬러<select id="pmTc"${tcOptions.length?'':' disabled'}>${tcOptHtml}</select></label>
      <label>강화 물결<select id="pmGradeTc"${gradeTcOptions.length?'':' disabled'}>${gradeTcOptHtml}</select></label>
-     <label>관계 팀컬러<select id="pmRel"${relOptions.length?'':' disabled'}>${relOptions.length?`<option value="">관계 팀컬러 선택</option>${relOptions.map(x=>`<option value="${esc(x.name)}"${x.name===pmRelName?' selected':''}>${esc(x.name)}</option>`).join('')}`:'<option value="">후보 없음</option>'}</select></label>
-     <p class="pm2-note">${[`강화 ${g} ${dtext(b)}`,`적응도 ${pmAdaptation} ${dtext(adaptDelta)}`,tc?`${esc(tc.name)} ${tcLevel}단계`:'',relTc?`${esc(relTc.name)} 적용`:'',gradeTc?(gradeWaveMeets(gradeTc)?`${esc(gradeTc.name)} 전체 +${tcValue(gradeTcBonuses,'all','전체 능력치')}`:`${esc(gradeTc.name)}은 ${gradeTcRule&&gradeTcRule.minGrade}강부터`):''].filter(Boolean).join(' · ')}<br>팀컬러는 데이터센터 최고 단계 효과 기준이에요. 관계 팀컬러는 이름에 선수 클럽·국가가 들어간 후보예요(실제 명단은 데이터센터 확인).</p>
+     <label>관계 팀컬러<select id="pmRel"${relOptions.length?'':' disabled'}>${relTcOptHtml}</select></label>
+     <p class="pm2-note">${[`강화 ${g} ${dtext(b)}`,`적응도 ${pmAdaptation} ${dtext(adaptDelta)}`,tc?`${esc(tc.name)} ${tcLevel}단계`:'',relTc?`${esc(relTc.name)} 적용`:'',gradeTc?(gradeWaveMeets(gradeTc)?`${esc(gradeTc.name)} 전체 +${tcValue(gradeTcBonuses,'all','전체 능력치')}`:`${esc(gradeTc.name)}은 ${gradeTcRule&&gradeTcRule.minGrade}강부터`):''].filter(Boolean).join(' · ')}<br>관계 팀컬러는 넥슨 선수 상세에 표시된 해당 선수의 명단이에요.</p>
    </div>`;
   $('pmBody').innerHTML=`<div class="pm2">
   <div class="pm2-h"><b>선수 정보</b></div>

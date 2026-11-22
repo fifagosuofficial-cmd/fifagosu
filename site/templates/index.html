@@ -123,10 +123,14 @@
     <button class="go" type="submit">진단하기</button>
   </form>
   <div class="board" id="dBoard"></div>
-  <section><h2>약점 진단 <small id="dSub"></small></h2><div class="cards" id="dCards"></div></section>
-  <section><h2>상세 분석</h2><div class="tabs" role="tablist" id="dTabs"></div><div class="panel" id="dPanel"></div></section>
+  <section class="dsum" id="dSum" aria-label="최근 경기 요약"></section>
+  <section class="dtip" id="dTip" hidden aria-label="피파고수의 한마디"></section>
+  <div class="dsecs" id="dSecs">
+    <section id="dWeakSec"><h2>약점 진단 <small id="dSub"></small></h2><div class="dcards" id="dCards"></div></section>
+    <section id="dDetailSec"><h2>상세 분석</h2><div class="tabs" role="tablist" id="dTabs"></div><div class="panel" id="dPanel"></div></section>
+  </div>
   <div class="slot" data-slot="diag-1"></div>
-  <section><h2>경기 기록 <small>누르면 상세 비교</small></h2><div class="matches" id="dMatches"></div></section>
+  <section><details class="dall"><summary>전체 경기 기록 <small id="dAllN"></small></summary><div id="dMatches"></div></details></section>
 </main>
 
 

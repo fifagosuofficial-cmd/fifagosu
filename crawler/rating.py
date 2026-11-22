@@ -181,6 +181,24 @@ def add_match(agg, d):
     return nxt, used
 
 
+def champion_cards(d):
+    """정상 종료된 공식 1:1 경기에서 챔피언스 이상(division ≤ 900)이 쓴 카드 ID."""
+    mi = d.get("matchInfo") or []
+    if len(mi) != 2 or not all(side_ok(s) for s in mi):
+        return []
+    cards = []
+    for side in mi:
+        div = side.get("division")
+        if not div or div > CHAMP:
+            continue
+        for player in side.get("player") or []:
+            pos, spid = player.get("spPosition"), player.get("spId")
+            if pos is None or pos < 0 or pos >= SUB or not spid:
+                continue
+            cards.append(int(spid))
+    return cards
+
+
 def collect(api, mt, seeds, cap):
     """경기 종류 하나에 대해 눈덩이 표본 수집 → (Agg, 통계)"""
     agg = Agg()
@@ -191,6 +209,7 @@ def collect(api, mt, seeds, cap):
             heapq.heappush(heap, (9998, len(queued), o))     # 시드는 등급을 몰라도 먼저 방문
             queued.add(o)
     used_matches = taken = 0
+    ranker_matches = {}
     while heap and taken < cap:
         _, _, ouid = heapq.heappop(heap)
         if ouid in visited:
@@ -216,13 +235,56 @@ def collect(api, mt, seeds, cap):
             if not mid or mid in seen:
                 continue
             seen.add(mid)
+            if mt == "50":
+                cards = champion_cards(d)
+                if cards:
+                    match_date = d.get("matchDate") or ""
+                    try:
+                        parsed = dt.datetime.fromisoformat(match_date.replace("Z", "+00:00"))
+                        match_date = parsed.astimezone(KST).date().isoformat()
+                    except (TypeError, ValueError):
+                        match_date = dt.datetime.now(KST).date().isoformat()
+                    ranker_matches[str(mid)] = {"date": match_date, "cards": cards}
             nxt, used = add_match(agg, d)
             used_matches += used
             for div, o in nxt:
                 if o not in queued:
                     queued.add(o)
                     heapq.heappush(heap, (div, len(queued), o))
-    return agg, {"users": len(visited), "matches": len(seen), "used": used_matches}
+    return agg, {"users": len(visited), "matches": len(seen), "used": used_matches,
+                 "ranker_matches": ranker_matches}
+
+
+def save_ranker_usage(data, fresh_matches, today=None):
+    """최근 7일간 챔피언스 이상 공식경기에서 실제 사용된 카드 표본을 보존해요."""
+    data = Path(data)
+    today = today or dt.datetime.now(KST).date().isoformat()
+    path = data / "market" / "ranker_usage.json"
+    try:
+        previous = json.loads(path.read_text("utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        previous = {}
+    matches = previous.get("matches") or {}
+    for mid, row in (fresh_matches or {}).items():
+        matches.setdefault(str(mid), row)
+    cutoff = dt.date.fromisoformat(today) - dt.timedelta(days=6)
+    matches = {mid: row for mid, row in matches.items()
+               if row.get("date") and dt.date.fromisoformat(row["date"]) >= cutoff}
+    counts = {}
+    for row in matches.values():
+        for spid in row.get("cards") or []:
+            key = str(spid)
+            counts[key] = counts.get(key, 0) + 1
+    cards = [{"id": int(spid), "uses": n} for spid, n in counts.items()]
+    cards.sort(key=lambda x: (-x["uses"], x["id"]))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps({"updated": dt.datetime.now(KST).isoformat(timespec="seconds"),
+                               "start": cutoff.isoformat(), "end": today,
+                               "matches": matches, "cards": cards},
+                              ensure_ascii=False, separators=(",", ":")), "utf-8")
+    tmp.replace(path)
+    return cards
 
 
 def run(api, seeds, data=DATA, out_name="rating.json", save=True):
@@ -235,12 +297,15 @@ def run(api, seeds, data=DATA, out_name="rating.json", save=True):
     out = {"updated": dt.datetime.now(KST).isoformat(timespec="seconds"), "src": {"users": 0, "matches": 0}}
     per = max(1, api.max_details // len(MATCH_TYPES))
     changed = False
+    ranker_matches = {}
     for mt in MATCH_TYPES:
         try:
             agg, st = collect(api, mt, seeds, per)
         except Exception as e:  # noqa: BLE001 — 한 종류가 실패해도 다른 종류·이전 값은 지켜요
             log(f"{mt} 수집 실패:", e.__class__.__name__, str(e)[:160])
-            agg, st = None, {"users": 0, "matches": 0, "used": 0}
+            agg, st = None, {"users": 0, "matches": 0, "used": 0, "ranker_matches": {}}
+        if mt == "50":
+            ranker_matches = st.get("ranker_matches") or {}
         res = agg.result() if agg else {"groups": {}}
         if st["used"] >= MIN_MATCHES and res["groups"]:
             out[mt] = res
@@ -253,6 +318,10 @@ def run(api, seeds, data=DATA, out_name="rating.json", save=True):
         out["src"]["users"] += st["users"]
         out["src"]["matches"] += st["matches"]
     out["src"]["calls"] = api.calls
+    if save:
+        cards = save_ranker_usage(data, ranker_matches)
+        if cards:
+            log(f"챔피언스 이상 공식경기 사용 카드: {len(cards)}종 · 최근 7일")
     if not changed:
         log("새로 모은 표본이 부족해 파일을 바꾸지 않아요")
         return prev or None
@@ -330,6 +399,17 @@ def main(argv=None):
         run(api, seeds, a.data)
     except Exception as e:  # noqa: BLE001 — 평점 기준은 없어도 사이트가 동작(이전 파일 유지)
         log("실패(이전 파일 유지):", e.__class__.__name__, str(e)[:200])
+    try:
+        import derive
+        import fgcrawl
+        import market_history
+        data = Path(a.data)
+        if not (data / "market" / "ranker_usage.json").exists():
+            save_ranker_usage(data, {})
+        market_history.update(data, fgcrawl.Client())
+        derive.step_market(data, dt.datetime.now(KST).date().isoformat())
+    except Exception as e:  # noqa: BLE001 — 시세 차트 오류가 평점 수집을 실패시키지 않게 해요
+        log("홈 시세 차트 갱신 실패(기존 데이터 유지):", e.__class__.__name__, str(e)[:180])
     return 0
 
 

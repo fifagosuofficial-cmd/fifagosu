@@ -212,6 +212,10 @@ MARKET_MIN_PRICE = 5_000_000         # 이보다 싼 카드는 등락률이 튀�
 MARKET_MIN_GAMES = 10                # 거래·사용이 거의 없는 카드 제외
 MARKET_TOP = 10
 NEW_KEEP_DAYS = 14
+MARKET_RANKER_CAP = 100              # 챔피언스 이상 공식경기 사용량 상위 카드만 가격 그래프 조회
+MARKET_INDEX_MIN = 30                # 표본이 이보다 적으면 시장지수는 숨겨요
+MARKET_WEEK_PRICE_MIN = 1_000_000    # 저가 카드의 시세 왜곡을 줄이는 주간 비교 하한
+MARKET_WEEK_DAYS = 7
 
 
 def _item(k, r, v, pv):
@@ -226,6 +230,8 @@ def _item(k, r, v, pv):
 def step_market(data, date):
     """시세 이력에서 오늘 등락 TOP·인기 카드·시장 지수·신규 카드를 뽑아 market/summary.json 하나로 저장.
     데이터센터 요청은 늘지 않아요(이미 저장한 list·hist만 읽음)."""
+    if (Path(data) / "market" / "ranker_usage.json").exists():
+        return step_ranker_market(data, date)
     hdir = data / "hist"
     meta = load(hdir / "dates.json", {"dates": []})
     dates = meta.get("dates") or []
@@ -311,6 +317,136 @@ def step_market(data, date):
     save(data / "market" / "pool.json", {"date": date, "items": pool})
     res = {"market": "ok", "market_moved": by_grade.get("1", {}).get("moved", 0), "market_new": len(keep)}
     log(f"시장 요약: 1강 등락 집계 {res['market_moved']}장 · 신규 카드 {len(keep)}장")
+    return res
+
+
+def step_ranker_market(data, date):
+    """상위 랭커 사용 카드의 데이터센터 최근 7일 차트를 요약해요."""
+    data = Path(data)
+    listed = {}
+    for n in range(SHARDS):
+        listed.update(load(data / "list" / f"{n}.json", {}))
+    top_usage = load(data / "market" / "ranker_top_usage.json", {})
+    usage = load(data / "market" / "ranker_usage.json", {})
+    price_data = load(data / "market" / "ranker_prices.json", {})
+    price_cards = price_data.get("cards") or {}
+    exact_cards = usage.get("cards") or []
+    basis = price_data.get("basis")
+    if basis == "champion-match-sample":
+        ranked = exact_cards
+        rank_label = "챔피언스 이상 공식경기 사용 표본"
+    elif basis == "official-rank-1-1000":
+        ranked = top_usage.get("cards") or []
+        rank_label = "전일 공식 1:1 상위 1,000위 사용 표본"
+    elif len(exact_cards) >= MARKET_INDEX_MIN:
+        ranked, rank_label = exact_cards, "챔피언스 이상 공식경기 사용 표본"
+    else:
+        ranked = top_usage.get("cards") or exact_cards
+        rank_label = "전일 공식 1:1 상위 1,000위 사용 표본" if top_usage.get("cards") else "챔피언스 이상 공식경기 사용 표본"
+    ranked = [x for x in ranked
+              if str(x.get("id")) in listed and int(x.get("uses") or 0) > 0][:MARKET_RANKER_CAP]
+    today = dt.date.fromisoformat(date)
+    by_grade, index_pcts, as_of = {}, [], []
+
+    def week(row, grade):
+        points = row.get("grades", {}).get(str(grade)) or []
+        prices = {}
+        for point in points:
+            if isinstance(point, list) and len(point) >= 2 and point[0]:
+                try:
+                    prices[dt.date.fromisoformat(point[0])] = int(point[1] or 0)
+                except (TypeError, ValueError):
+                    continue
+        ends = [d for d, value in prices.items() if value > 0 and d <= today and (today - d).days <= 3]
+        if not ends:
+            return None
+        end = max(ends)
+        target = end - dt.timedelta(days=MARKET_WEEK_DAYS)
+        starts = [d for d, value in prices.items() if value > 0 and target - dt.timedelta(days=2) <= d <= target]
+        if not starts:
+            return None
+        start = max(starts)
+        first, last = prices[start], prices[end]
+        if first < MARKET_WEEK_PRICE_MIN or last < MARKET_WEEK_PRICE_MIN:
+            return None
+        return start, first, end, last, round((last - first) / first * 100, 1)
+
+    for grade in MARKET_GRADES:
+        moves, popular = [], []
+        for rnk in ranked:
+            key = str(rnk["id"])
+            rec = listed.get(key) or {}
+            stored = price_cards.get(key) or {}
+            change = week(stored, grade)
+            if change:
+                start, first, end, last, pct = change
+                item = _item(key, rec, last, first)
+                item.update(c=pct, u=int(rnk.get("uses") or 0), fromDate=start.isoformat(), toDate=end.isoformat())
+                moves.append(item)
+                as_of.append(end)
+                if grade == 1:
+                    index_pcts.append(pct)
+            # Popularity comes from the ranker sample; price may use the latest chart point
+            # or the daily data-center list when a chart is unavailable.
+            chart_points = stored.get("grades", {}).get(str(grade)) or []
+            chart_price = next((int(p[1]) for p in reversed(chart_points)
+                                if isinstance(p, list) and len(p) >= 2 and p[1]), None)
+            prices = rec.get("price") or []
+            current = chart_price or (prices[grade - 1] if len(prices) >= grade else None)
+            if current:
+                x = _item(key, rec, current, None)
+                x["u"] = int(rnk.get("uses") or 0)
+                popular.append(x)
+        risers = sorted((x for x in moves if x["c"] > 0), key=lambda x: -x["c"])[:MARKET_TOP]
+        fallers = sorted((x for x in moves if x["c"] < 0), key=lambda x: x["c"])[:MARKET_TOP]
+        by_grade[str(grade)] = {"risers": risers, "fallers": fallers,
+                                "popular": popular[:MARKET_TOP], "moved": len(moves)}
+
+    index = None
+    if len(index_pcts) >= MARKET_INDEX_MIN:
+        values = sorted(index_pcts)
+        med = values[len(values) // 2] if len(values) % 2 else round((values[len(values) // 2 - 1] + values[len(values) // 2]) / 2, 1)
+        index = {"median": med, "avg": round(sum(values) / len(values), 2), "n": len(values),
+                 "up": sum(x > 0 for x in values), "down": sum(x < 0 for x in values),
+                 "flat": sum(x == 0 for x in values)}
+
+    newp = data / "market" / "new_cards.json"
+    keep = load(newp, {"items": []}).get("items") or []
+    today_new = load(data / "meta" / "new_today.json", {})
+    if today_new.get("date") == date:
+        names = {int(x["id"]): x.get("name", "") for x in load(data / "meta" / "spid.json", [])}
+        have = {x["id"] for x in keep}
+        for spid in today_new.get("ids", []):
+            if spid not in have:
+                rec = listed.get(str(spid)) or {}
+                keep.append({"id": spid, "n": rec.get("name") or names.get(spid, ""),
+                             "s": spid // 1_000_000, "o": rec.get("ovr"), "d": date})
+    cutoff = (today - dt.timedelta(days=NEW_KEEP_DAYS)).isoformat()
+    keep = [x for x in keep if x.get("d", "") >= cutoff]
+    keep.sort(key=lambda x: (x.get("d", ""), x.get("o") or 0), reverse=True)
+    save(newp, {"items": keep})
+
+    data_dates = list(as_of)
+    data_dates.extend(dt.date.fromisoformat((price_cards.get(str(x["id"])) or {}).get("asOf"))
+                      for x in ranked if (price_cards.get(str(x["id"])) or {}).get("asOf"))
+    as_of_date = max(data_dates).isoformat() if data_dates else date
+    start_date = (dt.date.fromisoformat(as_of_date) - dt.timedelta(days=MARKET_WEEK_DAYS)).isoformat()
+    sample_size = len(index_pcts)
+    out = {"date": as_of_date, "prev": start_date, "days": MARKET_WEEK_DAYS,
+           "grades": MARKET_GRADES, "index": index, "indexSample": sample_size,
+           "indexMinimum": MARKET_INDEX_MIN, "byGrade": by_grade,
+           "newCards": keep[:24], "newCount": len(keep),
+           "rankLabel": rank_label,
+           "rule": f"{rank_label} · 100만 BP 이상 · 최근 7일 시세 · 지수 최소 표본 {MARKET_INDEX_MIN}장"}
+    save(data / "market" / "summary.json", out)
+
+    priced = [(k, r) for k, r in listed.items() if r.get("price")]
+    pool = [[int(k), listed[k].get("name") or "", listed[k].get("ovr") or 0,
+             [sig3(x) if x else 0 for x in (listed[k].get("price") or [])[:13]]] for k, _ in priced]
+    save(data / "market" / "pool.json", {"date": date, "items": pool})
+    res = {"market": "ok", "market_moved": by_grade.get("1", {}).get("moved", 0),
+           "market_new": len(keep), "market_index_sample": sample_size}
+    log(f"주간 시장 요약: 1강 표본 {sample_size}장 · 상위 랭커 카드 {len(ranked)}종")
     return res
 
 

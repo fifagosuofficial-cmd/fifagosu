@@ -775,6 +775,7 @@ a.mk-tile:hover{border-color:var(--accent)}
 .mk-c{font:800 13px var(--f-data);text-align:right;color:var(--muted)}
 .mk-c.up{color:var(--up)}.mk-c.down{color:var(--down)}
 .mk-empty{color:var(--muted);font-size:13px;padding:14px 2px;margin:0}
+.mk-pop-note{padding:0 2px 8px}
 .mk-new h2,.mk-news .h2-sec{font-size:16px;display:flex;align-items:center;gap:8px}
 .mk-new h2 small{color:var(--muted);font-weight:400;font-size:12px}
 .mk-new .h2-more,.mk-news .h2-more{margin-left:auto;font-size:13px}

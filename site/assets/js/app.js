@@ -222,8 +222,8 @@ function analyze(data,mode){
     ['역전승',firstGoal.filter(x=>x.first==='op'&&x.res==='승').length,null],['역전패',firstGoal.filter(x=>x.first==='me'&&x.res==='패').length,null],
     ['무실점 경기',me.filter((s,i)=>op[i].shoot.goalTotal===0).length,null],['3골 이상 득점 경기',me.filter(s=>s.shoot.goalTotal>=3).length,null]];
   const pl={};
-  me.forEach(s=>s.player.forEach(x=>{(pl[x.spId]??=({name:x.name,pos:x.pos,grade:x.spGrade,seasonId:Math.floor(x.spId/1e6),r:[],g:0,a:0})).r.push(x.status.spRating);pl[x.spId].g+=x.status.goal;pl[x.spId].a+=x.status.assist;const t=(pl[x.spId].t??={});PK.forEach(k=>t[k]=(t[k]||0)+(x.status[k]||0))}));
-  const players=Object.values(pl).map(x=>({...x,apps:x.r.length,avg:sum(x.r,v=>v)/x.r.length}));
+  me.forEach(s=>s.player.forEach(x=>{(pl[x.spId]??=({spId:x.spId,name:x.name,pos:x.pos,po:POS_CODE.indexOf(x.pos),grade:x.spGrade,seasonId:Math.floor(x.spId/1e6),r:[],g:0,a:0,w:0,d:0})).r.push(x.status.spRating);if(s.matchDetail.matchResult==='승')pl[x.spId].w++;else if(s.matchDetail.matchResult==='무')pl[x.spId].d++;pl[x.spId].g+=x.status.goal;pl[x.spId].a+=x.status.assist;const t=(pl[x.spId].t??={});PK.forEach(k=>t[k]=(t[k]||0)+(x.status[k]||0))}));
+  const players=Object.values(pl).map(x=>({...x,apps:x.r.length,avg:sum(x.r,v=>v)/x.r.length,wr:x.w/x.r.length}));
   const teamAvg=sum(players,x=>x.avg)/players.length;
   players.forEach(x=>x.low=x.apps>=5&&x.avg<=teamAvg-0.5);
   const worst=players.filter(x=>x.low).sort((a,b)=>a.avg-b.avg)[0];
@@ -272,7 +272,9 @@ function analyze(data,mode){
   const bi=t=>Math.min(5,Math.floor(t/900));
   A.goalsDetail.forEach(s=>bins[bi(s.goalTime)].f++); conceded.forEach(s=>bins[bi(s.goalTime)].a++);
   const order=Object.keys(XY);
-  return {n,W,D,L,gf:A.goals,ga:B.goals,weak,strong,bins,shots:A.shotsDetail,stats,flow,players:players.sort((a,b)=>order.indexOf(a.pos)-order.indexOf(b.pos)),teamAvg,forms,lines,myForm,dm};
+  // 경기 흐름(오래된 경기 → 최근 경기)
+  const seq=M.map(m=>{const [x,y]=m.matchInfo;return {r:x.matchDetail.matchResult,gf:x.shoot.goalTotal,ga:y.shoot.goalTotal,opp:y.nickname,date:m.matchDate,poss:x.matchDetail.possession}}).reverse();
+  return {n,W,D,L,gf:A.goals,ga:B.goals,weak,strong,bins,shots:A.shotsDetail,stats,flow,seq,players:players.sort((a,b)=>order.indexOf(a.pos)-order.indexOf(b.pos)),teamAvg,forms,lines,myForm,dm};
 }
 
 
@@ -442,13 +444,73 @@ function dRenderBoard(d,a){
   <div class="record">${d.real?`<div><span class="k">데이터</span><span class="v" style="font-size:13px">넥슨 Open API${d.snapDate?' · '+esc(d.snapDate):''}</span></div>`:d.sample?'<div><span class="k">데이터</span><span class="v" style="font-size:13px;color:var(--warn,#e0a030)">예시(가상)</span></div>':''}<div><span class="k">최근</span><span class="v">${a.n}경기${d.forfeit?`<small style="display:block;font-size:11px;font-weight:400;color:var(--muted)">몰수 ${d.forfeit}경기 제외</small>`:''}</span></div><div><span class="k">승·무·패</span><span class="v">${a.W}·${a.D}·${a.L}</span></div><div><span class="k">승률</span><span class="v">${Math.round(a.W/a.n*100)}%</span></div><div><span class="k">득실</span><span class="v">${a.gf}:${a.ga}</span></div></div>`;
 }
 function cmpRows(x){const mn=x.min??0,mx=x.max??Math.max(x.me,x.opp,0.0001)*1.15,w=v=>Math.max(3,Math.min(100,(v-mn)/(mx-mn)*100));
-  return `<div class="cmp"><span>나</span><div class="bar me"><i style="width:${w(x.me)}%"></i></div><span class="num">${x.fmt(x.me)}</span><span>${x.oppLabel??'상대 평균'}</span><div class="bar"><i style="width:${w(x.opp)}%"></i></div><span class="num">${x.fmt(x.opp)}</span></div><p style="font-size:12px">${x.unit}</p>`}
+  return `<div class="cmp2"><div class="cr"><span>나</span><div class="bar me"><i style="width:${w(x.me)}%"></i></div><b>${x.fmt(x.me)}</b></div><div class="cr"><span>${x.oppLabel??'상대'}</span><div class="bar"><i style="width:${w(x.opp)}%"></i></div><b>${x.fmt(x.opp)}</b></div></div>`}
 function dRenderCards(a){
   $('dSub').textContent=`최근 ${a.n}경기 · 내가 만난 상대들과 비교`;
   if(!a.weak.length&&!a.strong){$('dCards').innerHTML='<div class="empty">뚜렷한 약점이 보이지 않아요.</div>';return}
-  $('dCards').innerHTML=a.weak.map((x,i)=>`<article class="card ${i?'mid':''}"><div class="topr"><h3>${esc(x.weak)}</h3><span class="pill no">약점 ${i+1}</span></div><p>${esc(x.desc)}</p>${cmpRows(x)}<p class="fix">${x.fix}</p></article>`).join('')+
-    (a.strong?`<article class="card strength"><div class="topr"><h3>${esc(a.strong.strong)}</h3><span class="pill ok">강점</span></div><p>${esc(a.strong.desc)}</p>${cmpRows(a.strong)}<p class="fix">${esc(a.strong.sfix)}</p></article>`:'');
+  $('dCards').innerHTML=a.weak.map((x,i)=>`<article class="wcard ${i?'mid':''}"><div class="wtop"><span class="pill no">약점 ${i+1}</span><h3>${esc(x.weak)}</h3></div><p class="wdesc">${esc(x.desc)}</p>${cmpRows(x)}<p class="wfix">${x.fix}</p></article>`).join('')+
+    (a.strong?`<article class="wcard strength"><div class="wtop"><span class="pill ok">강점</span><h3>${esc(a.strong.strong)}</h3></div><p class="wdesc">${esc(a.strong.desc)}</p>${cmpRows(a.strong)}<p class="wfix">${esc(a.strong.sfix)}</p></article>`:'');
 }
+/* ---------- 상단 요약: 최근 흐름 · 경기별 득실 그래프 · 핵심 수치 ---------- */
+const RCLS={승:'W',무:'D',패:'L'};
+function dRenderSummary(d,a){
+  const seq=a.seq,n=seq.length,last=seq[n-1];let st=1;for(let i=n-2;i>=0&&seq[i].r===last.r;i--)st++;
+  const md=s=>{const t=new Date(s);return `${t.getMonth()+1}/${t.getDate()}`};
+  const W=Math.max(320,n*14),H=86,mid=46,mx=Math.max(3,...seq.map(x=>Math.abs(x.gf-x.ga))),bw=W/n,sc=v=>v/mx*34;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="ds-chart" role="img" aria-label="경기별 득실 차"><line x1="0" x2="${W}" y1="${mid}" y2="${mid}" stroke="var(--line)"/>`;
+  seq.forEach((x,i)=>{const df=x.gf-x.ga,h=Math.max(3,sc(Math.abs(df))),cx=i*bw+bw*0.15,w=bw*0.7,c=x.r==='승'?'var(--good)':x.r==='패'?'var(--crit)':'var(--muted)';
+    svg+=`<rect x="${cx}" y="${df>=0?mid-h:mid}" width="${w}" height="${h}" rx="2" fill="${c}"><title>${md(x.date)} vs ${esc(x.opp)} ${x.gf}:${x.ga} (${x.r})</title></rect>`});
+  svg+='</svg>';
+  const f=Object.fromEntries(a.flow.map(x=>[x[0],x])),pct=v=>v==null?'-':Math.round(v*100)+'%';
+  const w5=seq.slice(-5).filter(x=>x.r==='승').length,w10=seq.slice(-10).filter(x=>x.r==='승').length;
+  const kpi=[['승률',pct(a.W/a.n),`${a.W}승 ${a.D}무 ${a.L}패`],['경기당 득점',(a.gf/a.n).toFixed(2),`총 ${a.gf}골`],['경기당 실점',(a.ga/a.n).toFixed(2),`총 ${a.ga}골`],
+    ['최근 10경기',`${w10}승`,`최근 5경기 ${w5}승`],['선제골 시 승률',pct(f['선제골 넣은 경기 승률'][1]),`${f['선제골 넣은 경기 승률'][2]}경기`],['역전승 · 역전패',`${f['역전승'][1]} · ${f['역전패'][1]}`,`무실점 ${f['무실점 경기'][1]}경기`]];
+  const stTxt=last.r==='승'?`${st}연승 중`:last.r==='패'?`${st}연패 중`:st>1?`${st}경기 연속 무승부`:'최근 경기 무승부';
+  $('dSum').innerHTML=`<div class="ds-flow"><div class="ds-h"><b>최근 ${n}경기 흐름</b><span class="ds-streak ${RCLS[last.r]}">${stTxt}</span><small>왼쪽이 오래된 경기 · 막대에 마우스를 올리면 상대·스코어</small></div>
+    ${svg}<div class="ds-dots">${seq.map(x=>`<i class="${RCLS[x.r]}" title="${md(x.date)} vs ${esc(x.opp)} ${x.gf}:${x.ga}">${x.r}</i>`).join('')}</div></div>
+    <div class="ds-kpi">${kpi.map(([k,v,s2])=>`<div><span>${k}</span><b>${v}</b><small>${s2}</small></div>`).join('')}</div>`;
+}
+/* ---------- 피파고수의 한마디: 약점·흐름·랭커 비교를 종합한 조언 ---------- */
+function dAdvice(a){
+  const pct=v=>Math.round(v*100),seq=a.seq,n=seq.length,last=seq[n-1];let st=1;for(let i=n-2;i>=0&&seq[i].r===last.r;i--)st++;
+  const w5=seq.slice(-5).filter(x=>x.r==='승').length,out=[];
+  if(last.r==='승'&&st>=3)out.push(`지금 <b>${st}연승</b> 중이에요! 이길 때의 전술·스쿼드는 그대로 유지하는 게 좋아요.`);
+  else if(last.r==='패'&&st>=3)out.push(`<b>${st}연패</b> 중이에요. 연패 땐 바로 다시 돌리기보다 잠깐 쉬고, 아래 숙제 하나만 고쳐서 도전해 보세요.`);
+  else out.push(`최근 5경기 <b>${w5}승</b>, 전체 승률 <b>${pct(a.W/a.n)}%</b>예요.${w5>=4?' 상승세를 타고 있어요.':w5<=1?' 요즘 흐름이 좋지 않아요.':''}`);
+  const w=a.weak[0];if(w)out.push(`가장 먼저 고칠 점 — <b>${esc(w.weak)}</b>. ${w.fix}`);
+  const f=Object.fromEntries(a.flow.map(x=>[x[0],x])),fl=f['먼저 실점한 경기 승률'],fw=f['선제골 넣은 경기 승률'],one=f['1골 차 승부 승률'];
+  const ins=[];
+  if(fl[2]>=3&&fl[1]!=null&&fl[1]<0.25)ins.push(`먼저 실점한 ${fl[2]}경기에서 승률이 ${pct(fl[1])}%뿐이에요. <b>선제 실점만 줄여도</b> 승률이 크게 올라가요.`);
+  if(fw[2]>=3&&fw[1]!=null&&fw[1]<0.6)ins.push(`선제골을 넣고도 ${pct(fw[1])}%만 이겼어요. 앞서고 있을 땐 <b>라인을 내리고 지키는 운영</b>을 해 보세요.`);
+  if(one[2]>=4&&one[1]!=null&&one[1]<0.4)ins.push(`1골 차 접전 승률이 ${pct(one[1])}%로 낮아요. 막판 10분 집중력이 승부를 갈라요.`);
+  const lateA=a.bins[5].a;if(a.ga>=5&&lateA/a.ga>=0.3&&!(w&&/후반/.test(w.weak)))ins.push(`실점의 ${pct(lateA/a.ga)}%가 75분 이후에 나와요. 후반 체력 관리가 필요해요.`);
+  if(ins.length)out.push(ins[0]);
+  if(a.under&&a.under.length)out.push(`상위 랭커가 같은 선수를 같은 자리에 썼을 때보다 기록이 낮은 선수가 <b>${a.under.length}명</b>이에요(${a.under.slice(0,3).map(x=>esc(x.name)).join(', ')}${a.under.length>3?' 등':''}). 선수별 기록의 <span class="rk-ic">!</span> 표시를 확인해 보세요.`);
+  else if(a.strong)out.push(`잘하고 있는 점 — <b>${esc(a.strong.strong)}</b>. 이 부분은 계속 살리세요.`);
+  return out.slice(0,4);
+}
+function dRenderTip(a){const L=dAdvice(a);$('dTip').hidden=!L.length;$('dTip').innerHTML=`<div class="tip-h"><span class="tip-ic" aria-hidden="true">💬</span><b>피파고수의 한마디</b><small>최근 ${a.n}경기 자동 분석</small></div><ul>${L.map(x=>`<li>${x}</li>`).join('')}</ul>`}
+/* ---------- 상위 랭커 비교 (넥슨 Open API ranker-stats: TOP 10,000 랭커가 같은 선수·같은 포지션으로 뛴 20경기 평균) ---------- */
+const RK_ATT=[['goal','골'],['assist','도움'],['shoot','슈팅'],['effectiveShoot','유효슈팅'],['dribbleSuccess','드리블 성공'],['passSuccess','패스 성공']],RK_DEF=[['tackle','태클'],['block','블락']];
+const RK_TIP='챔피언스 기준 타유저 대비 낮은 수치를 기록한 선수입니다.';
+async function dLoadRanker(a,mode,seq){
+  if(!LIVE)return;
+  const list=a.players.filter(x=>x.po>=0&&x.pos!=='GK'&&x.apps>=3);if(!list.length)return;
+  const q=encodeURIComponent(JSON.stringify(list.slice(0,50).map(x=>({id:x.spId,po:x.po}))));
+  let res;try{res=await fetchJSON(`/fconline/v1/ranker-stats?matchtype=${mode}&players=${q}`)}catch(e){return}
+  if(seq!==diagSeq||!Array.isArray(res))return;
+  const by={};res.forEach(r=>{by[(r.spid||r.spId)+'|'+r.spPosition]=r.status});
+  a.under=[];
+  list.forEach(x=>{const rk=by[x.spId+'|'+x.po];if(!rk)return;x.rk=rk;x.rkLow={};const ln=LINE(x.pos),t=x.t||{},per=k=>(k==='goal'?x.g:k==='assist'?x.a:(t[k]||0))/x.apps;
+    const keys=[...(ln==='공격'||ln==='미드'?RK_ATT:[]),...(ln==='수비'||ln==='미드'?RK_DEF:[])];
+    keys.forEach(([k,lb])=>{const mine=per(k),avg=rk[k]||0;if(avg>=0.3&&mine<avg*0.7)x.rkLow[k]={lb,mine,avg}});
+    if(Object.keys(x.rkLow).length)a.under.push(x)});
+  a.rkN=Object.keys(by).length;
+  if(['pstats','squad','player'].includes(dTab))dRenderPanel();
+  dRenderTip(a);
+}
+const rkCell=(x,k,html)=>{const L=x.rkLow&&x.rkLow[k];if(!L)return html;const f=v=>v>=10?v.toFixed(0):v.toFixed(2);
+  return `<span class="rk-low" data-tip="${RK_TIP} (${L.lb} 경기당 ${f(L.mine)} · 상위 랭커 평균 ${f(L.avg)})" tabindex="0">${html}<span class="rk-ic" aria-hidden="true">!</span></span>`};
 function timeChart(a){
   const W=640,H=260,l=40,rr=12,t=24,b=34,mid=t+(H-t-b)/2,max=Math.max(1,...a.bins.map(x=>Math.max(x.f,x.a))),sc=v=>v/max*((H-t-b)/2-6),bw=(W-l-rr)/6;
   let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="15분 단위 득점과 실점">`;
@@ -469,7 +531,7 @@ function shotMap(a){
   const ins=a.shots.filter(x=>x.inPenalty),out=a.shots.filter(x=>!x.inPenalty),gr=v=>v.length?Math.round(v.filter(x=>x.result===3).length/v.length*100):0;
   return `<div class="legend"><span><i style="background:var(--gold)"></i>골</span><span><i style="background:var(--muted)"></i>슈팅</span></div>${s}</svg><p class="note">박스 안 슈팅 ${ins.length}개 중 ${gr(ins)}% 득점 · 박스 밖 ${out.length}개 중 ${gr(out)}% 득점</p>`;
 }
-function dPlayerTable(a){return `<div class="tablewrap"><table><thead><tr><th>선수</th><th class="n">출전</th><th class="n">평점</th><th class="n">골</th><th class="n">도움</th></tr></thead><tbody>${a.players.map(x=>`<tr class="${x.low?'low':''}"><td><span class="pos">${x.pos}</span>${sch(x.seasonId)}${esc(x.name)}${a.dm?`${gch(x.grade)}`:''}</td><td class="n">${x.apps}</td><td class="n">${x.avg.toFixed(2)}</td><td class="n">${x.g}</td><td class="n">${x.a}</td></tr>`).join('')}</tbody></table></div><p class="note">팀 평균 평점 ${a.teamAvg.toFixed(2)} · 빨간 줄은 팀 평균보다 0.5 이상 낮은 선수</p>`}
+function dPlayerTable(a){return `<div class="tablewrap"><table><thead><tr><th>선수</th><th class="n">출전</th><th class="n">승률</th><th class="n">평점</th><th class="n">골</th><th class="n">도움</th></tr></thead><tbody>${a.players.map(x=>`<tr class="${x.low?'low':''}"><td><span class="pos">${x.pos}</span>${sch(x.seasonId)}${esc(x.name)}${a.dm?`${gch(x.grade)}`:''}</td><td class="n">${x.apps}</td><td class="n">${Math.round(x.wr*100)}%</td><td class="n">${x.avg.toFixed(2)}</td><td class="n">${rkCell(x,'goal',x.g)}</td><td class="n">${rkCell(x,'assist',x.a)}</td></tr>`).join('')}</tbody></table></div><p class="note">팀 평균 평점 ${a.teamAvg.toFixed(2)} · 빨간 줄은 팀 평균보다 0.5 이상 낮은 선수</p>`}
 function dSquadView(a){
   const lines=`<svg viewBox="0 0 300 400" preserveAspectRatio="none" aria-hidden="true"><g fill="none" stroke="var(--pitch-line)" stroke-width="1.5" opacity=".7"><rect x="8" y="8" width="284" height="384"/><line x1="8" y1="200" x2="292" y2="200"/><circle cx="150" cy="200" r="38"/><rect x="80" y="8" width="140" height="56"/><rect x="80" y="336" width="140" height="56"/></g></svg>`;
   return `<div class="formation" role="img" aria-label="감독모드 스쿼드">${lines}${a.players.map(x=>{const [px,py]=XY[x.pos]||[50,50];return `<div class="pl" style="left:${px}%;top:${py}%"><span class="dot ${x.low?'low':''}">${x.avg.toFixed(1)}</span><span class="nm">${sch(x.seasonId)}${esc(x.name)}</span><span class="nm">${gch(x.grade)}</span></div>`}).join('')}</div><p class="note">포메이션 <b>${esc(a.myForm)}</b> · 칸 안 숫자는 평균 평점, 옆 숫자는 강화 단계예요.</p>${dPlayerTable(a)}`;
@@ -490,21 +552,22 @@ function dStatsView(a){
 }
 function dPStatsView(a){
   const pc=(s,t)=>t?Math.round(s/t*100)+'%':'-', st=x=>x.t||{};
-  return `<div class="tablewrap"><table style="font-size:13px"><thead><tr><th>선수</th><th class="n">출전</th><th class="n">평점</th><th class="n">골</th><th class="n">도움</th><th class="n">슈팅(유효)</th><th class="n">패스</th><th class="n">드리블</th><th class="n">볼 경합 승</th><th class="n">공중볼 승</th><th class="n">태클</th><th class="n">가로채기</th><th class="n">블락</th></tr></thead><tbody>
-  ${a.players.map(x=>{const t=st(x);return `<tr class="${x.low?'low':''}"><td style="white-space:nowrap"><span class="pos">${x.pos}</span>${sch(x.seasonId)}${esc(x.name)}${a.dm||x.grade>1?`${gch(x.grade)}`:''}</td><td class="n">${x.apps}</td><td class="n">${x.avg.toFixed(2)}</td><td class="n">${x.g}</td><td class="n">${x.a}</td>
-    <td class="n">${t.shoot}(${t.effectiveShoot})</td><td class="n">${pc(t.passSuccess,t.passTry)}</td><td class="n">${pc(t.dribbleSuccess,t.dribbleTry)}</td>
+  const wrc=v=>v>=0.6?'wr-hi':v<0.4?'wr-lo':'';
+  const rkNote=!LIVE?'':a.rkN==null?' 상위 랭커 비교 데이터를 불러오는 중이에요…':a.rkN?` <span class="rk-ic">!</span> 빨간 숫자는 상위 랭커(TOP 10,000)가 같은 선수를 같은 포지션으로 썼을 때 경기당 평균의 70%에 못 미치는 기록이에요(넥슨 Open API 랭커 통계). 공격수·미드필더는 공격 지표, 수비수·미드필더는 수비 지표를 비교해요.`:' 이 스쿼드 선수들은 상위 랭커 비교 데이터가 없어요.';
+  return `<div class="tablewrap"><table class="pst"><thead><tr><th>선수</th><th class="n">출전</th><th class="n">승률</th><th class="n">평점</th><th class="n">골</th><th class="n">도움</th><th class="n">슈팅(유효)</th><th class="n">패스</th><th class="n">드리블</th><th class="n">볼 경합 승</th><th class="n">공중볼 승</th><th class="n">태클</th><th class="n">가로채기</th><th class="n">블락</th></tr></thead><tbody>
+  ${a.players.map(x=>{const t=st(x);return `<tr class="${x.low?'low':''}"><td style="white-space:nowrap"><span class="pos">${x.pos}</span>${sch(x.seasonId)}${esc(x.name)}${a.dm||x.grade>1?`${gch(x.grade)}`:''}</td><td class="n">${x.apps}</td><td class="n"><span class="${wrc(x.wr)}">${Math.round(x.wr*100)}%</span><span class="why">${x.w}승</span></td><td class="n">${x.avg.toFixed(2)}</td><td class="n">${rkCell(x,'goal',x.g)}</td><td class="n">${rkCell(x,'assist',x.a)}</td>
+    <td class="n">${rkCell(x,'shoot',t.shoot)}(${rkCell(x,'effectiveShoot',t.effectiveShoot)})</td><td class="n">${rkCell(x,'passSuccess',pc(t.passSuccess,t.passTry))}</td><td class="n">${rkCell(x,'dribbleSuccess',pc(t.dribbleSuccess,t.dribbleTry))}</td>
     <td class="n">${t.ballPossesionSuccess}/${t.ballPossesionTry} <span class="why">${pc(t.ballPossesionSuccess,t.ballPossesionTry)}</span></td><td class="n">${t.aerialSuccess}/${t.aerialTry} <span class="why">${pc(t.aerialSuccess,t.aerialTry)}</span></td>
-    <td class="n">${t.tackle}/${t.tackleTry}</td><td class="n">${t.intercept}</td><td class="n">${t.block}</td></tr>`}).join('')}
-  </tbody></table></div><p class="note">최근 ${a.n}경기 합계예요. 표가 넓으면 옆으로 밀어서 보세요. 빨간 줄은 팀 평균 평점보다 0.5 이상 낮은 선수예요.</p>`;
+    <td class="n">${rkCell(x,'tackle',`${t.tackle}/${t.tackleTry}`)}</td><td class="n">${t.intercept}</td><td class="n">${rkCell(x,'block',t.block)}</td></tr>`}).join('')}
+  </tbody></table></div><p class="note">최근 ${a.n}경기 합계예요. 승률은 그 선수가 출전한 경기 기준이에요. 표가 넓으면 옆으로 밀어서 보세요. 빨간 줄은 팀 평균 평점보다 0.5 이상 낮은 선수예요.${rkNote}</p>`;
 }
 function dRenderTabs(){const list=DTABS[dMode];if(!list.some(t=>t[0]===dTab))dTab=list[0][0];$('dTabs').innerHTML=list.map(([k,l])=>`<button role="tab" data-tab="${k}" aria-selected="${k===dTab}">${l}</button>`).join('')}
 function dRenderPanel(){$('dPanel').innerHTML={stats:dStatsView,pstats:dPStatsView,time:timeChart,shot:shotMap,player:dPlayerTable,squad:dSquadView,form:dFormView,line:dLineView}[dTab](dCur.a);$('dTabs').querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===dTab))}
 function dRenderMatches(d,a){
-  const R={승:'W',무:'D',패:'L'};
-  $('dMatches').innerHTML=d.matches.map((m,i)=>{const [x,y]=m.matchInfo,dt=new Date(m.matchDate);
-    const rows=[['점유율',x.matchDetail.possession+'%',y.matchDetail.possession+'%'],['슈팅(유효)',`${x.shoot.shootTotal}(${x.shoot.effectiveShootTotal})`,`${y.shoot.shootTotal}(${y.shoot.effectiveShootTotal})`],['패스 성공',Math.round(x.pass.passSuccess/x.pass.passTry*100)+'%',Math.round(y.pass.passSuccess/y.pass.passTry*100)+'%'],['태클 성공',`${x.defence.tackleSuccess}/${x.defence.tackleTry}`,`${y.defence.tackleSuccess}/${y.defence.tackleTry}`],['반칙',x.matchDetail.foul,y.matchDetail.foul]];
-    if(a.dm)rows.unshift(['포메이션',formationOf(x.player),formationOf(y.player)]);
-    return `<div class="match"><button type="button" aria-expanded="false"><span class="res ${R[x.matchDetail.matchResult]}">${x.matchDetail.matchResult}</span><span class="opp">vs ${esc(y.nickname)}<small>${dt.getMonth()+1}/${dt.getDate()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} · ${a.dm?'상대 '+formationOf(y.player):'점유 '+x.matchDetail.possession+'%'}</small></span><span class="score">${x.shoot.goalTotal} : ${y.shoot.goalTotal}</span></button><div class="mdetail" hidden>${rows.map(r=>`<span class="l">${r[1]}</span><span class="c">${r[0]}</span><span class="r">${r[2]}</span>`).join('')}</div></div>`}).join('');
+  $('dAllN').textContent=`${d.matches.length}경기`;
+  const md=s=>{const t=new Date(s);return `${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`};
+  $('dMatches').innerHTML=`<div class="tablewrap"><table class="mtab"><thead><tr><th>날짜</th><th>결과</th><th class="n">스코어</th><th>상대</th>${a.dm?'<th>상대 포메이션</th>':''}<th class="n">점유</th><th class="n">슈팅(유효)</th><th class="n">패스</th><th class="n">태클</th></tr></thead><tbody>${d.matches.map(m=>{const [x,y]=m.matchInfo;
+    return `<tr><td class="why">${md(m.matchDate)}</td><td><span class="res ${RCLS[x.matchDetail.matchResult]}">${x.matchDetail.matchResult}</span></td><td class="n"><b>${x.shoot.goalTotal}:${y.shoot.goalTotal}</b></td><td>${esc(y.nickname)}</td>${a.dm?`<td>${esc(formationOf(y.player))}</td>`:''}<td class="n">${x.matchDetail.possession}%</td><td class="n">${x.shoot.shootTotal}(${x.shoot.effectiveShootTotal}) <span class="why">${y.shoot.shootTotal}(${y.shoot.effectiveShootTotal})</span></td><td class="n">${x.pass.passTry?Math.round(x.pass.passSuccess/x.pass.passTry*100):0}%</td><td class="n">${x.defence.tackleSuccess}/${x.defence.tackleTry}</td></tr>`}).join('')}</tbody></table></div><p class="note">슈팅 옆 회색 숫자는 상대 기록이에요.</p>`;
 }
 
 /* 실서비스: window.FG_LIVE=true 이면 '/api' 중계로 넥슨 Open API 실데이터를 씀 */
@@ -548,23 +611,27 @@ async function runDiag(nick){
     runDiag.ctrl=typeof AbortController==='function'?new AbortController():null;DIAG_SIGNAL=runDiag.ctrl&&runDiag.ctrl.signal;
     $('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta">최근 ${dCount}경기를 불러오는 중이에요. 100경기는 30초 정도 걸릴 수 있어요.</div></div>`;
     try{await loadSeasons();d=await realData(nick,dMode,dCount,fetchJSON,names,4)}
-    catch(err){if(seq!==diagSeq||(err&&err.name==='AbortError'))return;$('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta" style="color:var(--crit)">${esc(err&&err.message||'불러오지 못했어요. 잠시 후 다시 시도해 주세요.')}</div></div>`;['dCards','dPanel','dMatches'].forEach(id=>$(id).innerHTML='');return}
+    catch(err){if(seq!==diagSeq||(err&&err.name==='AbortError'))return;$('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta" style="color:var(--crit)">${esc(err&&err.message||'불러오지 못했어요. 잠시 후 다시 시도해 주세요.')}</div></div>`;dClear();return}
     if(seq!==diagSeq)return;
-    if(d.matches.length<5){$('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta">${dMode==='52'?'감독모드':'공식경기'} 경기가 ${d.matches.length}경기뿐이라 진단하기에 부족해요. 5경기 이상부터 진단해요.</div></div>`;['dCards','dPanel','dMatches'].forEach(id=>$(id).innerHTML='');return}
+    if(d.matches.length<5){$('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta">${dMode==='52'?'감독모드':'공식경기'} 경기가 ${d.matches.length}경기뿐이라 진단하기에 부족해요. 5경기 이상부터 진단해요.</div></div>`;dClear();return}
   }else{
     const snap=window.FG_SNAP&&FG_SNAP[nick.toLowerCase()+'|'+dMode];
-    if(snap){d={...snap,matches:snap.matches.slice(0,dCount)};if(d.matches.length<5){$('dBoard').innerHTML=`<div><div class="nick">${esc(snap.basic.nickname)}</div><div class="meta">${dMode==='52'?'감독모드':'공식경기'} 최근 경기가 ${d.matches.length}경기뿐이라 진단하기에 부족해요. ${dMode==='50'?'감독모드 탭을 눌러보세요.':''}</div></div>`;['dCards','dPanel','dMatches'].forEach(id=>$(id).innerHTML='');return}}
+    if(snap){d={...snap,matches:snap.matches.slice(0,dCount)};if(d.matches.length<5){$('dBoard').innerHTML=`<div><div class="nick">${esc(snap.basic.nickname)}</div><div class="meta">${dMode==='52'?'감독모드':'공식경기'} 최근 경기가 ${d.matches.length}경기뿐이라 진단하기에 부족해요. ${dMode==='50'?'감독모드 탭을 눌러보세요.':''}</div></div>`;dClear();return}}
     else if(nick==='예시'){d=makeData('예시 구단주',dMode,dCount);d.sample=true}
-    else{$('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta">미리보기 화면은 넥슨 서버에 직접 접속할 수 없어서 실시간 조회가 안 돼요. 배포한 사이트에서는 닉네임만 넣으면 바로 불러와요.${window.FG_SNAP?' 미리 불러온 구단주: '+[...new Set(Object.keys(FG_SNAP).map(k=>FG_SNAP[k].basic.nickname))].map(esc).join(', '):''}</div><button type="button" class="ghost" data-sample style="margin-top:8px;padding:6px 12px;font-size:13px">화면 구성만 예시 경기로 보기</button></div>`;['dCards','dPanel','dMatches'].forEach(id=>$(id).innerHTML='');return}
+    else{$('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta">미리보기 화면은 넥슨 서버에 직접 접속할 수 없어서 실시간 조회가 안 돼요. 배포한 사이트에서는 닉네임만 넣으면 바로 불러와요.${window.FG_SNAP?' 미리 불러온 구단주: '+[...new Set(Object.keys(FG_SNAP).map(k=>FG_SNAP[k].basic.nickname))].map(esc).join(', '):''}</div><button type="button" class="ghost" data-sample style="margin-top:8px;padding:6px 12px;font-size:13px">화면 구성만 예시 경기로 보기</button></div>`;dClear();return}
   }
-  const a=analyze(d,dMode);dCur={d,a};dRenderBoard(d,a);dRenderCards(a);dRenderTabs();dRenderPanel();dRenderMatches(d,a);
+  const a=analyze(d,dMode);dCur={d,a};
+  dTab=a.dm?'pstats':(dTab==='pstats'?'stats':dTab);   // 감독모드는 선수별 기록이 메인
+  const secs=$('dSecs');if(a.dm)secs.prepend($('dDetailSec'));else secs.prepend($('dWeakSec'));
+  dRenderBoard(d,a);dRenderSummary(d,a);dRenderTip(a);dRenderCards(a);dRenderTabs();dRenderPanel();dRenderMatches(d,a);
+  dLoadRanker(a,dMode,seq);
 }
+function dClear(){['dCards','dPanel','dMatches','dSum'].forEach(id=>$(id).innerHTML='');$('dTip').hidden=true;$('dAllN').textContent=''}
 $('dForm').addEventListener('submit',e=>{e.preventDefault();runDiag($('dNick').value)});
 $('dBoard').addEventListener('click',e=>{if(e.target.closest('[data-sample]')){$('dNick').value='예시';runDiag('예시')}});
 $('dCount').addEventListener('click',e=>{const b=e.target.closest('[data-n]');if(!b)return;dCount=+b.dataset.n;$('dCount').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));runDiag($('dNick').value)});
 $('dMode').addEventListener('click',e=>{const b=e.target.closest('[data-mode]');if(!b)return;dMode=b.dataset.mode;$('dMode').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));runDiag($('dNick').value)});
 $('dTabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;dTab=b.dataset.tab;dRenderPanel()});
-$('dMatches').addEventListener('click',e=>{const b=e.target.closest('.match > button');if(!b)return;const d=b.nextElementSibling,open=d.hidden;d.hidden=!open;b.setAttribute('aria-expanded',open)});
 
 
 /* ================= 리뉴얼: 공식 시즌 배지 · 전체 카드 검색 (넥슨 Open API만 사용) ================= */

@@ -50,13 +50,15 @@ GUIDE_PAGES = [
     ("grade", "FC온라인 강화 정리 — 단계별 OVR 상승·성공 확률", "FC온라인 1~13강 강화 단계별 OVR 상승값, 성공 확률, 카드 색을 정리했어요."),
     ("tc", "FC온라인 팀컬러 정리 — 소속·특성·강화 팀컬러", "FC온라인 클럽·국가 팀컬러, 특성 팀컬러, 강화 팀컬러(물결) 조건과 보너스를 정리했어요."),
     ("season", "FC온라인 시즌과 선수 카드 — spid·시즌 배지", "같은 선수도 시즌마다 다른 카드인 이유와 선수 고유 ID(spid), 시즌 이미지를 설명해요."),
-    ("market", "FC온라인 급여·이적시장 — 급여 상한·판매 수수료 계산", "FC온라인 급여 상한 310과 판매 수수료 계산식, 수수료 쿠폰 지급 방식을 정리했어요."),
+    ("market", "FC온라인 급여·이적시장 — 급여 상한·판매 수수료 구조", "FC온라인 급여가 무엇이고 어떻게 맞추는지, 이적시장 거래와 판매 수수료가 어떻게 계산되는지 설명해요."),
 ]
 PAGES = [
     ("patch/index.html", "patch.html", "/patch/", "FC온라인 패치노트 — 업데이트·밸런스·개선 내역 | 피파고수",
      "FC온라인 공식 업데이트·패치·밸런스 조정 공지를 날짜순으로 모아 핵심만 요약했어요. 매일 자동 갱신.", True),
-    ("news/index.html", "news.html", "/news/", "FC온라인 소식 — 공지·점검·업데이트·축구 뉴스 | 피파고수",
-     "넥슨 FC온라인 공식 공지·점검·업데이트 핵심 요약과 해외·국내 축구, FC온라인 관련 뉴스를 하루 4번 모아 보여줘요.", True),
+    ("news/index.html", "news.html", "/news/", "FC온라인 소식 — 공지·점검·업데이트·이벤트 | 피파고수",
+     "넥슨 FC온라인 공식 공지·점검·업데이트·이벤트를 핵심만 요약해 하루 4번 모아 보여줘요.", True),
+    ("press/index.html", "news.html", "/press/", "축구 뉴스 — 해외축구·국내축구·FC온라인 기사 | 피파고수",
+     "EPL·라리가 등 해외축구와 K리그 국내축구, FC온라인 관련 기사를 하루 4번 모아 요약과 원문 링크로 보여줘요.", True),
     ("about.html", "pages/about.html", "/about", "피파고수 소개", "피파고수가 어떤 사이트인지, 데이터는 어디서 오는지 소개해요.", True),
     ("privacy.html", "pages/privacy.html", "/privacy", "개인정보처리방침 — 피파고수", "피파고수의 개인정보 처리 방침이에요.", True),
     ("terms.html", "pages/terms.html", "/terms", "이용약관 — 피파고수", "피파고수 이용약관이에요.", True),
@@ -111,7 +113,12 @@ def load_news(data_dir, today):
             "all_official": sorted(official + updates, key=lambda x: x.get("date") or "", reverse=True)[:150],
             "all_press": press[:150],
             "board": sorted(items, key=lambda x: x.get("date") or "", reverse=True),
+            "boards": {k: sorted([x for x in items if (x["cat"] in PRESS) == (k == "press")], key=lambda x: x.get("date") or "", reverse=True)
+                       for k in ("official", "press")},
             "cats": [(c, l) for c, l in CATS if any(x["cat"] == c for x in items)],
+            "kcats": {k: sorted([(c, l) for c, l in CATS if (c in PRESS) == (k == "press") and any(x["cat"] == c for x in items)],
+                                key=lambda t: ["world", "korea", "fcgame"].index(t[0]) if t[0] in PRESS else 0)
+                      for k in ("official", "press")},
             "counts": {c: sum(1 for x in items if x["cat"] == c) for c, _ in CATS}}
 
 
@@ -175,17 +182,20 @@ def main(argv=None):
                root="../", view="guide", guide_only="g-" + slug)
     # 게시글 페이지: /news/{id} — 공식 소식만 검색 색인, 기사 요약 글은 noindex(얇은 중복 콘텐츠 방지)
     if news:
-        board = news["board"]
-        for i, x in enumerate(board):
+        for board in news["boards"].values():
+          for i, x in enumerate(board):
             same = [y for y in board if y["cat"] == x["cat"] and y["id"] != x["id"]][:5]
             post = {**x, "prev": board[i + 1] if i + 1 < len(board) else None,
                     "next": board[i - 1] if i > 0 else None, "related": same}
             desc = (" ".join(x.get("summary") or []) or x["title"])[:150]
-            render(f"news/{x['id']}.html", "post.html", f"/news/{x['id']}", f"{x['title']} | 피파고수 소식",
-                   desc, x["kind"] == "official", root="../", post=post, active="news")
+            press = x["cat"] in PRESS
+            render(f"news/{x['id']}.html", "post.html", f"/news/{x['id']}", f"{x['title']} | 피파고수 {'뉴스' if press else '소식'}",
+                   desc, x["kind"] == "official", root="../", post=post, active="press" if press else "news",
+                   board_url="press/" if press else "news/", board_name="뉴스 게시판" if press else "소식 게시판")
     for fname, tpl, path, title, desc, in_map in PAGES:
         render(fname, tpl, path, title, desc, in_map, root="/" if fname == "404.html" else ("../" if "/" in fname else ""),
-               active="news" if fname.startswith("news/") else ("patch" if fname.startswith("patch/") else ""))
+               active=fname.split("/")[0] if fname.startswith(("news/", "press/", "patch/")) else "",
+               bkind="press" if fname.startswith("press/") else "official")
     if (out / "fun" / "index.html").exists():
         sitemap.append(site_url + "/fun/")
 

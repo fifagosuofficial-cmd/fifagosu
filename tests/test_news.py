@@ -41,8 +41,7 @@ def test_rss_football_split_and_trim():
     assert len(items) == 2                                   # [포토] 제외
     assert items[0]["cat"] == "world"                        # 해외 리그 기사 ('국가대표'만으로는 국내 아님)
     assert items[1]["cat"] == "korea" and items[1]["date"] == "2026-11-21T05:00:00+09:00"
-    s = items[0]["summary"][0]
-    assert not s.startswith("[인터풋볼") and len(s) <= news.SUMMARY_CHARS + 1 and "<img" not in s
+    assert items[0]["summary"] == []
     assert items[0]["date"] == "2026-11-21T15:00:00+09:00" and items[0]["kind"] == "press"
 
 
@@ -79,4 +78,4 @@ def test_run_merge_and_incremental(tmp_path):
 
 def test_rss_header_variants():
     xml = """<rss><channel><item><title>아스널 희소식</title><link>http://a/1</link><description>[풋볼리스트] 김진혁 기자= 아스널에 희소식이 전해졌다.</description><pubDate>2026-11-21 13:30:00</pubDate></item></channel></rss>"""
-    assert news.parse_rss(xml, "풋볼리스트", "football")[0]["summary"] == ["아스널에 희소식이 전해졌다."]
+    assert news.parse_rss(xml, "풋볼리스트", "football")[0]["summary"] == []

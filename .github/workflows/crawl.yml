@@ -49,6 +49,14 @@ jobs:
           pip install -q -r crawler/requirements.txt
           python crawler/fgcrawl.py daily --minutes "${{ github.event.inputs.minutes || vars.CRAWL_MINUTES || '50' }}"
 
+      - name: 챔피언스 평균 평점 (전적 진단 '평점 낮음' 기준)
+        if: github.event_name != 'push'
+        continue-on-error: true      # 실패해도 이전 data/rating.json 을 그대로 두고 다음 단계 진행
+        timeout-minutes: 15
+        env:
+          RATING_SEEDS: ${{ vars.RATING_SEEDS }}   # 시작 닉네임 추가(쉼표로 구분, 선택)
+        run: python crawler/rating.py --api https://fifagosu.pages.dev/api
+
       - name: data 브랜치에 저장 (기록 없이 최신 1개만 유지)
         if: github.event_name != 'push'
         env:

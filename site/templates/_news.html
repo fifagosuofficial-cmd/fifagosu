@@ -58,7 +58,7 @@
     {% for e in events %}
     <li data-start="{{ e.start }}" data-end="{{ e.end }}">
       <a href="{{ e.url }}" target="_blank" rel="noopener nofollow">
-        <span class="ev-t">{{ e.title }}</span>
+        <span class="ev-t" title="{{ e.title }}">{{ e.title }}</span>
         <span class="ev-d" data-dday>~{{ date_md(e.end) }}</span>
       </a>
       <span class="ev-bar" aria-hidden="true"><i style="width:{{ e.pct }}%"></i></span>

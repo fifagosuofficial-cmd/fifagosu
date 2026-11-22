@@ -15,6 +15,7 @@ const ALLOW = [
   /^\/fconline\/v1\/user\/(basic|maxdivision|match)$/,
   /^\/fconline\/v1\/match-detail$/,
   /^\/static\/fconline\/meta\/(spid|seasonid|spposition|division|matchtype)\.json$/,
+  /^\/fconline\/v1\/ranker-stats$/,          // TOP 10,000 랭커가 쓴 같은 선수·포지션의 20경기 평균 (약점 진단 비교 기준)
 ];
 const MATCH_TYPES = new Set(['30', '40', '50', '52', '60', '204', '214']);
 const MAX_IDS = 10;
@@ -25,6 +26,7 @@ const ttlFor = (p) =>
   p.startsWith('/static/') ? 6 * 3600 :          // 카드·시즌 목록: 6시간
   p.endsWith('/match-detail') ? 7 * 86400 :     // 끝난 경기 상세는 바뀌지 않음
   p.endsWith('/user/match') ? 60 :              // 최근 경기 목록: 1분
+  p.endsWith('/ranker-stats') ? 12 * 3600 :     // 랭커 평균은 자주 안 바뀜: 12시간
   600;                                          // 닉네임·기본정보·최고등급: 10분
 
 const json = (status, body, extra = {}) =>

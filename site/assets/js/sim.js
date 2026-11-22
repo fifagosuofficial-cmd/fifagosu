@@ -314,15 +314,15 @@ function playerFor(rank,packName,rowName){
   const L=poolPairs(R);if(!L.length)return null;const it=L[Math.min(L.length-1,rank-1)];
   return {id:it[1],name:it[2],sid:Math.floor(it[1]/1e6),ovr:it[3]+(GRADE_BONUS[it[4]]||0),g:it[4],v:it[0]};
 }
-/* 개수: 확률표 파싱 때 개수 칸에 확률이 들어오는 줄(예: 개수 80 · 확률 80%)은 1개로 봐요 */
-const amtOf=(a,p)=>{const n=parseInt(String(a).replace(/[^\d]/g,''))||1;return n>1&&p!=null&&Math.abs(n-p)<0.01?1:n};
+/* 개수: 확률표의 개수 칸 그대로 (예: 행운의 BP 카드 x80 — 웹 상점 구성품에도 x80으로 적혀 있어요) */
+const amtOf=a=>parseInt(String(a).replace(/[^\d]/g,''))||1;
 /* BP 금액: 'BP · 170000000' 줄과, BP 상자 안에서 금액만 적힌 이어지는 줄('20000000') */
 const bpOf=(n,from)=>{n=String(n).trim();const m=n.match(/BP\s*·?\s*([\d,]{5,})/);if(m)return +m[1].replace(/,/g,'');if(/^[\d,]{5,}$/.test(n)&&/BP/i.test(from||''))return +n.replace(/,/g,'');return 0};
 function resolve(chain){
-  const f=chain[chain.length-1],amt=amtOf(f.amt,f.p),prob=chain.reduce((a,s)=>a*s.p/100,1);
-  const bp=bpOf(f.n,f.from);if(bp)return {kind:'bp',bp:bp*amt,label:won(bp*amt)+' BP',prob,chain};
+  const f=chain[chain.length-1],mult=chain.slice(0,-1).reduce((a,s)=>a*amtOf(s.amt),1),amt=amtOf(f.amt)*mult,prob=chain.reduce((a,s)=>a*s.p/100,1);
+  const bp=bpOf(f.n,f.from);if(bp)return {kind:'bp',bp:bp*amt,label:won(bp*amt)+' BP'+(amt>1?` (×${amt})`:''),prob,chain};
   const tm=f.n.match(/TOP\s*([\d,]+)/i);
-  if(tm){const pl=playerFor(+tm[1].replace(/,/g,''),f.from,f.n);return {kind:'pl',pl,rank:+tm[1].replace(/,/g,''),label:f.n.replace(/개봉일 0~1시 사이 /,''),prob,chain}}
+  if(tm){const pl=playerFor(+tm[1].replace(/,/g,''),f.from,f.n);if(pl&&amt>1){pl.v*=amt;pl.name+=` ×${amt}`}return {kind:'pl',pl,rank:+tm[1].replace(/,/g,''),label:f.n.replace(/개봉일 0~1시 사이 /,''),prob,chain}}
   return {kind:'etc',label:f.n,prob,chain};
 }
 async function openOnce(){
@@ -383,14 +383,14 @@ function rowPlayerVal(rank,packName,rowName){
   const L=poolPairs(R);if(!L.length)return null;return L[Math.min(L.length-1,rank-1)][0];
 }
 function evItem(item,depth=1){
-  const key=item.sn+'|'+(POOL?2:0);if(EVC[key])return EVC[key];
+  const key=item.sn+'|'+(POOL?3:0);if(EVC[key])return EVC[key];
   return EVC[key]=(async()=>{
     const tot=item.rows.reduce((a,r)=>a+r.p,0)||100;const acc={bp:0,pv:0,miss:0};
     for(const r of item.rows){
-      const w=r.p/tot,amt=amtOf(r.amt,r.p);
+      const w=r.p/tot,amt=amtOf(r.amt);
       const sub=depth<4&&findItem(r.n);
-      // 상자 속 상자는 개수와 상관없이 1번 여는 것으로 계산해요(시뮬 열기와 같은 규칙)
-      if(sub&&sub.sn!==item.sn){try{const e=await evItem(await getItem(sub.sn),depth+1);acc.bp+=w*e.bp;acc.pv+=w*e.pv;acc.miss+=w*e.miss;continue}catch(_){acc.miss+=w;continue}}
+      // 상자 속 상자도 개수만큼 곱해요 (예: 행운의 BP 카드 x80)
+      if(sub&&sub.sn!==item.sn){try{const e=await evItem(await getItem(sub.sn),depth+1);acc.bp+=w*amt*e.bp;acc.pv+=w*amt*e.pv;acc.miss+=w*e.miss;continue}catch(_){acc.miss+=w;continue}}
       const bp=bpOf(r.n,item.name);if(bp){acc.bp+=w*amt*bp;continue}
       const tm=r.n.match(/TOP\s*([\d,]+)/i);
       if(tm){const v=rowPlayerVal(+tm[1].replace(/,/g,''),item.name,r.n);if(v!=null){acc.pv+=w*amt*v;continue}}

@@ -1131,3 +1131,12 @@ nav.menu a.core:not([aria-current]):hover{background:var(--accent);color:var(--a
 .rc-tc span{padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--fg);font-weight:700}
 .rc-tc span.wv{background:#f7e7a6;color:#5a4300}.rc-tc span.muted{background:var(--sunk);color:var(--muted)}
 .rc-tcs{display:flex;flex-wrap:wrap;gap:4px}.rc-tcs i{font-style:normal;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--accent)}
+
+/* 대체 추천: 예산 수정 */
+.rc-bud{display:grid;gap:6px}.rc-bud-row{display:flex;gap:6px;flex-wrap:wrap}
+.rc-bud-btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font:700 12.5px var(--f-body);padding:6px 12px;border-radius:999px;cursor:pointer}
+.rc-bud-btn.ghost{background:transparent;color:var(--fg);border-color:var(--line)}
+.rc-bud-form{display:grid;gap:6px;padding:10px;border-radius:10px;background:var(--sunk)}.rc-bud-form[hidden]{display:none}
+.rc-bud-form label{display:grid;gap:4px;font-size:12px;font-weight:700}
+.rc-bud-form input{font:600 15px var(--f-data);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}
+.rc-bud-form output{font-size:13px;font-weight:700;color:var(--accent)}

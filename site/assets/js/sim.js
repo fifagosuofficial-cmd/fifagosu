@@ -108,11 +108,18 @@ fill($('smEFrom'),1,12,1);fill($('smETo'),2,13,8);
 let SEL=null,cur=1,tries=0,ok=0,ng=0,timer=null,KAN=5,spent=0;
 const gauge=()=>KAN/5, pOf=g=>g>=MAX?0:SUCC[g]/100*gauge();
 const baseOvr=()=>{if(!SEL)return 0;const x=typeof ix==='function'&&ix(SEL.c.id);return (SEL.l&&SEL.l.ovr)||(x&&x[0])||0};
-const matPer=()=>{const v=$('smEMat').value.trim();return v!==''?Math.max(0,+v||0)*1e4:matUnit(baseOvr())};
+/* 재료비: 재료 카드 1장(1칸) 가격을 BP 숫자 그대로 받아요. 비워 두면 0 */
+const korBP=v=>{v=Math.round(+v||0);if(!v)return '0';const eok=Math.floor(v/1e8),man=Math.floor(v%1e8/1e4),rest=v%1e4,p=[];
+  if(eok)p.push(eok.toLocaleString()+'억');if(man)p.push(man.toLocaleString()+'만');if(rest)p.push(rest%1000===0?(rest/1000)+'천':rest.toLocaleString());return p.join(' ')};
+const matPer=()=>Math.max(0,+String($('smEMat').value).replace(/[^\d]/g,'')||0);
+function matShow(){const v=matPer(),est=matUnit(baseOvr());
+  $('smEMatV').textContent=v?korBP(v)+' BP':'재료비 0 (계산에서 빼요)';
+  $('smEMatEst').hidden=!est;if(est)$('smEMatEst').textContent=`추정값 넣기 (${korBP(est)})`;$('smEMatEst').dataset.v=est;}
 const priceAt=g=>SEL&&SEL.l&&SEL.l.price?(SEL.l.price[g-1]||0):0;
 
 $('smEGaugeBox').addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b)return;KAN=+b.dataset.k;$('smEGaugeBox').querySelectorAll('[data-k]').forEach(x=>x.classList.toggle('on',+x.dataset.k<=KAN));$('smEGaugeV').textContent=`${KAN}칸 · ${KAN*20}%`;draw()});
-$('smEMat').addEventListener('input',()=>drawEv());
+$('smEMat').addEventListener('input',()=>{const d=$('smEMat').value.replace(/[^\d]/g,'');if(d!==$('smEMat').value)$('smEMat').value=d;matShow();drawEv()});
+$('smEMatEst').addEventListener('click',()=>{$('smEMat').value=$('smEMatEst').dataset.v||'';matShow();drawEv()});
 onFee.push(()=>drawEv());
 
 /* 선수 검색 */
@@ -149,21 +156,29 @@ function drawPlayer(kind){
   const rows=STAT_LABELS.filter(([k])=>d.stats[k]!=null).map(([k,lb])=>{const v=d.stats[k]+b+ADAPT;return `<div class="ss"><span>${lb}</span><b class="${fcCls(v)}">${v}</b>${b?`<em>+${b}</em>`:''}</div>`}).join('');
   S.innerHTML=`<div class="pm2-sum">${sum}</div><div class="sim-statgrid${kind?' fx-'+kind:''}">${rows}</div>`;
 }
-/* 이번 강화 손익: 지금 단계를 사서 → 강화 1번 → 바로 판다고 가정 */
+/* 이번 강화 손익(누적): 시작 단계 카드를 산 값 + 지금까지 쓴 재료비를 모두 더해서,
+   이번 시도가 성공/실패했을 때 바로 판다면 전체로 얼마가 남는지 보여줘요. 강화할 때마다 바뀌어요. */
+let START=0;
 function drawEv(){
   const E=$('smEEv');
-  if(!SEL||!SEL.l||!SEL.l.price){E.innerHTML=`<p class="sim-note">${SEL?'시세를 불러오는 중이에요…':'선수를 고르면 성공·실패 시 시세와 기댓값을 계산해 드려요.'}</p>`;return}
-  if(cur>=MAX){E.innerHTML='<p class="sim-note">13강은 마지막 단계예요.</p>';return}
-  const fee=feeRate(),p=pOf(cur),now=priceAt(cur),up=priceAt(cur+1),fg=$('smEFail').value==='down'&&cur>=5?cur-1:cur,fv=priceAt(fg),unit=matPer(),mat=unit*KAN;
-  if(!now||!up){E.innerHTML='<p class="sim-note">이 단계 시세가 없어 계산할 수 없어요.</p>';return}
-  const sUp=up*(1-fee),sFail=fv*(1-fee),ev=p*sUp+(1-p)*sFail-now-mat,rr=(p*sUp+(1-p)*sFail)/(now+mat);
-  E.innerHTML=`<div class="ev-top"><div class="ev-step">${gchip(cur)}<i>→</i>${gchip(cur+1)}</div><div class="ev-p"><small>성공 확률</small><b>${(p*100).toFixed(p<.1?1:0)}%</b></div></div>
-    <div class="ev-big ${ev>=0?'up':'dn'}"><small>기댓값</small><b>${sgn(ev)}</b><span>회수율 ${rr.toFixed(2)}</span></div>
-    <dl class="ev-dl">
-      <div><dt>재료비</dt><dd class="dn">−${won(mat)}</dd><small>${unit?`${won(unit)} × ${KAN}칸${$('smEMat').value.trim()===''?` · OVR ${baseOvr()} 이상 최저가 추정`:''}`:'재료비 0'}</small></div>
-      <div><dt>성공하면</dt><dd class="up">${sgn(sUp-now)}</dd><small>${won(now)} → ${won(up)} · 수수료 뒤 ${won(sUp)}</small></div>
-      <div><dt>실패하면</dt><dd class="${sFail-now<0?'dn':''}">${sgn(sFail-now)}</dd><small>${won(now)} → ${won(fv)}${fg<cur?` (${fg}강 하락)`:''} · 수수료 뒤 ${won(sFail)}</small></div>
+  if(!SEL||!SEL.l||!SEL.l.price){E.innerHTML=`<p class="sim-note">${SEL?'시세를 불러오는 중이에요…':'선수를 고르면 성공·실패 시 시세와 누적 손익을 계산해 드려요.'}</p>`;return}
+  const fee=feeRate(),from=+$('smEFrom').value,start=START||priceAt(from),unit=matPer(),mat=unit*KAN,paid=start+spent;
+  const nowSell=priceAt(cur)*(1-fee);
+  const head=`<dl class="ev-dl ev-sum">
+      <div><dt>지금까지 쓴 돈</dt><dd>${won(paid)}</dd><small>시작 ${from}강 카드 ${won(start)}${spent?` + 재료비 ${won(spent)} (${tries}회)`:''}</small></div>
+      <div><dt>지금 팔면</dt><dd class="${nowSell-paid>=0?'up':'dn'}">${sgn(nowSell-paid)}</dd><small>${cur}강 ${won(priceAt(cur))} · 수수료 뒤 ${won(nowSell)}</small></div>
     </dl>`;
+  if(cur>=MAX){E.innerHTML='<p class="sim-note">13강은 마지막 단계예요.</p>'+head;return}
+  const p=pOf(cur),up=priceAt(cur+1),fg=$('smEFail').value==='down'&&cur>=5?cur-1:cur,fv=priceAt(fg);
+  if(!start||!up){E.innerHTML='<p class="sim-note">이 단계 시세가 없어 계산할 수 없어요.</p>';return}
+  const cost=paid+mat,sUp=up*(1-fee),sFail=fv*(1-fee),winT=sUp-cost,loseT=sFail-cost,evT=p*winT+(1-p)*loseT;
+  const once=priceAt(from+1)*(1-fee)-start-mat;
+  E.innerHTML=`<div class="ev-top"><div class="ev-step">${gchip(cur)}<i>→</i>${gchip(cur+1)}</div><div class="ev-p"><small>성공 확률</small><b>${(p*100).toFixed(p<.1?1:0)}%</b></div></div>
+    <div class="ev-big ${winT>=0?'up':'dn'}"><small>이번에 성공하면 (누적)</small><b>${sgn(winT)}</b><span>${tries&&cur===from?`처음 1번에 성공했다면 ${sgn(once)}였어요`:`${won(cost)} 들여서 ${cur+1}강 ${won(up)} · 수수료 뒤 ${won(sUp)}`}</span></div>
+    <dl class="ev-dl">
+      <div><dt>이번에 실패하면 (누적)</dt><dd class="${loseT>=0?'up':'dn'}">${sgn(loseT)}</dd><small>${fg<cur?`${fg}강으로 하락 · `:''}${fg}강 ${won(fv)} · 수수료 뒤 ${won(sFail)}</small></div>
+      <div><dt>이번 시도 기댓값 (누적)</dt><dd class="${evT>=0?'up':'dn'}">${sgn(evT)}</dd><small>재료비 ${won(mat)}${unit?` (${won(unit)} × ${KAN}칸)`:' · 재료비를 넣으면 더 정확해요'}</small></div>
+    </dl>${head}`;
 }
 function draw(msg,kind){
   $('smEGrade').textContent=cur;$('smETier').textContent=tier(cur);$('smECard').className='sim-card g-'+gcls(cur)+(kind?' fx-'+kind:'');
@@ -173,8 +188,8 @@ function draw(msg,kind){
   if(SEL)drawPlayer(kind);
   drawEv();
 }
-function reset(){clearInterval(timer);timer=null;$('smEAuto').textContent='목표까지 자동';cur=+$('smEFrom').value;tries=ok=ng=spent=0;$('smELog').innerHTML='';draw(SEL?'강화 버튼을 눌러 보세요.':'먼저 선수를 고르면 능력치까지 함께 바뀌어요.')}
-function log(t,k,p){const li=document.createElement('li');li.className=k;li.innerHTML=`<b>#${tries}</b> ${t} <small>${(p*100).toFixed(p<.1?1:0)}%</small>`;$('smELog').prepend(li);while($('smELog').children.length>60)$('smELog').lastChild.remove()}
+function reset(){clearInterval(timer);timer=null;$('smEAuto').textContent='목표까지 자동';cur=+$('smEFrom').value;tries=ok=ng=spent=0;START=priceAt(cur);matShow();$('smELog').innerHTML='';draw(SEL?'강화 버튼을 눌러 보세요.':'먼저 선수를 고르면 능력치까지 함께 바뀌어요.')}
+function log(t,k,p){const li=document.createElement('li');li.className=k;const net=SEL&&START?priceAt(cur)*(1-feeRate())-(START+spent):null;li.innerHTML=`<b>#${tries}</b> ${t}${net!=null?` <em class="${net>=0?'up':'dn'}">누적 ${sgn(net)}</em>`:''} <small>${(p*100).toFixed(p<.1?1:0)}%</small>`;$('smELog').prepend(li);while($('smELog').children.length>60)$('smELog').lastChild.remove()}
 function step(){
   const to=+$('smETo').value;if(cur>=MAX||cur>=to){draw(`목표 ${to}강 달성! 총 ${tries}회 시도했어요.`,'win');return false}
   const p=pOf(cur),from=cur;tries++;spent+=matPer()*KAN;
@@ -255,23 +270,49 @@ async function openChain(item,depth=1){
   if(depth<4){const sub=findItem(r.n);if(sub&&sub.sn!==item.sn){try{const it=await getItem(sub.sn);return [step].concat(await openChain(it,depth+1))}catch(_){}}}
   return [step];
 }
-/* '기준가 TOP N'을 피파고수 시세 풀에서 실제 선수로 */
+/* '기준가 TOP N'을 피파고수 시세 풀에서 실제 선수로
+   - 클래스: 확률표 행 이름 앞부분('UC, SPT, 25UCL … · 기준가 TOP 1')에 넥슨이 적어 둔 목록을 그대로 써요.
+   - 순위: (선수 × 강화) 조합을 가격순으로 줄 세운 순위예요. '(1~7강)' 팩이면 1~7강 조합 전체에서 순위를 매겨요.
+   - OVR 조건(예: 115+)은 1강 OVR 기준. FC INFO 계산과 비교해 몇 % 안으로 맞는 것을 확인했어요. */
 const POOLC={};
-function packRule(name){
+const nkS=t=>String(t).toUpperCase().replace(/[\s.\-]/g,'').replace(/HEROES$/,'HR');
+let SNAME=null;
+function seasonIds(tok){
+  if(!SNAME){SNAME={};Object.keys(SEASONS).forEach(id=>{const k=nkS(sname(+id));(SNAME[k]=SNAME[k]||[]).push(+id)})}
+  const k=nkS(tok);if(SNAME[k])return SNAME[k];
+  if(k==='LIVE')return Object.keys(SEASONS).filter(id=>/LIVE/i.test(sname(+id))).map(Number);
+  return [];
+}
+/* '포함' 팩에서 클래스 목록을 못 읽었을 때만: 팩으로 나오지 않는 아이콘 계열을 빼요 */
+const NOGEN=/ICON|^IM|IM -|LKI/;
+function packRule(name,rowName){
   const s=String(name).replace(/^★/,'').replace(/^(\[[^\]]*\]\s*)+/,'');
   const m=s.match(/^(.*?)\s*Top Price\s*([\d,]+)/i);if(!m)return null;
-  const pre=m[1],inc=/포함/.test(pre),toks=pre.replace(/포함/g,'').split(/[,·]/).map(t=>t.trim()).filter(Boolean);
   const gm=s.match(/\((\d+)(?:~(\d+))?강/),om=s.match(/(\d+)\+/);
-  const sids=new Set();toks.forEach(t=>Object.keys(SEASONS).forEach(id=>{if(norm(sname(+id))===norm(t))sids.add(+id)}));
-  return {lo:gm?+gm[1]:1,hi:gm?+(gm[2]||gm[1]):1,min:om?+om[1]:0,only:!inc&&sids.size?sids:null,key:(!inc&&sids.size?[...sids].join('.'):'all')+'|'+(om?om[1]:0)};
+  const sids=new Set();let exact=false;
+  const pre=String(rowName||'').split(' · ');
+  if(pre.length>1&&/TOP/i.test(pre[1])){pre[0].split(',').forEach(t=>seasonIds(t.trim()).forEach(i=>sids.add(i)));exact=sids.size>0}
+  if(!exact){const inc=/포함/.test(m[1]);if(!inc)m[1].split(/[,·]/).map(t=>t.trim()).filter(Boolean).forEach(t=>seasonIds(t).forEach(i=>sids.add(i)))}
+  const lo=gm?+gm[1]:1,hi=gm?+(gm[2]||gm[1]):1,min=om?+om[1]:0;
+  return {lo,hi,min,only:sids.size?sids:null,key:(sids.size?[...sids].sort().join('.'):'all')+'|'+min+'|'+lo+'-'+hi};
 }
-/* '포함' 팩(여러 클래스)에서는 팩으로 나오지 않는 아이콘 계열을 빼요 */
-const NOGEN=/ICON|^IM|IM -|LKI/;
-function poolList(R,g){const k=R.key+'|'+g;if(!POOLC[k])POOLC[k]=POOL.filter(([id,,ovr,pr])=>pr[g-1]>0&&(R.only?R.only.has(Math.floor(id/1e6)):!NOGEN.test(sname(Math.floor(id/1e6))))&&(ovr+(GRADE_BONUS[g]||0))>=R.min).sort((a,b)=>b[3][g-1]-a[3][g-1]);return POOLC[k]}
-function playerFor(rank,packName){
-  if(!POOL)return null;const R=packRule(packName);if(!R)return null;
-  const g=R.lo+Math.floor(Math.random()*(R.hi-R.lo+1)),L=poolList(R,g);if(!L.length)return null;const it=L[Math.min(L.length-1,rank-1)];
-  return {id:it[0],name:it[1],sid:Math.floor(it[0]/1e6),ovr:it[2]+(GRADE_BONUS[g]||0),g,v:it[3][g-1]};
+/* 조합 목록: [[가격, 카드 id, 이름, 1강 OVR, 강화], …] 가격 높은 순 */
+function poolPairs(R){
+  if(POOLC[R.key])return POOLC[R.key];
+  const out=[];
+  for(const [id,name,ovr,pr] of POOL){
+    const sid=Math.floor(id/1e6);
+    if(R.only?!R.only.has(sid):NOGEN.test(sname(sid)))continue;
+    if((ovr||0)<R.min)continue;
+    for(let g=R.lo;g<=R.hi;g++){const v=pr[g-1];if(v>0)out.push([v,id,name,ovr,g])}
+  }
+  out.sort((a,b)=>b[0]-a[0]);
+  return POOLC[R.key]=out;
+}
+function playerFor(rank,packName,rowName){
+  if(!POOL)return null;const R=packRule(packName,rowName);if(!R)return null;
+  const L=poolPairs(R);if(!L.length)return null;const it=L[Math.min(L.length-1,rank-1)];
+  return {id:it[1],name:it[2],sid:Math.floor(it[1]/1e6),ovr:it[3]+(GRADE_BONUS[it[4]]||0),g:it[4],v:it[0]};
 }
 /* 개수: 확률표 파싱 때 개수 칸에 확률이 들어오는 줄(예: 개수 80 · 확률 80%)은 1개로 봐요 */
 const amtOf=(a,p)=>{const n=parseInt(String(a).replace(/[^\d]/g,''))||1;return n>1&&p!=null&&Math.abs(n-p)<0.01?1:n};
@@ -281,7 +322,7 @@ function resolve(chain){
   const f=chain[chain.length-1],amt=amtOf(f.amt,f.p),prob=chain.reduce((a,s)=>a*s.p/100,1);
   const bp=bpOf(f.n,f.from);if(bp)return {kind:'bp',bp:bp*amt,label:won(bp*amt)+' BP',prob,chain};
   const tm=f.n.match(/TOP\s*([\d,]+)/i);
-  if(tm){const pl=playerFor(+tm[1].replace(/,/g,''),f.from);return {kind:'pl',pl,rank:+tm[1].replace(/,/g,''),label:f.n.replace(/개봉일 0~1시 사이 /,''),prob,chain}}
+  if(tm){const pl=playerFor(+tm[1].replace(/,/g,''),f.from,f.n);return {kind:'pl',pl,rank:+tm[1].replace(/,/g,''),label:f.n.replace(/개봉일 0~1시 사이 /,''),prob,chain}}
   return {kind:'etc',label:f.n,prob,chain};
 }
 async function openOnce(){
@@ -337,13 +378,12 @@ $('smPQ').addEventListener('input',()=>{if(!LIST)return;const q=$('smPQ').value.
 /* ================= 현질 효율: 확률표 기댓값 ================= */
 /* 기댓값은 {bp: BP 카드 합, pv: 선수 시세 합(수수료 전), miss: 값을 못 매긴 확률} 로 따로 모아 두고, 수수료는 그릴 때 적용해요. */
 const EVC={};
-function rowPlayerAvg(rank,packName){
-  const R=packRule(packName);if(!R||!POOL)return null;let s=0,n=0;
-  for(let g=R.lo;g<=R.hi;g++){const L=poolList(R,g);if(!L.length)continue;s+=L[Math.min(L.length-1,rank-1)][3][g-1];n++}
-  return n?s/n:null;
+function rowPlayerVal(rank,packName,rowName){
+  const R=packRule(packName,rowName);if(!R||!POOL)return null;
+  const L=poolPairs(R);if(!L.length)return null;return L[Math.min(L.length-1,rank-1)][0];
 }
 function evItem(item,depth=1){
-  const key=item.sn+'|'+(POOL?1:0);if(EVC[key])return EVC[key];
+  const key=item.sn+'|'+(POOL?2:0);if(EVC[key])return EVC[key];
   return EVC[key]=(async()=>{
     const tot=item.rows.reduce((a,r)=>a+r.p,0)||100;const acc={bp:0,pv:0,miss:0};
     for(const r of item.rows){
@@ -353,7 +393,7 @@ function evItem(item,depth=1){
       if(sub&&sub.sn!==item.sn){try{const e=await evItem(await getItem(sub.sn),depth+1);acc.bp+=w*e.bp;acc.pv+=w*e.pv;acc.miss+=w*e.miss;continue}catch(_){acc.miss+=w;continue}}
       const bp=bpOf(r.n,item.name);if(bp){acc.bp+=w*amt*bp;continue}
       const tm=r.n.match(/TOP\s*([\d,]+)/i);
-      if(tm){const v=rowPlayerAvg(+tm[1].replace(/,/g,''),item.name);if(v!=null){acc.pv+=w*amt*v;continue}}
+      if(tm){const v=rowPlayerVal(+tm[1].replace(/,/g,''),item.name,r.n);if(v!=null){acc.pv+=w*amt*v;continue}}
       acc.miss+=w;
     }
     return acc;

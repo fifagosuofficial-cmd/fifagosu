@@ -214,7 +214,7 @@ MARKET_TOP = 10
 NEW_KEEP_DAYS = 14
 MARKET_RANKER_CAP = 100              # 챔피언스 이상 공식경기 사용량 상위 카드만 가격 그래프 조회
 MARKET_INDEX_MIN = 30                # 표본이 이보다 적으면 시장지수는 숨겨요
-MARKET_WEEK_PRICE_MIN = 1_000_000    # 저가 카드의 시세 왜곡을 줄이는 주간 비교 하한
+MARKET_WEEK_PRICE_MIN = 30_000      # 저가 카드의 시세 왜곡을 줄이는 주간 비교 하한
 MARKET_WEEK_DAYS = 7
 
 
@@ -437,7 +437,7 @@ def step_ranker_market(data, date):
            "indexMinimum": MARKET_INDEX_MIN, "byGrade": by_grade,
            "newCards": keep[:24], "newCount": len(keep),
            "rankLabel": rank_label,
-           "rule": f"{rank_label} · 100만 BP 이상 · 최근 7일 시세 · 지수 최소 표본 {MARKET_INDEX_MIN}장"}
+           "rule": f"{rank_label} · 3만 BP 이상 · 최근 7일 시세 · 지수 최소 표본 {MARKET_INDEX_MIN}장"}
     save(data / "market" / "summary.json", out)
 
     priced = [(k, r) for k, r in listed.items() if r.get("price")]

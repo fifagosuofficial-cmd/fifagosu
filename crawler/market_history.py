@@ -57,6 +57,10 @@ def _array(script, key):
         raw = quoted if quoted else plain
         if raw in ("null", "undefined", ""):
             values.append(None)
+        elif quoted and re.fullmatch(r"\s*\d{1,2}\.\d{1,2}\s*", raw):
+            # Price graph dates such as "11.23" must stay strings; converting
+            # them to numbers drops every point when the dates are parsed below.
+            values.append(raw.strip())
         else:
             try:
                 values.append(int(float(raw)))

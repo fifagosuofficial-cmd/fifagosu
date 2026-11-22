@@ -1036,3 +1036,9 @@ a.mk-tile:hover{border-color:var(--accent)}
 .tr-pwbox{display:inline-flex;gap:6px;align-items:center}.tr-pwbox input{width:120px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--sunk);color:var(--fg)}.tr-pwbox small{font-size:11px;color:var(--muted)}
 .tr-empty{display:grid;justify-items:center;gap:4px;padding:30px 12px;border:1px dashed var(--line);border-radius:12px;text-align:center}
 @media (max-width:560px){.tr-row{grid-template-columns:40px minmax(0,1fr) auto;grid-template-areas:"i w p" "k k k" "b b b" "a a a"}.tr-kd{justify-self:start}.tr-row .er-img{width:40px;height:40px}.tr-price b{font-size:16px}}
+.sim-disclaim{margin:2px 0 0;font-size:11px;color:var(--muted);opacity:.85}
+.mat-in{position:relative}.mat-v{font:700 12px var(--f-data);color:var(--fg)}
+.mat-est{justify-self:start;border:1px dashed var(--line);background:none;color:var(--accent);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer}
+.ev-sum{margin-top:2px}.ev-sum div{background:transparent;border:1px solid var(--line)}
+.sim-log li em{font:700 11px var(--f-data);font-style:normal;margin-left:4px}
+.sim-form{align-items:start}

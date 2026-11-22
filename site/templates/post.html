@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <main class="wrap postpg">
-  <nav class="post-crumb" aria-label="위치"><a href="{{ root }}news/">소식 게시판</a> › <a href="{{ root }}news/#{{ post.cat }}">{{ post.label }}</a></nav>
+  <nav class="post-crumb" aria-label="위치"><a href="{{ root }}{{ board_url }}">{{ board_name }}</a> › <a href="{{ root }}{{ board_url }}#{{ post.cat }}">{{ post.label }}</a></nav>
   <article class="post-art">
     <header class="post-head">
       <b class="cl-badge cat-{{ post.cat }}">{{ post.label }}</b>
@@ -34,6 +34,6 @@
     <ul>{% for r in post.related %}<li><a href="{{ root }}news/{{ r.id }}">{{ r.title }}</a><time datetime="{{ r.date }}">{{ r.date[5:7]|int }}.{{ r.date[8:10]|int }}</time></li>{% endfor %}</ul>
   </section>
   {% endif %}
-  <p><a href="{{ root }}news/">← 게시판 목록으로</a></p>
+  <p><a href="{{ root }}{{ board_url }}">← 게시판 목록으로</a></p>
 </main>
 {% endblock %}

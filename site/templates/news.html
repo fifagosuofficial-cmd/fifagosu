@@ -1,33 +1,35 @@
 {% extends "base.html" %}
 {% import "_news.html" as N with context %}
 {% block content %}
+{% set P = bkind == 'press' %}
+{% set board = news.boards[bkind] if news else [] %}
 <main class="wrap newsp">
   <div class="bd-head">
     <div>
-      <h1 class="bd-h1">소식 게시판</h1>
-      <p class="sub">읽기 전용 게시판이에요. 이용자 글쓰기 기능은 없고, 운영자가 관리하는 자동 수집 목록으로 소식을 게시해요.{% if news %} 마지막 갱신 <time datetime="{{ news.updated }}" data-rel>{{ news.updated[5:7]|int }}.{{ news.updated[8:10]|int }} {{ news.updated[11:16] }}</time>{% endif %}</p>
+      <h1 class="bd-h1">{{ '뉴스 게시판' if P else '소식 게시판' }}</h1>
+      <p class="sub">{{ '해외축구·국내축구·FC온라인 관련 기사를 모아요.' if P else 'FC온라인 공식 공지·점검·업데이트·이벤트를 모아요.' }} 읽기 전용 자동 수집 게시판이에요.{% if news %} 마지막 갱신 <time datetime="{{ news.updated }}" data-rel>{{ news.updated[5:7]|int }}.{{ news.updated[8:10]|int }} {{ news.updated[11:16] }}</time>{% endif %}</p>
     </div>
     <form class="bd-search" role="search" onsubmit="return false">
-      <input type="search" id="bdQ" placeholder="제목·내용 검색 (예: 점검, 강화, 손흥민)" aria-label="소식 검색" autocomplete="off">
+      <input type="search" id="bdQ" placeholder="{{ '제목·내용 검색 (예: 손흥민, EPL, K리그)' if P else '제목·내용 검색 (예: 점검, 강화, 이벤트)' }}" aria-label="{{ '뉴스' if P else '소식' }} 검색" autocomplete="off">
     </form>
   </div>
 {% if news %}
   <div class="h2-grid">
     <div class="h2-main">
       <div class="nw-tabs bd-tabs" role="tablist" aria-label="분류" id="bdTabs">
-        <button type="button" role="tab" aria-selected="true" data-f="all">전체 <small>{{ news.board|length }}</small></button>
-        {% for c, label in news.cats %}<button type="button" role="tab" aria-selected="false" data-f="{{ c }}">{{ label }} <small>{{ news.counts[c] }}</small></button>{% endfor %}
+        <button type="button" role="tab" aria-selected="true" data-f="all">전체 <small>{{ board|length }}</small></button>
+        {% for c, label in news.kcats[bkind] %}<button type="button" role="tab" aria-selected="false" data-f="{{ c }}">{{ label }} <small>{{ news.counts[c] }}</small></button>{% endfor %}
       </div>
-      <div class="nw-subtabs" id="bdSubtabs" hidden>
+      {% if P %}<div class="nw-subtabs" id="bdSubtabs" hidden>
         <div data-subgroup="world" hidden>{% for l in ['전체','EPL','라리가','분데스리가','세리에A','리그앙','기타'] %}<button type="button" data-league="{{ l }}" aria-pressed="{{ 'true' if l=='전체' else 'false' }}">{{ l }}</button>{% endfor %}</div>
         <div data-subgroup="korea" hidden>{% for l in ['전체','KFA','K리그','기타'] %}<button type="button" data-league="{{ l }}" aria-pressed="{{ 'true' if l=='전체' else 'false' }}">{{ l }}</button>{% endfor %}</div>
-      </div>
-      <div class="bd-table" role="table" aria-label="소식 목록">
+      </div>{% endif %}
+      <div class="bd-table" role="table" aria-label="{{ '뉴스' if P else '소식' }} 목록">
         <div class="bd-row bd-th" role="row"><span role="columnheader">번호</span><span role="columnheader">분류</span><span role="columnheader">제목</span><span role="columnheader">출처</span><span role="columnheader">날짜</span></div>
         <div id="bdBody">
-        {% for x in news.board %}
+        {% for x in board %}
           <a class="bd-row" role="row" href="{{ root }}news/{{ x.id }}" data-cat="{{ x.cat }}" data-league="{{ x.league|default('기타') }}" data-date="{{ x.date }}" data-q="{{ (x.title ~ ' ' ~ (x.summary|join(' ')) ~ ' ' ~ x.source)|lower|e }}">
-            <span class="bd-no" role="cell">{{ news.board|length - loop.index0 }}</span>
+            <span class="bd-no" role="cell">{{ board|length - loop.index0 }}</span>
             <span role="cell"><b class="cl-badge cat-{{ x.cat }}">{{ x.label }}</b>{% if x.cat in ['world','korea'] %}<small class="bd-league">{{ x.league|default('기타') }}</small>{% endif %}</span>
             <span class="bd-t" role="cell">{{ x.title }}<i class="bd-new" hidden>N</i></span>
             <span class="bd-src" role="cell">{{ x.source }}</span>
@@ -40,15 +42,16 @@
       <nav class="bd-pages" id="bdPages" aria-label="페이지"></nav>
     </div>
     <aside class="h2-side">
-      {{ N.events_box(news.events) }}
+      {% if not P %}{{ N.events_box(news.events) }}{% endif %}
       <section class="bd-about">
         <h2>모으는 곳</h2>
         <ul>
-          <li><b>FC온라인 공식</b> 공지·점검 핵심 줄 요약, 업데이트·이벤트</li>
-          <li><b>인터풋볼·풋볼리스트</b> 해외·국내 축구 기사</li>
+          {% if P %}<li><b>인터풋볼·풋볼리스트</b> 해외·국내 축구 기사</li>
           <li><b>경향게임스·게임톡</b> FC온라인 관련 기사</li>
+          {% else %}<li><b>FC온라인 공식 홈페이지</b> 공지·점검 핵심 줄 요약, 업데이트·이벤트</li>{% endif %}
         </ul>
-        <p>기사 본문은 옮기지 않고 언론사 제공 요약과 원문 링크만 보여줘요. 하루 4번(06:50·11:50·17:50·21:50) 갱신돼요.</p>
+        <p>{% if P %}기사 본문은 옮기지 않고 언론사 제공 요약과 원문 링크만 보여줘요. {% endif %}하루 4번(06:50·11:50·17:50·21:50) 갱신돼요.</p>
+        <p><a href="{{ root }}{{ 'news/' if P else 'press/' }}">{{ '→ FC온라인 공지·점검은 소식 게시판' if P else '→ 축구 기사는 뉴스 게시판' }}</a></p>
       </section>
     </aside>
   </div>
@@ -56,5 +59,6 @@
   <p class="cl-empty">소식을 처음 모으는 중이에요. 잠시 후 다시 확인해 주세요.</p>
 {% endif %}
 </main>
+{% if not P %}<script>(function(){var h=location.hash.slice(1);if(['world','korea','fcgame'].indexOf(h)>-1)location.replace('{{ root }}press/#'+h)})()</script>{% endif %}
 <script src="{{ root }}assets/js/news.js?v={{ ver }}" defer></script>
 {% endblock %}

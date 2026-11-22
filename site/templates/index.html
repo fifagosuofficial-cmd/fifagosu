@@ -5,6 +5,7 @@
   <nav class="menu" aria-label="메뉴" id="menu">
     <a href="{{ root or './' }}" data-view="home"{% if view=='home' %} aria-current="page"{% endif %}>홈</a>
     <a href="{{ root }}news/">소식</a>
+    <a href="{{ root }}press/">뉴스</a>
     <a href="{{ root }}patch/">패치노트</a>
     <a href="{{ root }}diag" data-view="diag"{% if view=='diag' %} aria-current="page"{% endif %}>전적 진단</a>
     <a href="{{ root }}cards" data-view="cards"{% if view=='cards' %} aria-current="page"{% endif %}>카드 검색</a>
@@ -91,7 +92,7 @@
       <ol class="cl">{% for x in news.official[:6] %}{{ N.official_item(x) }}{% endfor %}</ol>
     </section>
     <section aria-labelledby="nwH">
-      <h2 id="nwH" class="h2-sec">해외축구 뉴스<a class="h2-more" href="{{ root }}news/#world">더 보기 →</a></h2>
+      <h2 id="nwH" class="h2-sec">해외축구 뉴스<a class="h2-more" href="{{ root }}press/#world">더 보기 →</a></h2>
       <ol class="nw">{% for x in news.world[:6] %}{{ N.press_item(x, loop.index) }}{% endfor %}</ol>
     </section>
     {% if news.events %}<aside class="mk-ev">{{ N.events_box(news.events[:4], news.events|length) }}</aside>{% endif %}
@@ -457,12 +458,22 @@
   <section id="g-market">
     <h2>급여·이적시장</h2>
     <div class="panel sheet">
+      <h3 class="gsub">급여</h3>
       <ul class="glist">
-        <li><b>급여</b>: 급여 상한은 <b>310</b>이에요(2026년 6월 25일 업데이트로 300에서 상향, PC·모바일 공통). 부족하면 골키퍼·풀백에서 급여를 아끼는 경우가 많아요.</li>
-        <li><b>판매 수수료</b>: 최종 수수료율 = 40% × (100% − PC방 30% − TOP CLASS 20% − 쿠폰). 예를 들어 셋 다 적용하고 쿠폰 30%면 40% × 20% = 8%예요.</li>
-        <li><b>수수료 쿠폰</b>: 2026년 6월 개편으로 한 번에 몰아서가 아니라 매주 점검 후 접속할 때 지급돼요.</li>
+        <li><b>급여란</b>: 선수 카드마다 정해진 숫자예요. 스쿼드에 넣은 선수들의 급여 합이 <b>급여 상한</b>을 넘으면 그 스쿼드로 경기를 할 수 없어요. 그래서 좋은 선수만 모으는 대신 급여를 나눠 쓰는 게 스쿼드 짜기의 핵심이에요.</li>
+        <li><b>급여가 높은 카드</b>: 대체로 능력치(OVR)가 높은 선수, 인기 시즌 카드일수록 급여가 높아요. 같은 선수도 시즌마다 급여가 달라서, 비슷한 능력치라면 급여가 낮은 시즌을 고르면 다른 자리에 여유가 생겨요.</li>
+        <li><b>급여 아끼는 법</b>: 승패에 영향이 큰 공격수·중앙 미드필더·센터백에 급여를 쓰고, 골키퍼·풀백·교체 선수에서 아끼는 경우가 많아요. 팀컬러를 맞추면 급여를 더 쓰지 않고도 능력치를 올릴 수 있어요.</li>
+        <li><b>상한 값</b>: 급여 상한은 업데이트 때 조정되곤 해요. 지금 값은 게임 안 스쿼드 화면의 급여 표시(현재 합계 / 상한)에서 확인하세요.</li>
       </ul>
-      <p class="sub">출처: <a href="https://www.inven.co.kr/board/fifaonline4/4711/3851" target="_blank" rel="noopener">6/25 정기점검 공지(인벤 소식 게시판)</a>, <a href="https://www.gamevu.co.kr/news/articleView.html?idxno=58926" target="_blank" rel="noopener">게임뷰 2026.6.24 기사</a>, <a href="https://fc-info.com/commission" target="_blank" rel="noopener">FC INFO 수수료 계산식</a></p>
+      <h3 class="gsub">이적시장</h3>
+      <ul class="glist">
+        <li><b>거래 방식</b>: 이적시장은 이용자끼리 선수 카드를 BP로 사고파는 곳이에요. 판매자가 가격을 정해 올리고, 구매자가 그 가격에 사요. 같은 선수라도 시즌·강화 단계마다 시세가 따로 매겨져요.</li>
+        <li><b>가격 범위</b>: 등록 가격은 그 카드의 시세를 기준으로 정해진 범위 안에서만 고를 수 있어요. 시세보다 지나치게 싸거나 비싸게는 올릴 수 없어요.</li>
+        <li><b>거래 불가 카드</b>: 이벤트 보상 등으로 받은 일부 카드는 거래가 막혀 있어서 팔 수 없어요.</li>
+        <li><b>판매 수수료</b>: 팔면 판매 금액에서 수수료를 떼고 BP를 받아요. 계산 구조는 <b>최종 수수료율 = 기본 수수료 × (100% − 감면 합계)</b>예요. PC방 접속, TOP CLASS 혜택, 수수료 쿠폰 같은 감면이 겹칠수록 수수료가 줄어요.</li>
+        <li><b>실수령 계산</b>: 기본 수수료와 감면 비율은 업데이트로 바뀔 수 있어서, 피파고수 <a href="{{ root }}calc">BP·강화 계산기</a>에 지금 값을 넣어 실수령 BP를 계산하는 걸 추천해요. 정확한 값은 게임 안 판매 화면이 기준이에요.</li>
+      </ul>
+      <p class="sub">숫자가 바뀌는 업데이트 내용은 <a href="{{ root }}patch/">패치노트</a>와 <a href="{{ root }}news/">소식</a>에서 확인할 수 있어요.</p>
     </div>
   </section>
   {% endif %}

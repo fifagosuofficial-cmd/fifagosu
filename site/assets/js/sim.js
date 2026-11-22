@@ -10,7 +10,6 @@ const won=v=>{v=Math.round(+v||0);if(!v)return '0';const neg=v<0;v=Math.abs(v);c
 const tabs=document.querySelector('.sim-tabs');
 function setTab(t){tabs.querySelectorAll('[data-sim]').forEach(x=>x.setAttribute('aria-selected',x.dataset.sim===t));$('simEnh').hidden=t!=='enh';$('simPack').hidden=t!=='pack';if(t==='pack')loadShelf()}
 tabs.addEventListener('click',e=>{const b=e.target.closest('[data-sim]');if(b)setTab(b.dataset.sim)});
-if(location.hash==='#pack')setTab('pack');
 
 /* ================= 강화 ================= */
 const SUCC=[0,100,81,64,50,26,15,7,5,4,3,2,1];
@@ -189,4 +188,5 @@ function renderTable(it){
 }
 $('smPQ').addEventListener('input',()=>{if(!LIST)return;const q=$('smPQ').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
   $('smPQres').innerHTML=q.length?LIST.filter(x=>q.every(w=>x.name.toLowerCase().includes(w))).slice(0,30).map(x=>`<button type="button" class="sim-pack mini" data-sn="${x.sn}"><b>${H(x.name)}</b></button>`).join(''):''});
+if(location.hash==='#pack')setTab('pack');   // 맨 끝에서 호출 (위에서 부르면 아직 선언 전인 변수에 닿아 멈춰요)
 })();

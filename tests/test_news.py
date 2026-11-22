@@ -73,7 +73,8 @@ def test_run_merge_and_incremental(tmp_path):
     assert all(x["label"] and x["url"] and x["source"] for x in feed["items"])
     assert json.loads((tmp_path / "news" / "events.json").read_text())["items"][0]["title"]
     h = FakeHttp(); r2 = news.run(tmp_path, h)
-    assert r2["added"] == 0 and h.count == 3 + len(news.FEEDS)   # 이미 읽은 공지 본문은 다시 안 읽음
+    # 이미 읽은 공지 본문은 다시 안 읽음 (+1은 이벤트 목록 2쪽 확인 요청)
+    assert r2["added"] == 0 and h.count == 4 + len(news.FEEDS)
 
 
 def test_rss_header_variants():

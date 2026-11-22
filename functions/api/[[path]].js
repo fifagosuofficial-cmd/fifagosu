@@ -15,6 +15,7 @@ const ALLOW = [
   /^\/fconline\/v1\/user\/(basic|maxdivision|match)$/,
   /^\/fconline\/v1\/match-detail$/,
   /^\/static\/fconline\/meta\/(spid|seasonid|spposition|division|matchtype)\.json$/,
+  /^\/fconline\/v1\/ranker-stats$/,          // TOP 10,000 랭커가 쓴 같은 선수·포지션의 20경기 평균 (약점 진단 비교 기준)
 ];
 const MATCH_TYPES = new Set(['30', '40', '50', '52', '60', '204', '214']);
 const MAX_IDS = 10;
@@ -25,6 +26,7 @@ const ttlFor = (p) =>
   p.startsWith('/static/') ? 6 * 3600 :          // 카드·시즌 목록: 6시간
   p.endsWith('/match-detail') ? 7 * 86400 :     // 끝난 경기 상세는 바뀌지 않음
   p.endsWith('/user/match') ? 60 :              // 최근 경기 목록: 1분
+  p.endsWith('/ranker-stats') ? 12 * 3600 :     // 랭커 평균은 자주 안 바뀜: 12시간
   600;                                          // 닉네임·기본정보·최고등급: 10분
 
 const json = (status, body, extra = {}) =>
@@ -177,12 +179,39 @@ async function shop(waitUntil) {
   return res;
 }
 
+/* 패키지 구성품 — /api/shop?pid=44730 → {pid, parts:[{name,count,img}]}, 6시간 캐시.
+   웹 상점 상품 상세(/Shop/View, 로그인 없이 공개)의 '구성품' 목록을 읽어요. 구성품 이름은 넥슨 확률표 아이템 이름과 같아요. */
+async function shopParts(pid, waitUntil) {
+  if (!/^\d{1,9}$/.test(pid)) return json(400, { message: '상품 번호를 확인해 주세요.' });
+  const cache = caches.default;
+  const key = new Request('https://fifagosu.cache/shop/view/' + pid);
+  const hit = await cache.match(key);
+  if (hit) return hit;
+  const up = await fetch('https://shop.fconline.nexon.com/Shop/View?strPid=' + pid, { headers: { 'user-agent': 'Mozilla/5.0 (compatible; fifagosu-shop/1.0; +https://fifagosu.pages.dev)', 'accept-language': 'ko-KR,ko;q=0.9' } }).catch(() => null);
+  if (!up || !up.ok) return json(502, { message: '넥슨 웹 상점 응답 오류예요.' });
+  const html = await up.text();
+  const list = (html.split('<ul class="product">')[1] || '').split('</ul>')[0];
+  const parts = [];
+  for (const m of list.matchAll(/<li class=['"]item['"]>([\s\S]*?)<\/li>/g)) {
+    const b = m[1];
+    const name = strip((b.match(/class=['"]text['"]>\s*<strong>([\s\S]*?)<\/strong>/) || [])[1] || '');
+    if (!name) continue;
+    const count = +((b.match(/class=['"]plus['"]>\s*x\s*<strong>(\d+)/) || [])[1] || 1);
+    const img = (b.match(/<img src=['"]([^'"]+)['"]/) || [])[1] || '';
+    parts.push({ name, count: Math.max(1, Math.min(100, count)), img });
+  }
+  if (!parts.length) return json(404, { message: '구성품 정보를 찾지 못했어요.' });
+  const res = json(200, { pid: +pid, source: 'https://shop.fconline.nexon.com/Shop/View?strPid=' + pid, parts }, { 'cache-control': 'public, max-age=21600' });
+  waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
 export async function onRequest({ request, env, params, waitUntil }) {
   if (request.method !== 'GET') return json(405, { message: 'GET만 지원해요.' });
   const path = '/' + [].concat(params.path || []).join('/');
   const url = new URL(request.url);
   if (path === '/prob') return prob(url, waitUntil);
-  if (path === '/shop') return shop(waitUntil);
+  if (path === '/shop') return url.searchParams.has('pid') ? shopParts(url.searchParams.get('pid'), waitUntil) : shop(waitUntil);
   if (!env.NEXON_API_KEY) return json(500, { message: 'NEXON_API_KEY 환경 변수가 없어요.' });
   if (path === '/summary') return summary(url, env, waitUntil);
   if (path === '/matches') return matches(url, env, waitUntil);

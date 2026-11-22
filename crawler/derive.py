@@ -12,6 +12,7 @@
   hist/{spid%200}.json                 {spid: [[1강…], [5강…], [8강…], [11강…], [13강…]]} 날짜 순서와 같은 위치
   rules/*.json                         crawler/rules/ 손 관리 규칙표 사본
   market/summary.json                  홈 '오늘의 시장': 강화별 급등·급락·인기 TOP, 시장 지수, 신규 카드
+  reco/{GK,CB,FB,DM,CM,WM,AM,W,ST}.json 전적 진단 '대체 추천' 후보(포지션 묶음별, 그룹당 약 300KB 이하)
   run.json                             오늘 실행 요약
 
 데이터센터 요청은 하나도 늘지 않아요(이미 받은 13단계 시세에서 고르기만 함).
@@ -21,6 +22,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import math
 import os
 import shutil
 import sys
@@ -209,8 +211,6 @@ MARKET_MIN_PRICE = 5_000_000         # 이보다 싼 카드는 등락률이 튀�
 MARKET_MIN_GAMES = 10                # 거래·사용이 거의 없는 카드 제외
 MARKET_TOP = 10
 NEW_KEEP_DAYS = 14
-POOL_TOP_LOW = 7000                  # 1강 가격 상위 (Top Price 6530 같은 저강 팩 대응)
-POOL_TOP_HIGH = 4000                 # 최고 강화 가격 상위 (고강 팩 대응)
 
 
 def _item(k, r, v, pv):
@@ -302,16 +302,133 @@ def step_market(data, date):
     save(data / "market" / "summary.json", out)
     # 팩 오픈 시뮬용 시세 풀: '기준가 TOP N'을 실제 선수로 바꾸려면 강화별 가격 순위가 필요해요.
     priced = [(k, r) for k, r in listed.items() if r.get("price")]
-    def p_at(r, g):
-        p = r.get("price") or []
-        return p[g - 1] if len(p) >= g and p[g - 1] else 0
-    keep_ids = {k for k, _ in sorted(priced, key=lambda kr: -p_at(kr[1], 1))[:POOL_TOP_LOW]}
-    keep_ids |= {k for k, _ in sorted(priced, key=lambda kr: -max(kr[1].get("price") or [0]))[:POOL_TOP_HIGH]}
+    # 팩의 '기준가 TOP N'은 (선수 × 강화) 조합 순위라서, 저강 대형 팩(예: Top Price 6530 (1강), 26PL Top Price 5500 (1~11강))까지
+    # 맞추려면 시세가 있는 카드를 모두 담아야 해요. (예전엔 상위 7,000+4,000장만 담아 순위가 모자랐어요)
+    keep_ids = {k for k, _ in priced}
     pool = [[int(k), listed[k].get("name") or "", listed[k].get("ovr") or 0,
              [sig3(x) if x else 0 for x in (listed[k].get("price") or [])[:13]]] for k in keep_ids]
     save(data / "market" / "pool.json", {"date": date, "items": pool})
     res = {"market": "ok", "market_moved": by_grade.get("1", {}).get("moved", 0), "market_new": len(keep)}
     log(f"시장 요약: 1강 등락 집계 {res['market_moved']}장 · 신규 카드 {len(keep)}장")
+    return res
+
+
+# ---------------------------------------------------------------- 전적 진단 '대체 추천' 후보 (data/reco/{그룹}.json)
+
+# 데이터센터 포지션 이름 → 진단 화면의 포지션 묶음 (crawler/rating.py 의 GROUPS 와 같은 묶음)
+RECO_GROUP = {
+    "GK": "GK", "SW": "CB", "CB": "CB", "RCB": "CB", "LCB": "CB",
+    "RB": "FB", "LB": "FB", "RWB": "FB", "LWB": "FB",
+    "CDM": "DM", "RDM": "DM", "LDM": "DM", "CM": "CM", "RCM": "CM", "LCM": "CM",
+    "RM": "WM", "LM": "WM", "CAM": "AM", "RAM": "AM", "LAM": "AM",
+    "RW": "W", "LW": "W", "RF": "W", "LF": "W", "ST": "ST", "RS": "ST", "LS": "ST", "CF": "ST",
+}
+RECO_GROUPS = ["GK", "CB", "FB", "DM", "CM", "WM", "AM", "W", "ST"]
+RECO_MAX_BYTES = 300_000             # 그룹 파일 하나의 목표 크기(진단 화면에서 한 번 받는 양)
+RECO_FIELDS = ["spid", "name", "ovr", "price", "height", "weight", "newTraits", "traits", "pay", "games"]
+
+
+def pcode(v):
+    """시세를 유효숫자 3자리 정수 코드로: 지수×1000 + 가수 (124,000,000 → 6124, 1,290 → 1129). 0은 0.
+    화면에서 (c % 1000) × 10^(c // 1000) 으로 되돌려요."""
+    if not v or v <= 0:
+        return 0
+    v = sig3(int(v))
+    e = 0
+    while v >= 1000:
+        v //= 10
+        e += 1
+    return e * 1000 + v
+
+
+def pdecode(c):
+    return (c % 1000) * 10 ** (c // 1000) if c else 0
+
+
+def step_reco(data, max_bytes=None):
+    """data/list(시세·포지션별 OVR) + data/detail(키·몸무게·특성)로 포지션 묶음별 대체 추천 후보를 만들어요.
+    - 시세가 있는 카드만. 그룹 OVR = 그 카드의 포지션별 OVR 중 그 묶음 포지션의 최댓값
+    - 파일이 너무 커지지 않게 1강 시세 구간(1/4 자릿수)마다 그룹 OVR 상위 N장만 남김 → 싼 카드 쓰는 사람도 같은 가격대 후보가 있어요
+    데이터센터 요청은 늘지 않아요."""
+    max_bytes = max_bytes or RECO_MAX_BYTES
+    listed, detail = {}, {}
+    for n in range(SHARDS):
+        listed.update(load(data / "list" / f"{n}.json", {}))
+        detail.update(load(data / "detail" / f"{n}.json", {}))
+    res = {"reco": "skip"}
+    if not listed:
+        return res
+    new_set = set(load(data / "traits.json", {}).get("new") or [])
+    traits, tix = [], {}
+
+    def trait_ids(lst):
+        out = []
+        for t in lst or []:
+            name, icon = (t[0], t[1] if len(t) > 1 else None) if isinstance(t, list) else (t, None)
+            if name not in tix:
+                tix[name] = len(traits)
+                traits.append([name, icon, 1 if name in new_set else 0])
+            out.append(tix[name])
+        return out
+
+    by_group = {g: [] for g in RECO_GROUPS}
+    for k, r in listed.items():
+        price = r.get("price") or []
+        if not price or not price[0]:
+            continue
+        best = {}
+        for p in r.get("pos") or []:
+            g = RECO_GROUP.get(p[0]) if p else None
+            if g and len(p) > 1 and p[1]:
+                best[g] = max(best.get(g, 0), int(p[1]))
+        if not best:
+            continue
+        d = detail.get(k) or {}
+        tid = trait_ids(d.get("traits"))
+        new_n = sum(1 for i in tid if traits[i][2])
+        for g, ovr in best.items():
+            by_group[g].append([int(k), r.get("name") or d.get("name") or "", ovr,
+                                [pcode(x) for x in price[:13]] + [0] * max(0, 13 - len(price)),
+                                int(d.get("height") or 0), int(d.get("weight") or 0), new_n, tid,
+                                int(r.get("pay") or d.get("pay") or 0), int(r.get("games") or 0)])
+    out_dir = data / "reco"
+    sizes = {}
+    for g, rows in by_group.items():
+        buckets = {}
+        for row in rows:
+            p1 = pdecode(row[3][0])
+            b = int(math.log10(p1) * 4) if p1 > 0 else 0
+            buckets.setdefault(b, []).append(row)
+        for lst in buckets.values():
+            lst.sort(key=lambda x: (-x[2], -(1 if x[4] else 0), -x[9], x[0]))
+
+        def build(n):
+            items = [x for lst in buckets.values() for x in lst[:n]]
+            items.sort(key=lambda x: (-x[2], x[0]))
+            used = sorted({i for x in items for i in x[7]})
+            remap = {o: i for i, o in enumerate(used)}
+            items = [x[:7] + [[remap[i] for i in x[7]]] + x[8:] for x in items]
+            obj = {"g": g, "updated": dt.datetime.now(KST).isoformat(timespec="seconds"), "fields": RECO_FIELDS,
+                   "price": "code: (c%1000)*10**(c//1000), 1~13강", "traits": [traits[i] for i in used],
+                   "total": len(rows), "items": items}
+            return obj, len(json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+
+        longest = max((len(v) for v in buckets.values()), default=0)
+        obj, size = build(longest)
+        if size > max_bytes:                  # 구간당 장수를 이분 탐색으로 줄여 목표 크기에 맞춤
+            lo, hi = 1, longest
+            while lo < hi:
+                mid = (lo + hi + 1) // 2
+                if build(mid)[1] <= max_bytes - 64:   # perBucket 표시 자리
+                    lo = mid
+                else:
+                    hi = mid - 1
+            obj, size = build(lo)
+            obj["perBucket"] = lo
+        save(out_dir / f"{g}.json", obj)
+        sizes[g] = [len(obj["items"]), round(size / 1024)]
+    res = {"reco": "ok", "reco_groups": sizes}
+    log("대체 추천 후보:", " · ".join(f"{g} {v[0]}장 {v[1]}KB" for g, v in sizes.items()))
     return res
 
 
@@ -355,6 +472,11 @@ def run(data=DATA, date=None, meta_get=None, no_meta=False, client=None):
     except Exception as e:  # 홈 요약 실패가 수집 저장을 막지 않게
         log("시장 요약 실패:", e.__class__.__name__, str(e)[:180])
         summary["market"] = "error"
+    try:
+        summary.update(step_reco(data))
+    except Exception as e:  # 추천 후보 실패도 수집 저장을 막지 않게(이전 파일 유지)
+        log("대체 추천 후보 실패:", e.__class__.__name__, str(e)[:180])
+        summary["reco"] = "error"
     summary.update(step_rules(data))
     summary.update(step_teamcolors(data, client))
     if client is not None:

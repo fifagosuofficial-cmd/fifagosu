@@ -142,3 +142,49 @@ def test_market_summary_movers_popular_and_new(tmp_path):
             assert out["index"]["up"] == 1
             pool = json.loads((d / "market" / "pool.json").read_text("utf-8"))["items"]
             assert len(pool) == 3 and len(pool[0][3]) == 13
+
+
+def test_pcode_roundtrip():
+    assert derive.pcode(124_000_000) == 6124 and derive.pdecode(6124) == 124_000_000
+    assert derive.pcode(1290) == 1129 and derive.pdecode(1129) == 1290
+    assert derive.pcode(1_234_567) == 4123 and derive.pdecode(4123) == 1_230_000
+    assert derive.pcode(55) == 55 and derive.pcode(0) == 0 and derive.pcode(None) == 0
+
+
+def test_reco_groups_traits_and_budget(tmp_path):
+    d = tmp_path
+    def card(spid, name, pos, p1, games=10):
+        return {"spid": spid, "name": name, "pos": pos, "pay": 20, "games": games,
+                "price": [p1 * (i + 1) for i in range(13)]}
+    recs = [card(100000001, "센터백", [["CB", 110], ["CDM", 105]], 50_000_000),
+            card(100000002, "풀백겸", [["RB", 104], ["CB", 101], ["LB", 106]], 9_000_000),
+            card(100000003, "시세없음", [["CB", 120]], 0),
+            card(100000004, "공격수", [["ST", 118], ["CF", 119]], 200_000_000)]
+    put_list(d, recs)
+    derive.save(d / "detail" / "1.json", {"100000001": {"height": 192, "weight": 88,
+                "traits": [["타이탄", 60], ["강철몸", 5], ["블로커", 61]]}})
+    derive.save(d / "traits.json", {"new": ["타이탄", "블로커"]})
+    res = derive.step_reco(d)
+    assert res["reco"] == "ok"
+    cb = json.loads((d / "reco" / "CB.json").read_text("utf-8"))
+    assert cb["fields"][:3] == ["spid", "name", "ovr"]
+    rows = {x[0]: x for x in cb["items"]}
+    assert set(rows) == {100000001, 100000002}            # 시세 0 카드는 제외
+    r = rows[100000001]
+    assert r[2] == 110 and r[4:7] == [192, 88, 2]          # 그룹 OVR · 키 · 몸무게 · 신규 특성 2개
+    assert derive.pdecode(r[3][0]) == 50_000_000 and len(r[3]) == 13
+    assert [cb["traits"][i][0] for i in r[7]] == ["타이탄", "강철몸", "블로커"] and cb["traits"][0][2] == 1
+    assert rows[100000002][4] == 0 and rows[100000002][7] == []   # 상세 없는 카드는 키 0
+    fb = json.loads((d / "reco" / "FB.json").read_text("utf-8"))
+    assert fb["items"][0][2] == 106                         # RB 104·LB 106 중 큰 값
+    st = json.loads((d / "reco" / "ST.json").read_text("utf-8"))
+    assert st["items"][0][2] == 119 and st["traits"] == []
+    # 크기 제한: 같은 가격대 카드가 많으면 구간마다 OVR 상위만 남김
+    put_list(d, [card(200000000 + i, f"c{i}", [["CB", 60 + i % 50]], 1_000_000) for i in range(400)])
+    derive.step_reco(d, max_bytes=8000)
+    cb = json.loads((d / "reco" / "CB.json").read_text("utf-8"))
+    assert len((d / "reco" / "CB.json").read_bytes()) <= 8000 and cb["perBucket"] >= 1
+    ovrs = [x[2] for x in cb["items"] if x[0] >= 200000000]
+    assert 0 < len(ovrs) < 400
+    assert sorted(ovrs, reverse=True) == sorted((60 + i % 50 for i in range(400)), reverse=True)[:len(ovrs)]   # 낮은 OVR부터 빠짐
+    assert 100000001 in {x[0] for x in cb["items"]}         # 다른 가격대 카드는 남음

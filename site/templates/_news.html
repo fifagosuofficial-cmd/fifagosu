@@ -50,9 +50,9 @@
 </div>
 {%- endmacro %}
 
-{% macro events_box(events) -%}
+{% macro events_box(events, total=None) -%}
 <section class="ev-box" aria-labelledby="evH">
-  <h2 id="evH">진행 중 이벤트 <small>{{ events|length }}개</small></h2>
+  <h2 id="evH">진행 중 이벤트 <small>{{ total or events|length }}개</small></h2>
   {% if events %}
   <ul class="ev-list">
     {% for e in events %}
@@ -65,6 +65,7 @@
     </li>
     {% endfor %}
   </ul>
+  {% if total and total > events|length %}<a class="ev-more" href="{{ root }}news/#evH">진행 중 이벤트 {{ total }}개 모두 보기 →</a>{% endif %}
   <p class="cl-src">출처: FC온라인 공식 이벤트 목록</p>
   {% else %}<p class="cl-empty">진행 중인 이벤트 정보를 불러오는 중이에요.</p>{% endif %}
 </section>

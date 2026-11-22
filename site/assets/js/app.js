@@ -562,43 +562,73 @@ function recoScore(g,me,c,ratio){
   const pop=v=>Math.min(1,Math.log10((v||0)+1)/3)*0.3;s+=pop(c.games)-pop(me.games);   // 데이터센터 사용량(유행) 약간
   return {s,why:why.sort((a,b)=>b[0]-a[0]).slice(0,3).map(w=>w[1])};
 }
+/* 내 스쿼드 팀컬러: 출전 많은 선발 11명의 카드 상세(클럽 경력·국가)로 소속 팀컬러 인원, 강화 단계로 물결 판정 */
+const WAVES=[['백금빛 물결',11],['금빛 물결',8],['은빛 물결',5],['동빛 물결',3]];
+async function squadTC(a){
+  if(a._tc)return a._tc;
+  const st=a.players.slice().sort((p,q)=>q.apps-p.apps).slice(0,11);
+  const ds=await Promise.all(st.map(p=>cardData(p.spId).then(c=>c&&c.d).catch(()=>null)));
+  const of={},cnt={};
+  st.forEach((p,i)=>{const names=ds[i]?tcOptionsFor(ds[i]).map(t=>t.name):[];of[p.spId]=names;names.forEach(n=>cnt[n]=(cnt[n]||0)+1)});
+  const lv=n=>{const m=(TC_TIER_RULES.club&&TC_TIER_RULES.club.members)||[3,6,8,11];let l=0;m.forEach((k,i)=>{if(n>=k)l=i+1});return l};
+  const active=Object.entries(cnt).filter(([,n])=>n>=3).sort((x,y)=>y[1]-x[1]).map(([name,n])=>({name,n,lv:lv(n)}));
+  let wave=null;for(const [w,g] of WAVES){if(st.filter(p=>(p.grade||1)>=g).length>=5){wave={name:w,min:g};break}}
+  return a._tc={of,active,main:active[0]||null,wave,known:ds.filter(Boolean).length,n:st.length};
+}
 async function recoFor(x){
   const g=RT_GROUP[x.pos];if(!g)return {err:'포지션 정보를 몰라 추천할 수 없어요.'};
-  const [F,cd]=await Promise.all([loadReco(g),cardData(x.spId).catch(()=>({}))]);
+  const [F,cd,S]=await Promise.all([loadReco(g),cardData(x.spId).catch(()=>({})),squadTC(dCur.a).catch(()=>null)]);
   if(!F||!F.items||!F.items.length)return {g,err:'추천 데이터를 준비 중이에요. 매일 새벽 수집이 끝나면 볼 수 있어요.'};
-  const L=cd&&cd.l,D=cd&&cd.d,grade=Math.max(1,Math.min(13,x.grade||1)),gi=grade-1,T=F.traits||[];
-  const items=F.items.map(r=>({id:r[0],name:r[1],ovr:r[2],pc:r[3]||[],h:r[4],w:r[5],nw:r[6],tr:r[7]||[],pay:r[8],games:r[9]}));
+  const L=cd&&cd.l,D=cd&&cd.d,myG=Math.max(1,Math.min(13,x.grade||1)),T=F.traits||[],TN=F.teamcolors||[];
+  const G=Math.max(myG,S&&S.wave?S.wave.min:1),gi=G-1;   // 물결 유지: 금빛이면 8강 이상으로 추천
+  const items=F.items.map(r=>({id:r[0],name:r[1],ovr:r[2],pc:r[3]||[],h:r[4],w:r[5],nw:r[6],tr:r[7]||[],pay:r[8],games:r[9],tc:(r[10]||[]).map(i=>TN[i])}));
   const mine=items.find(c=>c.id===x.spId), I=ix(x.spId)||[];
   const posOvr=((L&&L.pos)||(D&&D.pos)||[]).filter(p=>RT_GROUP[p[0]]===g).map(p=>+p[1]||0);
-  const myOvr=posOvr.length?Math.max(...posOvr):mine?mine.ovr:(L&&L.ovr)||(D&&D.ovr)||I[0]||0;   // 1강 기준
-  let myPrice=(L&&L.price&&L.price[gi])||(mine&&pdec(mine.pc[gi]))||0,approx=false;
-  if(!myPrice){const p1=(L&&L.price&&L.price[0])||I[3]||(mine&&pdec(mine.pc[0]));   // 그 강화 시세가 없으면 1강 시세 × 후보들의 강화 배율 중앙값
-    if(p1){const rs=items.map(c=>{const a=pdec(c.pc[0]),b=pdec(c.pc[gi]);return a&&b?b/a:0}).filter(Boolean).sort((a,b)=>a-b);if(rs.length){myPrice=Math.round(p1*rs[rs.length>>1]);approx=grade>1}}}
-  if(!myPrice&&!myOvr)return {g,grade,err:'이 카드는 시세·능력치 데이터가 아직 없어 추천할 수 없어요.'};
+  const myOvr=posOvr.length?Math.max(...posOvr):mine?mine.ovr:(L&&L.ovr)||(D&&D.ovr)||I[0]||0;
+  const priceAt=k=>(L&&L.price&&L.price[k])||(mine&&pdec(mine.pc[k]))||0;
+  const myNow=priceAt(myG-1);let myPrice=priceAt(gi),approx=false;
+  if(!myPrice){const p1=priceAt(0)||I[3];if(p1){const rs=items.map(c=>{const a=pdec(c.pc[0]),b=pdec(c.pc[gi]);return a&&b?b/a:0}).filter(Boolean).sort((a,b)=>a-b);if(rs.length){myPrice=Math.round(p1*rs[rs.length>>1]);approx=G>1}}}
+  if(!myPrice&&!myOvr)return {g,grade:G,err:'이 카드는 시세·능력치 데이터가 아직 없어 추천할 수 없어요.'};
   const nw=D&&D.traits?D.traits.filter(t=>NEW_TRAITS.has(Array.isArray(t)?t[0]:t)).length:mine?mine.nw:0;
-  const me={ovr:myOvr,h:(D&&D.height)||(mine&&mine.h)||0,w:(D&&D.weight)||(mine&&mine.w)||0,nw,games:(L&&L.games)||(mine&&mine.games)||0};
-  const out=[];
-  items.forEach(c=>{if(c.id===x.spId)return;const p=pdec(c.pc[gi]);if(!p)return;let ratio=0;
-    if(myPrice){ratio=p/myPrice;if(ratio<RC_LO||ratio>RC_HI)return}else if(Math.abs(c.ovr-myOvr)>3)return;
-    if(myOvr&&c.ovr<myOvr-1)return;
-    const sc=recoScore(g,me,c,ratio);if(sc.s>=0.5)out.push({...c,price:p,ratio,...sc})});
-  out.sort((a,b)=>b.s-a.s);
-  const list=[],per={};for(const c of out){const pid=c.id%1e6;if((per[pid]=(per[pid]||0)+1)>2)continue;list.push(c);if(list.length>=5)break}   // 같은 선수는 2장까지
-  return {g,grade,me,myPrice,approx,list,T};
+  const myPay=(L&&L.pay)||I[2]||(mine&&mine.pay)||0;
+  const me={ovr:myOvr,h:(D&&D.height)||(mine&&mine.h)||0,w:(D&&D.weight)||(mine&&mine.w)||0,nw,games:(L&&L.games)||(mine&&mine.games)||0,pay:myPay};
+  // 팀컬러 유지 조건: 이 선수가 속한 활성 팀컬러 중 가장 인원 많은 것(필수) / 없으면 메인 팀컬러 가산
+  const myTc=S?(S.of[x.spId]||(D?tcOptionsFor(D).map(t=>t.name):[])):[];
+  const keep=S?S.active.filter(t=>myTc.includes(t.name)):[];
+  const need=keep[0]||null, bonusTc=need?null:(S&&S.main);
+  const pick=(lo,hi,reqTc)=>{const out=[];
+    items.forEach(c=>{if(c.id===x.spId)return;const p=pdec(c.pc[gi]);if(!p)return;let ratio=0;
+      if(reqTc&&!c.tc.includes(reqTc.name))return;
+      if(myPrice){ratio=p/myPrice;if(ratio<lo||ratio>hi)return}else if(Math.abs(c.ovr-myOvr)>3)return;
+      if(myOvr&&c.ovr<myOvr-1)return;
+      const sc=recoScore(g,me,c,ratio);
+      const shared=keep.filter(t=>c.tc.includes(t.name)).map(t=>t.name);
+      if(bonusTc&&c.tc.includes(bonusTc.name)){sc.s+=3;shared.push(bonusTc.name)}
+      sc.s+=shared.length*0.6;
+      if(myPay&&c.pay){const dp=c.pay-myPay;sc.s-=Math.max(0,dp)*0.6;if(dp<=-2)sc.why.push(`급여 ${dp}`)}
+      if(sc.s>=0.5)out.push({...c,price:p,ratio,shared:[...new Set(shared)],...sc})});
+    out.sort((a,b)=>b.s-a.s);const list=[],per={};
+    for(const c of out){const pid=c.id%1e6;if((per[pid]=(per[pid]||0)+1)>2)continue;list.push(c);if(list.length>=5)break}
+    return list};
+  let list=pick(RC_LO,RC_HI,need),wide=false;
+  if(!list.length&&need){list=pick(0.4,2.5,need);wide=true}
+  return {g,grade:G,myG,me,myPrice,myNow,approx,list,wide,T,S,need,bonusTc,keep};
 }
 function recoHead(x){const g=RT_GROUP[x.pos];return `<div class="rc-h"><div><b id="rcTitle">${sch(x.seasonId)}${esc(x.name)}${gch(x.grade||1)}</b><small>${esc(x.pos)}${g?' · '+RT_GNAME[g]:''} 대체 추천</small></div><button type="button" class="rc-x" data-rc-close aria-label="닫기">×</button></div>${lowSummary(x).length?`<div class="rc-low">${lowSummary(x).map(t=>`<span>${esc(t)}</span>`).join('')}</div>`:''}`}
 function recoHTML(x,R){
-  const note='<p class="rc-note">추천은 피파고수 시세·능력치 기준 참고용이에요. 팀컬러·급여·실제 거래가는 선수 정보에서 확인해 주세요.</p>';
+  const note='<p class="rc-note">추천은 피파고수 시세·능력치 기준 참고용이에요. 팀컬러는 선발 11명의 클럽 경력·국가로 계산했어요. 실제 거래가는 선수 정보에서 확인해 주세요.</p>';
   if(R.err)return recoHead(x)+`<p class="rc-empty">${esc(R.err)}</p>`+note;
-  const gn=RT_GNAME[R.g],base=`<p class="rc-base">기준: 내 카드 ${R.grade}강 시세 <b>${fmtBP(R.myPrice)}</b>${R.approx?' (1강 시세로 추정)':''} · ${gn} OVR <b>${R.me.ovr||'-'}</b>(1강 기준). ${R.myPrice?`같은 ${R.grade}강 시세가 ${RC_LO}~${RC_HI}배인 카드 중 OVR·신규 특성·신체 조건이 더 좋은 순서예요.`:'시세를 몰라 OVR ±3 안에서 골랐어요.'}</p>`;
-  if(!R.list.length)return recoHead(x)+base+`<p class="rc-empty">같은 가격대에서 이 카드보다 확실히 나은 후보를 찾지 못했어요. 강화 단계를 올리거나 예산을 조금 늘려 보세요.</p>`+note;
+  const S=R.S,tcLine=S?`<div class="rc-tc"><b>내 팀컬러</b>${S.active.length?S.active.slice(0,3).map(t=>`<span>${esc(t.name)} ${t.n}명${t.lv?` (${t.lv}단계)`:''}</span>`).join(''):'<span class="muted">소속 팀컬러 없음</span>'}${S.wave?`<span class="wv">${esc(S.wave.name)}</span>`:''}</div>`:'';
+  const rule=[R.need?`<b>${esc(R.need.name)}</b> 팀컬러를 유지하는 선수만`:R.bonusTc?`<b>${esc(R.bonusTc.name)}</b> 팀컬러 선수를 우선`:'',S&&S.wave?`<b>${esc(S.wave.name)}</b> 유지를 위해 <b>${R.grade}강</b> 기준`:''].filter(Boolean).join(', ');
+  const base=`<p class="rc-base">${rule?rule+'으로 골랐어요. ':''}내 카드 ${R.myG}강 시세 <b>${fmtBP(R.myNow)}</b>${R.grade!==R.myG?` (${R.grade}강이면 <b>${fmtBP(R.myPrice)}</b>${R.approx?' 추정':''})`:R.approx?' (추정)':''} · 급여 <b>${R.me.pay||'-'}</b> · OVR <b>${R.me.ovr||'-'}</b>(1강 기준). ${R.myPrice?`같은 ${R.grade}강 시세가 ${R.wide?'0.4~2.5':RC_LO+'~'+RC_HI}배인 카드예요.`:'시세를 몰라 OVR ±3 안에서 골랐어요.'}</p>`;
+  if(!R.list.length)return recoHead(x)+tcLine+base+`<p class="rc-empty">${R.need?`${esc(R.need.name)} 팀컬러를 유지하면서 이 카드보다 나은 후보를 찾지 못했어요.`:'같은 가격대에서 이 카드보다 확실히 나은 후보를 찾지 못했어요.'} 강화 단계를 올리거나 예산을 조금 늘려 보세요.</p>`+note;
   const pc=r=>{const v=Math.round((r-1)*100);return v>0?`+${v}%`:v<0?`${v}%`:'±0%'};
-  const rows=R.list.map(c=>{const d=R.me.ovr?c.ovr-R.me.ovr:null;
+  const rows=R.list.map(c=>{const d=R.me.ovr?c.ovr-R.me.ovr:null,dp=R.me.pay&&c.pay?c.pay-R.me.pay:null;
     const nt=c.tr.map(i=>R.T[i]).filter(t=>t&&(t[2]||NEW_TRAITS.has(t[0]))).map(t=>t[1]!=null?`<img class="rc-tr" src="${traitIcon(t[1])}" alt="${esc(t[0])}" title="${esc(t[0])}" ${hideBad}>`:`<span class="rc-trn">${esc(t[0])}</span>`).join('');
-    return `<li><button type="button" class="rc-item" data-rc-sp="${c.id}" data-g="${R.grade}"><span class="rc-nm">${sch(Math.floor(c.id/1e6))}<b>${esc(c.name)}</b>${nt}</span>
-<span class="rc-meta"><span>OVR <b>${c.ovr}</b>${d!=null?` <em class="${d>0?'up':d<0?'dn':''}">${d>0?'+'+d:d===0?'±0':d}</em>`:''}</span><span>${R.grade}강 <b>${fmtBP(c.price)}</b>${c.ratio?` <em class="${c.ratio<1?'up':c.ratio>1.05?'dn':''}">${pc(c.ratio)}</em>`:''}</span><span>${c.h?`${c.h}cm · ${c.w}kg`:'키·몸무게 정보 없음'}</span></span>
-${c.why.length?`<span class="rc-why">${c.why.map(w=>`<i>${esc(w)}</i>`).join('')}</span>`:''}</button></li>`}).join('');
-  return recoHead(x)+base+`<ul class="rc-list">${rows}</ul>`+note;
+    return `<li><button type="button" class="rc-item" data-rc-sp="${c.id}" data-g="${R.grade}"><span class="rc-nm">${sch(Math.floor(c.id/1e6))}<b>${esc(c.name)}</b>${gch(R.grade)}${nt}</span>
+<span class="rc-meta"><span>OVR <b>${c.ovr}</b>${d!=null?` <em class="${d>0?'up':d<0?'dn':''}">${d>0?'+'+d:d===0?'±0':d}</em>`:''}</span><span>${R.grade}강 <b>${fmtBP(c.price)}</b>${c.ratio?` <em class="${c.ratio<1?'up':c.ratio>1.05?'dn':''}">${pc(c.ratio)}</em>`:''}</span><span>급여 <b>${c.pay||'-'}</b>${dp!=null?` <em class="${dp<0?'up':dp>0?'dn':''}">${dp>0?'+'+dp:dp===0?'±0':dp}</em>`:''}</span><span>${c.h?`${c.h}cm · ${c.w}kg`:'키·몸무게 정보 없음'}</span></span>
+${c.shared.length?`<span class="rc-tcs">${c.shared.map(t=>`<i>${esc(t)}</i>`).join('')}</span>`:''}${c.why.length?`<span class="rc-why">${c.why.slice(0,3).map(w=>`<i>${esc(w)}</i>`).join('')}</span>`:''}</button></li>`}).join('');
+  return recoHead(x)+tcLine+base+(R.wide?'<p class="rc-empty">팀컬러를 유지하는 같은 가격대 후보가 없어서 가격 범위를 넓혀(0.4~2.5배) 찾았어요.</p>':'')+`<ul class="rc-list">${rows}</ul>`+note;
 }
 let rcLast=null,rcTk=0;
 function recoClose(){const pop=$('rcPop');if(!pop||pop.hidden)return;pop.hidden=true;rcTk++;

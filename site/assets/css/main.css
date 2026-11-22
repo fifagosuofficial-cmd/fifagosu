@@ -507,7 +507,9 @@ a.logo{text-decoration:none;color:inherit}
 .ev-box{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:13px}
 .ev-box h2{font-size:16px;margin:0 0 10px}
 .ev-box h2 small{font-size:12px;color:var(--muted);font-weight:400}
-.ev-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.ev-box{min-width:0;overflow:hidden}
+.ev-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.ev-list li{min-width:0}
 .ev-list a{display:flex;gap:8px;justify-content:space-between;align-items:baseline;text-decoration:none;color:inherit;font-size:13.5px}
 .ev-list a:hover .ev-t{color:var(--accent)}
 .ev-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -969,7 +971,7 @@ a.mk-tile:hover{border-color:var(--accent)}
 .gauge5 button.on{background:linear-gradient(180deg,#3fe39b,var(--accent));border-color:var(--accent)}
 .gauge5 b{font:700 13px var(--f-data);color:var(--fg);margin-left:6px}
 .sim-form input[type=number]{width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--sunk);color:var(--fg);font-size:14px}
-.ev-box{display:grid;gap:8px}
+#smEEv{display:grid;gap:8px}
 .ev-top{display:flex;justify-content:space-between;align-items:center}.ev-step{display:flex;align-items:center;gap:6px;font-size:14px}.ev-step i{font-style:normal;color:var(--muted)}
 .ev-step .gchip{min-width:32px;height:26px;font:800 14px var(--f-data)}
 .ev-p{text-align:right}.ev-p small{display:block;font-size:11px;color:var(--muted)}.ev-p b{font:800 20px var(--f-data)}

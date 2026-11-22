@@ -385,6 +385,10 @@ $('menu').addEventListener('click',e=>{
   }
   const b=e.target.closest('#menu [data-view]');if(!b||e.ctrlKey||e.metaKey||e.shiftKey||e.button)return;e.preventDefault();show(b.dataset.view)   // body의 data-view까지 잡히지 않게 메뉴 안에서만 찾아요
 });
+document.querySelectorAll('a.logo').forEach(link=>link.addEventListener('click',e=>{
+  if(e.ctrlKey||e.metaKey||e.shiftKey||e.button!==0)return;
+  if(window.FG_ROUTES&&$('v-home')){e.preventDefault();show('home')}
+}));
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.go)));
 
 const gch=g=>`<span class="grade g-${GRADE_CLS(g)}" title="${GRADE_TIER(g)}">${g}강</span>`;

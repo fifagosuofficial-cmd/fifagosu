@@ -37,11 +37,16 @@
   {
     "id": "허브 화면 문서 제목",
     "from": "document.title='킥킥 · 축구 심심풀이 테스트';",
-    "to": "document.title='킥킥 · 축구 심심풀이 테스트 | 피파고수';"
+    "to": "document.title='킥킥 · 내가 선수라면? 축구 테스트 | 피파고수';"
   },
   {
     "id": "각 테스트 화면 문서 제목",
     "from": "document.title=a.title+' · 킥킥';",
     "to": "document.title=a.title+' · 킥킥 | 피파고수';"
+  },
+  {
+    "id": "hub-hero (메인 제목: 킥킥 · 내가 선수라면?)",
+    "from": "<h1>심심할 땐<br>축구 테스트 한 판</h1>",
+    "to": "<h1>내가<br>축구선수라면?</h1>"
   }
 ]

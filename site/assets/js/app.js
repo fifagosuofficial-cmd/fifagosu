@@ -368,7 +368,7 @@ const DIV_NAMES=Object.values(DIVISION);
 const divImg=(n,cls)=>{const i=DIV_NAMES.indexOf(n);return i<0?'':`<img class="${cls||'divimg'}" src="https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank${i}.png" alt="${esc(n)}" title="역대 최고 등급 · ${esc(n)}" onerror="this.remove()">`};
 function show(v,nopush){
   // SPA 탭 이동 뒤에도 넓은 화면용 컨테이너 상태를 뷰와 동기화한다.
-  document.body.classList.toggle('page-wide',['home','diag','sim','trade'].includes(v));
+  document.body.classList.toggle('page-wide',['home','diag','cards','calc','sim','trade','guide'].includes(v));
   VIEWS.forEach(x=>$('v-'+x).hidden=x!==v);
   document.querySelectorAll('#menu [data-view]').forEach(b=>{if(b.dataset.view===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   const R=window.FG_ROUTES;

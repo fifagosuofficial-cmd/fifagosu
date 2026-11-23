@@ -593,6 +593,9 @@ a.logo{text-decoration:none;color:inherit}
 /* ===== 소식 게시판 ===== */
 .page-wide>.wrap>main.wrap.newsp{max-width:1080px}
 .page-wide>.wrap>main.wrap:not(.home2):not(.newsp){max-width:760px;width:100%;margin-inline:auto}
+/* 주요 도구 화면은 홈과 같은 넓은 작업 폭을 유지한다. */
+.page-wide>.wrap>main#v-cards,.page-wide>.wrap>main#v-calc,.page-wide>.wrap>main#v-guide{max-width:1080px}
+@media (min-width:1200px){.page-wide>.wrap>main#v-cards,.page-wide>.wrap>main#v-calc,.page-wide>.wrap>main#v-guide{max-width:1440px}}
 .bd-head{display:grid;gap:12px;padding:14px 0 4px;align-items:end}
 @media (min-width:860px){.bd-head{grid-template-columns:1fr 340px}}
 .bd-h1{font-family:var(--f-display);font-weight:400;font-size:clamp(24px,4vw,30px);margin:0}

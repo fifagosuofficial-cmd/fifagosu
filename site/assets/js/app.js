@@ -442,10 +442,16 @@ function expandSnap(s){
 }
 if(window.FG_SNAP_RAW){window.FG_SNAP={};FG_SNAP_RAW.forEach(s=>Object.assign(FG_SNAP,expandSnap(s)))}
 let dMode='50', dCur=null, dTab='stats', dCount=30;
+const DIAG_FAVORITES_KEY='fifagosu.diag-favorites.v1';
+const dFavorites=()=>{try{const saved=JSON.parse(localStorage.getItem(DIAG_FAVORITES_KEY)||'[]');return Array.isArray(saved)?[...new Map(saved.filter(n=>typeof n==='string'&&n.trim()).map(n=>[n.trim().toLocaleLowerCase(),n.trim()])).values()].slice(0,10):[]}catch(e){return []}};
+function dSaveFavorites(list){try{localStorage.setItem(DIAG_FAVORITES_KEY,JSON.stringify(list.slice(0,10)))}catch(e){}}
+function dRenderFavorites(){const el=$('dFavorites');if(!el)return;const list=dFavorites();el.hidden=!list.length;el.innerHTML=list.length?`<span>즐겨찾는 구단주</span><div>${list.map(n=>`<button type="button" class="df-item" data-dfavorite="${esc(n)}">${esc(n)}</button><button type="button" class="df-remove" data-dfavorite-remove="${esc(n)}" aria-label="${esc(n)} 즐겨찾기 삭제" title="즐겨찾기 삭제">×</button>`).join('')}</div>`:''}
+function dToggleFavorite(nick){nick=(nick||'').trim();if(!nick)return false;const key=nick.toLocaleLowerCase(),list=dFavorites(),i=list.findIndex(n=>n.toLocaleLowerCase()===key);if(i>=0)list.splice(i,1);else list.unshift(nick);dSaveFavorites(list);dRenderFavorites();return i<0}
+function dFavoriteButton(nick){const on=dFavorites().some(n=>n.toLocaleLowerCase()===nick.toLocaleLowerCase());return `<button type="button" class="d-favorite" data-dfavorite-toggle="${esc(nick)}" aria-pressed="${on}" aria-label="${on?'즐겨찾기 해제':'즐겨찾기에 추가'}" title="${on?'즐겨찾기 해제':'즐겨찾기에 추가'}">${on?'★':'☆'}</button>`}
 const DTABS={'50':[['stats','세부 지표'],['pstats','선수별 기록'],['time','시간대별 득실'],['shot','슈팅 맵']],'52':[['stats','세부 지표'],['pstats','선수별 기록'],['squad','감독모드 스쿼드'],['form','포메이션 상성'],['line','라인별 평점'],['time','시간대별 득실'],['shot','슈팅 맵']]};
 let dTabInit='stats';
 function dRenderBoard(d,a){
-  $('dBoard').innerHTML=`<div><div class="nick nick-wrap">${divImg(d.maxdivision.division)}<span>${esc(d.basic.nickname)}</span></div><div class="meta">Lv.${d.basic.level} · ${a.dm?'감독모드 · '+esc(a.myForm):'공식경기'}</div></div>
+  $('dBoard').innerHTML=`<div><div class="nick nick-wrap">${divImg(d.maxdivision.division)}<span>${esc(d.basic.nickname)}</span>${dFavoriteButton(d.basic.nickname)}</div><div class="meta">Lv.${d.basic.level} · ${a.dm?'감독모드 · '+esc(a.myForm):'공식경기'}</div></div>
   <div class="tier">${d.current?`<span class="lbl">최근 경기 등급</span>${tierBadge(d.current)}`:''}<span class="lbl">${a.dm?'감독모드 ':''}역대 최고 등급</span><span class="tier-max">${divImg(d.maxdivision.division,'divimg-sm')}${tierBadge(d.maxdivision.division)}</span></div>
   <div class="record">${d.real?`<div><span class="k">데이터</span><span class="v" style="font-size:13px">넥슨 Open API${d.snapDate?' · '+esc(d.snapDate):''}</span></div>`:d.sample?'<div><span class="k">데이터</span><span class="v" style="font-size:13px;color:var(--warn,#e0a030)">예시(가상)</span></div>':''}<div><span class="k">최근</span><span class="v">${a.n}경기${d.forfeit?`<small style="display:block;font-size:11px;font-weight:400;color:var(--muted)">몰수 ${d.forfeit}경기 제외</small>`:''}</span></div><div><span class="k">승·무·패</span><span class="v">${a.W}·${a.D}·${a.L}</span></div><div><span class="k">승률</span><span class="v">${Math.round(a.W/a.n*100)}%</span></div><div><span class="k">득실</span><span class="v">${a.gf}:${a.ga}</span></div></div>`;
 }
@@ -784,7 +790,9 @@ async function runDiag(nick){
 }
 function dClear(){['dCards','dPanel','dMatches','dSum'].forEach(id=>$(id).innerHTML='');$('dTip').hidden=true;$('dAllN').textContent=''}
 $('dForm').addEventListener('submit',e=>{e.preventDefault();runDiag($('dNick').value)});
-$('dBoard').addEventListener('click',e=>{if(e.target.closest('[data-sample]')){$('dNick').value='예시';runDiag('예시')}});
+$('dBoard').addEventListener('click',e=>{const fav=e.target.closest('[data-dfavorite-toggle]');if(fav){const added=dToggleFavorite(fav.dataset.dfavoriteToggle);fav.setAttribute('aria-pressed',String(added));fav.textContent=added?'★':'☆';fav.setAttribute('aria-label',added?'즐겨찾기 해제':'즐겨찾기에 추가');fav.title=added?'즐겨찾기 해제':'즐겨찾기에 추가';return}if(e.target.closest('[data-sample]')){$('dNick').value='예시';runDiag('예시')}});
+$('dFavorites').addEventListener('click',e=>{const remove=e.target.closest('[data-dfavorite-remove]');if(remove){dToggleFavorite(remove.dataset.dfavoriteRemove);return}const item=e.target.closest('[data-dfavorite]');if(item){$('dNick').value=item.dataset.dfavorite;runDiag(item.dataset.dfavorite)}});
+dRenderFavorites();
 $('dCount').addEventListener('click',e=>{const b=e.target.closest('[data-n]');if(!b)return;dCount=+b.dataset.n;$('dCount').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));runDiag($('dNick').value)});
 $('dMode').addEventListener('click',e=>{const b=e.target.closest('[data-mode]');if(!b)return;dMode=b.dataset.mode;$('dMode').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));runDiag($('dNick').value)});
 $('dTabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;dTab=b.dataset.tab;dRenderPanel()});

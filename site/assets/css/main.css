@@ -817,6 +817,14 @@ a.mk-tile:hover{border-color:var(--accent)}
 
 /* 전적 진단: 닉네임 옆 역대 최고 등급 아이콘 */
 .board .nick-wrap{display:flex;align-items:center;gap:10px}
+.d-favorite{width:28px;height:28px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--warn);font-size:23px;line-height:1;cursor:pointer}
+.d-favorite:hover,.d-favorite:focus-visible{background:var(--warn-soft);outline:none}
+.diag-favorites{display:flex;align-items:flex-start;gap:10px;margin:10px 0 14px;color:var(--muted);font-size:13px}
+.diag-favorites>span{padding-top:6px;white-space:nowrap}.diag-favorites>div{display:flex;gap:4px;flex-wrap:wrap}
+.df-item,.df-remove{border:1px solid var(--line);background:var(--surface);color:var(--fg);height:30px;cursor:pointer}
+.df-item{border-radius:999px 0 0 999px;padding:0 8px 0 11px;border-right:0}.df-item:hover,.df-item:focus-visible{border-color:var(--accent);color:var(--accent);outline:none}
+.df-remove{border-radius:0 999px 999px 0;padding:0 9px 0 4px;color:var(--muted)}.df-remove:hover,.df-remove:focus-visible{color:var(--crit);border-color:var(--crit);outline:none}
+@media (max-width:480px){.diag-favorites{display:grid;gap:5px}.diag-favorites>span{padding-top:0}}
 .divimg{width:52px;height:52px;object-fit:contain;flex:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.18))}
 .tier-max{display:inline-flex;align-items:center;gap:6px}
 .divimg-sm{width:26px;height:26px;object-fit:contain}

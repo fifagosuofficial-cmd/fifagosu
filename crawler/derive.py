@@ -386,19 +386,15 @@ def step_ranker_market(data, date):
         listed.update(load(data / "list" / f"{n}.json", {}))
         history.update(load(data / "market" / "all_card_history" / f"{n}.json", {}))
 
-    top_usage = load(data / "market" / "ranker_top_usage.json", {})
-    usage = load(data / "market" / "ranker_usage.json", {})
-    price_data = load(data / "market" / "ranker_prices.json", {})
-    exact_cards = usage.get("cards") or []
-    if price_data.get("basis") == "champion-match-sample" or len(exact_cards) >= MARKET_INDEX_MIN:
-        ranked = exact_cards
-        popular_label = "\uCC54\uD53C\uC5B8\uC2A4 \uC774\uC0C1 \uACF5\uC2DD\uACBD\uAE30 \uC0AC\uC6A9 \uD45C\uBCF8"
-    else:
-        ranked = top_usage.get("cards") or exact_cards
-        popular_label = ("\uC804\uC77C \uACF5\uC2DD 1:1 \uC0C1\uC704 1,000\uC704 \uC0AC\uC6A9 \uD45C\uBCF8" if top_usage.get("cards")
-                         else "\uCC54\uD53C\uC5B8\uC2A4 \uC774\uC0C1 \uACF5\uC2DD\uACBD\uAE30 \uC0AC\uC6A9 \uD45C\uBCF8")
-    ranked = [x for x in ranked
-              if str(x.get("id")) in listed and int(x.get("uses") or 0) > 0][:MARKET_RANKER_CAP]
+    # 메인 "인기 카드"는 챔피언스/상위 랭커 표본이 아니라, 수집한 전체
+    # 선수카드 목록의 사용 경기 수를 기준으로 보여 준다.
+    ranked = [
+        {"id": int(card_id), "uses": int(rec.get("games") or 0)}
+        for card_id, rec in listed.items()
+        if int(rec.get("games") or 0) > 0
+    ]
+    ranked.sort(key=lambda item: (-item["uses"], item["id"]))
+    popular_label = "전체 선수카드 사용량 기준"
 
     history_meta = load(data / "market" / "all_card_history_dates.json", {"dates": []})
     history_dates = history_meta.get("dates") or []

@@ -39,7 +39,7 @@ tests/                        수집기 테스트 (실제 응답 형식 기준)
    - 내 프로필 → API 토큰 → "Cloudflare Pages 편집" 권한 토큰을 만들고, 계정 ID를 복사해요.
 5. **GitHub 저장소 → Settings → Secrets and variables → Actions**
    - Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
-   - (선택) Variables: `CRAWL_MINUTES` = 하루 수집 시간(분, 기본 50)
+   - (선택) Variables: `CRAWL_MINUTES` = 전체 카드 일일 수집 시간(분, 기본 300)
 6. **Actions → crawl-and-deploy → Run workflow**, minutes에 `300`을 넣고 처음 실행해요.
 7. 끝나면 `https://fifagosu.pages.dev`에서 카드 검색 → 카드 클릭 → 능력치·시세가 나오는지 확인해요.
 

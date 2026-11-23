@@ -411,16 +411,25 @@ def hot_seasons(store, n):
     return ranked[:n]
 
 
-def cmd_list(client, store, mode, minutes, hot_n=30):
+def cmd_list(client, store, mode, minutes, hot_n=30, full_snapshot=False):
     deadline = time.time() + minutes * 60
     all_seasons = fetch_seasons()
     known = set(int(s) for s in store.state["seasons"])
     if mode == "full":
-        # 전체 갱신은 하루에 다 못 끝나도 됨: 이번 회차 시작 이후 아직 갱신 안 된 시즌만 이어서 받음
-        start = store.state.get("full_started") or now_iso()
-        store.state["full_started"] = start
-        seasons = [s for s in sorted(all_seasons, key=lambda s: store.state["seasons"].get(str(s), ""))
-                   if store.state["seasons"].get(str(s), "") < start]
+        # 시장 비교용 전체 스냅샷은 하루 안에 모든 시즌을 다시 읽어야 해요.
+        # 같은 날 재실행은 이어 받고, 다음 날에는 전날의 미완료 회차를 버리고 처음부터 시작해요.
+        today = dt.datetime.now(KST).date().isoformat()
+        prior = store.state.get("full_started")
+        if full_snapshot and (not prior or prior[:10] != today):
+            start = now_iso()
+            store.state["full_started"] = start
+            store.state["full_snapshot_date"] = today
+            seasons = sorted(all_seasons)
+        else:
+            start = prior or now_iso()
+            store.state["full_started"] = start
+            seasons = [s for s in sorted(all_seasons, key=lambda s: store.state["seasons"].get(str(s), ""))
+                       if store.state["seasons"].get(str(s), "") < start]
     else:
         new = [s for s in all_seasons if s not in known]             # 처음 보는 시즌은 항상 포함
         seasons = new + [s for s in hot_seasons(store, hot_n) if s not in new]
@@ -512,7 +521,7 @@ def main(argv=None):
     a.add_argument("--minutes", type=float, default=30); a.add_argument("--hot", type=int, default=30)
     d = sub.add_parser("detail"); d.add_argument("--max", type=int, default=2000); d.add_argument("--minutes", type=float, default=30)
     sub.add_parser("index")
-    y = sub.add_parser("daily"); y.add_argument("--minutes", type=float, default=50)
+    y = sub.add_parser("daily"); y.add_argument("--minutes", type=float, default=300)
     y.add_argument("--hot", type=int, default=30)
     args = ap.parse_args(argv)
 
@@ -524,17 +533,9 @@ def main(argv=None):
         elif args.cmd == "detail":
             cmd_detail(client, store, args.max, args.minutes)
         elif args.cmd == "daily":
-            full_at = store.state.get("full_at")
-            stale = (store.state.get("full_started") is not None or not full_at
-                     or (dt.datetime.now(KST) - dt.datetime.fromisoformat(full_at)).days >= 7)
-            t0 = time.time()
-            # 시간을 늘려도 시세 수집은 상한까지만 쓰고, 남는 시간은 능력치(세부) 수집에 몰아줘요.
-            cmd_list(client, store, "hot", min(args.minutes * 0.3, 20), args.hot)   # 인기 시즌 시세는 매일
-            if stale:                                                                # 주 1회 전체 갱신(여러 날에 나눠 진행)
-                cmd_list(client, store, "full", min(args.minutes * 0.4, 45), args.hot)
-            left = args.minutes - (time.time() - t0) / 60
-            if left > 2:
-                cmd_detail(client, store, 100000, left - 1)
+            # 시장지수와 전일 등락은 같은 카드 집합의 완전한 일별 스냅샷만 사용해요.
+            # 부분 수집·인기 시즌 우선 수집은 시장 이력을 왜곡하므로 여기서는 하지 않아요.
+            cmd_list(client, store, "full", args.minutes, args.hot, full_snapshot=True)
         if args.cmd in ("daily", "list"):
             try:
                 tr = fetch_traits(client)

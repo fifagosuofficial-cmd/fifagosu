@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       minutes:
-        description: "수집 시간(분). 처음 한 번은 300 정도로 크게"
-        default: "50"
+        description: "전체 카드 일일 스냅샷 수집 시간(분)"
+        default: "300"
   push:
     branches: [main, renewal]    # 사이트 코드를 고치면 수집 없이 배포만 (renewal은 미리보기 주소로)
 
@@ -47,7 +47,7 @@ jobs:
         if: github.event_name != 'push'
         run: |
           pip install -q -r crawler/requirements.txt
-          python crawler/fgcrawl.py daily --minutes "${{ github.event.inputs.minutes || vars.CRAWL_MINUTES || '50' }}"
+          python crawler/fgcrawl.py daily --minutes "${{ github.event.inputs.minutes || vars.CRAWL_MINUTES || '300' }}"
 
       - name: 챔피언스 평균 평점 (전적 진단 '평점 낮음' 기준)
         if: github.event_name != 'push'

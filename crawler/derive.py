@@ -228,32 +228,22 @@ def _item(k, r, v, pv):
 
 
 def step_market_history(data, date):
-    """Keep sparse daily observations for every card touched by the list crawler."""
+    """완료된 전체 목록 스캔만 시장 비교용 일별 스냅샷으로 보관해요."""
     data = Path(data)
     market_dir = data / "market"
     card_dir = market_dir / "all_card_history"
     meta_path = market_dir / "all_card_history_dates.json"
+    state = load(data / "state.json", {})
+    full_at = state.get("full_at") or ""
+    if state.get("full_snapshot_date") != date or full_at[:10] != date:
+        log("전체 카드 스캔이 아직 끝나지 않아 시장 이력 저장을 건너뜁니다")
+        return {"market_history_days": 0, "market_history_cards": 0, "market_history": "waiting-full-scan"}
+
     meta = load(meta_path, None)
-    if meta is None:
-        legacy_meta = load(data / "hist" / "dates.json", {"dates": [], "counts": []})
-        dates = legacy_meta.get("dates") or []
-        counts = legacy_meta.get("counts") or []
-        for n in range(SHARDS):
-            legacy = load(data / "hist" / f"{n}.json", {})
-            converted = {}
-            for key, rows in legacy.items():
-                grades = {}
-                for grade in MARKET_GRADES:
-                    gi = GRADES.index(grade)
-                    values = rows[gi] if len(rows) > gi and rows[gi] else []
-                    points = [[day, int(value)] for day, value in zip(dates, values) if day and value is not None]
-                    if points:
-                        grades[str(grade)] = points
-                if grades:
-                    converted[key] = grades
-            if converted:
-                save(card_dir / f"{n}.json", converted)
-        meta = {"dates": dates[-KEEP_DAYS:], "counts": counts[-KEEP_DAYS:]}
+    if not meta or meta.get("basis") != "full-list-snapshots":
+        # 기존 이력은 날짜마다 다른 카드가 갱신된 부분 수집 결과라 전일 비교에 사용하지 않아요.
+        meta = {"basis": "full-list-snapshots", "dates": [], "counts": []}
+        log("부분 수집 시장 이력을 초기화하고 전체 스냅샷부터 다시 쌓습니다")
 
     dates = meta.get("dates") or []
     counts = meta.get("counts") or []
@@ -287,6 +277,7 @@ def step_market_history(data, date):
                 grades[str(grade)] = [point for point in points if point[0] >= cutoff]
         save(path, shard)
     counts[idx] = len(today)
+    meta["basis"] = "full-list-snapshots"
     meta["dates"] = dates[-KEEP_DAYS:]
     meta["counts"] = counts[-KEEP_DAYS:]
     save(meta_path, meta)
@@ -725,15 +716,19 @@ def run(data=DATA, date=None, meta_get=None, no_meta=False, client=None):
     summary.update(step_meta(data, date, None if no_meta else fetch_meta(meta_get)))
     summary.update(step_history(data, date))
     try:
-        summary.update(step_market_history(data, date))
+        market_history = step_market_history(data, date)
+        summary.update(market_history)
     except Exception as e:
         log("All-card market history save failed:", e.__class__.__name__, str(e)[:180])
         summary["market_history"] = "error"
-    try:
-        summary.update(step_market(data, date))
-    except Exception as e:  # 홈 요약 실패가 수집 저장을 막지 않게
-        log("시장 요약 실패:", e.__class__.__name__, str(e)[:180])
-        summary["market"] = "error"
+    if summary.get("market_history") == "waiting-full-scan":
+        summary["market"] = "waiting-full-scan"
+    else:
+        try:
+            summary.update(step_market(data, date))
+        except Exception as e:  # 홈 요약 실패가 수집 저장을 막지 않게
+            log("시장 요약 실패:", e.__class__.__name__, str(e)[:180])
+            summary["market"] = "error"
     try:
         summary.update(step_reco(data))
     except Exception as e:  # 추천 후보 실패도 수집 저장을 막지 않게(이전 파일 유지)

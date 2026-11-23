@@ -677,7 +677,7 @@ nav.menu a[aria-current="page"]:not(.fun){color:var(--accent-ink);background:var
 .pm2-foot2 b.on{background:var(--good);color:#fff}
 .pm2-alt{display:flex;gap:10px;flex-wrap:wrap;font:600 12px var(--f-data);color:var(--muted)}
 .pm2-alt b{color:var(--fg)}
-.pm2-photo{position:relative;height:150px;border-radius:10px;background:linear-gradient(180deg,var(--sunk),var(--surface));display:grid;place-items:end center;overflow:hidden}
+.pm2-photo{position:relative;height:150px;border-radius:10px;background:linear-gradient(180deg,var(--sunk),var(--surface));display:grid;place-items:end center;overflow:visible}
 .pm2-photo img{max-width:100%;max-height:150px;object-fit:contain}
 .pm2-crest{position:absolute;top:6px;right:6px;width:44px;height:44px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.18);z-index:1}
 .pm2-crest img{width:30px;height:30px;object-fit:contain}

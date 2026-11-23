@@ -34,12 +34,12 @@
 {% if market %}{% set ix = market.index %}
   <section class="mk-strip" aria-label="시장 요약">
     <div class="mk-tile">
-      <span class="mk-k">피파고수 시장지수 <small>{{ market.rankLabel|default('상위 랭커 사용 기준') }} · 1강 최근 7일{% if ix %} · 표본 {{ ix.n }}장{% endif %}</small></span>
+      <span class="mk-k">피파고수 시장지수 <small>{{ market.rankLabel|default('상위 랭커 사용 기준') }} · 1강 직전 기록일 대비{% if ix %} · 표본 {{ ix.n }}장{% endif %}</small></span>
       {% if ix %}<span class="mk-v {{ 'up' if ix.median > 0 else ('down' if ix.median < 0 else '') }}">{{ M.pct(ix.median) }}</span>
       {% else %}<span class="mk-v mk-wait">{% if market.historyDays|default(0) < market.historyRequiredDays|default(8) %}전체 카드 이력 {{ market.historyDays|default(0) }}/{{ market.historyRequiredDays|default(8) }}일 누적{% else %}표본 {{ market.indexSample|default(0) }}/{{ market.indexMinimum|default(30) }}장{% endif %}</span>{% endif %}
     </div>
     <div class="mk-tile">
-      <span class="mk-k">최근 7일 오른 카드 · 내린 카드</span>
+      <span class="mk-k">직전 기록일 대비 오른 카드 · 내린 카드</span>
       {% if ix %}<span class="mk-v mk-ud"><b class="up">▲ {{ ix.up }}</b> <b class="down">▼ {{ ix.down }}</b></span>
       <span class="mk-bar" aria-hidden="true"><i style="width:{{ (ix.up / ix.n * 100)|round(1) if ix.n else 50 }}%"></i></span>
       {% else %}<span class="mk-v mk-wait">비교 가능한 표본을 모으고 있어요</span>{% endif %}
@@ -62,12 +62,12 @@
   {% for g in market.grades %}{% set B = market.byGrade[g|string] %}
   <div class="mk-panel" data-mp="{{ g }}"{% if not loop.first %} hidden{% endif %}>
     <section class="mk-box mk-up">
-      <h2>최근 7일 급등 TOP {{ B.risers|length or 10 }}</h2>
+      <h2>직전 기록일 대비 급등 TOP {{ B.risers|length or 10 }}</h2>
       {% if B.risers %}<ol class="mk-list">{% for x in B.risers %}{{ M.row(x, loop.index) }}{% endfor %}</ol>
       {% else %}<p class="mk-empty">{{ market.rankLabel|default('상위 랭커') }} 시세를 모으고 있어요.</p>{% endif %}
     </section>
     <section class="mk-box mk-down">
-      <h2>최근 7일 급락 TOP {{ B.fallers|length or 10 }}</h2>
+      <h2>직전 기록일 대비 급락 TOP {{ B.fallers|length or 10 }}</h2>
       {% if B.fallers %}<ol class="mk-list">{% for x in B.fallers %}{{ M.row(x, loop.index) }}{% endfor %}</ol>
       {% else %}<p class="mk-empty">{{ market.rankLabel|default('상위 랭커') }} 시세를 모으고 있어요.</p>{% endif %}
     </section>

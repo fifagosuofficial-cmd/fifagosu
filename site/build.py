@@ -141,6 +141,42 @@ def _load(p):
         return None
 
 
+def refresh_popular_market_cards(data_dir, market):
+    """Build-time safeguard: always show popularity from the full card list."""
+    if not market or not market.get("byGrade"):
+        return market
+    listed = {}
+    for shard in range(200):
+        listed.update(_load(data_dir / "list" / f"{shard}.json") or {})
+    ranked = sorted(
+        ((int(card_id), rec) for card_id, rec in listed.items() if int(rec.get("games") or 0) > 0),
+        key=lambda item: (-int(item[1].get("games") or 0), item[0]),
+    )
+    for grade in market.get("grades") or []:
+        bucket = market["byGrade"].get(str(grade))
+        if not bucket:
+            continue
+        moves = {int(item["id"]): item for kind in ("risers", "fallers") for item in bucket.get(kind, [])}
+        popular = []
+        for card_id, rec in ranked:
+            prices = rec.get("price") or []
+            value = prices[grade - 1] if len(prices) >= grade else None
+            if not value:
+                continue
+            pos = (rec.get("pos") or [[None, None]])[0]
+            item = {"id": card_id, "n": rec.get("name") or "", "s": card_id // 1_000_000,
+                    "o": rec.get("ovr") or (pos[1] if len(pos) > 1 else None), "p": pos[0],
+                    "v": value, "u": int(rec.get("games") or 0)}
+            item.update({k: v for k, v in moves.get(card_id, {}).items()
+                         if k in ("pv", "c", "fromDate", "toDate")})
+            popular.append(item)
+            if len(popular) == 10:
+                break
+        bucket["popular"] = popular
+    market["popularLabel"] = "전체 선수카드 사용량 기준"
+    return market
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data")
@@ -168,7 +204,7 @@ def main(argv=None):
     data_dir = (ROOT / a.data) if not Path(a.data).is_absolute() else Path(a.data)
     today = dt.datetime.now(KST).strftime("%Y-%m-%d")
     news = load_news(data_dir, today)
-    market = _load(data_dir / "market" / "summary.json")
+    market = refresh_popular_market_cards(data_dir, _load(data_dir / "market" / "summary.json"))
     if market and not market.get("byGrade"):
         market = None
     common = dict(news=news, market=market, SITE_URL=site_url, ver=ver, cfg=cfg, contact=cfg.get("CONTACT_EMAIL") or "",

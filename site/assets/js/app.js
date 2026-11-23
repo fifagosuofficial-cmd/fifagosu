@@ -1080,7 +1080,10 @@ function renderCard(){
   }else tabR=`<p class="muted pm2-empty">${loading?'불러오는 중이에요…':none?'아직 능력치를 수집하지 않은 카드예요. 매일 수집 중이라 곧 채워져요.':'세부 능력치는 아직 수집 대기 중이에요.'}</p>`;
   const sumCells=D&&D.summary&&D.summary.length?D.summary.map(([k,v])=>{const t=tcValue(tcCombined,TC_KEYS[norm(k)]||norm(k),k),value=v+b+adaptDelta+t;return `<div><small>${esc(k)}</small><b class="${fcCls(value)}">${value}</b></div>`}).join(''):['스피드','슛','패스','드리블','수비','피지컬'].map(k=>`<div><small>${k}</small><b class="vlow">-</b></div>`).join('');
   const ovrNow=main?(main[1]||0)+b+adaptDelta+tcOverall:null;
-  const gradeSel=`<label class="pm2-grade g-${GRADE_CLS(g)}" title="강화 단계"><select id="pmGradeSel" aria-label="강화 단계">${Array.from({length:MAX_GRADE},(_,i)=>`<option value="${i+1}"${i+1===g?' selected':''}>${i+1}</option>`).join('')}</select></label>`;
+  const gradeSel=`<div class="pm2-grade g-${GRADE_CLS(g)}" title="강화 단계">
+    <button type="button" id="pmGradeToggle" class="pm2-grade-trigger" aria-label="강화 단계 ${g}강" aria-expanded="false">${g}<span aria-hidden="true">⌄</span></button>
+    <div class="pm2-grade-menu" role="menu" aria-label="강화 단계 선택">${Array.from({length:MAX_GRADE},(_,i)=>`<button type="button" role="menuitem" data-g="${i+1}" class="g-${GRADE_CLS(i+1)}" aria-current="${i+1===g?'true':'false'}">${i+1}강</button>`).join('')}</div>
+  </div>`;
   const optsBox=`<div class="pm2-opts">
      <label>적응도<select id="pmAdaptation">${[1,2,3,4,5].map(n=>`<option value="${n}"${n===pmAdaptation?' selected':''}>${n}${n===5?' (최대)':''}</option>`).join('')}</select></label>
      <label>소속 팀컬러<select id="pmTc"${tcOptions.length?'':' disabled'}>${tcOptHtml}</select></label>
@@ -1121,6 +1124,10 @@ function closeCard(){$('pmodal').hidden=true;document.body.style.overflow='';pmC
 $('pmClose').addEventListener('click',closeCard);
 $('pmodal').addEventListener('click',e=>{
   if(e.target.id==='pmodal')return closeCard();
+  const gradeToggle=e.target.closest('#pmGradeToggle');if(gradeToggle){
+    const gradeBox=gradeToggle.closest('.pm2-grade'),open=gradeBox.classList.toggle('open');
+    gradeToggle.setAttribute('aria-expanded',String(open));return;
+  }
   const gb=e.target.closest('[data-g]');if(gb){pmGrade=+gb.dataset.g;return renderCard()}
   const tb=e.target.closest('.pm2-tabs [data-t]');if(tb){if(tb.parentNode.dataset.side==='L')pmTabL=tb.dataset.t;else pmTabR=tb.dataset.t;return renderCard()}
   const b=e.target.closest('.pm2-orow [data-sp]');if(b)openCard(+b.dataset.sp)});
@@ -1128,7 +1135,6 @@ $('pmodal').addEventListener('click',e=>{
   if(e.target.id==='pmTc'){pmTcName=e.target.value;renderCard()}
   if(e.target.id==='pmGradeTc'){pmGradeTcName=e.target.value;pmGradeTcCount=0;renderCard()}
   if(e.target.id==='pmAdaptation'){pmAdaptation=+e.target.value||5;renderCard()}
-  if(e.target.id==='pmGradeSel'){pmGrade=+e.target.value||1;renderCard()}
   if(e.target.id==='pmRel'){pmRelName=e.target.value;renderCard()}
  });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('pmodal').hidden)closeCard()});

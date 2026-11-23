@@ -394,7 +394,7 @@ def step_ranker_market(data, date):
         if int(rec.get("games") or 0) > 0
     ]
     ranked.sort(key=lambda item: (-item["uses"], item["id"]))
-    popular_label = "전체 선수카드 사용량 기준"
+    popular_label = "전체 카드 사용 경기 수 TOP 10 기준"
 
     history_meta = load(data / "market" / "all_card_history_dates.json", {"dates": []})
     history_dates = history_meta.get("dates") or []

@@ -173,7 +173,7 @@ def refresh_popular_market_cards(data_dir, market):
             if len(popular) == 10:
                 break
         bucket["popular"] = popular
-    market["popularLabel"] = "전체 선수카드 사용량 기준"
+    market["popularLabel"] = "전체 카드 사용 경기 수 TOP 10 기준"
     return market
 
 

@@ -681,10 +681,16 @@ nav.menu a[aria-current="page"]:not(.fun){color:var(--accent-ink);background:var
 .pm2-photo img{max-width:100%;max-height:150px;object-fit:contain}
 .pm2-crest{position:absolute;top:6px;right:6px;width:44px;height:44px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.18);z-index:1}
 .pm2-crest img{width:30px;height:30px;object-fit:contain}
-.pm2-grade{position:absolute;right:6px;bottom:6px;z-index:1;border-radius:5px;background:#5a4334}
+.pm2-grade{position:absolute;right:6px;bottom:6px;z-index:4;border-radius:5px;background:#5a4334}
 .pm2-grade.g-silver{background:#c9ced6}.pm2-grade.g-gold{background:#e7bf3c}.pm2-grade.g-plat{background:linear-gradient(135deg,#f3eaff,#bcd2ff 50%,#ffd2ea)}
-.pm2-grade select{appearance:none;-webkit-appearance:none;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23222' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") no-repeat right 6px center/9px;border:0;padding:3px 20px 3px 8px;font:800 14px var(--f-data);color:#222;cursor:pointer}
-.pm2-grade.g-bronze select{color:#fff;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23fff' stroke-width='1.6' fill='none'/%3E%3C/svg%3E")}
+.pm2-grade-trigger{display:flex;align-items:center;gap:7px;border:0;background:transparent;padding:4px 8px;font:800 14px var(--f-data);color:#222;cursor:pointer}
+.pm2-grade-trigger span{font:700 15px/1 var(--f-body);transform:translateY(-1px)}
+.pm2-grade.g-bronze .pm2-grade-trigger{color:#fff}
+.pm2-grade-menu{display:none;position:absolute;right:0;top:calc(100% + 5px);grid-template-columns:repeat(4,minmax(42px,1fr));gap:4px;width:192px;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--panel);box-shadow:0 8px 20px rgba(0,0,0,.22)}
+.pm2-grade.open .pm2-grade-menu{display:grid}
+.pm2-grade-menu button{min-height:30px;border:1px solid rgba(0,0,0,.16);border-radius:5px;font:800 12px var(--f-data);cursor:pointer}
+.pm2-grade-menu button.g-bronze{background:#5a4334;color:#fff}.pm2-grade-menu button.g-silver{background:#c9ced6;color:#222}.pm2-grade-menu button.g-gold{background:#e7bf3c;color:#2b2200}.pm2-grade-menu button.g-plat{background:linear-gradient(135deg,#f3eaff,#bcd2ff 50%,#ffd2ea);color:#222}
+.pm2-grade-menu button[aria-current=true]{outline:2px solid var(--accent);outline-offset:1px}
 .pm2-sum{display:grid;grid-template-columns:repeat(6,1fr);background:var(--sunk);border-radius:6px;padding:9px 2px;text-align:center}
 .pm2-sum small{display:block;color:var(--muted);font-size:12px}
 .pm2-sum b{font:800 23px var(--f-data)}

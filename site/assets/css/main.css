@@ -530,6 +530,11 @@ a.logo{text-decoration:none;color:inherit}
 .page-wide>.wrap{max-width:1080px}
 .page-wide .top .row,.page-wide nav.menu{max-width:1080px}
 .page-wide>.wrap>main.wrap:not(.home2){max-width:760px;width:100%;margin-inline:auto}
+/* 초광폭 화면에서는 홈 시장 카드가 지나치게 좁아지지 않도록 넓게 사용해요. */
+@media (min-width:1200px){
+  .page-wide>.wrap,.page-wide .top .row,.page-wide nav.menu{max-width:1440px}
+  #v-home.home2{max-width:1440px}
+}
 .board{background:none;border:0;padding:0;box-shadow:none}
 /* ===== 메인 한 화면 압축 ===== */
 #v-home.home2{gap:14px}

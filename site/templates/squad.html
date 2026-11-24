@@ -22,14 +22,20 @@
 </section>
 <section id="sqOutput" hidden>
 <div class="sq-modes" id="sqModes" role="group" aria-label="추천 유형"></div>
+<div class="sq-card sq-bonus-panel">
+<div class="sq-section-head"><h2>능력치 보너스</h2><div class="sq-bonus-options"><label><input type="checkbox" id="sqAdapt" checked>적응도 최대 (5단계)</label><label><input type="checkbox" id="sqTC" checked>팀컬러 포함</label></div></div>
+<div id="sqColorList" class="sq-color-list" aria-live="polite"></div>
+<p id="sqBonusNote" class="sq-note"></p><button type="button" id="sqBonusRetry" hidden>관계·특성 팀컬러 다시 조회</button>
+</div>
 <div id="sqSummary" class="sq-summary"></div>
 <div id="sqPitch" class="sq-pitch" aria-label="선발 11명 배치"></div>
 <section id="sqPicker" class="sq-card sq-picker" hidden><div class="sq-section-head"><h2 id="sqPickerTitle">선수 직접 검색</h2><button type="button" id="sqPickerClose">닫기</button></div><label for="sqPlayerQuery">선수명 또는 시즌</label><input id="sqPlayerQuery" type="search" placeholder="예: 손흥민, 26TOTS" autocomplete="off"><p class="sq-note" id="sqPickerNote" role="status"></p><div class="tablewrap"><table class="sq-table sq-search-table"><thead><tr><th>선수 / 시즌</th><th>강화</th><th>OVR</th><th>급여</th><th>시세</th><th>선택</th></tr></thead><tbody id="sqPlayerResults"></tbody></table></div></section>
 <section class="sq-card"><div class="sq-section-head"><h2>선수별 상세 비교</h2><div class="sq-actions"><button type="button" id="sqSave">저장</button><button type="button" id="sqShare">공유 링크 복사</button></div></div>
 <p class="sq-note">고정 후 재추천하면 해당 선수를 유지합니다. 개별 교체는 다른 선수를 유지한 채 대안을 탐색합니다. 휴지통으로 빈 자리를 만들고 선수 검색으로 직접 채울 수 있습니다.</p>
 <div class="tablewrap"><table class="sq-table"><thead><tr><th>포지션</th><th>선수 / 시즌</th><th>강화</th><th>OVR</th><th>급여</th><th>시세 (BP)</th><th>약발 / 키</th><th>수집 경기 수</th><th>핵심 능력치 · 추천 근거</th><th>조정</th></tr></thead><tbody id="sqRows"></tbody></table></div>
-<p class="sq-note">OVR 및 능력치는 수집 기준값 + 강화 상승치입니다. 팀컬러·적응도 추가 보너스는 포함하지 않습니다. 실제 시세·보유 여부는 게임에서 확인하세요. 수집 경기 수는 카드 단위 인기도 참고 지표이며 강화별 랭커 사용률이 아닙니다. 제한된 후보 탐색으로 전역 최적해를 보장하지 않습니다.</p></section>
+<p class="sq-note">OVR은 수집 포지션 OVR에 강화·적응도·팀컬러 전체 능력치 효과를 더한 표시값이며, 개별 능력치 보너스는 세부 능력치에만 합산합니다. 공식 게임 OVR과 차이가 있을 수 있습니다. 실제 시세·보유 여부는 게임에서 확인하세요. 수집 경기 수는 카드 단위 인기도 참고 지표이며 강화별 랭커 사용률이 아닙니다. 제한된 후보 탐색으로 전역 최적해를 보장하지 않습니다.</p></section>
+<section class="sq-card"><h2>선수별 전체 능력치 비교</h2><p class="sq-note">강화 및 선택한 보너스 반영 · 미수집 값은 —로 표시</p><div class="tablewrap"><table class="sq-table sq-stat-matrix" id="sqStatMatrix"></table></div></section>
 </section>
 </main>
 {% endblock %}
-{% block scripts %}<script defer src="{{ root }}assets/js/squad-engine.js?v={{ ver }}"></script><script defer src="{{ root }}assets/js/squad.js?v={{ ver }}"></script>{% endblock %}
+{% block scripts %}<script defer src="{{ root }}assets/js/squad-engine.js?v={{ ver }}"></script><script defer src="{{ root }}assets/js/squad-bonus.js?v={{ ver }}"></script><script defer src="{{ root }}assets/js/squad.js?v={{ ver }}"></script>{% endblock %}

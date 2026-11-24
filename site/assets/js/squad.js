@@ -68,7 +68,7 @@ const money=n=>{const p=[];for(const [u,k] of [[1e12,"조"],[1e8,"억"],[1e4,"�
 function fields(){
  const preset=$("sqGrades").value;
  const grades=preset==="custom"?E.gradeRange(Number($("sqGradeMin").value),Number($("sqGradeMax").value)):E.gradeRange(({silver:5,gold:8,platinum:11})[preset],13);
- const teamName=$("sqTeam").value.trim(),team=teamName==="소속 제한 없음"?0:manifest?.teams.find(t=>t.name===teamName)?.id;
+ const teamName=$("sqTeam").value.trim(),team=!teamName||teamName==="소속 제한 없음"?0:manifest?.teams.find(t=>t.name===teamName)?.id;
  return {budget:Math.round(Number($("sqBudget").value)*Number($("sqUnit").value)),salary:Number($("sqSalary").value),team:team??-1,formation:$("sqFormation").value,style:$("sqStyle").value,grades}
 }
 function busy(on){document.querySelectorAll("#squad button,#squad input,#squad select").forEach(el=>el.disabled=on);if(!on&&!manifest)$("sqRun").disabled=true}
@@ -80,7 +80,7 @@ function lockView(){
 function validOpts(o){return o&&Number.isSafeInteger(o.budget)&&o.budget>0&&o.budget<=9e15&&Number.isInteger(o.salary)&&o.salary>=11&&o.salary<=315&&FORM[o.formation]&&Object.hasOwn(HINT,o.style)&&Array.isArray(o.grades)&&o.grades.length&&o.grades.every(g=>Number.isInteger(g)&&g>=1&&g<=13)&&(!o.team||manifest.teams.some(t=>t.id===o.team))}
 function applyOpts(o){
  if(!validOpts(o))throw Error("저장된 설정이 현재 데이터와 맞지 않습니다.");
- const unit=o.budget>=1e12?1e12:o.budget>=1e8?1e8:o.budget>=1e4?1e4:1;$("sqUnit").value=String(unit);$("sqBudget").value=String(o.budget/unit);$("sqSalary").value=String(o.salary);$("sqTeam").value=o.team?manifest.teams.find(t=>t.id===o.team)?.name||"":"소속 제한 없음";$("sqFormation").value=o.formation;$("sqStyle").value=o.style;hint();
+ const unit=o.budget>=1e12?1e12:o.budget>=1e8?1e8:o.budget>=1e4?1e4:1;$("sqUnit").value=String(unit);$("sqBudget").value=String(o.budget/unit);$("sqSalary").value=String(o.salary);$("sqTeam").value=o.team?manifest.teams.find(t=>t.id===o.team)?.name||"":"";$("sqFormation").value=o.formation;$("sqStyle").value=o.style;hint();
  const min=Math.min(...o.grades),max=Math.max(...o.grades);$("sqGrades").value=max===13&&[5,8,11].includes(min)&&o.grades.length===14-min?({5:"silver",8:"gold",11:"platinum"})[min]:"custom";$("sqGradeMin").value=String(min);$("sqGradeMax").value=String(max);gradeHint();
 }
 function request(opts,modes,ls,bs={},replace=false){
@@ -146,6 +146,10 @@ $("sqFormation").addEventListener("change",()=>{locks={};lockView();clearOutput(
 ["sqBudget","sqUnit","sqSalary","sqTeam","sqStyle","sqGrades","sqGradeMin","sqGradeMax"].forEach(id=>$(id).addEventListener("change",()=>{hint();gradeHint();clearOutput();status("조건이 변경되었습니다. 다시 추천해 주세요.")}));
 $("sqModes").addEventListener("click",e=>{const b=e.target.closest("[data-mode]");if(b&&!slotBusy){closePicker();active=b.dataset.mode;render()}});
 $("sqLocks").addEventListener("click",e=>{const b=e.target.closest("[data-unlock]");if(b){delete locks[b.dataset.unlock];lockView();if(!$("sqOutput").hidden)render()}});
+const teamInput=$("sqTeam");
+teamInput.addEventListener("focus",()=>{teamInput.placeholder="팀컬러 이름 검색";if(teamInput.value==="소속 제한 없음")teamInput.value="";else teamInput.select()});
+teamInput.addEventListener("click",()=>{if(teamInput.value==="소속 제한 없음")teamInput.value="";else teamInput.select()});
+teamInput.addEventListener("blur",()=>{teamInput.placeholder="소속 제한 없음"});
 function gradeHint(){
  $("sqGradeRange").hidden=$("sqGrades").value!=="custom";
 }

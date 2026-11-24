@@ -82,6 +82,12 @@ jobs:
               for p in site functions; do git checkout -q FETCH_HEAD -- "$p" 2>/dev/null || true; done
             fi
           fi
+          # 새 진단 기능에 필요한 정적 데이터는 배포할 때도 생성해요. 외부 API 호출 없음.
+          if [ "${{ github.event_name }}" = "push" ]; then
+            test -f data/index.json
+            pip install -q -r crawler/requirements.txt
+            python -c 'import sys; from pathlib import Path; sys.path.insert(0, "crawler"); import derive; d=Path("data"); date=derive.today_kst(); m=derive.step_diag_market(d,date); t=derive.step_opponent_teamcolors(d,date); print(m,t); assert m.get("diag_market_cards",0)>0 and t.get("opponent_teamcolor_cards",0)>0; assert (d/"diag/market.json").is_file() and (d/"diag/opponent-teamcolors.json").is_file()'
+          fi
           mkdir -p dist
           if [ -f site/build.py ]; then
             pip install -q -r site/requirements.txt

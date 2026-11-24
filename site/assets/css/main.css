@@ -1221,3 +1221,9 @@ nav.menu a.core:not([aria-current]):hover{background:var(--accent);color:var(--a
 .dtc-rank-team{display:grid;gap:2px;min-width:0;max-width:100%}
 .dtc-cols li .dtc-rank-team b{white-space:normal;overflow-wrap:anywhere}
 .dtc-rank-team small{font-size:10px;color:var(--muted);white-space:normal}
+
+/* 뉴스 목록은 사이드바 없이 전체 폭 사용. 홈 비교 기간과 강화 기준은 독립적으로 선택. */
+.h2-grid.press-full{grid-template-columns:minmax(0,1fr)}
+.mk-period-panel{display:grid;gap:14px;min-width:0}
+.mk-period-panel[hidden]{display:none}
+.mk-period{flex-wrap:wrap}

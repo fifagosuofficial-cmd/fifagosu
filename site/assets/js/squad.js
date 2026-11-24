@@ -5,7 +5,6 @@ const ver=new URL(document.currentScript.src).searchParams.get("v")||"";
 const FORM={"4231":["GK","LB","CB","CB","RB","CDM","CDM","LM","CAM","RM","ST"],"433":["GK","LB","CB","CB","RB","CM","CDM","CM","LW","ST","RW"],"4222":["GK","LB","CB","CB","RB","CDM","CDM","CAM","CAM","ST","ST"],"4123":["GK","LB","CB","CB","RB","CDM","CM","CM","LW","ST","RW"],"442":["GK","LB","CB","CB","RB","LM","CM","CM","RM","ST","ST"]};
 const LINES={"4231":[[10],[7,8,9],[5,6],[1,2,3,4],[0]],"433":[[8,9,10],[5,7],[6],[1,2,3,4],[0]],"4222":[[9,10],[7,8],[5,6],[1,2,3,4],[0]],"4123":[[8,9,10],[6,7],[5],[1,2,3,4],[0]],"442":[[9,10],[5,6,7,8],[1,2,3,4],[0]]};
 const MODES={performance:"성능 최우선",balanced:"밸런스형",value:"가성비형"};
-const INVEST={auto:"자동",balanced:"밸런스형",attack:"공격 집중형",midfield:"중원 장악형",wide:"측면 강화형",defense:"수비 안정형"};
 const HINT={balanced:"포지션별 필수 능력치와 BP·급여 균형.",speed:"윙어·ST는 속력·가속력·침투, 풀백은 속력·스태미너.",pass:"중원은 패스·시야·볼 컨트롤·침착성, 공격진은 연계와 약발.",longshot:"ST·CAM·CM·윙어의 중거리 슛·슛 파워·커브·관련 특성.",cross:"윙어·풀백의 크로스·커브, ST의 키·헤더·점프·위치 선정.",press:"전방·중원의 스태미너·적극성·가속력과 수비 전환.",counter:"전방의 속력·침투, 중원의 긴 패스, 수비진의 가로채기.",defense:"CB·CDM의 수비 능력·피지컬, 풀백의 기동력, GK 반응 속도."};
 const hint=()=>{$("sqStyleHint").textContent=HINT[$("sqStyle").value]||""};
 const STATS={sprintspeed:"속력",acceleration:"가속력",finishing:"골 결정력",shotpower:"슛 파워",longshots:"중거리 슛",positioning:"위치 선정",shortpassing:"짧은 패스",vision:"시야",crossing:"크로스",longpassing:"긴 패스",dribbling:"드리블",ballcontrol:"볼 컨트롤",agility:"민첩성",balance:"밸런스",reactions:"반응 속도",marking:"대인 수비",standingtackle:"태클",interceptions:"가로채기",heading:"헤더",strength:"몸싸움",stamina:"스태미너",gkdiving:"GK 다이빙",gkhandling:"GK 핸들링",gkreflexes:"GK 반응속도",gkpositioning:"GK 위치 선정",jumping:"점프",curve:"커브",aggression:"적극성",composure:"침착성",slidingtackle:"슬라이딩 태클",gkkicking:"GK 킥"};
@@ -16,7 +15,7 @@ const status=(s,bad=false)=>{$("sqStatus").textContent=s;$("sqStatus").classList
 const money=n=>{const p=[];for(const [u,k] of [[1e12,"조"],[1e8,"억"],[1e4,"만"]]){const v=Math.floor(n/u);if(v)p.push(v.toLocaleString("ko-KR")+k);n%=u}if(n||!p.length)p.push(n.toLocaleString("ko-KR"));return p.slice(0,2).join(" ")+" BP"};
 function fields(){
  const grades=$("sqGrades").value;
- return {budget:Math.round(Number($("sqBudget").value)*Number($("sqUnit").value)),salary:Number($("sqSalary").value),team:Number($("sqTeam").value),formation:$("sqFormation").value,style:$("sqStyle").value,investment:$("sqInvestment").value,grades:grades==="all"?Array.from({length:13},(_,i)=>i+1):grades==="mix"?[1,5,8]:[Number(grades)]}
+ return {budget:Math.round(Number($("sqBudget").value)*Number($("sqUnit").value)),salary:Number($("sqSalary").value),team:Number($("sqTeam").value),formation:$("sqFormation").value,style:$("sqStyle").value,grades:grades==="all"?Array.from({length:13},(_,i)=>i+1):grades==="mix"?[1,5,8]:[Number(grades)]}
 }
 function busy(on){document.querySelectorAll("#squad button,#squad input,#squad select").forEach(el=>el.disabled=on);if(!on&&!manifest)$("sqRun").disabled=true}
 function clearOutput(){results={};currentOpts=null;$("sqOutput").hidden=true}
@@ -24,10 +23,10 @@ function lockView(){
  const pos=FORM[$("sqFormation").value]||[];
  $("sqLocks").innerHTML=Object.entries(locks).map(([i,p])=>'<button type="button" data-unlock="'+esc(i)+'">'+esc(pos[i])+" · "+esc(p.name||p.id)+" "+esc(p.grade)+"강 ×</button>").join("");
 }
-function validOpts(o){return o&&Number.isSafeInteger(o.budget)&&o.budget>0&&o.budget<=9e15&&Number.isInteger(o.salary)&&o.salary>=11&&o.salary<=315&&FORM[o.formation]&&Object.hasOwn(HINT,o.style)&&Object.hasOwn(INVEST,o.investment||"auto")&&Array.isArray(o.grades)&&o.grades.length&&o.grades.every(g=>Number.isInteger(g)&&g>=1&&g<=13)&&(!o.team||manifest.teams.some(t=>t.id===o.team))}
+function validOpts(o){return o&&Number.isSafeInteger(o.budget)&&o.budget>0&&o.budget<=9e15&&Number.isInteger(o.salary)&&o.salary>=11&&o.salary<=315&&FORM[o.formation]&&Object.hasOwn(HINT,o.style)&&Array.isArray(o.grades)&&o.grades.length&&o.grades.every(g=>Number.isInteger(g)&&g>=1&&g<=13)&&(!o.team||manifest.teams.some(t=>t.id===o.team))}
 function applyOpts(o){
  if(!validOpts(o))throw Error("저장된 설정이 현재 데이터와 맞지 않습니다.");
- const unit=o.budget>=1e12?1e12:o.budget>=1e8?1e8:o.budget>=1e4?1e4:1;$("sqUnit").value=String(unit);$("sqBudget").value=String(o.budget/unit);$("sqSalary").value=String(o.salary);$("sqTeam").value=String(o.team);$("sqFormation").value=o.formation;$("sqStyle").value=o.style;$("sqInvestment").value=o.investment||"auto";hint();
+ const unit=o.budget>=1e12?1e12:o.budget>=1e8?1e8:o.budget>=1e4?1e4:1;$("sqUnit").value=String(unit);$("sqBudget").value=String(o.budget/unit);$("sqSalary").value=String(o.salary);$("sqTeam").value=String(o.team);$("sqFormation").value=o.formation;$("sqStyle").value=o.style;hint();
  $("sqGrades").value=o.grades.length===13?"all":o.grades.length===1?String(o.grades[0]):"mix";
 }
 function request(opts,modes,ls,bs={},replace=false){
@@ -55,7 +54,7 @@ function render(){
  if(!r?.ok){$("sqSummary").textContent=r?.reason||"추천 결과 없음";$("sqPitch").innerHTML="";$("sqRows").innerHTML="";$("sqSave").disabled=$("sqShare").disabled=true;return}
  $("sqSave").disabled=$("sqShare").disabled=false;
  const o=currentOpts, avg=r.players.reduce((s,p)=>s+p.ovr,0)/11;
- $("sqSummary").innerHTML="<div><span>선수 구매가 합계</span><b>"+money(r.price)+"</b><small>잔여 "+money(o.budget-r.price)+"</small></div><div><span>급여 합계</span><b>"+r.pay+" / "+o.salary+"</b><small>"+(r.pay===o.salary?"급여 상한 달성":"잔여 "+(o.salary-r.pay))+" · "+esc(INVEST[r.investment]||"자동")+"</small></div><div><span>평균 포지션 OVR</span><b>"+avg.toFixed(1)+"</b><small>선발 11명 · 보너스 제외</small></div>";
+ $("sqSummary").innerHTML="<div><span>선수 구매가 합계</span><b>"+money(r.price)+"</b><small>잔여 "+money(o.budget-r.price)+"</small></div><div><span>급여 합계</span><b>"+r.pay+" / "+o.salary+"</b><small>"+(r.pay===o.salary?"급여 상한 달성":"잔여 "+(o.salary-r.pay))+"</small></div><div><span>평균 포지션 OVR</span><b>"+avg.toFixed(1)+"</b><small>선발 11명 · 보너스 제외</small></div>";
  $("sqPitch").innerHTML=LINES[o.formation].map(line=>'<div class="sq-line">'+line.map(i=>{const p=r.players[i];return '<div class="sq-player"><small class="sq-pos">'+p.pos+' · '+p.ovr+'</small><img alt="" loading="lazy" src="'+img+'playersAction/p'+p.id+'.png" data-fallback="'+img+'players/p'+p.pid+'.png"><b>'+esc(p.name)+'</b><small>'+esc(p.season)+' '+p.grade+'강</small><small>'+money(p.price)+'</small></div>'}).join("")+"</div>").join("");
  $("sqPitch").querySelectorAll("img").forEach(el=>el.addEventListener("error",()=>{if(el.dataset.fallback){el.src=el.dataset.fallback;delete el.dataset.fallback}else el.hidden=true}));
  $("sqRows").innerHTML=r.players.map((p,i)=>{const isLocked=locks[i]?.id===p.id&&locks[i]?.grade===p.grade;const core=p.core.map(([k,v])=>esc(STATS[k]||k)+" "+v).join(" · ");return "<tr><td><b>"+p.pos+"</b></td><td><b>"+esc(p.name)+"</b><small>"+esc(p.season)+"</small></td><td>"+p.grade+"강</td><td>"+p.ovr+"</td><td>"+p.pay+"</td><td>"+p.price.toLocaleString("ko-KR")+"<small>"+esc(p.at?.slice(0,10)||"수집일 미상")+"</small></td><td>"+(p.weak??"—")+"<small>"+(p.height?p.height+"cm":"키 미수집")+"</small></td><td>"+(p.games==null?"미수집":p.games.toLocaleString("ko-KR"))+"</td><td>"+(core||"세부 능력치 미수집 · 포지션 OVR 기준")+(p.matched?.length?"<small>스타일 특성: "+esc(p.matched.join(" · "))+"</small>":"")+(r.targets?.[p.pos]?"<small>목표 급여 "+r.targets[p.pos].pay.toFixed(1)+" · 목표 BP "+money(Math.floor(r.targets[p.pos].budget))+"</small>":"")+"</td><td><button type=\"button\" data-lock=\""+i+"\" aria-pressed=\""+isLocked+"\">"+(isLocked?"고정 해제":"고정")+"</button><button type=\"button\" data-swap=\""+i+"\""+(isLocked?" disabled":"")+">교체</button></td></tr>"}).join("");
@@ -73,7 +72,7 @@ function restore(s){
 }
 $("sqForm").addEventListener("submit",e=>{e.preventDefault();request(fields(),Object.keys(MODES),locks)});
 $("sqFormation").addEventListener("change",()=>{locks={};lockView();clearOutput();status("포메이션 변경 · 고정 선수를 초기화했습니다.")});
-["sqBudget","sqUnit","sqSalary","sqTeam","sqStyle","sqInvestment","sqGrades"].forEach(id=>$(id).addEventListener("change",()=>{hint();clearOutput();status("조건이 변경되었습니다. 다시 추천해 주세요.")}));
+["sqBudget","sqUnit","sqSalary","sqTeam","sqStyle","sqGrades"].forEach(id=>$(id).addEventListener("change",()=>{hint();clearOutput();status("조건이 변경되었습니다. 다시 추천해 주세요.")}));
 $("sqModes").addEventListener("click",e=>{const b=e.target.closest("[data-mode]");if(b){active=b.dataset.mode;render()}});
 $("sqLocks").addEventListener("click",e=>{const b=e.target.closest("[data-unlock]");if(b){delete locks[b.dataset.unlock];lockView();if(!$("sqOutput").hidden)render()}});
 $("sqRows").addEventListener("click",e=>{

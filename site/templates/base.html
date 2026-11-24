@@ -22,7 +22,7 @@
 <link rel="stylesheet" href="{{ root }}assets/css/main.css?v={{ ver }}">
 <script>window.FG_SITE_URL={{ SITE_URL|tojson }};window.FG_LIVE=/^https?:$/.test(location.protocol)&&!/(^|\.)(claude\.ai|claudeusercontent\.com|claude\.site)$/.test(location.hostname);</script>
 {% block head %}{% endblock %}
-</head><body data-view="{{ view or '' }}"{% if (view or '') in ('home','sim','trade','diag','cards','calc','guide') or (active is defined and active in ('news','press','patch','sim')) %} class="page-wide"{% endif %}>
+</head><body data-view="{{ view or '' }}"{% if (view or '') in ('home','sim','trade','diag','cards','calc','guide','squad') or (active is defined and active in ('news','press','patch','sim')) %} class="page-wide"{% endif %}>
 <header class="top">
   <div class="row"><a class="logo" href="{{ SITE_URL }}/" aria-label="피파고수 홈"><picture><source srcset="{{ root }}site/brand/fifagosu-logo-480.webp" type="image/webp"><img src="{{ root }}site/brand/fifagosu-logo-480.png" width="480" height="135" alt="피파고수"></picture></a><span class="tag">FC온라인 전적 진단</span></div>
 {% block nav %}
@@ -32,6 +32,7 @@
     <a href="{{ root }}press/"{% if active is defined and active=='press' %} aria-current="page"{% endif %}>뉴스</a>
     <a href="{{ root }}patch/"{% if active is defined and active=='patch' %} aria-current="page"{% endif %}>패치노트</a>
     <a class="core" href="{{ root }}diag">전적 진단</a>
+    <a href="{{ root }}squad/"{% if view=='squad' %} aria-current="page"{% endif %}>AI 스쿼드</a>
     <a href="{{ root }}cards">카드 검색</a>
     <a href="{{ root }}calc">BP·강화 계산기</a>
     <a href="{{ root }}sim/"{% if active is defined and active=='sim' %} aria-current="page"{% endif %}>강화/현질 효율</a>

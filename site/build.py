@@ -40,8 +40,6 @@ VIEW_PAGES = [
      "구단주 닉네임만 넣으면 공식경기·감독모드 최근 30~100경기를 분석해 득점·실점 패턴과 약점을 알려줘요."),
     ("cards.html", "/cards", "cards", "FC온라인 선수 카드 검색 — OVR·능력치·강화별 시세 | 피파고수",
      "FC온라인 전체 시즌 선수 카드를 검색하고 OVR, 세부 능력치 34개, 1~13강 강화별 시세를 확인하세요."),
-    ("calc.html", "/calc", "calc", "FC온라인 BP·강화 계산기 — 강화 비용·확률·판매 수수료 | 피파고수",
-     "FC온라인 강화 단계별 OVR 상승, 강화 성공 확률, 판매 수수료를 계산해요."),
     ("guide/index.html", "/guide/", "guide", "FC온라인 게임 가이드 — 등급·감독모드·강화·팀컬러 | 피파고수",
      "FC온라인 공식경기 등급, 감독모드, 강화, 팀컬러, 시즌, 급여·이적시장 규칙을 정리했어요."),
 ]
@@ -339,6 +337,8 @@ def main(argv=None):
     site_url = cfg["SITE_URL"].rstrip("/")
     out = (ROOT / a.out) if not Path(a.out).is_absolute() else Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
+    # Remove obsolete generated calculator page from incremental local builds.
+    (out / "calc.html").unlink(missing_ok=True)
 
     for src, dst in COPY:
         s = ROOT / src
@@ -413,7 +413,7 @@ def main(argv=None):
         f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>\n',
         encoding="utf-8")
     # 옛 주소 호환: /index.html → /
-    (out / "_redirects").write_text("/index.html / 301\n/guide/patch /patch/ 301\n", encoding="utf-8")
+    (out / "_redirects").write_text("/index.html / 301\n/guide/patch /patch/ 301\n/calc /sim/ 301\n/calc.html /sim/ 301\n", encoding="utf-8")
 
     n = sum(1 for p in out.rglob("*") if p.is_file())
     data_dir = ROOT / a.data

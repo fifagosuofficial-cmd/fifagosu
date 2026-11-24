@@ -44,3 +44,13 @@ def test_squad_page_and_manifest_build_without_data(tmp_path):
     assert "AI 스쿼드" in html and 'https://fifagosu.com/squad/' in html
     assert "squad.js" in html and "https://fifagosu.com/squad/" in (out / "sitemap.xml").read_text("utf-8")
     assert (out / "assets/squad-data/manifest.json").is_file()
+
+def test_squad_replacement_modal_preserves_full_stats_and_save(tmp_path):
+    out = tmp_path / "site"
+    build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
+    html = (out / "squad/index.html").read_text("utf-8")
+    assert '<dialog id="sqPicker"' in html
+    for element in ("sqRecoResults", "sqPlayerResults", "sqPlayerQuery", "sqSave", "sqShare", "sqStatMatrix"):
+        assert f'id="{element}"' in html
+    assert "선수별 상세 비교" not in html
+    assert 'id="sqRows"' not in html

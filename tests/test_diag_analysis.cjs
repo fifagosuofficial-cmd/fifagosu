@@ -15,3 +15,25 @@ test('prices use exact grade from stored BP array, never guess or substitute',()
 const players=Array.from({length:11},(_,i)=>({spId:i+1}));const mk=(a,b)=>({names:['A','B'],cards:Object.fromEntries(players.map((p,i)=>[p.spId,[...(i<a?[0]:[]),...(i>=11-b?[1]:[])]]))});
 test('one strong representative; ties, weak and near ties excluded',()=>{assert.equal(ctx.dInferTeamcolor(players,mk(9,4)).name,'A');assert.equal(ctx.dInferTeamcolor(players,mk(8,8)),null);assert.equal(ctx.dInferTeamcolor(players,mk(7,6)),null);assert.equal(ctx.dInferTeamcolor(players,mk(5,4)),null);assert.equal(ctx.dInferTeamcolor(players.slice(0,7),mk(9,4)),null);assert.equal(ctx.dInferTeamcolor(players,mk(11,9)).confidence,'매우 높음')});
 test('each match counted once and no single-match ranking',()=>{const match={matchInfo:[{matchDetail:{matchResult:'승'}},{player:players}]};const TC=mk(9,4);assert.equal(ctx.dTeamcolorStats([match],TC).all.length,0);const result=ctx.dTeamcolorStats([match,match],TC);assert.equal(result.all.length,1);assert.equal(result.all[0].n,2);assert.equal(result.valid.length,2)});
+
+test('moderate benchmark warnings and ranker deficits alone do not trigger replacement',()=>{
+  const mild={...p,avg:6.35,r:Array(10).fill(6.35)};
+  assert.equal(ctx.dAssessPlayer(mild,[mild]).action,'유지');
+  const rankOnly={...p,rtRef:null};
+  assert.equal(ctx.dAssessPlayer(rankOnly,[rankOnly]).action,'유지');
+  const oneMetric={...p,rkLow:{tackle:p.rkLow.tackle}};
+  assert.equal(ctx.dAssessPlayer(oneMetric,[oneMetric]).action,'유지');
+});
+test('replacement requires at least ten appearances and sustained weakness',()=>{
+  const few={...p,apps:9,r:Array(9).fill(6.2)};
+  assert.equal(ctx.dAssessPlayer(few,[few]).action,'유지');
+  const occasional={...p,r:[6,6,6,6,6,6.6,6.6,6.6,6.6,6.6]};
+  assert.equal(ctx.dAssessPlayer(occasional,[occasional]).action,'유지');
+  const persistent={...p,avg:6.05,r:Array(10).fill(6.05),rk:null,rkLow:null};
+  assert.equal(ctx.dAssessPlayer(persistent,[persistent]).action,'교체 검토');
+});
+test('peer replacement comparison requires ten appearances on both cards',()=>{
+  const x={...p,rtRef:null,rk:null,price:200};
+  const peer={...p,apps:9,spId:2,name:'대체 선수',avg:6.7,wr:.7,price:100};
+  assert.equal(ctx.dAssessPlayer(x,[x,peer]).action,'유지');
+});

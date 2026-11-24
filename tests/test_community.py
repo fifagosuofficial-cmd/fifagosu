@@ -56,7 +56,7 @@ def test_simplified_navigation_and_retired_calculator(tmp_path):
     out.mkdir()
     (out / "calc.html").write_text("old", encoding="utf-8")
     build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
-    expected = ["홈", "소식", "전적 진단", "AI 스쿼드", "게시판", "카드 검색", "계산기", "선수 거래소"]
+    expected = ["홈", "소식", "전적 진단", "AI 스쿼드", "게시판", "카드 검색", "강화·현질 효율", "선수 거래소"]
     for file in ("index.html", "board/index.html", "news/index.html", "press/index.html", "patch/index.html", "sim/index.html"):
         doc = BeautifulSoup((out / file).read_text("utf-8"), "html.parser")
         assert [a.get_text(strip=True) for a in doc.select("nav.menu > a")] == expected

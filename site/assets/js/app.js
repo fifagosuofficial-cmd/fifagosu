@@ -811,6 +811,8 @@ function dRenderReport(d,a){
     <div><span>최근 스쿼드 가치</span><b>${a.squadValue?fmtBP(a.squadValue):'계산 중'}</b><small>${a.valueMissing?`${a.valueMissing}명 시세 제외`:`${a.valueKnown||0}명 확인`}</small></div>
     <div><span>우수 선수</span><b>${best?esc(dCardLabel(best)):'평가 보류'}</b><small>${best?'실전 기여 '+best.eval+'점 · '+dRecentStatus(best,a.recentLineup):'표본 부족'}</small></div>
     <div><span>우선 보강</span><b>${!a.enriched?'분석 중':worst?esc(dCardLabel(worst)):dRecentRows(a.players,a.recentLineup,true).some(x=>x.action&&x.action!=='평가 보류')?'뚜렷한 보강 후보 없음':'판단 보류'}</b><small>${worst?'최근 경기 출전 · '+esc(worst.reason):a.enriched?'최근 출전 선수 기준':'랭커·평점 비교 중'}</small></div></div>`
+  if(a.enriched&&a.recentPlayers?.length&&!d.sample){const b=document.createElement('button');b.type='button';b.className='ghost';b.textContent='최근 스쿼드 AI 개선 추천 →';b.addEventListener('click',()=>{try{sessionStorage.setItem('fg-squad-recent-v1',JSON.stringify({players:a.recentPlayers.map(p=>({id:+p.spId,grade:+p.grade,pos:p.pos,name:p.name,review:p.action==='교체 검토'}))}));location.assign('/squad/?import=1')}catch(e){location.assign('/squad/')}});$('dReport').appendChild(b)}
+
 }
 /* One representative per match. Equal top counts are ambiguous, not a random winner. */
 function dInferTeamcolor(players,TC,excluded=null){

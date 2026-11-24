@@ -31,11 +31,11 @@
     <a href="{{ root }}">홈</a>
     <a href="{{ root }}news/"{% if active is defined and active in ('news','press','patch') %} aria-current="page"{% endif %}>소식</a>
     <a class="core" href="{{ root }}diag"><svg class="fg-diag-icon" viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v14h14M6 13l4-5 3 3 4-6"/><path d="M14 5h3v3"/></svg><span>전적 진단</span></a>
+    <a href="{{ root }}trade/">선수 거래소</a>
     <a href="{{ root }}squad/"{% if view=='squad' %} aria-current="page"{% endif %}>AI 스쿼드</a>
     <a href="{{ root }}board/"{% if view=='board' %} aria-current="page"{% endif %}>게시판</a>
     <a href="{{ root }}cards">카드 검색</a>
     <a href="{{ root }}sim/"{% if active is defined and active=='sim' %} aria-current="page"{% endif %}>강화·현질 효율</a>
-    <a href="{{ root }}trade/">선수 거래소</a>
   </nav>
 {% endblock %}
 <a class="fg-account-icon" href="{{ root }}mypage/" aria-label="마이페이지" title="마이페이지"{% if view=='mypage' %} aria-current="page"{% endif %}><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 21v-2.2a7.5 7.5 0 0 1 15 0V21z"/></svg></a>

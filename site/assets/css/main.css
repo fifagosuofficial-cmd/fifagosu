@@ -1239,3 +1239,40 @@ nav.menu a.core:not([aria-current]):hover{color:#0b8b63;text-decoration:underlin
 .fg-nav-shell{max-width:760px;margin:0 auto;display:flex;align-items:flex-start;gap:14px;min-width:0}.page-wide .fg-nav-shell{max-width:1080px}.fg-nav-shell nav.menu{flex:1;min-width:0;max-width:none!important;margin:10px 0 0;justify-content:flex-start}.fg-account-icon{flex:none;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;margin:7px 0 10px auto;border:1px solid var(--line,#d6e4dd);border-radius:50%;color:var(--fg,#244438);background:var(--bg,#fff);text-decoration:none}.fg-account-icon:hover,.fg-account-icon[aria-current=page]{color:#14866a;border-color:#14866a;background:#e7f6ed}.fg-account-icon:focus-visible{outline:2px solid #14866a;outline-offset:2px}@media(min-width:1200px){.page-wide .fg-nav-shell{max-width:1440px}body[data-view=board] .fg-nav-shell{max-width:1600px}}@media(max-width:760px){.fg-nav-shell{gap:5px;padding:0 8px}.fg-nav-shell nav.menu{padding-inline:0;justify-content:flex-start}.fg-account-icon{width:36px;height:36px;margin-top:9px}.fg-account-icon svg{width:20px;height:20px}}
 
 nav.menu a.core{display:inline-flex;align-items:center;gap:5px}.fg-diag-icon{flex:none;color:currentColor}.fg-news-switch{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line,#d5e4db);padding:0 0 12px;margin:0 0 5px}.fg-news-switch a{padding:9px 16px;border-radius:6px;color:var(--muted);font-weight:600;text-decoration:none}.fg-news-switch a[aria-current=page]{background:#e4f4eb;color:#12674f}.fg-news-switch a:hover{color:#14866a}
+
+/* 2026-11-25: 모바일 메뉴와 전적 리포트를 한 화면에 컴팩트하게 정리 */
+@media(max-width:760px){
+  .fg-nav-shell nav.menu{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;margin-top:7px;padding:0 0 8px!important;overflow:visible}
+  .fg-nav-shell nav.menu>a{display:flex!important;align-items:center;justify-content:center;gap:3px;min-height:34px;padding:4px 3px!important;border-radius:8px!important;white-space:normal!important;text-align:center;font-size:12px!important;line-height:1.2}
+  .fg-nav-shell nav.menu .fg-diag-icon{width:15px;height:15px}
+  .fg-account-icon{margin-top:7px}
+}
+@media(max-width:390px){.fg-nav-shell nav.menu>a{font-size:11px!important}.fg-nav-shell{padding-inline:2px}}
+
+.diag-report-shell{margin:12px 0;border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:12px 14px;display:grid;gap:9px}
+.diag-report-shell[hidden]{display:none}
+.diag-report-shell>.dr-head{margin:0;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.diag-report-shell .dreport{margin:0;border:0;border-radius:0;background:transparent;padding:0}
+.diag-report-shell .dsum{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(330px,1fr);gap:8px}
+.diag-report-shell .ds-flow,.diag-report-shell .ds-kpi{border:0;border-radius:9px;background:var(--sunk);padding:9px 10px}
+.diag-report-shell .ds-chart{height:56px;margin-top:3px}
+.diag-report-shell .ds-kpi{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.diag-report-shell .ds-kpi div,.diag-report-shell .dr-grid>div{padding:6px 7px;background:color-mix(in srgb,var(--surface) 72%,var(--sunk));border:1px solid color-mix(in srgb,var(--line) 75%,transparent)}
+.diag-report-shell .ds-kpi b{font-size:16px}
+.diag-report-shell .dr-insights{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.dr-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:7px}
+.dr-action{display:inline-flex;align-items:center;gap:5px!important;width:auto!important;margin:0!important;padding:5px 8px!important;border-radius:7px!important;font-size:11px!important;line-height:1.2}
+.dr-action svg{width:14px;height:14px;fill:currentColor;flex:none}
+@media(max-width:760px){
+  .diag-report-shell{padding:10px;gap:7px}
+  .diag-report-shell .dsum{grid-template-columns:1fr}
+  .diag-report-shell .ds-kpi{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .diag-report-shell .dr-insights{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .diag-report-shell .dr-insights>div:last-child{grid-column:1/-1}
+  .diag-report-shell .ds-h small{width:100%;margin-left:0}
+}
+@media(max-width:430px){
+  .diag-report-shell .ds-kpi{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .diag-report-shell .ds-flow{padding:8px}
+  .diag-report-shell .ds-chart{height:48px}
+}

@@ -39,6 +39,10 @@ jobs:
           pip install -q -r crawler/requirements.txt
           python crawler/news.py
 
+      - name: Generate diagnosis lookup data
+        run: |
+          python -c 'import sys; from pathlib import Path; sys.path.insert(0, "crawler"); import derive; d=Path("data"); date=derive.today_kst(); m=derive.step_diag_market(d,date); t=derive.step_opponent_teamcolors(d,date); print(m,t); assert m.get("diag_market_cards",0)>0 and t.get("opponent_teamcolor_cards",0)>0; assert (d/"diag/market.json").is_file() and (d/"diag/opponent-teamcolors.json").is_file()'
+
       - name: Save updated data branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

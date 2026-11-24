@@ -84,7 +84,7 @@ function candidate(row,pos,grade,options,keys){
  const matched=relevant?traits.filter(t=>relevant.test(t)):[];
  const physical=options.style==="cross"&&role==="ST"&&Number.isFinite(height)?Math.max(-2,Math.min(2,(height-180)*.1)):0;
  const quality=ovr*.57+(mean??ovr)*.25+(style??mean??ovr)*.18+(pos!=="GK"&&Number.isFinite(weak)?(weak-3)*.65:0)+physical+Math.min(1.5,matched.length*.65);
- return {id,pid:id%1000000,name,season,pay,base,grade,price,ovr,weak,quality,pos,core:vals.map(([k,v])=>[k,v+bonus]),teams:teams||[],at,detail:vals.length>0,games:Number.isInteger(games)&&games>=0?games:null,height:height||null,matched,stats:stats||[]};
+ return {id,pid:id%1000000,name,season,pay,base,grade,price,ovr,weak,quality,pos,core:vals.map(([k,v])=>[k,v+bonus]),teams:teams||[],at,detail:vals.length>0,games:Number.isInteger(games)&&games>=0?games:null,height:height||null,matched,stats:stats||[],prices:prices||[]};
 }
 function score(c,mode,opts,target){
  const relative=c.price/Math.max(1,target.budget),gap=Math.abs(c.pay-target.pay);
@@ -101,7 +101,7 @@ function score(c,mode,opts,target){
 function unique(xs){const seen=new Set();return xs.filter(c=>{const k=c.id+":"+c.grade;if(seen.has(k))return false;seen.add(k);return true})}
 function poolFor(rows,pos,opts,keys,mode,lock,ban,target){
  const all=[];
- const grades=lock?(opts.grades.includes(lock.grade)?[lock.grade]:[]):opts.grades;
+ const grades=lock?((opts.grades.includes(lock.grade)||lock.manual===true)&&Number.isInteger(lock.grade)&&lock.grade>=1&&lock.grade<=13?[lock.grade]:[]):opts.grades;
  for(const row of rows||[]){
    if(lock&&row[0]!==lock.id)continue;
    for(const g of grades){const c=candidate(row,pos,g,opts,keys);if(c&&(!ban||c.pid!==ban.id%1000000))all.push(c)}
@@ -200,10 +200,22 @@ function alternatives(rows,manifest,opts,mode,players,slot,query="",excludeCurre
  }
  return recommended;
 }
-function validate(result,opts){
+// Manual search is one result per season card, always at grade 1.
+function manualSearch(rows,manifest,opts,mode,players,slot,query){
+ const found=alternatives(rows,manifest,{...opts,grades:[1]},mode,players,slot,query,false);
+ const seen=new Set();return found.filter(p=>{if(seen.has(p.id))return false;seen.add(p.id);return true});
+}
+// Change grade without changing the player's card, wage or position.
+function changeGrade(p,grade){
+ if(!p||!Number.isInteger(grade)||grade<1||grade>13)return null;
+ const price=p.prices?.[grade-1];if(!safe(price))return null;
+ const delta=BONUS[grade]-BONUS[p.grade];
+ return {...p,grade,price,ovr:p.base+BONUS[grade],quality:p.quality+delta,core:p.core.map(([k,v])=>[k,v+delta])};
+}
+function validate(result,opts,locks={}){
  if(!result?.ok||result.players?.length!==11||!FORMATIONS[opts.formation])return false;
  const ps=result.players;
- return ps.every((p,i)=>p.pos===FORMATIONS[opts.formation][i]&&safe(p.price)&&safe(p.pay)&&opts.grades.includes(p.grade)&&(!opts.team||p.teams.includes(opts.team)))&&new Set(ps.map(p=>p.pid)).size===11&&ps.reduce((s,p)=>s+p.price,0)===result.price&&ps.reduce((s,p)=>s+p.pay,0)===result.pay&&result.price<=opts.budget&&result.pay<=opts.salary;
+ return ps.every((p,i)=>p.pos===FORMATIONS[opts.formation][i]&&safe(p.price)&&safe(p.pay)&&(opts.grades.includes(p.grade)||(locks[i]?.manual===true&&locks[i].id===p.id&&locks[i].grade===p.grade))&&(!opts.team||p.teams.includes(opts.team)))&&new Set(ps.map(p=>p.pid)).size===11&&ps.reduce((s,p)=>s+p.price,0)===result.price&&ps.reduce((s,p)=>s+p.pay,0)===result.pay&&result.price<=opts.budget&&result.pay<=opts.salary;
 }
-return {FORMATIONS,LINES,LABELS,CORE,BONUS,solve,validate,targets,gradeRange,alternatives};
+return {FORMATIONS,LINES,LABELS,CORE,BONUS,solve,validate,targets,gradeRange,alternatives,manualSearch,changeGrade};
 });

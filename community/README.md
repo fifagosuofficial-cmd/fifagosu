@@ -5,5 +5,5 @@
 - D1: 별도 개발 DB 생성, community/schema.sql 적용, Pages Functions binding COMMUNITY_DB. 운영 DB와 개발 DB 분리. GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, COMMUNITY_ORIGIN, COMMUNITY_ADMIN_SUBS (쉼표 구분 Google sub), COMMUNITY_POLICY_VERSION=2026-11-v1, COMMUNITY_ENABLED=1 은 실제 고지 확정 후만 활성화. 비밀키 GitHub 커밋 금지. 정적 localhost에서는 화면만 확인 가능(실제 로그인·DB 쓰기 차단). 실기능 테스트는 별도 HTTPS 개발 배포 및 OAuth 등록 필요. 기본 비활성화.
 - Google redirect: COMMUNITY_ORIGIN/api/community/callback. 프로덕션 HTTPS만. OAuth state/PKCE와 세션 해시, Secure/HttpOnly/SameSite 쿠키, 서버 권한/소유권, same-origin POST. Google 계정 삭제/연결 해제 동작 및 토큰 폐기 정책 실제 검증 필요. OAuth 접근 토큰은 저장하지 않음.
 - 게시판 텍스트 전용, 사용자 HTML/이미지 업로드 미도입. 관리자 숨김/복구/정지/신고·건의 답변, 감사 기록. 신고 통지 및 이의 신청 운영 절차 확정 전 공개 금지. 회원 탈퇴 시 본인 게시글/댓글 삭제, 개인정보 및 저장정보 삭제. 감사 기록은 운영 목적 보유기간 확정 후 삭제 작업 구성.
-- 관심 선수/스쿼드/전적 저장은 회원 전용. 자동 일별 가치 추적·시세 알림, 전체 진단 상세 저장, 인기 선수·스쿼드 자동 집계, 카카오·네이버는 후속 구현 및 검증 필요. 스쿼드 공유는 저장 스냅샷만 공개.
+- 관심 선수/스쿼드/전적 저장은 회원 전용. 자동 일별 가치 추적·시세 알림, 전체 진단 상세 저장, 카드명 기반 인기 선수 집계, 카카오·네이버는 후속 구현 및 검증 필요. 스쿼드 공유는 저장 스냅샷만 공개. 인기글 탭은 공개 게시글의 추천 및 선수 후기 수를 집계하며, 개인 보관함은 공개하지 않음.
 - 출시 전에 OAuth 실제 가입/탈퇴, 접근 권한·CSRF·XSS·부하·스팸/봇 방지, 백업 복구, 관리자 권한 확인, 비회원 신고 연락처, 접근성 및 모바일 E2E 필수. API 키/DB 미설정 시 회원 기능 잠금. 광고/넥슨 상업적 이용 승인 별도.

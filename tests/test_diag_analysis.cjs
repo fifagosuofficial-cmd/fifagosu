@@ -13,8 +13,31 @@ test('missing benchmarks and small samples never claim a confident reinforcement
 test('same position lower performance and higher price are described without assuming causality',()=>{const x={...p,rtRef:null,rk:null,price:200},peer={...p,spId:2,name:'다른 선수',price:100,avg:6.7,wr:.7};const q=ctx.dAssessPlayer(x,[x,peer]);assert.equal(q.action,'교체 검토');assert.match(q.reason,/가격 효율 검토/)});
 test('prices use exact grade from stored BP array, never guess or substitute',()=>{const L={price:[3500000,3500000,3830000,4250000,6630000,13600000,45400000,368000000,542000000,1420000000,29600000000,45900000000,147000000000]};assert.equal(ctx.dExactPrice(L,9),542000000);assert.equal(ctx.dExactPrice(L,10),1420000000);assert.equal(ctx.dExactPrice({price:[500]},9),null);assert.equal(ctx.dExactPrice(L,0),null);assert.equal(ctx.dExactPrice(L,14),null);assert.equal(ctx.dExactPrice({price:[0]},1),null)});
 const players=Array.from({length:11},(_,i)=>({spId:i+1}));const mk=(a,b)=>({names:['A','B'],cards:Object.fromEntries(players.map((p,i)=>[p.spId,[...(i<a?[0]:[]),...(i>=11-b?[1]:[])]]))});
-test('one strong representative; ties, weak and near ties excluded',()=>{assert.equal(ctx.dInferTeamcolor(players,mk(9,4)).name,'A');assert.equal(ctx.dInferTeamcolor(players,mk(8,8)),null);assert.equal(ctx.dInferTeamcolor(players,mk(7,6)),null);assert.equal(ctx.dInferTeamcolor(players,mk(5,4)),null);assert.equal(ctx.dInferTeamcolor(players.slice(0,7),mk(9,4)),null);assert.equal(ctx.dInferTeamcolor(players,mk(11,9)).confidence,'매우 높음')});
-test('each match counted once and no single-match ranking',()=>{const match={matchInfo:[{matchDetail:{matchResult:'승'}},{player:players}]};const TC=mk(9,4);assert.equal(ctx.dTeamcolorStats([match],TC).all.length,0);const result=ctx.dTeamcolorStats([match,match],TC);assert.equal(result.all.length,1);assert.equal(result.all[0].n,2);assert.equal(result.valid.length,2)});
+test('eight common players qualify, even with a one-player lead or incomplete lineup',()=>{
+  assert.equal(ctx.dInferTeamcolor(players,mk(9,8)).name,'A');
+  assert.equal(ctx.dInferTeamcolor(players,mk(8,7)).name,'A');
+  assert.equal(ctx.dInferTeamcolor(players,mk(7,6)),null);
+  assert.equal(ctx.dInferTeamcolor(players.slice(0,8),mk(8,4)).name,'A');
+  assert.equal(ctx.dInferTeamcolor(players.slice(0,7),mk(9,4)),null);
+  assert.equal(ctx.dInferTeamcolor(players,mk(11,9)).confidence,'매우 높음');
+});
+test('one representative per match including single appearances and ties',()=>{
+  const match={matchInfo:[{matchDetail:{matchResult:'승'}},{player:players}]};
+  const TC=mk(9,4);
+  assert.equal(ctx.dTeamcolorStats([match],TC).all.length,1);
+  const result=ctx.dTeamcolorStats([match,match],TC);
+  assert.equal(result.all.length,1);assert.equal(result.all[0].n,2);
+  const tied=ctx.dInferTeamcolor(players,mk(8,8));
+  assert.equal(tied.tied,true);assert.match(tied.name,/동률/);
+});
+test('same-season cards without detail data qualify from official season metadata',()=>{
+  const ps=Array.from({length:11},(_,i)=>({spId:(i<8?877:999)*1e6+i+1}));
+  const TC={names:['UC'],kinds:['season'],seasonById:{877:0},cards:{}};
+  const found=ctx.dInferTeamcolor(ps,TC);assert.equal(found.name,'UC');assert.equal(found.n,8);
+  const tie={...mk(8,8),kinds:['club','season']};
+  assert.equal(ctx.dInferTeamcolor(players,tie).name,'B');
+  assert.equal(ctx.dInferTeamcolor(players,{...mk(9,8),kinds:['nation','season']}).name,'A');
+});
 
 test('moderate benchmark warnings and ranker deficits alone do not trigger replacement',()=>{
   const mild={...p,avg:6.35,r:Array(10).fill(6.35)};
@@ -99,7 +122,7 @@ test('ranker comparison uses the same latest squad filter as player records',()=
 test('teamcolor reports exclusions and single-appearance groups separately',()=>{
   const match=player=>({matchInfo:[{matchDetail:{matchResult:'승'}},{player}]});
   const result=ctx.dTeamcolorStats([match(players),match(players.slice(0,7))],mk(9,4));
-  assert.equal(result.valid.length,1);assert.equal(result.excluded.lineup,1);assert.equal(result.single,1);assert.equal(result.all.length,0);
+  assert.equal(result.valid.length,1);assert.equal(result.excluded.lineup,1);assert.equal(result.single,1);assert.equal(result.all.length,1);
   const out=ctx.dTeamcolorStats([match(players)],mk(8,8));
-  assert.equal(out.excluded.ambiguous,1);
+  assert.equal(out.valid.length,1);assert.equal(out.all[0].n,1);assert.match(out.all[0].name,/동률/);
 });

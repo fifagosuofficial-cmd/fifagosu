@@ -36,10 +36,10 @@ function score(c,mode,opts){
 function unique(xs){const seen=new Set();return xs.filter(c=>{const k=c.id+":"+c.grade;if(seen.has(k))return false;seen.add(k);return true})}
 function poolFor(rows,pos,opts,keys,mode,lock,ban){
  const all=[];
- const grades=lock?[lock.grade]:opts.grades;
+ const grades=lock?(opts.grades.includes(lock.grade)?[lock.grade]:[]):opts.grades;
  for(const row of rows||[]){
    if(lock&&row[0]!==lock.id)continue;
-   for(const g of grades){const c=candidate(row,pos,g,opts,keys);if(c&&(!ban||c.id!==ban.id||c.grade!==ban.grade))all.push(c)}
+   for(const g of grades){const c=candidate(row,pos,g,opts,keys);if(c&&(!ban||c.pid!==ban.id%1000000))all.push(c)}
  }
  if(lock)return all;
  // Retain strong cards as well as cheap/low-pay and different price bands.

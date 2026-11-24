@@ -1227,3 +1227,6 @@ nav.menu a.core:not([aria-current]):hover{background:var(--accent);color:var(--a
 .mk-period-panel{display:grid;gap:14px;min-width:0}
 .mk-period-panel[hidden]{display:none}
 .mk-period{flex-wrap:wrap}
+
+/* Account access is separate from the navigation tabs. */
+.fg-nav-shell{max-width:760px;margin:0 auto;display:flex;align-items:flex-start;gap:14px;min-width:0}.page-wide .fg-nav-shell{max-width:1080px}.fg-nav-shell nav.menu{flex:1;min-width:0;max-width:none!important;margin:10px 0 0;justify-content:flex-start}.fg-account-icon{flex:none;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;margin:7px 0 10px auto;border:1px solid var(--line,#d6e4dd);border-radius:50%;color:var(--fg,#244438);background:var(--bg,#fff);text-decoration:none}.fg-account-icon:hover,.fg-account-icon[aria-current=page]{color:#14866a;border-color:#14866a;background:#e7f6ed}.fg-account-icon:focus-visible{outline:2px solid #14866a;outline-offset:2px}@media(min-width:1200px){.page-wide .fg-nav-shell{max-width:1440px}body[data-view=board] .fg-nav-shell{max-width:1600px}}@media(max-width:760px){.fg-nav-shell{gap:5px;padding:0 8px}.fg-nav-shell nav.menu{padding-inline:0;justify-content:flex-start}.fg-account-icon{width:36px;height:36px;margin-top:9px}.fg-account-icon svg{width:20px;height:20px}}

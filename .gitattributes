@@ -1,0 +1,3 @@
+# Preserve this template's established CRLF bytes. Treat CR as part of EOL,
+# not as trailing whitespace, so `git diff --check` still catches real spaces.
+site/templates/index.html -text whitespace=cr-at-eol

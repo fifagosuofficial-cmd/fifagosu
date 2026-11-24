@@ -6,11 +6,11 @@
     <a href="{{ root or './' }}" data-view="home"{% if view=='home' %} aria-current="page"{% endif %}>홈</a>
     <a href="{{ root }}news/"{% if active is defined and active in ('news','press','patch') %} aria-current="page"{% endif %}>소식</a>
     <a class="core" href="{{ root }}diag" data-view="diag"{% if view=='diag' %} aria-current="page"{% endif %}><svg class="fg-diag-icon" viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v14h14M6 13l4-5 3 3 4-6"/><path d="M14 5h3v3"/></svg><span>전적 진단</span></a>
+    <a href="{{ root }}trade/" data-view="trade"{% if view=='trade' %} aria-current="page"{% endif %}>선수 거래소</a>
     <a href="{{ root }}squad/">AI 스쿼드</a>
     <a href="{{ root }}board/"{% if view=='board' %} aria-current="page"{% endif %}>게시판</a>
     <a href="{{ root }}cards" data-view="cards"{% if view=='cards' %} aria-current="page"{% endif %}>카드 검색</a>
     <a href="{{ root }}sim/" data-view="sim"{% if view=='sim' %} aria-current="page"{% endif %}>강화·현질 효율</a>
-    <a href="{{ root }}trade/" data-view="trade"{% if view=='trade' %} aria-current="page"{% endif %}>선수 거래소</a>
   </nav>
 {% endblock %}
 {% block content %}
@@ -135,8 +135,11 @@
     <div class="board" id="dBoard"></div>
     <section class="dtip" id="dTip" hidden aria-label="피파고수의 한마디"></section>
   </div>
-  <section class="dsum" id="dSum" aria-label="최근 경기 요약"></section>
-  <section class="dreport" id="dReport" hidden aria-label="종합 구단 리포트"></section>
+  <section class="diag-report-shell" id="dReportShell" hidden aria-label="종합 구단 리포트">
+    <div class="dr-head" id="dReportHead"></div>
+    <section class="dsum" id="dSum" aria-label="최근 경기 흐름과 핵심 지표"></section>
+    <section class="dreport" id="dReport" aria-label="구단 관리 핵심 지표"></section>
+  </section>
   <div class="dsecs" id="dSecs">
     <section id="dDetailSec"><h2>상세 분석</h2><div class="tabs" role="tablist" id="dTabs"></div><div class="panel" id="dPanel"></div></section>
     <section class="dtc" id="dTc" hidden aria-label="팀컬러 상대 승률"></section>

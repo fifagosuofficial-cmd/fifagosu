@@ -147,10 +147,18 @@ test('teamcolor top five groups preserve all teams tied at the same displayed pe
 });
 test('diagnosis layout keeps owner and advice together and report before details and teamcolor',()=>{
   const html=fs.readFileSync(path.join(__dirname,'../site/templates/index.html'),'utf8');
-  const intro=html.indexOf('class="diag-intro"'),board=html.indexOf('id="dBoard"'),tip=html.indexOf('id="dTip"'),sum=html.indexOf('id="dSum"');
+  const intro=html.indexOf('class="diag-intro"'),board=html.indexOf('id="dBoard"'),tip=html.indexOf('id="dTip"'),shell=html.indexOf('id="dReportShell"'),sum=html.indexOf('id="dSum"'),report=html.indexOf('id="dReport"');
   assert.ok(intro>=0&&intro<board&&board<tip&&tip<sum);
-  assert.ok(html.indexOf('id="dReport"')<html.indexOf('id="dDetailSec"'));
+  assert.ok(shell<sum&&sum<report&&report<html.indexOf('id="dDetailSec"'));
   assert.ok(html.indexOf('id="dDetailSec"')<html.indexOf('id="dTc"'));
   assert.ok(html.indexOf('id="dTc"')<html.indexOf('id="dWeakSec"'));
   assert.ok(!src.includes("const secs=$('dSecs')"));
+});
+
+test('diagnosis uses one compact report without duplicated recent win rate and compact actions',()=>{
+  assert.ok(!src.includes('<span>최근 승률</span>'));
+  assert.ok(src.includes("$('dReportHead').innerHTML"));
+  assert.ok(src.includes("className='ghost dr-action'"));
+  assert.ok(src.includes('<span>AI 개선</span>'));
+  assert.ok(src.includes('<span>진단 저장</span>'));
 });

@@ -487,6 +487,7 @@ function dRenderCards(a){
 /* ---------- 상단 요약: 최근 흐름 · 경기별 득실 그래프 · 핵심 수치 ---------- */
 const RCLS={승:'W',무:'D',패:'L'};
 function dRenderSummary(d,a){
+  $('dReportShell').hidden=false;
   const seq=a.seq,n=seq.length,last=seq[n-1];let st=1;for(let i=n-2;i>=0&&seq[i].r===last.r;i--)st++;
   const md=s=>{const t=new Date(s);return `${t.getMonth()+1}/${t.getDate()}`};
   const W=Math.max(320,n*14),H=86,mid=46,mx=Math.max(3,...seq.map(x=>Math.abs(x.gf-x.ga))),bw=W/n,sc=v=>v/mx*34;
@@ -785,16 +786,17 @@ async function dEnrich(a,seq){
 }
 const dPct=(v,days)=>v==null?'<span class="muted">조회 불가</span>':`<span class="${v>0?'up':v<0?'dn':''}"${days?` title="실제 ${days}일 전 전체 스냅샷과 비교"`:''}>${v>0?'+':''}${v.toFixed(1)}%${days?`<small> · ${days}일</small>`:''}</span>`;
 function dRenderReport(d,a){
-  const prev=(dRead().history&&dRead().history[dHistoryKey(d.basic.nickname,dMode)]||[]).slice(-2,-1)[0],dw=prev?Math.round((a.W/a.n-prev.wr)*100):null;
   const best=a.players.filter(x=>x.eval!=null).sort((x,y)=>y.eval-x.eval)[0],worst=dPriority(a).find(x=>dRecentRows([x],a.recentLineup,true).length);
-  $('dReport').hidden=false;$('dReport').innerHTML=`<div class="dr-head"><div><b>종합 구단 리포트</b><small>최근 ${a.n}경기 · 실제 경기와 수집 시세 기반</small></div><span>${a.enriched?'분석 완료':'선수 시세·팀컬러 분석 중…'}</span></div><div class="dr-grid">
-    <div><span>최근 승률</span><b>${Math.round(a.W/a.n*100)}%</b><small>${dw==null?'첫 저장':`이전 진단보다 ${dw>0?'+':''}${dw}%p`}</small></div>
+  $('dReportShell').hidden=false;
+  $('dReportHead').innerHTML=`<div><b>종합 구단 리포트</b><small>최근 ${a.n}경기 · 실제 경기와 수집 시세 기반</small></div><span>${a.enriched?'분석 완료':'선수 시세·팀컬러 분석 중…'}</span>`;
+  $('dReport').innerHTML=`<div class="dr-grid dr-insights">
     <div><span>최근 스쿼드 가치</span><b>${a.squadValue?fmtBP(a.squadValue):'계산 중'}</b><small>${a.valueMissing?`${a.valueMissing}명 시세 제외`:`${a.valueKnown||0}명 확인`}</small></div>
     <div><span>우수 선수</span><b>${best?esc(dCardLabel(best)):'평가 보류'}</b><small>${best?'실전 기여 '+best.eval+'점 · '+dRecentStatus(best,a.recentLineup):'표본 부족'}</small></div>
-    <div><span>우선 보강</span><b>${!a.enriched?'분석 중':worst?esc(dCardLabel(worst)):dRecentRows(a.players,a.recentLineup,true).some(x=>x.action&&x.action!=='평가 보류')?'뚜렷한 보강 후보 없음':'판단 보류'}</b><small>${worst?'최근 경기 출전 · '+esc(worst.reason):a.enriched?'최근 출전 선수 기준':'랭커·평점 비교 중'}</small></div></div>`
-  if(a.enriched&&a.recentPlayers?.length&&!d.sample){const b=document.createElement('button');b.type='button';b.className='ghost';b.textContent='최근 스쿼드 AI 개선 추천 →';b.addEventListener('click',()=>{try{sessionStorage.setItem('fg-squad-recent-v1',JSON.stringify({players:a.recentPlayers.map(p=>({id:+p.spId,grade:+p.grade,pos:p.pos,name:p.name,review:p.action==='교체 검토'}))}));location.assign('/squad/?import=1')}catch(e){location.assign('/squad/')}});$('dReport').appendChild(b)}
+    <div><span>우선 보강</span><b>${!a.enriched?'분석 중':worst?esc(dCardLabel(worst)):dRecentRows(a.players,a.recentLineup,true).some(x=>x.action&&x.action!=='평가 보류')?'뚜렷한 보강 후보 없음':'판단 보류'}</b><small>${worst?'최근 경기 출전 · '+esc(worst.reason):a.enriched?'최근 출전 선수 기준':'랭커·평점 비교 중'}</small></div></div><div class="dr-actions" aria-label="구단 리포트 작업"></div>`
+  const actions=$('dReport').querySelector('.dr-actions');
+  if(a.enriched&&a.recentPlayers?.length&&!d.sample){const b=document.createElement('button');b.type='button';b.className='ghost dr-action';b.title='최근 스쿼드를 AI 스쿼드에서 개선 추천';b.setAttribute('aria-label',b.title);b.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2 1.2 4.1L15 8l-3.8 1.9L10 14l-1.2-4.1L5 8l3.8-1.9L10 2Zm5 10 .7 2.3L18 15.5l-2.3 1.2L15 19l-.7-2.3-2.3-1.2 2.3-1.2L15 12Z"/></svg><span>AI 개선</span>';b.addEventListener('click',()=>{try{sessionStorage.setItem('fg-squad-recent-v1',JSON.stringify({players:a.recentPlayers.map(p=>({id:+p.spId,grade:+p.grade,pos:p.pos,name:p.name,review:p.action==='교체 검토'}))}));location.assign('/squad/?import=1')}catch(e){location.assign('/squad/')}});actions.appendChild(b)}
 
-  if(a.enriched&&!d.sample&&a.n>0){const b=document.createElement('button');b.type='button';b.className='ghost';b.textContent='내 진단 기록에 저장';b.addEventListener('click',async()=>{b.disabled=true;try{const nickname=d.basic.nickname,body='최근 '+a.n+'경기 · 승률 '+Math.round(a.W/a.n*100)+'%'+(a.squadValue?' · 최근 스쿼드 가치 '+fmtBP(a.squadValue):'')+(best?' · 우수 선수 '+dCardLabel(best):'')+(worst?' · 우선 보강 '+dCardLabel(worst):'');const r=await fetch('/api/community/diagnosis',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nickname,body})});const j=await r.json();if(!r.ok)throw Error(j.message);b.textContent='진단 기록 저장 완료'}catch(err){alert('저장 실패: '+err.message);b.disabled=false}});$('dReport').appendChild(b)}
+  if(a.enriched&&!d.sample&&a.n>0){const b=document.createElement('button');b.type='button';b.className='ghost dr-action';b.title='내 진단 기록에 저장';b.setAttribute('aria-label',b.title);b.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3h10l2 2v12H4V3Zm3 0v5h6V3M7 17v-5h6v5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>진단 저장</span>';b.addEventListener('click',async()=>{b.disabled=true;try{const nickname=d.basic.nickname,body='최근 '+a.n+'경기 · 승률 '+Math.round(a.W/a.n*100)+'%'+(a.squadValue?' · 최근 스쿼드 가치 '+fmtBP(a.squadValue):'')+(best?' · 우수 선수 '+dCardLabel(best):'')+(worst?' · 우선 보강 '+dCardLabel(worst):'');const r=await fetch('/api/community/diagnosis',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nickname,body})});const j=await r.json();if(!r.ok)throw Error(j.message);b.querySelector('span').textContent='저장 완료'}catch(err){alert('저장 실패: '+err.message);b.disabled=false}});actions.appendChild(b)}
 
 }
 /* One representative per match. Equal top counts are ambiguous, not a random winner. */
@@ -967,7 +969,7 @@ async function runDiag(nick){
   dLoadTeamcolors(d,a,seq);
   Promise.allSettled([dLoadRanker(a,dMode,seq),dLoadRating(a,dMode,seq)]).then(()=>{if(seq===diagSeq)dEnrich(a,seq)});
 }
-function dClear(){['dCards','dPanel','dMatches','dSum'].forEach(id=>$(id).innerHTML='');$('dTip').hidden=true;$('dReport').hidden=true;$('dTc').hidden=true;$('dAllN').textContent=''}
+function dClear(){['dCards','dPanel','dMatches','dSum','dReport','dReportHead'].forEach(id=>$(id).innerHTML='');$('dTip').hidden=true;$('dReportShell').hidden=true;$('dTc').hidden=true;$('dAllN').textContent=''}
 $('dForm').addEventListener('submit',e=>{e.preventDefault();runDiag($('dNick').value)});
 $('dBoard').addEventListener('click',e=>{const fav=e.target.closest('[data-dfavorite-toggle]');if(fav){dChangeFavorite(fav.dataset.dfavoriteToggle);return}if(e.target.closest('[data-sample]')){$('dNick').value='예시';runDiag('예시')}});
 $('dCount').addEventListener('click',e=>{const b=e.target.closest('[data-n]');if(!b)return;dCount=+b.dataset.n;$('dCount').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));runDiag($('dNick').value)});

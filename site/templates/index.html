@@ -31,15 +31,18 @@
       <button class="go" type="submit">진단</button>
     </form>
   </header>
-{% if market %}{% set ix = market.index %}
+{% if market %}
+  <div class="mk-grade mk-period" role="tablist" aria-label="비교 기간"><span>비교 기간</span>{% for d in [1,3,7] %}<button type="button" role="tab" data-md="{{ d }}" aria-selected="{{ 'true' if loop.first else 'false' }}">{{ d }}일</button>{% endfor %}</div>
+  {% for d in [1,3,7] %}{% set P = market.periods[d|string] %}{% set ix = P.index %}
+  <div class="mk-period-panel" data-mdp="{{ d }}"{% if not loop.first %} hidden{% endif %}>
   <section class="mk-strip" aria-label="시장 요약">
     <div class="mk-tile">
-      <span class="mk-k">피파고수 시장지수 <small>{{ market.rankLabel|default('상위 랭커 사용 기준') }} · 1강 직전 기록일 대비{% if ix %} · 표본 {{ ix.n }}장{% endif %}</small></span>
+      <span class="mk-k">피파고수 시장지수 <small>{{ market.rankLabel|default('상위 랭커 사용 기준') }} · 1강 {{ d }}일 전 대비{% if ix %} · 표본 {{ ix.n }}장{% endif %}</small></span>
       {% if ix %}<span class="mk-v {{ 'up' if ix.median > 0 else ('down' if ix.median < 0 else '') }}">{{ M.pct(ix.median) }}</span>
-      {% else %}<span class="mk-v mk-wait">{% if market.historyDays|default(0) < market.historyRequiredDays|default(8) %}전체 카드 이력 {{ market.historyDays|default(0) }}/{{ market.historyRequiredDays|default(8) }}일 누적{% else %}표본 {{ market.indexSample|default(0) }}/{{ market.indexMinimum|default(30) }}장{% endif %}</span>{% endif %}
+      {% else %}<span class="mk-v mk-wait">{% if not P.ready %}전체 카드 이력 {{ P.historyDays }}/{{ P.required }}일 누적{% else %}표본 {{ P.sample }}/{{ market.indexMinimum|default(30) }}장{% endif %}</span>{% endif %}
     </div>
     <div class="mk-tile">
-      <span class="mk-k">직전 기록일 대비 오른 카드 · 내린 카드</span>
+      <span class="mk-k">{{ d }}일 전 대비 오른 카드 · 내린 카드</span>
       {% if ix %}<span class="mk-v mk-ud"><b class="up">▲ {{ ix.up }}</b> <b class="down">▼ {{ ix.down }}</b></span>
       <span class="mk-bar" aria-hidden="true"><i style="width:{{ (ix.up / ix.n * 100)|round(1) if ix.n else 50 }}%"></i></span>
       {% else %}<span class="mk-v mk-wait">비교 가능한 표본을 모으고 있어요</span>{% endif %}
@@ -57,19 +60,19 @@
     <div class="mk-grade" role="tablist" aria-label="강화 기준">
       <span>강화 기준</span>{% for g in market.grades %}<button type="button" role="tab" data-mg="{{ g }}" aria-selected="{{ 'true' if loop.first else 'false' }}" class="g-{{ 'bronze' if g < 5 else ('silver' if g < 8 else 'gold') }}">{{ g }}강</button>{% endfor %}
     </div>
-    <small class="mk-rule">{{ market.rule }}{% if market.prev %} ({{ market.prev[5:7]|int }}.{{ market.prev[8:10]|int }} → {{ market.date[5:7]|int }}.{{ market.date[8:10]|int }}){% endif %}</small>
+    <small class="mk-rule">전체 수집 선수카드 · 3만 BP 이상 · {{ d }}일 전 대비{% if P.ready %} ({{ P.prev[5:7]|int }}.{{ P.prev[8:10]|int }} → {{ P.date[5:7]|int }}.{{ P.date[8:10]|int }}){% else %} · 비교 이력 부족{% endif %}</small>
   </div>
-  {% for g in market.grades %}{% set B = market.byGrade[g|string] %}
+  {% for g in market.grades %}{% set B = P.byGrade[g|string] %}
   <div class="mk-panel" data-mp="{{ g }}"{% if not loop.first %} hidden{% endif %}>
     <section class="mk-box mk-up">
-      <h2>직전 기록일 대비 급등 TOP {{ B.risers|length or 10 }}</h2>
+      <h2>{{ d }}일 전 대비 급등 TOP {{ B.risers|length or 10 }}</h2>
       {% if B.risers %}<ol class="mk-list">{% for x in B.risers %}{{ M.row(x, loop.index) }}{% endfor %}</ol>
-      {% else %}<p class="mk-empty">{{ market.rankLabel|default('상위 랭커') }} 시세를 모으고 있어요.</p>{% endif %}
+      {% else %}<p class="mk-empty">{% if not P.ready %}{{ d }}일 전 시세 이력이 아직 없어요.{% else %}해당 기간 등락 카드가 없어요.{% endif %}</p>{% endif %}
     </section>
     <section class="mk-box mk-down">
-      <h2>직전 기록일 대비 급락 TOP {{ B.fallers|length or 10 }}</h2>
+      <h2>{{ d }}일 전 대비 급락 TOP {{ B.fallers|length or 10 }}</h2>
       {% if B.fallers %}<ol class="mk-list">{% for x in B.fallers %}{{ M.row(x, loop.index) }}{% endfor %}</ol>
-      {% else %}<p class="mk-empty">{{ market.rankLabel|default('상위 랭커') }} 시세를 모으고 있어요.</p>{% endif %}
+      {% else %}<p class="mk-empty">{% if not P.ready %}{{ d }}일 전 시세 이력이 아직 없어요.{% else %}해당 기간 등락 카드가 없어요.{% endif %}</p>{% endif %}
     </section>
     <section class="mk-box">
       <h2>인기 카드 시세</h2>
@@ -77,6 +80,8 @@
       {% if B.popular %}<ol class="mk-list">{% for x in B.popular %}{{ M.row(x, loop.index) }}{% endfor %}</ol>
       {% else %}<p class="mk-empty">상위 랭커 사용 표본을 모으고 있어요.</p>{% endif %}
     </section>
+  </div>
+  {% endfor %}
   </div>
   {% endfor %}
   {% if market.newCards %}

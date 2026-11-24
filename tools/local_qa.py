@@ -21,6 +21,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         target = urllib.parse.urlsplit(self.path)
         path = target.path
+        if path in ('/calc', '/calc/', '/calc.html'):
+            self.send_response(301)
+            self.send_header('Location', '/sim/')
+            self.end_headers()
+            return
         if path.startswith("/api/community/"):
             data = b'{"enabled":false,"preview":true}'
             self.send_response(503)

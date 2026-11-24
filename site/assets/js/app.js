@@ -457,15 +457,23 @@ function dSaveVisit(d,a){dStore(s=>{
   s.history=s.history||{};const key=dHistoryKey(d.basic.nickname,dMode),snap=dSnapshot(d,a),list=s.history[key]||[],same=list.findIndex(x=>x.day===snap.day);if(same>=0)list[same]=snap;else list.push(snap);s.history[key]=list.slice(-90);
   });dRenderQuick(d.basic.nickname)
 }
+/* 통합 즐겨찾기: 운영판 저장 목록을 최초 1회 가져오고 빠른 조회와 별표를 공유 */
+function dMergeFavorites(current,legacy){const out=[],seen=new Set();for(const item of [...(Array.isArray(current)?current:[]),...(Array.isArray(legacy)?legacy:[])]){const raw=typeof item==='string'?item:item?.nick;if(typeof raw!=='string'||!raw.trim())continue;const nick=raw.trim(),key=nick.toLocaleLowerCase();if(seen.has(key))continue;seen.add(key);out.push({nick,at:typeof item?.at==='string'?item.at:''});if(out.length===10)break}return out}
+function dMigrateFavorites(){const s=dRead();if(s.favoritesMigrated)return;let old=[];try{old=JSON.parse(ls('fifagosu.diag-favorites.v1')||'[]')}catch(e){}s.favs=dMergeFavorites(s.favs,old);s.favoritesMigrated=true;dWrite(s)}
+function dIsFavorite(nick){const key=String(nick||'').trim().toLocaleLowerCase();return (dRead().favs||[]).some(x=>x.nick.toLocaleLowerCase()===key)}
+function dChangeFavorite(nick,removeOnly=false){nick=String(nick||'').trim();if(!nick)return;dStore(s=>{s.favs=dMergeFavorites(s.favs,[]);const key=nick.toLocaleLowerCase(),i=s.favs.findIndex(x=>x.nick.toLocaleLowerCase()===key);if(i>=0)s.favs.splice(i,1);else if(!removeOnly)s.favs.unshift({nick,at:new Date().toISOString()});s.favs=s.favs.slice(0,10)});dRenderQuick(dCur?.d.basic.nickname||'')}
+function dFavoriteButton(nick){const on=dIsFavorite(nick);return `<button type="button" class="d-favorite" data-dfavorite-toggle="${esc(nick)}" aria-pressed="${on}" aria-label="${on?'즐겨찾기 해제':'즐겨찾기에 추가'}" title="${on?'즐겨찾기 해제':'즐겨찾기에 추가'}">${on?'★':'☆'}</button>`}
+dMigrateFavorites();
 function dRenderQuick(active){const s=dRead(),mk=(x,k)=>`<button type="button" data-dnick="${esc(x.nick)}" class="dquick-chip${active&&x.nick.toLowerCase()===active.toLowerCase()?' on':''}">${k==='fav'?'★ ':''}${esc(x.nick)}<small>${x.at?new Date(x.at).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'}):''}</small></button>`;
   $('dRecent').innerHTML=(s.recent||[]).map(x=>mk(x,'recent')).join('')||'<span class="muted">최근 검색이 없어요.</span>';
-  $('dFavs').innerHTML=(s.favs||[]).map(x=>mk(x,'fav')).join('')||'<span class="muted">즐겨찾기가 없어요.</span>';
+  $('dFavs').innerHTML=(s.favs||[]).map(x=>`<span class="df-pair">${mk(x,'fav')}<button type="button" class="df-remove" data-dfavorite-remove="${esc(x.nick)}" aria-label="${esc(x.nick)} 즐겨찾기 삭제" title="즐겨찾기 삭제">×</button></span>`).join('')||'<span class="muted">즐겨찾기가 없어요.</span>';
   const fav=active&&(s.favs||[]).some(x=>x.nick.toLowerCase()===active.toLowerCase());$('dFav').textContent=fav?'★ 즐겨찾기 해제':'☆ 즐겨찾기';$('dFav').disabled=!active;$('dMine').disabled=!active;$('dShare').disabled=!active;
   if(active&&s.mine)$('dMine').textContent=s.mine.toLowerCase()===active.toLowerCase()?'내 구단 ✓':'내 구단 등록';
+  const star=$('dBoard').querySelector('[data-dfavorite-toggle]');if(star){const on=dIsFavorite(star.dataset.dfavoriteToggle);star.setAttribute('aria-pressed',String(on));star.textContent=on?'★':'☆';star.setAttribute('aria-label',on?'즐겨찾기 해제':'즐겨찾기에 추가');star.title=on?'즐겨찾기 해제':'즐겨찾기에 추가'}
 }
 dRenderQuick('');
 function dRenderBoard(d,a){
-  $('dBoard').innerHTML=`<div><div class="nick nick-wrap">${divImg(d.maxdivision.division)}<span>${esc(d.basic.nickname)}</span></div><div class="meta">Lv.${d.basic.level} · ${a.dm?'감독모드 · '+esc(a.myForm):'공식경기'}</div></div>
+  $('dBoard').innerHTML=`<div><div class="nick nick-wrap">${divImg(d.maxdivision.division)}<span>${esc(d.basic.nickname)}</span>${dFavoriteButton(d.basic.nickname)}</div><div class="meta">Lv.${d.basic.level} · ${a.dm?'감독모드 · '+esc(a.myForm):'공식경기'}</div></div>
   <div class="tier">${d.current?`<span class="lbl">최근 경기 등급</span>${tierBadge(d.current)}`:''}<span class="lbl">${a.dm?'감독모드 ':''}역대 최고 등급</span><span class="tier-max">${divImg(d.maxdivision.division,'divimg-sm')}${tierBadge(d.maxdivision.division)}</span></div>
   <div class="record">${d.real?`<div><span class="k">데이터</span><span class="v" style="font-size:13px">넥슨 Open API${d.snapDate?' · '+esc(d.snapDate):''}</span></div>`:d.sample?'<div><span class="k">데이터</span><span class="v" style="font-size:13px;color:var(--warn,#e0a030)">예시(가상)</span></div>':''}<div><span class="k">최근</span><span class="v">${a.n}경기${d.forfeit?`<small style="display:block;font-size:11px;font-weight:400;color:var(--muted)">몰수 ${d.forfeit}경기 제외</small>`:''}</span></div><div><span class="k">승·무·패</span><span class="v">${a.W}·${a.D}·${a.L}</span></div><div><span class="k">승률</span><span class="v">${Math.round(a.W/a.n*100)}%</span></div><div><span class="k">득실</span><span class="v">${a.gf}:${a.ga}</span></div></div>`;
 }
@@ -884,12 +892,12 @@ async function runDiag(nick){
 }
 function dClear(){['dCards','dPanel','dMatches','dSum'].forEach(id=>$(id).innerHTML='');$('dTip').hidden=true;$('dReport').hidden=true;$('dTc').hidden=true;$('dAllN').textContent=''}
 $('dForm').addEventListener('submit',e=>{e.preventDefault();runDiag($('dNick').value)});
-$('dBoard').addEventListener('click',e=>{if(e.target.closest('[data-sample]')){$('dNick').value='예시';runDiag('예시')}});
+$('dBoard').addEventListener('click',e=>{const fav=e.target.closest('[data-dfavorite-toggle]');if(fav){dChangeFavorite(fav.dataset.dfavoriteToggle);return}if(e.target.closest('[data-sample]')){$('dNick').value='예시';runDiag('예시')}});
 $('dCount').addEventListener('click',e=>{const b=e.target.closest('[data-n]');if(!b)return;dCount=+b.dataset.n;$('dCount').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));runDiag($('dNick').value)});
 $('dMode').addEventListener('click',e=>{const b=e.target.closest('[data-mode]');if(!b)return;dMode=b.dataset.mode;$('dMode').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));runDiag($('dNick').value)});
 $('dTabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;dTab=b.dataset.tab;dRenderPanel()});
-$('dQuick').addEventListener('click',e=>{const b=e.target.closest('[data-dnick]');if(b){$('dNick').value=b.dataset.dnick;runDiag(b.dataset.dnick)}});
-$('dFav').addEventListener('click',()=>{if(!dCur)return;const nick=dCur.d.basic.nickname;dStore(s=>{s.favs=s.favs||[];const i=s.favs.findIndex(x=>x.nick.toLowerCase()===nick.toLowerCase());if(i>=0)s.favs.splice(i,1);else s.favs.unshift({nick,at:new Date().toISOString()});s.favs=s.favs.slice(0,8)});dRenderQuick(nick)});
+$('dQuick').addEventListener('click',e=>{const remove=e.target.closest('[data-dfavorite-remove]');if(remove){dChangeFavorite(remove.dataset.dfavoriteRemove,true);return}const b=e.target.closest('[data-dnick]');if(b){$('dNick').value=b.dataset.dnick;runDiag(b.dataset.dnick)}});
+$('dFav').addEventListener('click',()=>{if(dCur)dChangeFavorite(dCur.d.basic.nickname)});
 $('dMine').addEventListener('click',()=>{if(!dCur)return;dStore(s=>s.mine=dCur.d.basic.nickname);dRenderQuick(dCur.d.basic.nickname)});
 $('dShare').addEventListener('click',async()=>{if(!dCur)return;const u=new URL(location.href);u.pathname=(window.FG_ROUTES&&FG_ROUTES.diag)||'/diag';u.searchParams.set('nick',dCur.d.basic.nickname);u.searchParams.set('mode',dMode);u.searchParams.set('count',dCount);const data={title:`${dCur.d.basic.nickname} 전적 진단 | 피파고수`,text:`${dCur.d.basic.nickname} 최근 ${dCur.a.n}경기 승률 ${Math.round(dCur.a.W/dCur.a.n*100)}%`,url:u.href};try{if(navigator.share)await navigator.share(data);else{await navigator.clipboard.writeText(u.href);$('dShare').textContent='링크 복사됨 ✓';setTimeout(()=>$('dShare').textContent='진단 공유',1600)}}catch(e){}});
 $('dPanel').addEventListener('change',e=>{const f=e.target.dataset.dfilter;if(f){dFilter[f]=f==='apps'?+e.target.value:e.target.value;dRenderPanel();return}if(!dCur)return;const s=dRead(),key=dHistoryKey(dCur.d.basic.nickname,dMode);if(e.target.dataset.asset){s.assets=s.assets||{};const o=s.assets[key]??={};o[e.target.dataset.asset]=e.target.value.replace(/[^0-9]/g,'');dWrite(s);dRenderPanel()}if(e.target.dataset.goal){s.goals=s.goals||{};const o=s.goals[key]??={};o[e.target.dataset.goal]=e.target.value;dWrite(s)}});

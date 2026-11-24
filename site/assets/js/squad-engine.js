@@ -84,7 +84,7 @@ function candidate(row,pos,grade,options,keys){
  const matched=relevant?traits.filter(t=>relevant.test(t)):[];
  const physical=options.style==="cross"&&role==="ST"&&Number.isFinite(height)?Math.max(-2,Math.min(2,(height-180)*.1)):0;
  const quality=ovr*.57+(mean??ovr)*.25+(style??mean??ovr)*.18+(pos!=="GK"&&Number.isFinite(weak)?(weak-3)*.65:0)+physical+Math.min(1.5,matched.length*.65);
- return {id,pid:id%1000000,name,season,pay,base,grade,price,ovr,weak,quality,pos,core:vals.map(([k,v])=>[k,v+bonus]),teams:teams||[],at,detail:vals.length>0,games:Number.isInteger(games)&&games>=0?games:null,height:height||null,matched};
+ return {id,pid:id%1000000,name,season,pay,base,grade,price,ovr,weak,quality,pos,core:vals.map(([k,v])=>[k,v+bonus]),teams:teams||[],at,detail:vals.length>0,games:Number.isInteger(games)&&games>=0?games:null,height:height||null,matched,stats:stats||[]};
 }
 function score(c,mode,opts,target){
  const relative=c.price/Math.max(1,target.budget),gap=Math.abs(c.pay-target.pay);

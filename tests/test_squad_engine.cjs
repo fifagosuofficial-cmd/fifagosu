@@ -70,11 +70,15 @@ test('same grade and comparable stats favor observed popular card',()=>{
  const r=E.solve(cat,manifest,o);
  assert.ok(r.ok);assert.equal(r.players[0].id,1000002);
 });
-test('wide investment shifts budget and salary toward fullbacks',()=>{
- const a=E.targets({...opts,salary:315,investment:'wide'},'balanced');
- const b=E.targets({...opts,salary:315,investment:'attack'},'balanced');
- assert.ok(a.LB.pay>b.LB.pay);assert.ok(a.LB.budget>b.LB.budget);
- assert.ok(b.ST.budget>a.ST.budget);
+test('one standard investment prioritizes attackers and CB across styles and modes',()=>{
+ const o={...opts,salary:315};
+ const a=E.targets({...o,style:'cross',investment:'wide'},'performance');
+ const b=E.targets({...o,style:'pass',investment:'attack'},'value');
+ assert.deepEqual(a,b);
+ assert.equal(a.ST.pay,34);assert.equal(a.CAM.pay,34);assert.equal(a.CB.pay,33);
+ assert.equal(a.LB.pay,23);assert.equal(a.RB.pay,23);assert.equal(a.GK.pay,19);
+ assert.ok(a.ST.budget>a.LB.budget&&a.CB.budget>a.GK.budget&&a.CB.pay>a.CDM.pay);
+ assert.equal(E.FORMATIONS['4231'].reduce((n,p)=>n+a[p].pay,0),315);
 });
 test('style scoring favors cross providers and tall heading finishers',()=>{
  const cat=fixture(),keys=['sprintspeed','crossing','heading','jumping','finishing','positioning','strength','curve'];

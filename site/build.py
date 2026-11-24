@@ -177,6 +177,62 @@ def refresh_popular_market_cards(data_dir, market):
     return market
 
 
+def market_period_views(data_dir, market):
+    """Read full-scan history once; compare exact calendar-day endpoints, never substitute dates."""
+    if not market or not market.get("byGrade"):
+        return market
+    meta = _load(data_dir / "market" / "all_card_history_dates.json") or {}
+    dates = sorted(set(meta.get("dates") or [])) if meta.get("basis") == "full-list-snapshots" else []
+    end = dates[-1] if dates else market["date"]
+    end_day = dt.date.fromisoformat(end)
+    grades = market["grades"]
+    minimum = market.get("indexMinimum", 30)
+    listed, history = {}, {}
+    for shard in range(200):
+        listed.update(_load(data_dir / "list" / f"{shard}.json") or {})
+        history.update(_load(data_dir / "market" / "all_card_history" / f"{shard}.json") or {})
+    periods = {}
+    for days in (1, 3, 7):
+        start = (end_day - dt.timedelta(days=days)).isoformat()
+        ready = end in dates and start in dates
+        buckets, index = {}, None
+        for grade in grades:
+            changes = []
+            if ready:
+                for card_id, rec in listed.items():
+                    prices = dict(history.get(str(card_id), {}).get(str(grade), []))
+                    first, last = prices.get(start), prices.get(end)
+                    if not isinstance(first, (int, float)) or not isinstance(last, (int, float)) or min(first, last) < 30000:
+                        continue
+                    pos = (rec.get("pos") or [[None, None]])[0]
+                    changes.append({"id": int(card_id), "n": rec.get("name") or "", "s": int(card_id)//1000000,
+                                    "o": rec.get("ovr") or (pos[1] if len(pos)>1 else None), "p": pos[0],
+                                    "v": last, "pv": first, "c": round((last-first)/first*100,1),
+                                    "fromDate": start, "toDate": end})
+            by_id = {x["id"]: x for x in changes}
+            popular = []
+            for p in market["byGrade"].get(str(grade), {}).get("popular", []):
+                item = {k: v for k, v in p.items() if k not in ("pv","c","fromDate","toDate")}
+                if p["id"] in by_id:
+                    item.update({k: v for k, v in by_id[p["id"]].items() if k in ("v","pv","c","fromDate","toDate")})
+                popular.append(item)
+            buckets[str(grade)] = {"risers": sorted((x for x in changes if x["c"]>0),key=lambda x:-x["c"])[:10],
+                                   "fallers": sorted((x for x in changes if x["c"]<0),key=lambda x:x["c"])[:10],
+                                   "popular": popular, "moved": len(changes)}
+            if grade == 1:
+                vals = sorted(x["c"] for x in changes)
+                sample = len(vals)
+                if sample >= minimum:
+                    index = {"median": round((vals[(sample-1)//2]+vals[sample//2])/2,1),
+                             "n": sample, "up": sum(v>0 for v in vals), "down": sum(v<0 for v in vals)}
+        periods[str(days)] = {"index": index, "byGrade": buckets, "prev": start, "date": end,
+                              "ready": ready, "sample": buckets.get("1",{}).get("moved",0),
+                              "historyDays": len([d for d in dates if start<=d<=end]),
+                              "required": days+1}
+    market["periods"] = periods
+    return market
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data")
@@ -205,6 +261,7 @@ def main(argv=None):
     today = dt.datetime.now(KST).strftime("%Y-%m-%d")
     news = load_news(data_dir, today)
     market = refresh_popular_market_cards(data_dir, _load(data_dir / "market" / "summary.json"))
+    market = market_period_views(data_dir, market)
     if market and not market.get("byGrade"):
         market = None
     common = dict(news=news, market=market, SITE_URL=site_url, ver=ver, cfg=cfg, contact=cfg.get("CONTACT_EMAIL") or "",

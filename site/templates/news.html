@@ -14,7 +14,7 @@
     </form>
   </div>
 {% if news %}
-  <div class="h2-grid">
+  <div class="h2-grid{% if P %} press-full{% endif %}">
     <div class="h2-main">
       <div class="nw-tabs bd-tabs" role="tablist" aria-label="분류" id="bdTabs">
         <button type="button" role="tab" aria-selected="true" data-f="all">전체 <small>{{ board|length }}</small></button>
@@ -41,6 +41,7 @@
       </div>
       <nav class="bd-pages" id="bdPages" aria-label="페이지"></nav>
     </div>
+    {% if not P %}
     <aside class="h2-side">
       {% if not P %}{{ N.events_box(news.events) }}{% endif %}
       <section class="bd-about">
@@ -54,6 +55,7 @@
         <p><a href="{{ root }}{{ 'news/' if P else 'press/' }}">{{ '→ FC온라인 공지·점검은 소식 게시판' if P else '→ 축구 기사는 뉴스 게시판' }}</a></p>
       </section>
     </aside>
+    {% endif %}
   </div>
 {% else %}
   <p class="cl-empty">소식을 처음 모으는 중이에요. 잠시 후 다시 확인해 주세요.</p>

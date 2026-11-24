@@ -114,7 +114,7 @@ async function prob(url, waitUntil) {
   const key = new Request('https://fifagosu.cache/prob/' + (sn || 'list'));
   const hit = await cache.match(key);
   if (hit) return hit;
-  const up = await fetch(PROB + (sn ? '?sn=' + sn : ''), { headers: { 'user-agent': 'Mozilla/5.0 (compatible; fifagosu-prob/1.0; +https://fifagosu.pages.dev)', 'accept-language': 'ko-KR,ko;q=0.9' } });
+  const up = await fetch(PROB + (sn ? '?sn=' + sn : ''), { headers: { 'user-agent': 'Mozilla/5.0 (compatible; fifagosu-prob/1.0; +https://fifagosu.com)', 'accept-language': 'ko-KR,ko;q=0.9' } });
   if (!up.ok) return json(502, { message: `넥슨 확률 페이지 응답 오류(${up.status})예요.` });
   const html = await up.text();
   let body;
@@ -157,7 +157,7 @@ async function shop(waitUntil) {
   const hit = await cache.match(key);
   if (hit) return hit;
   // 상품 목록은 메인 HTML이 아니라 /Shop/List 조각(탭 1: 일반 상품, 탭 3: 기타)으로 따로 내려와요. 탭 2(마일리지)는 제외.
-  const hdr = { headers: { 'user-agent': 'Mozilla/5.0 (compatible; fifagosu-shop/1.0; +https://fifagosu.pages.dev)', 'accept-language': 'ko-KR,ko;q=0.9', 'x-requested-with': 'XMLHttpRequest' } };
+  const hdr = { headers: { 'user-agent': 'Mozilla/5.0 (compatible; fifagosu-shop/1.0; +https://fifagosu.com)', 'accept-language': 'ko-KR,ko;q=0.9', 'x-requested-with': 'XMLHttpRequest' } };
   const pages = await Promise.all([1, 3].map((t) => fetch(`https://shop.fconline.nexon.com/Shop/List?n1TabType=${t}&n1OrderType=1&n1PageNo=1&strSType=[]`, hdr).then((r) => (r.ok ? r.text() : '')).catch(() => '')));
   const html = pages.join('\n');
   if (!html) return json(502, { message: '넥슨 웹 상점 응답 오류예요.' });
@@ -187,7 +187,7 @@ async function shopParts(pid, waitUntil) {
   const key = new Request('https://fifagosu.cache/shop/view/' + pid);
   const hit = await cache.match(key);
   if (hit) return hit;
-  const up = await fetch('https://shop.fconline.nexon.com/Shop/View?strPid=' + pid, { headers: { 'user-agent': 'Mozilla/5.0 (compatible; fifagosu-shop/1.0; +https://fifagosu.pages.dev)', 'accept-language': 'ko-KR,ko;q=0.9' } }).catch(() => null);
+  const up = await fetch('https://shop.fconline.nexon.com/Shop/View?strPid=' + pid, { headers: { 'user-agent': 'Mozilla/5.0 (compatible; fifagosu-shop/1.0; +https://fifagosu.com)', 'accept-language': 'ko-KR,ko;q=0.9' } }).catch(() => null);
   if (!up || !up.ok) return json(502, { message: '넥슨 웹 상점 응답 오류예요.' });
   const html = await up.text();
   const list = (html.split('<ul class="product">')[1] || '').split('</ul>')[0];

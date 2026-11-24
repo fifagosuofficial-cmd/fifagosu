@@ -41,7 +41,7 @@ tests/                        수집기 테스트 (실제 응답 형식 기준)
    - Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
    - (선택) Variables: `CRAWL_MINUTES` = 전체 카드 일일 수집 시간(분, 기본 300)
 6. **Actions → crawl-and-deploy → Run workflow**, minutes에 `300`을 넣고 처음 실행해요.
-7. 끝나면 `https://fifagosu.pages.dev`에서 카드 검색 → 카드 클릭 → 능력치·시세가 나오는지 확인해요.
+7. 끝나면 `https://fifagosu.com`에서 카드 검색 → 카드 클릭 → 능력치·시세가 나오는지 확인해요.
 
 이후에는 매일 03:17(한국 시간)에 자동으로 돌아요. 사이트 코드(`index.html` 등)를 고쳐서 `main`에 올리면 수집 없이 배포만 돼요.
 

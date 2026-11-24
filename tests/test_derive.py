@@ -144,6 +144,49 @@ def test_market_summary_movers_popular_and_new(tmp_path):
             assert len(pool) == 3 and len(pool[0][3]) == 13
 
 
+def test_diag_market_compact_trends_and_actual_periods(tmp_path):
+    d = tmp_path
+    derive.save(d / "market" / "all_card_history_dates.json", {
+        "basis": "full-list-snapshots",
+        "dates": ["2026-10-20", "2026-11-16", "2026-11-22", "2026-11-23"],
+        "counts": [2, 2, 2, 2],
+    })
+    derive.save(d / "market" / "all_card_history" / "1.json", {
+        "100000001": {
+            "1": [["2026-10-20", 100], ["2026-11-16", 110],
+                  ["2026-11-22", 120], ["2026-11-23", 150]],
+            "5": [["2026-11-22", 1000], ["2026-11-23", 1000]],
+            "8": [["2026-11-23", 8000]],
+        },
+        # 최신 전체 스냅샷의 가격이 없으면 과거 가격을 현재가로 재사용하지 않아요.
+        "100000201": {"1": [["2026-11-22", 999]]},
+    })
+    result = derive.step_diag_market(d, "2026-11-24")
+    assert result == {"diag_market": "ok", "diag_market_cards": 1,
+                      "diag_market_date": "2026-11-23"}
+    manifest = json.loads((d / "diag" / "market.json").read_text("utf-8"))
+    assert manifest["requestedDays"] == [1, 7, 30]
+    assert manifest["grades"] == [1, 5, 8]
+    assert manifest["historyFrom"] == "2026-10-20" and manifest["historyTo"] == "2026-11-23"
+    cards = json.loads((d / "diag" / "market-1.json").read_text("utf-8"))["cards"]
+    one, five, eight = cards["100000001"]
+    assert one == [150, 25.0, 36.4, 50.0, 1, 7, 34]
+    assert five == [1000, 0.0, None, None, 1, None, None]
+    assert eight == [8000, None, None, None, None, None, None]
+    assert "100000201" not in cards
+
+
+def test_diag_market_waits_for_full_history_and_skips_same_date(tmp_path):
+    assert derive.step_diag_market(tmp_path, "2026-11-24")["diag_market"] == "waiting-full-scan"
+    derive.save(tmp_path / "market" / "all_card_history_dates.json", {
+        "basis": "full-list-snapshots", "dates": ["2026-11-23"], "counts": [1]})
+    derive.save(tmp_path / "market" / "all_card_history" / "1.json", {
+        "100000001": {"1": [["2026-11-23", 100]]}})
+    assert derive.step_diag_market(tmp_path, "2026-11-24")["diag_market"] == "ok"
+    again = derive.step_diag_market(tmp_path, "2026-11-24")
+    assert again["diag_market"] == "skip" and again["diag_market_cards"] == 1
+
+
 def test_pcode_roundtrip():
     assert derive.pcode(124_000_000) == 6124 and derive.pdecode(6124) == 124_000_000
     assert derive.pcode(1290) == 1129 and derive.pdecode(1129) == 1290
@@ -188,3 +231,52 @@ def test_reco_groups_traits_and_budget(tmp_path):
     assert 0 < len(ovrs) < 400
     assert sorted(ovrs, reverse=True) == sorted((60 + i % 50 for i in range(400)), reverse=True)[:len(ovrs)]   # 낮은 OVR부터 빠짐
     assert 100000001 in {x[0] for x in cb["items"]}         # 다른 가격대 카드는 남음
+
+
+def test_opponent_teamcolors_season_and_unknown(tmp_path):
+    d = tmp_path
+    derive.save(d / "teamcolor" / "teamcolors.json", {"items": [
+        {"name": "Old", "type": "club", "clubId": 1},
+        {"name": "New", "type": "club", "clubId": 2, "aliases": ["New FC"]},
+        {"name": "Nation", "type": "nation", "nationId": 3},
+    ]})
+    derive.save(d / "meta" / "seasonid.json", [
+        {"seasonId": 100, "className": "25 UCL"},
+        {"seasonId": 101, "className": "ICON"},
+    ])
+    detail = {"nationId": 3, "clubs": [["2010 ~ 2015", "Old"], ["2024 ~", "New FC"]]}
+    for card, row in [(100000001, detail), (101000002, detail),
+                      (101000003, dict(detail, teamId=1))]:
+        derive.save(d / "detail" / f"{card % 200}.json", {str(card): row})
+    result = derive.step_opponent_teamcolors(d, "2026-11-24")
+    assert result["opponent_teamcolor_cards"] == 3
+    out = json.loads((d / "diag" / "opponent-teamcolors.json").read_text("utf-8"))
+    names = lambda card: {out["names"][i] for i in out["cards"][str(card)]}
+    assert names(100000001) == {"Old", "New", "Nation"}
+    assert names(101000002) == {"Old", "New", "Nation"}
+    assert names(101000003) == {"Old", "New", "Nation"}
+
+
+def test_opponent_teamcolors_missing_metadata(tmp_path):
+    assert derive.step_opponent_teamcolors(tmp_path, "2026-11-24")["opponent_teamcolors"] == "waiting-teamcolors"
+
+def test_opponent_teamcolors_official_season_mapping(tmp_path):
+    derive.save(tmp_path / "teamcolor" / "teamcolors.json", {"items": [
+        {"name": "Untouchable Champions", "type": "club", "clubId": 130759},
+        {"name": "Untouchable Champions", "type": "special"},
+        {"name": "Chelsea", "type": "club", "clubId": 5},
+        {"name": "England", "type": "nation", "nationId": 1},
+    ]})
+    derive.save(tmp_path / "meta" / "seasonid.json", [
+        {"seasonId": 877, "className": "UC (Untouchable Champions)"},
+        {"seasonId": 999, "className": "Unknown"},
+    ])
+    derive.save(tmp_path / "detail" / "1.json", {"877000001": {
+        "teamId": 130759, "nationId": 1, "clubs": [["2001 ~ 2014", "Chelsea"]]}})
+    derive.step_opponent_teamcolors(tmp_path, "2026-11-24")
+    out = json.loads((tmp_path / "diag" / "opponent-teamcolors.json").read_text("utf-8"))
+    i = out["seasonById"]["877"]
+    assert out["names"][i] == "Untouchable Champions" and out["kinds"][i] == "season"
+    assert "999" not in out["seasonById"]
+    assert out["names"].count("Untouchable Champions") == 1
+    assert {out["names"][i] for i in out["cards"]["877000001"]} == {"Chelsea", "England"}

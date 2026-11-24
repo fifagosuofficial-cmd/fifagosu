@@ -2,7 +2,7 @@
 """
 피파고수 챔피언스 평균 평점 수집 — 전적 진단의 '평점 낮음(!)' 기준을 하루 1회 만들어요.
 
-  python crawler/rating.py                         # 공개 중계(https://fifagosu.pages.dev/api)로 수집 → data/rating.json
+  python crawler/rating.py                         # 공개 중계(https://fifagosu.com/api)로 수집 → data/rating.json
   python crawler/rating.py --seed 닉네임 --seed 닉네임2
   python crawler/rating.py --dry-run               # 네트워크 없이 모의 응답으로 흐름만 확인(파일 저장 안 함)
 
@@ -32,7 +32,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("FG_DATA", ROOT / "data"))
-API = os.environ.get("FG_API", "https://fifagosu.pages.dev/api")
+API = os.environ.get("FG_API", "https://fifagosu.com/api")
 KST = dt.timezone(dt.timedelta(hours=9))
 MATCH_TYPES = ("50", "52")             # 공식경기 · 감독모드
 SEEDS = ["Lampard8"]
@@ -78,7 +78,7 @@ class Api:
     def _http(self, path):
         import requests
         r = requests.get(self.base + path, timeout=30,
-                         headers={"User-Agent": "fifagosu-rating/1.0 (+https://fifagosu.pages.dev)"})
+                         headers={"User-Agent": "fifagosu-rating/1.0 (+https://fifagosu.com)"})
         try:
             body = r.json()
         except ValueError:

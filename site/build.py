@@ -241,7 +241,7 @@ def squad_catalog(data_dir, out):
     No external calls. Club career is a candidate eligibility, not verified activation.
     """
     positions = "GK CB LB RB CDM CM CAM LM RM LW RW ST CF LWB RWB".split()
-    stat_keys = "sprintspeed acceleration finishing shotpower longshots positioning shortpassing vision crossing longpassing dribbling ballcontrol agility balance reactions marking standingtackle interceptions heading strength stamina gkdiving gkhandling gkreflexes gkpositioning jumping curve aggression composure slidingtackle gkkicking".split()
+    stat_keys = "sprintspeed acceleration finishing shotpower longshots positioning shortpassing vision crossing longpassing dribbling ballcontrol agility balance reactions marking standingtackle interceptions heading strength stamina gkdiving gkhandling gkreflexes gkpositioning jumping curve aggression composure slidingtackle gkkicking volleys penalties freekick".split()
     def norm(x):
         return re.sub(r"[\s·.\-]", "", str(x or "")).casefold()
     raw = _load(data_dir / "teamcolor/teamcolors.json") or {}
@@ -320,6 +320,8 @@ def squad_catalog(data_dir, out):
         (target / name).write_text(json.dumps(value, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     for pos, rows in by_pos.items():
         write(pos + ".json", rows)
+    write("bonuses.json", {"teams": teams, "adaptation": _load(data_dir / "rules/adaptation_bonus.json") or {},
+                           "wave": _load(data_dir / "rules/grade_teamcolor.json") or {}})
     write("manifest.json", {"schema": 2, "stats": stat_keys, "popularity": "data-center-card-games", "positions": {p: len(r) for p, r in by_pos.items()},
                            "teams": sorted([{**t, "cards": counts.get(i, 0)} for i,t in eligible.items() if counts.get(i, 0)], key=lambda t: t["name"]),
                            "dateFrom": min(dates) if dates else None, "dateTo": max(dates) if dates else None})

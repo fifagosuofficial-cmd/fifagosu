@@ -375,8 +375,7 @@ async function realData(nick,mode,count,fetchJSON,names,BATCH=8){
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
-const VIEWS=['home','diag','cards','calc','guide','sim','trade'];
-['eFrom','eTo'].forEach(id=>{const el=$(id);if(el)el.innerHTML=Array.from({length:MAX_GRADE},(_,i)=>`<option value="${i+1}">${i+1}강${i+1>=8?' ('+GRADE_TIER(i+1)+')':''}</option>`).join('')});
+const VIEWS=['home','diag','cards','guide','sim','trade'];
 
 /* 등급 계열 색 */
 const TIER_FAM=n=>/슈퍼 ?챔피언스/.test(n)?'--t-sc':/챔피언스/.test(n)?'--t-ch':/챌린/.test(n)?'--t-cl':/마스터/.test(n)?'--t-ma':/월드클래스/.test(n)?'--t-wc':/^프로/.test(n)?'--t-pr':'--t-lo';
@@ -386,7 +385,7 @@ const DIV_NAMES=Object.values(DIVISION);
 const divImg=(n,cls)=>{const i=DIV_NAMES.indexOf(n);return i<0?'':`<img class="${cls||'divimg'}" src="https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank${i}.png" alt="${esc(n)}" title="역대 최고 등급 · ${esc(n)}" onerror="this.remove()">`};
 function show(v,nopush){
   // SPA 탭 이동 뒤에도 넓은 화면용 컨테이너 상태를 뷰와 동기화한다.
-  document.body.classList.toggle('page-wide',['home','diag','cards','calc','sim','trade','guide'].includes(v));
+  document.body.classList.toggle('page-wide',['home','diag','cards','sim','trade','guide'].includes(v));
   VIEWS.forEach(x=>$('v-'+x).hidden=x!==v);
   document.querySelectorAll('#menu [data-view]').forEach(b=>{if(b.dataset.view===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   const R=window.FG_ROUTES;
@@ -414,27 +413,9 @@ document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=
 const gch=g=>`<span class="grade g-${GRADE_CLS(g)}" title="${GRADE_TIER(g)}">${g}강</span>`;
 const sname=id=>(SEASONS[id]||['?'])[0];
 
-/* ---------- 계산기 ---------- */
-function calcOpts(){return {base:+$('kBase').value||0,pc:$('kPc').checked,pcRate:+$('kPcRate').value||0,top:$('kTop').checked,topRate:+$('kTopRate').value||0,coupon:+$('kCoupon').value||0}}
-function runCalc(){
-  const o=calcOpts(), price=+$('kPrice').value||0, r=sellCalc(price,o);
-  $('kOut').innerHTML=`<div><div class="k">적용 수수료율</div><div class="v">${(Math.round(r.rate*100)/100)}%</div></div><div><div class="k">수수료</div><div class="v">${r.fee.toLocaleString()}억</div></div><div><div class="k">실수령</div><div class="v" style="color:var(--accent)">${r.net.toLocaleString()}억</div></div>`;
-  const have=+$('xHave').value||0, sell=sellCalc(+$('xSell').value||0,o).net, buy=+$('xBuy').value||0, left=Math.round((have+sell-buy)*100)/100;
-  $('xOut').innerHTML=`<div><div class="k">판매 실수령</div><div class="v">${sell.toLocaleString()}억</div></div><div><div class="k">쓸 수 있는 BP</div><div class="v">${(Math.round((have+sell)*100)/100).toLocaleString()}억</div></div><div><div class="k">${left>=0?'교체 후 남는 BP':'부족한 BP'}</div><div class="v" style="color:${left>=0?'var(--good)':'var(--crit)'}">${Math.abs(left).toLocaleString()}억</div></div>`;
-}
-function runEnhance(){
-  let f=+$('eFrom').value||1, t=+$('eTo').value||2; if(t<=f){t=Math.min(MAX_GRADE,f+1);$('eTo').value=String(t)}
-  const g=Math.max(1,Math.min(100,+$('eGauge').value||100))/100, r=enhancePlan(f,t,g);
-  $('eSum').innerHTML=`<div><div class="k">한 번에 연속 성공</div><div class="v">${r.oneShot>=0.01?(r.oneShot*100).toFixed(1):(r.oneShot*100).toFixed(3)}%</div></div><div><div class="k">기대 강화 시도</div><div class="v">${r.tries.toFixed(1)}회</div></div><div><div class="k">목표 OVR 상승</div><div class="v">+${GRADE_BONUS[t]-GRADE_BONUS[f]}</div></div>`;
-  $('eTable').innerHTML=`<table><thead><tr><th>단계</th><th class="n">성공 확률</th><th class="n">기대 시도</th><th class="n">누적 OVR</th></tr></thead><tbody>${r.steps.map(x=>`<tr><td>${x.k}강 → ${x.k+1}강</td><td class="n">${(x.p*100).toFixed(x.p<0.1?1:0)}%</td><td class="n">${x.exp.toFixed(1)}회</td><td class="n">+${GRADE_BONUS[x.k+1]}</td></tr>`).join('')}</tbody></table>`;
-}
-['eFrom','eTo','eGauge'].forEach(id=>{$(id).addEventListener('input',runEnhance);$(id).addEventListener('change',runEnhance)});
-$('eFrom').value='5';$('eTo').value='8';
 /* 가이드 */
 if($('gLadder'))$('gLadder').innerHTML=['유망주','세미프로','프로','월드클래스','마스터','챌린저','슈퍼 챌린지','챔피언스','슈퍼 챔피언스'].map(n=>`<span style="--tc:var(${TIER_FAM(n)})">${n}</span>`).join('<span style="border:0;background:none;color:var(--muted);padding:4px 0">›</span>');
 if($('gGrade'))$('gGrade').innerHTML=`<table><thead><tr><th>단계</th><th class="n">1강 대비 OVR</th><th class="n">다음 강화 성공</th><th>색</th></tr></thead><tbody>${Array.from({length:MAX_GRADE},(_,i)=>i+1).map(g=>`<tr><td style="white-space:nowrap">${gch(g)}</td><td class="n">+${GRADE_BONUS[g]}</td><td class="n">${g<MAX_GRADE?GRADE_SUCCESS[g]+'%':'-'}</td><td style="white-space:nowrap">${GRADE_TIER(g)}</td></tr>`).join('')}</tbody></table>`;
-['kPrice','kBase','kCoupon','kPc','kPcRate','kTop','kTopRate','xHave','xSell','xBuy'].forEach(id=>$(id).addEventListener('input',runCalc));
-['kCoupon','kPc','kTop'].forEach(id=>$(id).addEventListener('change',runCalc));
 
 /* ---------- 전적 진단 ---------- */
 
@@ -1366,7 +1347,7 @@ $('hForm').addEventListener('submit',e=>{e.preventDefault();const n=$('hNick').v
 if($('hCardForm'))$('hCardForm').addEventListener('submit',e=>{e.preventDefault();$('cq').value=$('hCard').value;$('cSeason').value='';show('cards');cLimit=60;renderCards()});
 
 /* ---------- 시작 ---------- */
-runCalc();runEnhance();
+
 if(LIVE){
   $('notice').innerHTML='<b>베타</b> · 전적과 카드 목록은 넥슨 Open API 실데이터예요.';
   if(!dQueryStarted){$('dNick').value='';$('dBoard').innerHTML='<div><div class="nick">구단주 검색</div><div class="meta">닉네임을 넣고 진단하기를 누르세요.</div></div>'}

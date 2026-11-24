@@ -54,6 +54,8 @@ GUIDE_PAGES = [
     ("market", "FC온라인 급여·이적시장 — 급여 상한·판매 수수료 구조", "FC온라인 급여가 무엇이고 어떻게 맞추는지, 이적시장 거래와 판매 수수료가 어떻게 계산되는지 설명해요."),
 ]
 PAGES = [
+    ("squad/index.html", "squad.html", "/squad/", "FC온라인 AI 스쿼드 추천 — 예산·급여 맞춤 | 피파고수",
+     "보유 BP와 급여, 팀컬러, 포메이션에 맞춘 선수 조합을 자동으로 추천해요.", True),
     ("patch/index.html", "patch.html", "/patch/", "FC온라인 패치노트 — 업데이트·밸런스·개선 내역 | 피파고수",
      "FC온라인 공식 업데이트·패치·밸런스 조정 공지를 날짜순으로 모아 핵심만 요약했어요. 매일 자동 갱신.", True),
     ("news/index.html", "news.html", "/news/", "FC온라인 소식 — 공지·점검·업데이트·이벤트 | 피파고수",
@@ -233,6 +235,92 @@ def market_period_views(data_dir, market):
     return market
 
 
+
+def squad_catalog(data_dir, out):
+    """Build compact, position-specific recommendation catalogs from real snapshots.
+    No external calls. Club career is a candidate eligibility, not verified activation.
+    """
+    positions = "GK CB LB RB CDM CM CAM LM RM LW RW ST CF LWB RWB".split()
+    stat_keys = "sprintspeed acceleration finishing shotpower longshots positioning shortpassing vision crossing longpassing dribbling ballcontrol agility balance reactions marking standingtackle interceptions heading strength stamina gkdiving gkhandling gkreflexes gkpositioning".split()
+    def norm(x):
+        return re.sub(r"[\s·.\-]", "", str(x or "")).casefold()
+    raw = _load(data_dir / "teamcolor/teamcolors.json") or {}
+    teams = raw if isinstance(raw, list) else raw.get("items", [])
+    clubs, nations, club_ids, nation_ids, eligible = {}, {}, {}, {}, {}
+    for t in teams:
+        kind = t.get("type")
+        if kind not in ("club", "nation") or not t.get("name") or not t.get("id"):
+            continue
+        tid = int(t["id"])
+        eligible[tid] = {"id": tid, "name": t["name"], "kind": kind}
+        target = clubs if kind == "club" else nations
+        for name in [t["name"], *(t.get("aliases") or [])]:
+            if norm(name):
+                target.setdefault(norm(name), set()).add(tid)
+        key = t.get("clubId" if kind == "club" else "nationId")
+        if key:
+            (club_ids if kind == "club" else nation_ids).setdefault(str(key), set()).add(tid)
+    seasons = {}
+    for s in _load(data_dir / "meta/seasonid.json") or []:
+        label = str(s.get("className") or "")
+        m = re.fullmatch(r"(.*?)\s*\((.*)\)", label)
+        names = [label, m.group(1), m.group(2)] if m else [label]
+        seasons[str(s.get("seasonId"))] = set().union(*(clubs.get(norm(x), set()) for x in names))
+    by_pos = {p: [] for p in positions}
+    counts = {}
+    dates = set()
+    for shard in range(200):
+        listed = _load(data_dir / "list" / f"{shard}.json") or {}
+        detail = _load(data_dir / "detail" / f"{shard}.json") or {}
+        for key, l in listed.items():
+            if not isinstance(l, dict):
+                continue
+            try:
+                spid = int(key)
+                pay = int(l.get("pay") or (detail.get(key) or {}).get("pay") or 0)
+            except (TypeError, ValueError):
+                continue
+            if spid <= 0 or not 0 < pay <= 100:
+                continue
+            prices = [v if type(v) is int and 0 < v <= 9007199254740991 else None for v in (l.get("price") or [])[:13]]
+            if not any(prices):
+                continue
+            d = detail.get(key) or {}
+            name = l.get("name") or d.get("name")
+            if not name:
+                continue
+            ids = set(seasons.get(str(spid // 1000000), set()))
+            ids |= club_ids.get(str(d.get("teamId")), set()) | nation_ids.get(str(d.get("nationId")), set())
+            ids |= nations.get(norm(str(d.get("nation") or "").split(",")[0]), set())
+            for club in d.get("clubs") or []:
+                if isinstance(club, list) and len(club) > 1:
+                    ids |= clubs.get(norm(club[1]), set())
+            for tid in ids:
+                counts[tid] = counts.get(tid, 0) + 1
+            foot = d.get("foot") or l.get("foot") or {}
+            weak = min(foot.get("l") or 0, foot.get("r") or 0) or None
+            stats = d.get("stats") or {}
+            sv = [stats.get(k) if type(stats.get(k)) is int else None for k in stat_keys]
+            at = str(l.get("at") or "")
+            if at:
+                dates.add(at[:10])
+            seen = set()
+            for p in (l.get("pos") or d.get("pos") or []):
+                if not isinstance(p, list) or len(p) < 2 or p[0] not in by_pos or p[0] in seen or type(p[1]) is not int or p[1] <= 0:
+                    continue
+                seen.add(p[0])
+                by_pos[p[0]].append([spid, name, l.get("season") or str(spid // 1000000), pay, p[1], prices, weak, sv, sorted(ids), at])
+    target = out / "assets" / "squad-data"
+    target.mkdir(parents=True, exist_ok=True)
+    def write(name, value):
+        (target / name).write_text(json.dumps(value, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    for pos, rows in by_pos.items():
+        write(pos + ".json", rows)
+    write("manifest.json", {"schema": 1, "stats": stat_keys, "positions": {p: len(r) for p, r in by_pos.items()},
+                           "teams": sorted([{**t, "cards": counts.get(i, 0)} for i,t in eligible.items() if counts.get(i, 0)], key=lambda t: t["name"]),
+                           "dateFrom": min(dates) if dates else None, "dateTo": max(dates) if dates else None})
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data")
@@ -258,6 +346,7 @@ def main(argv=None):
     env = Environment(loader=FileSystemLoader(SITE / "templates"), undefined=StrictUndefined,
                       autoescape=False, keep_trailing_newline=True)
     data_dir = (ROOT / a.data) if not Path(a.data).is_absolute() else Path(a.data)
+    squad_catalog(data_dir, out)
     today = dt.datetime.now(KST).strftime("%Y-%m-%d")
     news = load_news(data_dir, today)
     market = refresh_popular_market_cards(data_dir, _load(data_dir / "market" / "summary.json"))

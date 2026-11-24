@@ -34,3 +34,18 @@ def test_community_pages_and_seo(tmp_path):
     assert "선수 거래소" in home and 'href="board/"' in home
     sm = (out / "sitemap.xml").read_text("utf-8")
     assert "https://fifagosu.com/board/" in sm and "https://fifagosu.com/admin/" not in sm
+
+def test_board_compact_columns_and_view_counter(tmp_path):
+    db = sqlite3.connect(":memory:")
+    db.executescript((ROOT / "community/schema.sql").read_text("utf-8"))
+    db.execute("INSERT INTO posts(category,prefix,title,body,created) VALUES('free','normal','title','body',1)")
+    assert db.execute("SELECT views FROM posts").fetchone()[0] == 0
+    db.execute("UPDATE posts SET views=views+1 WHERE id=1 AND hidden=0")
+    assert db.execute("SELECT views FROM posts").fetchone()[0] == 1
+    out = tmp_path / "site"
+    build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
+    html = (out / "board/index.html").read_text("utf-8")
+    for col in ("분류", "제목", "글쓴이", "날짜", "조회", "추천"):
+        assert f'<th scope="col">{col}</th>' in html
+    assert '<tbody id="fcPosts">' in html
+    assert 'id="fcPreviewHint"' in html

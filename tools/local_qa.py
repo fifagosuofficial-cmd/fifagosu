@@ -22,7 +22,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         target = urllib.parse.urlsplit(self.path)
         path = target.path
         if path.startswith("/api/community/"):
-            data = b'{"enabled":false,"message":"Community backend is not connected in static QA."}'
+            data = b'{"enabled":false,"preview":true}'
             self.send_response(503)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Cache-Control", "no-store")

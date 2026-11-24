@@ -241,7 +241,7 @@ def squad_catalog(data_dir, out):
     No external calls. Club career is a candidate eligibility, not verified activation.
     """
     positions = "GK CB LB RB CDM CM CAM LM RM LW RW ST CF LWB RWB".split()
-    stat_keys = "sprintspeed acceleration finishing shotpower longshots positioning shortpassing vision crossing longpassing dribbling ballcontrol agility balance reactions marking standingtackle interceptions heading strength stamina gkdiving gkhandling gkreflexes gkpositioning".split()
+    stat_keys = "sprintspeed acceleration finishing shotpower longshots positioning shortpassing vision crossing longpassing dribbling ballcontrol agility balance reactions marking standingtackle interceptions heading strength stamina gkdiving gkhandling gkreflexes gkpositioning jumping curve aggression composure slidingtackle gkkicking".split()
     def norm(x):
         return re.sub(r"[\s·.\-]", "", str(x or "")).casefold()
     raw = _load(data_dir / "teamcolor/teamcolors.json") or {}
@@ -260,9 +260,11 @@ def squad_catalog(data_dir, out):
         key = t.get("clubId" if kind == "club" else "nationId")
         if key:
             (club_ids if kind == "club" else nation_ids).setdefault(str(key), set()).add(tid)
-    seasons = {}
+    seasons, restricted = {}, set()
     for s in _load(data_dir / "meta/seasonid.json") or []:
         label = str(s.get("className") or "")
+        if "제한" in label or "bound" in label.lower():
+            restricted.add(str(s.get("seasonId")))
         m = re.fullmatch(r"(.*?)\s*\((.*)\)", label)
         names = [label, m.group(1), m.group(2)] if m else [label]
         seasons[str(s.get("seasonId"))] = set().union(*(clubs.get(norm(x), set()) for x in names))
@@ -280,7 +282,7 @@ def squad_catalog(data_dir, out):
                 pay = int(l.get("pay") or (detail.get(key) or {}).get("pay") or 0)
             except (TypeError, ValueError):
                 continue
-            if spid <= 0 or not 0 < pay <= 100:
+            if spid <= 0 or str(spid // 1000000) in restricted or not 0 < pay <= 100:
                 continue
             prices = [v if type(v) is int and 0 < v <= 9007199254740991 else None for v in (l.get("price") or [])[:13]]
             if not any(prices):
@@ -309,14 +311,16 @@ def squad_catalog(data_dir, out):
                 if not isinstance(p, list) or len(p) < 2 or p[0] not in by_pos or p[0] in seen or type(p[1]) is not int or p[1] <= 0:
                     continue
                 seen.add(p[0])
-                by_pos[p[0]].append([spid, name, l.get("season") or str(spid // 1000000), pay, p[1], prices, weak, sv, sorted(ids), at])
+                traits = [str(t[0] if isinstance(t, list) and t else t) for t in (d.get("traits") or []) if t]
+                games = l.get("games")
+                by_pos[p[0]].append([spid, name, l.get("season") or str(spid // 1000000), pay, p[1], prices, weak, sv, sorted(ids), at, games if type(games) is int and games >= 0 else None, d.get("height"), traits])
     target = out / "assets" / "squad-data"
     target.mkdir(parents=True, exist_ok=True)
     def write(name, value):
         (target / name).write_text(json.dumps(value, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     for pos, rows in by_pos.items():
         write(pos + ".json", rows)
-    write("manifest.json", {"schema": 1, "stats": stat_keys, "positions": {p: len(r) for p, r in by_pos.items()},
+    write("manifest.json", {"schema": 2, "stats": stat_keys, "popularity": "data-center-card-games", "positions": {p: len(r) for p, r in by_pos.items()},
                            "teams": sorted([{**t, "cards": counts.get(i, 0)} for i,t in eligible.items() if counts.get(i, 0)], key=lambda t: t["name"]),
                            "dateFrom": min(dates) if dates else None, "dateTo": max(dates) if dates else None})
 

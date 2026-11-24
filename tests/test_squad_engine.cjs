@@ -48,3 +48,40 @@ test('actual grade price and grade bonus are retained',()=>{
  const r=E.solve(cat,manifest,o);assert.ok(r.ok);
  for(const p of r.players){const source=cat[p.pos].find(x=>x[0]===p.id);assert.equal(p.price,source[5][4]);assert.equal(p.ovr,source[4]+E.BONUS[5])}
 });
+test('strong balanced roster does not insert a drastically weak cheap card',()=>{
+ const cat=fixture();
+ for(const p of Object.keys(cat))cat[p].push(row(8000000+Object.keys(cat).indexOf(p)+1,1,1,45));
+ const r=E.solve(cat,manifest,opts,'value');
+ assert.ok(r.ok);assert.ok(r.players.every(p=>p.ovr>=100));
+});
+test('315 cap is filled where a strong roster can reach it',()=>{
+ const cat={};
+ for(const [i,p] of [...new Set(E.FORMATIONS['4231'])].entries()){
+  cat[p]=Array.from({length:8},(_,j)=>row(1000000+i*20+j+1,100,25+j,125,[7]));
+ }
+ const o={...opts,budget:5000,salary:315,grades:[1]};
+ const r=E.solve(cat,manifest,o);
+ assert.ok(r.ok);assert.equal(r.pay,315);assert.ok(E.validate(r,o));
+});
+test('same grade and comparable stats favor observed popular card',()=>{
+ const cat=fixture(),o={...opts,budget:5000,salary:110,grades:[1]};
+ cat.GK=[row(1000001,50,9,105),row(1000002,50,9,105)];
+ cat.GK[0].push(1,190,[]);cat.GK[1].push(1000,190,[]);
+ const r=E.solve(cat,manifest,o);
+ assert.ok(r.ok);assert.equal(r.players[0].id,1000002);
+});
+test('wide investment shifts budget and salary toward fullbacks',()=>{
+ const a=E.targets({...opts,salary:315,investment:'wide'},'balanced');
+ const b=E.targets({...opts,salary:315,investment:'attack'},'balanced');
+ assert.ok(a.LB.pay>b.LB.pay);assert.ok(a.LB.budget>b.LB.budget);
+ assert.ok(b.ST.budget>a.ST.budget);
+});
+test('style scoring favors cross providers and tall heading finishers',()=>{
+ const cat=fixture(),keys=['sprintspeed','crossing','heading','jumping','finishing','positioning','strength','curve'];
+ const x=row(1000081,60,9,110),y=row(1000082,60,9,110);
+ x[7]=[120,80,80,80,110,110,100,100];y[7]=[110,110,135,135,110,110,120,120];
+ x.push(10,170,[]);y.push(10,195,['파워 헤더']);
+ cat.ST=[x,y];
+ const r=E.solve(cat,{stats:keys},{...opts,budget:5000,grades:[1],style:'cross'});
+ assert.ok(r.ok);assert.equal(r.players[10].id,y[0]);
+});

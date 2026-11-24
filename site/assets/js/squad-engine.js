@@ -20,18 +20,13 @@ const STYLES={
  defense:{M:["interceptions","standingtackle","strength","stamina"],FB:["marking","standingtackle","sprintspeed","stamina"],CB:["marking","standingtackle","strength","heading","interceptions"],GK:["gkreflexes","gkdiving","gkpositioning"]},
  attack:{ST:["finishing","positioning","shotpower","acceleration"],W:["finishing","dribbling","sprintspeed"],M:["vision","shortpassing","longshots"]},value:{}};
 const ROLE=p=>p==="GK"?"GK":p==="CB"?"CB":/^[LR]B$/.test(p)?"FB":/^[LR][MW]$/.test(p)?"W":p==="ST"?"ST":"M";
-const ROLE_PAY={balanced:{ST:33,CAM:32,W:29,M:29,CB:29,FB:27,GK:22},attack:{ST:34,CAM:34,W:32,M:29,CB:27,FB:24,GK:21},midfield:{ST:31,CAM:34,W:28,M:33,CB:28,FB:25,GK:21},wide:{ST:32,CAM:29,W:33,M:27,CB:27,FB:31,GK:21},defense:{ST:30,CAM:29,W:27,M:31,CB:33,FB:29,GK:25}};
-const ROLE_BP={balanced:{ST:1.6,CAM:1.3,W:1.15,M:1,CB:1,FB:.75,GK:.55},attack:{ST:2,CAM:1.55,W:1.4,M:1,CB:.85,FB:.55,GK:.45},midfield:{ST:1.3,CAM:1.7,W:1,M:1.5,CB:.9,FB:.65,GK:.45},wide:{ST:1.45,CAM:1,W:1.5,M:.9,CB:.9,FB:1.3,GK:.45},defense:{ST:1.2,CAM:1,W:.85,M:1.3,CB:1.5,FB:1,GK:.9}};
-function investment(opts,mode){
- if(ROLE_PAY[opts.investment])return opts.investment;
- if(mode==="value")return "balanced";
- if(mode==="balanced")return opts.style==="pass"||opts.style==="longshot"?"midfield":opts.style==="cross"?"wide":opts.style==="defense"?"defense":"balanced";
- return opts.style==="cross"?"wide":opts.style==="defense"?"defense":opts.style==="pass"?"midfield":"attack";
-}
-function targets(opts,mode){
- const inv=investment(opts,mode),ps=FORMATIONS[opts.formation],w=p=>p==="CAM"?"CAM":ROLE(p);
- const sum=ps.reduce((n,p)=>n+ROLE_PAY[inv][w(p)],0),bp=ps.reduce((n,p)=>n+ROLE_BP[inv][w(p)],0);
- return Object.fromEntries(ps.map(p=>[p,{pay:opts.salary*ROLE_PAY[inv][w(p)]/sum,budget:opts.budget*ROLE_BP[inv][w(p)]/bp}]));
+// Single standard roster allocation. Tactical style changes evaluation, never the budget profile.
+const ROLE_PAY={ST:34,CAM:34,CB:33,M:29,W:29,FB:23,GK:19};
+const ROLE_BP={ST:2.1,CAM:1.8,CB:1.8,M:1,W:1,FB:.35,GK:.25};
+function targets(opts){
+ const ps=FORMATIONS[opts.formation],w=p=>p==="CAM"?"CAM":ROLE(p);
+ const sum=ps.reduce((n,p)=>n+ROLE_PAY[w(p)],0),bp=ps.reduce((n,p)=>n+ROLE_BP[w(p)],0);
+ return Object.fromEntries(ps.map(p=>[p,{pay:opts.salary*ROLE_PAY[w(p)]/sum,budget:opts.budget*ROLE_BP[w(p)]/bp}]));
 }
 function safe(n){return Number.isSafeInteger(n)&&n>0}
 function candidate(row,pos,grade,options,keys){
@@ -49,15 +44,19 @@ function candidate(row,pos,grade,options,keys){
  const matched=relevant?traits.filter(t=>relevant.test(t)):[];
  const physical=options.style==="cross"&&role==="ST"&&Number.isFinite(height)?Math.max(-2,Math.min(2,(height-180)*.1)):0;
  const quality=ovr*.57+(mean??ovr)*.25+(style??mean??ovr)*.18+(pos!=="GK"&&Number.isFinite(weak)?(weak-3)*.65:0)+physical+Math.min(1.5,matched.length*.65);
- return {id,pid:id%1000000,name,season,pay,base,grade,price,ovr,weak,quality,core:vals.map(([k,v])=>[k,v+bonus]),teams:teams||[],at,detail:vals.length>0,games:Number.isInteger(games)&&games>=0?games:null,height:height||null,matched};
+ return {id,pid:id%1000000,name,season,pay,base,grade,price,ovr,weak,quality,pos,core:vals.map(([k,v])=>[k,v+bonus]),teams:teams||[],at,detail:vals.length>0,games:Number.isInteger(games)&&games>=0?games:null,height:height||null,matched};
 }
 function score(c,mode,opts,target){
  const relative=c.price/Math.max(1,target.budget),gap=Math.abs(c.pay-target.pay);
  // Observed card games are only a card-level popularity tie-break; not grade-specific ranker use.
  const pop=c.games==null?0:Math.min(1.6,Math.log1p(c.games)*.18);
  const strength=mode==="performance"?1.14:1;
+ const priority=c.pos==="ST"||c.pos==="CAM"||c.pos==="CB"?1.2:1;
  const cost=mode==="value"?2.5:mode==="balanced"?1.2:.35;
- return c.quality*strength+pop-cost*Math.log1p(relative)-gap*.38;
+ const saver=c.pos==="GK"||/^[LR]B$/.test(c.pos);
+ const excess=Math.max(0,c.pay-target.pay),shortage=Math.max(0,target.pay-c.pay);
+ // Prefer high-pay core players and efficient fullbacks/GK without forcing a rigid per-slot cap.
+ return c.quality*strength*priority+pop-cost*Math.log1p(relative)-(saver?1.15:.65)*excess-(saver?.18:.72)*shortage-gap*.12-(saver?1.5:.3)*Math.log1p(Math.max(0,relative-1));
 }
 function unique(xs){const seen=new Set();return xs.filter(c=>{const k=c.id+":"+c.grade;if(seen.has(k))return false;seen.add(k);return true})}
 function poolFor(rows,pos,opts,keys,mode,lock,ban,target){
@@ -90,7 +89,7 @@ function poolFor(rows,pos,opts,keys,mode,lock,ban,target){
 function solve(catalog,manifest,opts,mode="balanced",locks={},bans={}){
  const positions=FORMATIONS[opts.formation];
  if(!positions||!safe(opts.budget)||!safe(opts.salary)||!Array.isArray(opts.grades)||!opts.grades.length||opts.grades.some(g=>!Number.isInteger(g)||g<1||g>13))return {ok:false,reason:"입력 조건을 확인해 주세요."};
- const keys=manifest.stats||[],allocation=targets(opts,mode);
+ const keys=manifest.stats||[],allocation=targets(opts);
  const poolCache=new Map();
  const slots=positions.map((p,i)=>{
    const lock=locks[i],ban=bans[i],k=p;
@@ -128,12 +127,12 @@ function solve(catalog,manifest,opts,mode="balanced",locks={},bans={}){
  // Try to fill all 315, without sacrificing more than 2 points per player on our score.
  const best=finalists.filter(s=>s.total>=bestQuality-22).sort((a,b)=>b.pay-a.pay||b.total-a.total||a.price-b.price)[0];
  if(!best)return {ok:false,reason:"탐색 범위에서 완성 조합을 찾지 못했습니다. 예산·급여·팀컬러·강화 조건을 조정해 주세요."};
- return {ok:true,players:best.players.sort((a,b)=>a.slot-b.slot),price:best.price,pay:best.pay,score:best.total/11,mode,investment:investment(opts,mode),targets:allocation};
+ return {ok:true,players:best.players.sort((a,b)=>a.slot-b.slot),price:best.price,pay:best.pay,score:best.total/11,mode,targets:allocation};
 }
 function validate(result,opts){
  if(!result?.ok||result.players?.length!==11||!FORMATIONS[opts.formation])return false;
  const ps=result.players;
  return ps.every((p,i)=>p.pos===FORMATIONS[opts.formation][i]&&safe(p.price)&&safe(p.pay)&&(!opts.team||p.teams.includes(opts.team)))&&new Set(ps.map(p=>p.pid)).size===11&&ps.reduce((s,p)=>s+p.price,0)===result.price&&ps.reduce((s,p)=>s+p.pay,0)===result.pay&&result.price<=opts.budget&&result.pay<=opts.salary;
 }
-return {FORMATIONS,CORE,BONUS,solve,validate,targets,investment};
+return {FORMATIONS,CORE,BONUS,solve,validate,targets};
 });

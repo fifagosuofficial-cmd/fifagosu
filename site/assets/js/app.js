@@ -136,9 +136,24 @@ function makeData(nick,mode,count){
 }
 
 /* ============ 2. 약점 진단 엔진 ============ */
+function dLatestLineup(matches){
+  let latest=null,at=-Infinity;
+  for(const m of matches||[]){const p=m?.matchInfo?.[0]?.player;if(!Array.isArray(p)||!p.length)continue;const t=Date.parse(m.matchDate);if(!latest||(Number.isFinite(t)&&t>at)){latest=m;at=Number.isFinite(t)?t:-Infinity}}
+  return latest?.matchInfo?.[0]?.player||[];
+}
+function dRecentRows(players,lineup,enabled){
+  if(!enabled)return players;
+  const ids=new Set((lineup||[]).map(p=>String(p.spId)));
+  return players.filter(p=>ids.has(String(p.spId)));
+}
+function dCardLabel(x){
+  const season=x.seasonId??Math.floor(Number(x.spId)/1e6),name=sname(season);
+  return [x.pos,name&&name!=='?'?name:'시즌 '+(Number.isFinite(season)?season:'미상'),x.name,Number(x.grade)>0?x.grade+'강':''].filter(Boolean).join(' ');
+}
+function dRecentStatus(x,lineup){return dRecentRows([x],lineup,true).length?'최근 경기 출전':'최근 경기 미출전'}
 function analyze(data,mode){
   const dm=mode==='52';
-  const M=data.matches, me=M.map(m=>m.matchInfo[0]), op=M.map(m=>m.matchInfo[1]), n=M.length;
+  const M=data.matches, me=M.map(m=>m.matchInfo[0]), op=M.map(m=>m.matchInfo[1]), n=M.length, recentLineup=dLatestLineup(M);
   const agg=side=>({goals:sum(side,s=>s.shoot.goalTotal), eff:sum(side,s=>s.shoot.effectiveShootTotal), shots:sum(side,s=>s.shoot.shootTotal),
       outShots:sum(side,s=>s.shoot.shootOutPenalty), outGoals:sum(side,s=>s.shoot.goalOutPenalty),
       thruT:sum(side,s=>s.pass.throughPassTry), thruS:sum(side,s=>s.pass.throughPassSuccess),
@@ -227,10 +242,10 @@ function analyze(data,mode){
   const teamAvg=sum(players,x=>x.avg)/players.length;
   players.forEach(x=>x.low=x.apps>=5&&x.avg<=teamAvg-0.5);
   const worst=players.filter(x=>x.low).sort((a,b)=>a.avg-b.avg)[0];
-  if(worst)add({weakIf:true,score:(teamAvg-worst.avg)*0.5,weak:`${worst.pos} ${worst.name} 선수가 부진해요`,
-    desc:`${worst.apps}경기 평균 평점 ${worst.avg.toFixed(2)}, 팀 평균 ${teamAvg.toFixed(2)}보다 ${(teamAvg-worst.avg).toFixed(2)} 낮아요.`+(dm?` ${worst.grade}강 카드예요.`:''),
+  if(worst)add({weakIf:true,score:(teamAvg-worst.avg)*0.5,weak:`${dCardLabel(worst)} 선수가 부진해요`,
+    desc:`${worst.apps}경기 평균 평점 ${worst.avg.toFixed(2)}, 팀 평균 ${teamAvg.toFixed(2)}보다 ${(teamAvg-worst.avg).toFixed(2)} 낮아요.` +` · ${dRecentStatus(worst,recentLineup)}.`,
     me:worst.avg,opp:teamAvg,fmt:v=>v.toFixed(2),unit:'평균 평점',oppLabel:'팀 평균',min:4,max:9,
-    fix:F('<b>같은 포지션 교체 후보</b>를 검토하거나, 이 선수의 개인 전술을 바꿔 보세요.','감독모드는 능력치가 곧 경기력이에요. <b>강화 단계를 올리거나 같은 포지션 상위 카드</b>로 바꿔 보세요.')});
+    fix:dRecentRows([worst],recentLineup,true).length?F('<b>같은 포지션 교체 후보</b>를 검토하거나, 이 선수의 개인 전술을 바꿔 보세요.','감독모드는 능력치가 곧 경기력이에요. <b>강화 단계를 올리거나 같은 포지션 상위 카드</b>로 바꿔 보세요.'):'최근 경기에는 출전하지 않은 카드의 과거 기록이에요. 현재 보유·판매 여부는 알 수 없어요.'});
 
   // 감독모드 전용: 포메이션 상성, 라인별 평점
   let forms=null, lines=null, myForm=null;
@@ -274,7 +289,7 @@ function analyze(data,mode){
   // Display order is independent of pitch coordinates and Nexon position codes.
   // 경기 흐름(오래된 경기 → 최근 경기)
   const seq=M.map(m=>{const [x,y]=m.matchInfo;return {r:x.matchDetail.matchResult,gf:x.shoot.goalTotal,ga:y.shoot.goalTotal,opp:y.nickname,date:m.matchDate,poss:x.matchDetail.possession}}).reverse();
-  return {n,W,D,L,gf:A.goals,ga:B.goals,weak,strong,bins,shots:A.shotsDetail,stats,flow,seq,players:players.sort(dComparePosition),teamAvg,forms,lines,myForm,dm};
+  return {n,W,D,L,gf:A.goals,ga:B.goals,weak,strong,bins,shots:A.shotsDetail,stats,flow,seq,players:players.sort(dComparePosition),recentLineup,teamAvg,forms,lines,myForm,dm};
 }
 
 
@@ -448,7 +463,7 @@ let dMode='50', dCur=null, dTab='pstats', dCount=30;
 const DTABS={'50':[['pstats','선수별 기록'],['ranker','랭커 비교'],['stats','세부 지표'],['growth','성장 기록'],['time','시간대별 득실'],['shot','슈팅 맵']],'52':[['pstats','선수별 기록'],['ranker','랭커 비교'],['stats','세부 지표'],['growth','성장 기록'],['form','포메이션 상성'],['line','라인별 평점'],['time','시간대별 득실'],['shot','슈팅 맵']]};
 let dTabInit='pstats';
 const DKEY='fg_diag_v3', dRead=()=>{try{return JSON.parse(ls(DKEY)||'{}')}catch(e){return {}}}, dWrite=v=>ls(DKEY,JSON.stringify(v));
-let dFilter={pos:'',apps:1,action:'',sort:'pitch'}, dPriceMeta=null;
+let dFilter={pos:'',apps:1,action:'',sort:'pitch',recent:false}, dPriceMeta=null;
 function dStore(mut){const s=dRead();mut(s);dWrite(s);return s}
 function dHistoryKey(nick,mode){return String(nick||'').trim().toLowerCase()+'|'+mode}
 function dSnapshot(d,a){
@@ -529,8 +544,8 @@ function dAdvice(a){
   const lateA=a.bins[5].a;if(a.ga>=5&&lateA/a.ga>=0.3&&!(w&&/후반/.test(w.weak)))ins.push(`실점의 ${pct(lateA/a.ga)}%가 75분 이후에 나와요. 후반 체력 관리가 필요해요.`);
   if(ins.length)out.push(ins[0]);
   const rtU=(a.players||[]).filter(x=>x.rtLow), recoHint=' 이름 옆 <span class="rk-ic">!</span>를 누르면 같은 가격대 대체 추천을 볼 수 있어요.';
-  if(a.under&&a.under.length)out.push(`상위 랭커가 같은 선수를 같은 자리에 썼을 때보다 기록이 낮은 선수가 <b>${a.under.length}명</b>이에요(${a.under.slice(0,3).map(x=>esc(x.name)).join(', ')}${a.under.length>3?' 등':''}).${rtU.length?` 평점이 챔피언스 같은 포지션 평균보다 낮은 선수는 <b>${rtU.length}명</b>이에요.`:''} 선수별 기록의 <span class="rk-ic">!</span> 표시를 확인해 보세요.${recoHint}`);
-  else if(rtU.length)out.push(`챔피언스 같은 포지션 평균보다 평점이 낮은 선수가 <b>${rtU.length}명</b>이에요(${rtU.slice(0,3).map(x=>esc(x.name)).join(', ')}${rtU.length>3?' 등':''}).${recoHint}`);
+  if(a.under&&a.under.length)out.push(`상위 랭커가 같은 선수를 같은 자리에 썼을 때보다 기록이 낮은 선수가 <b>${a.under.length}명</b>이에요(${a.under.slice(0,3).map(x=>esc(dCardLabel(x))).join(', ')}${a.under.length>3?' 등':''}).${rtU.length?` 평점이 챔피언스 같은 포지션 평균보다 낮은 선수는 <b>${rtU.length}명</b>이에요.`:''} 선수별 기록의 <span class="rk-ic">!</span> 표시를 확인해 보세요.${recoHint}`);
+  else if(rtU.length)out.push(`챔피언스 같은 포지션 평균보다 평점이 낮은 선수가 <b>${rtU.length}명</b>이에요(${rtU.slice(0,3).map(x=>esc(dCardLabel(x))).join(', ')}${rtU.length>3?' 등':''}).${recoHint}`);
   else if(a.strong)out.push(`잘하고 있는 점 — <b>${esc(a.strong.strong)}</b>. 이 부분은 계속 살리세요.`);
   return out.slice(0,4);
 }
@@ -741,7 +756,7 @@ function dAssessPlayer(x,peers){
   const peer=peers.filter(p=>p!==x&&p.apps>=5&&p.pos===x.pos&&p.spId!==x.spId).sort((a,b)=>b.avg-a.avg||b.apps-a.apps)[0];
   if(peer&&x.apps>=5){const gap=peer.avg-x.avg,wr=peer.wr-x.wr;
     strongPeer=peer.apps>=10&&gap>=.30-1e-9&&wr>=.15-1e-9;
-    add(`동일 포지션 ${peer.name} 대비 평점 ${gap>=0?'-':'+'}${Math.abs(gap).toFixed(2)} · 승률 ${Math.round(-wr*100)}%p`,gap>=.2&&wr>=.10?2:0,clamp(60-gap*70-wr*30));
+    add(`동일 포지션 ${dCardLabel(peer)} 대비 평점 ${gap>=0?'-':'+'}${Math.abs(gap).toFixed(2)} · 승률 ${Math.round(-wr*100)}%p`,gap>=.2&&wr>=.10?2:0,clamp(60-gap*70-wr*30));
     if(x.price>0&&peer.price>0&&x.price>=peer.price*1.2&&gap>=.1&&wr>=0)reasons.push(`동일 포지션 대비 고가(${(x.price/peer.price).toFixed(1)}배)·낮은 성적: 가격 효율 검토`);
   }
   if(!scores.length)return {eval:null,action:'평가 보류',reason:'비교 가능한 상위등급·랭커·동일 포지션 표본 부족',risk:0};
@@ -765,7 +780,7 @@ async function dEnrich(a,seq){
   await Promise.all(a.players.map(async x=>{const d=await cardData(x.spId).catch(()=>null);if(seq!==diagSeq)return;const L=d&&d.l,I=ix(x.spId)||[];x.pay=(L&&L.pay)||I[2]||null;x.price=dExactPrice(L,x.grade);x.priceAt=L?.at||null;x.market=await dMarket(x.spId,x.grade)}));
   if(seq!==diagSeq)return;
   dRatePlayers(a);
-  const rec=dCur.d.matches[0]&&dCur.d.matches[0].matchInfo[0].player||[],map=Object.fromEntries(a.players.map(x=>[x.spId,x]));a.recentPlayers=await Promise.all(rec.map(async p=>{const x=map[p.spId];if(!x)return null;if(+p.spGrade===+x.grade)return {...x,pos:p.pos};const grade=+p.spGrade,L=(await cardData(p.spId).catch(()=>null))?.l,price=dExactPrice(L,grade);return {...x,pos:p.pos,grade,price,priceAt:L?.at||null,market:await dMarket(p.spId,grade)}}));if(seq!==diagSeq)return;a.recentPlayers=a.recentPlayers.filter(Boolean);a.valueKnown=a.recentPlayers.filter(x=>x.price>0).length;a.valueMissing=a.recentPlayers.length-a.valueKnown;a.squadValue=a.recentPlayers.reduce((n,x)=>n+(x.price||0),0)||null;
+  const rec=a.recentLineup||[],map=Object.fromEntries(a.players.map(x=>[x.spId,x]));a.recentPlayers=await Promise.all(rec.map(async p=>{const x=map[p.spId];if(!x)return null;if(+p.spGrade===+x.grade)return {...x,pos:p.pos};const grade=+p.spGrade,L=(await cardData(p.spId).catch(()=>null))?.l,price=dExactPrice(L,grade);return {...x,pos:p.pos,grade,price,priceAt:L?.at||null,market:await dMarket(p.spId,grade)}}));if(seq!==diagSeq)return;a.recentPlayers=a.recentPlayers.filter(Boolean);a.valueKnown=a.recentPlayers.filter(x=>x.price>0).length;a.valueMissing=a.recentPlayers.length-a.valueKnown;a.squadValue=a.recentPlayers.reduce((n,x)=>n+(x.price||0),0)||null;
   const targets=dPriority(a).slice(0,4);
   await Promise.all(targets.map(async x=>{const R=await recoFor(x,{}).catch(()=>null);if(seq!==diagSeq||!R||!R.list||!R.list[0])return;const c=R.list[0];x.reco={id:c.id,name:c.name,price:c.price,grade:c.grade,need:x.price>0?Math.max(0,c.price-x.price):null}}));
   if(seq!==diagSeq)return;a.enriched=true;dSaveVisit(dCur.d,a);dRenderReport(dCur.d,a);if(['pstats','growth','ranker'].includes(dTab))dRenderPanel()
@@ -773,12 +788,12 @@ async function dEnrich(a,seq){
 const dPct=(v,days)=>v==null?'<span class="muted">조회 불가</span>':`<span class="${v>0?'up':v<0?'dn':''}"${days?` title="실제 ${days}일 전 전체 스냅샷과 비교"`:''}>${v>0?'+':''}${v.toFixed(1)}%${days?`<small> · ${days}일</small>`:''}</span>`;
 function dRenderReport(d,a){
   const prev=(dRead().history&&dRead().history[dHistoryKey(d.basic.nickname,dMode)]||[]).slice(-2,-1)[0],dw=prev?Math.round((a.W/a.n-prev.wr)*100):null;
-  const best=a.players.filter(x=>x.eval!=null).sort((x,y)=>y.eval-x.eval)[0],worst=dPriority(a)[0];
+  const best=a.players.filter(x=>x.eval!=null).sort((x,y)=>y.eval-x.eval)[0],worst=dPriority(a).find(x=>dRecentRows([x],a.recentLineup,true).length);
   $('dReport').hidden=false;$('dReport').innerHTML=`<div class="dr-head"><div><b>종합 구단 리포트</b><small>최근 ${a.n}경기 · 실제 경기와 수집 시세 기반</small></div><span>${a.enriched?'분석 완료':'선수 시세·팀컬러 분석 중…'}</span></div><div class="dr-grid">
     <div><span>최근 승률</span><b>${Math.round(a.W/a.n*100)}%</b><small>${dw==null?'첫 저장':`이전 진단보다 ${dw>0?'+':''}${dw}%p`}</small></div>
     <div><span>최근 스쿼드 가치</span><b>${a.squadValue?fmtBP(a.squadValue):'계산 중'}</b><small>${a.valueMissing?`${a.valueMissing}명 시세 제외`:`${a.valueKnown||0}명 확인`}</small></div>
-    <div><span>우수 선수</span><b>${best?esc(best.pos+' '+best.name):'평가 보류'}</b><small>${best?'실전 기여 '+best.eval+'점':'표본 부족'}</small></div>
-    <div><span>우선 보강</span><b>${!a.enriched?'분석 중':worst?esc(worst.pos+' '+worst.name):a.players.some(x=>x.action&&x.action!=='평가 보류')?'뚜렷한 보강 후보 없음':'판단 보류'}</b><small>${worst?esc(worst.reason):a.enriched?'비교 표본 기준':'랭커·평점 비교 중'}</small></div></div>`
+    <div><span>우수 선수</span><b>${best?esc(dCardLabel(best)):'평가 보류'}</b><small>${best?'실전 기여 '+best.eval+'점 · '+dRecentStatus(best,a.recentLineup):'표본 부족'}</small></div>
+    <div><span>우선 보강</span><b>${!a.enriched?'분석 중':worst?esc(dCardLabel(worst)):dRecentRows(a.players,a.recentLineup,true).some(x=>x.action&&x.action!=='평가 보류')?'뚜렷한 보강 후보 없음':'판단 보류'}</b><small>${worst?'최근 경기 출전 · '+esc(worst.reason):a.enriched?'최근 출전 선수 기준':'랭커·평점 비교 중'}</small></div></div>`
 }
 /* One representative per match. Equal top counts are ambiguous, not a random winner. */
 function dInferTeamcolor(players,TC){
@@ -841,13 +856,13 @@ function dPStatsView(a){
   const pc=(s,t)=>t?Math.round(s/t*100)+'%':'-', st=x=>x.t||{};
   const wrc=v=>v>=0.6?'wr-hi':v<0.4?'wr-lo':'';
   const rkNote=!LIVE?'':a.rkN==null?' 상위 랭커 비교 데이터를 불러오는 중이에요…':a.rkN?` <span class="rk-ic">!</span> 빨간 숫자는 상위 랭커(TOP 10,000)가 같은 선수를 같은 포지션으로 썼을 때 경기당 평균의 70%에 못 미치는 기록이에요(넥슨 Open API 랭커 통계). 공격수·미드필더는 공격 지표, 수비수·미드필더는 수비 지표를 비교해요.`:' 이 스쿼드 선수들은 상위 랭커 비교 데이터가 없어요.';
-  let rows=a.players.filter(x=>(!dFilter.pos||dLineGroup(x.pos)===dFilter.pos)&&x.apps>=dFilter.apps&&(!dFilter.action||x.action===dFilter.action));const sorts={apps:(x,y)=>y.apps-x.apps,rating:(x,y)=>y.avg-x.avg,win:(x,y)=>y.wr-x.wr,eval:(x,y)=>(y.eval??-1)-(x.eval??-1),price:(x,y)=>(y.price||0)-(x.price||0),pitch:dComparePosition};rows.sort(sorts[dFilter.sort]||sorts.pitch);
-  return `<div class="pfilters"><label>라인<select data-dfilter="pos"><option value="">전체</option>${['공격','미드','수비','GK'].map(v=>`<option${dFilter.pos===v?' selected':''}>${v}</option>`).join('')}</select></label><label>최소 출전<select data-dfilter="apps">${[1,3,5,10].map(v=>`<option value="${v}"${dFilter.apps===v?' selected':''}>${v}경기</option>`).join('')}</select></label><label>추천<select data-dfilter="action"><option value="">전체</option>${['기용 추천','유지','교체 검토','평가 보류'].map(v=>`<option${dFilter.action===v?' selected':''}>${v}</option>`).join('')}</select></label><label>정렬<select data-dfilter="sort">${[['pitch','포지션'],['apps','출전'],['rating','평점'],['win','승률'],['eval','실전 기여'],['price','시세']].map(([v,l])=>`<option value="${v}"${dFilter.sort===v?' selected':''}>${l}</option>`).join('')}</select></label></div><div class="tablewrap pstwrap"><table class="pst pstx"><thead><tr><th>선수</th><th class="n">출전</th><th class="n">승률</th><th class="n">평점</th><th class="n">골</th><th class="n">도움</th><th class="n">슈팅(유효)</th><th class="n">패스</th><th class="n">드리블</th><th class="n">볼 경합 승</th><th class="n">공중볼 승</th><th class="n">태클</th><th class="n">가로채기</th><th class="n">블락</th><th class="n">현재 시세</th><th class="n">24시간</th><th class="n">7일</th><th class="n">경기당 골</th><th class="n">경기당 도움</th><th class="n">포지션 순위</th><th class="n">실전 기여</th><th>종합 평가</th><th>교체 후보</th><th class="n">필요 BP</th></tr></thead><tbody>
-  ${rows.map(x=>{const t=st(x);return `<tr class="${x.low||x.action==='교체 검토'?'low':x.action==='기용 추천'?'hi':''}"><td><span class="pos">${x.pos}</span>${sch(x.seasonId)}${esc(x.name)}${recoFlag(x)}${a.dm||x.grade>1?`${gch(x.grade)}`:''}</td><td class="n">${x.apps}</td><td class="n"><span class="${wrc(x.wr)}">${Math.round(x.wr*100)}%</span><span class="why">${x.w}승</span></td><td class="n">${rtCell(x)}</td><td class="n">${rkCell(x,'goal',x.g)}</td><td class="n">${rkCell(x,'assist',x.a)}</td>
+  let rows=dRecentRows(a.players,a.recentLineup,dFilter.recent).filter(x=>(!dFilter.pos||dLineGroup(x.pos)===dFilter.pos)&&x.apps>=dFilter.apps&&(!dFilter.action||x.action===dFilter.action));const sorts={apps:(x,y)=>y.apps-x.apps,rating:(x,y)=>y.avg-x.avg,win:(x,y)=>y.wr-x.wr,eval:(x,y)=>(y.eval??-1)-(x.eval??-1),price:(x,y)=>(y.price||0)-(x.price||0),pitch:dComparePosition};rows.sort(sorts[dFilter.sort]||sorts.pitch);
+  return `<div class="pfilters"><label class="d-recent-filter"><input type="checkbox" data-dfilter="recent"${dFilter.recent?' checked':''}>최근 스쿼드 기준 <small>(${(a.recentLineup||[]).length}명)</small></label><label>라인<select data-dfilter="pos"><option value="">전체</option>${['공격','미드','수비','GK'].map(v=>`<option${dFilter.pos===v?' selected':''}>${v}</option>`).join('')}</select></label><label>최소 출전<select data-dfilter="apps">${[1,3,5,10].map(v=>`<option value="${v}"${dFilter.apps===v?' selected':''}>${v}경기</option>`).join('')}</select></label><label>추천<select data-dfilter="action"><option value="">전체</option>${['기용 추천','유지','교체 검토','평가 보류'].map(v=>`<option${dFilter.action===v?' selected':''}>${v}</option>`).join('')}</select></label><label>정렬<select data-dfilter="sort">${[['pitch','포지션'],['apps','출전'],['rating','평점'],['win','승률'],['eval','실전 기여'],['price','시세']].map(([v,l])=>`<option value="${v}"${dFilter.sort===v?' selected':''}>${l}</option>`).join('')}</select></label></div><div class="tablewrap pstwrap"><table class="pst pstx"><thead><tr><th>선수</th><th class="n">출전</th><th class="n">승률</th><th class="n">평점</th><th class="n">골</th><th class="n">도움</th><th class="n">슈팅(유효)</th><th class="n">패스</th><th class="n">드리블</th><th class="n">볼 경합 승</th><th class="n">공중볼 승</th><th class="n">태클</th><th class="n">가로채기</th><th class="n">블락</th><th class="n">현재 시세</th><th class="n">24시간</th><th class="n">7일</th><th class="n">경기당 골</th><th class="n">경기당 도움</th><th class="n">포지션 순위</th><th class="n">실전 기여</th><th>종합 평가</th><th>교체 후보</th><th class="n">필요 BP</th></tr></thead><tbody>
+  ${!rows.length?'<tr><td colspan="24">조건에 맞는 선수 기록이 없어요.</td></tr>':''}${rows.map(x=>{const t=st(x);return `<tr class="${x.low||x.action==='교체 검토'?'low':x.action==='기용 추천'?'hi':''}"><td><span class="pos">${x.pos}</span>${sch(x.seasonId)}${esc(x.name)}${recoFlag(x)}${a.dm||x.grade>1?`${gch(x.grade)}`:''}</td><td class="n">${x.apps}</td><td class="n"><span class="${wrc(x.wr)}">${Math.round(x.wr*100)}%</span><span class="why">${x.w}승</span></td><td class="n">${rtCell(x)}</td><td class="n">${rkCell(x,'goal',x.g)}</td><td class="n">${rkCell(x,'assist',x.a)}</td>
     <td class="n">${rkCell(x,'shoot',t.shoot)}(${rkCell(x,'effectiveShoot',t.effectiveShoot)})</td><td class="n">${rkCell(x,'passSuccess',pc(t.passSuccess,t.passTry))}</td><td class="n">${rkCell(x,'dribbleSuccess',pc(t.dribbleSuccess,t.dribbleTry))}</td>
     <td class="n">${t.ballPossesionSuccess}/${t.ballPossesionTry} <span class="why">${pc(t.ballPossesionSuccess,t.ballPossesionTry)}</span></td><td class="n">${t.aerialSuccess}/${t.aerialTry} <span class="why">${pc(t.aerialSuccess,t.aerialTry)}</span></td>
-    <td class="n">${rkCell(x,'tackle',`${t.tackle}/${t.tackleTry}`)}</td><td class="n">${t.intercept}</td><td class="n">${rkCell(x,'block',t.block)}</td><td class="n">${dPriceText(x)}</td><td class="n">${x.market?dPct(x.market.p1,x.market.days[0]):'<span class="muted">조회 불가</span>'}</td><td class="n">${x.market?dPct(x.market.p7,x.market.days[1]):'<span class="muted">조회 불가</span>'}</td><td class="n">${(x.g/x.apps).toFixed(2)}</td><td class="n">${(x.a/x.apps).toFixed(2)}</td><td class="n">${x.posRank||'-'}</td><td class="n"><span class="ev ${x.action==='교체 검토'?'bad':x.action==='기용 추천'?'good':''}" title="${esc(x.reason||'표본 부족')}">${x.eval==null?'보류':x.eval}</span></td><td><b class="act ${x.action==='교체 검토'?'bad':x.action==='기용 추천'?'good':''}">${x.action||'분석 중'}</b></td><td>${x.reco?`<button type="button" class="linkbtn" data-reco="${x.spId}">${esc(x.reco.name)} ${x.reco.grade}강</button>`:x.action==='교체 검토'?(a.enriched?'후보 없음':'분석 중'):'-'}</td><td class="n">${x.reco&&x.reco.need!=null?(x.reco.need?fmtBP(x.reco.need):'0 BP'):'-'}</td></tr>`}).join('')}
-  </tbody></table></div><p class="note">최근 ${a.n}경기 합계예요. 기존 열과 경고 기준은 유지했습니다. 포지션 순위는 같은 포지션 묶음 내 실전 기여 점수 기준이며, 실전 기여는 상위등급 포지션 평점·랭커 지표·동일 포지션 비교 표본을 기준으로 산정한 자체 점수입니다. 교체 검토는 10경기 이상에서 반복적인 큰 평점 열세와 복수 랭커 지표 열세, 매우 큰 지속적 평점 열세 또는 충분한 동일 포지션 비교 표본이 확인될 때만 표시합니다. 가격 효율은 참고용입니다. 시세 변동은 수집 이력이 있는 1·5·8강만 제공하고 누락값은 0으로 계산하지 않아요.${rkNote}${rtNote(a)}</p>`;
+    <td class="n">${rkCell(x,'tackle',`${t.tackle}/${t.tackleTry}`)}</td><td class="n">${t.intercept}</td><td class="n">${rkCell(x,'block',t.block)}</td><td class="n">${dPriceText(x)}</td><td class="n">${x.market?dPct(x.market.p1,x.market.days[0]):'<span class="muted">조회 불가</span>'}</td><td class="n">${x.market?dPct(x.market.p7,x.market.days[1]):'<span class="muted">조회 불가</span>'}</td><td class="n">${(x.g/x.apps).toFixed(2)}</td><td class="n">${(x.a/x.apps).toFixed(2)}</td><td class="n">${x.posRank||'-'}</td><td class="n"><span class="ev ${x.action==='교체 검토'?'bad':x.action==='기용 추천'?'good':''}" title="${esc(x.reason||'표본 부족')}">${x.eval==null?'보류':x.eval}</span></td><td><b class="act ${x.action==='교체 검토'?'bad':x.action==='기용 추천'?'good':''}">${x.action||'분석 중'}</b></td><td>${x.reco?`<button type="button" class="linkbtn" data-reco="${x.spId}">${sch(Math.floor(x.reco.id/1e6))}${esc(x.reco.name)} ${x.reco.grade}강</button>`:x.action==='교체 검토'?(a.enriched?'후보 없음':'분석 중'):'-'}</td><td class="n">${x.reco&&x.reco.need!=null?(x.reco.need?fmtBP(x.reco.need):'0 BP'):'-'}</td></tr>`}).join('')}
+  </tbody></table></div><p class="note">최근 ${a.n}경기 합계예요. ${dFilter.recent?'최근 1경기 출전 카드만 표시하며 기록은 선택한 전체 경기의 누적값입니다. ':''}기존 열과 경고 기준은 유지했습니다. 포지션 순위는 같은 포지션 묶음 내 실전 기여 점수 기준이며, 실전 기여는 상위등급 포지션 평점·랭커 지표·동일 포지션 비교 표본을 기준으로 산정한 자체 점수입니다. 교체 검토는 10경기 이상에서 반복적인 큰 평점 열세와 복수 랭커 지표 열세, 매우 큰 지속적 평점 열세 또는 충분한 동일 포지션 비교 표본이 확인될 때만 표시합니다. 가격 효율은 참고용입니다. 시세 변동은 수집 이력이 있는 1·5·8강만 제공하고 누락값은 0으로 계산하지 않아요.${rkNote}${rtNote(a)}</p>`;
 }
 function dGrowthView(a){
   const s=dRead(),key=dHistoryKey(dCur.d.basic.nickname,dMode),list=(s.history&&s.history[key])||[],prev=list.length>1?list[list.length-2]:null,now=list[list.length-1],own=(s.goals&&s.goals[key])||{};
@@ -935,7 +950,7 @@ $('dQuick').addEventListener('click',e=>{const remove=e.target.closest('[data-df
 $('dFav').addEventListener('click',()=>{if(dCur)dChangeFavorite(dCur.d.basic.nickname)});
 $('dMine').addEventListener('click',()=>{if(!dCur)return;dStore(s=>s.mine=dCur.d.basic.nickname);dRenderQuick(dCur.d.basic.nickname)});
 $('dShare').addEventListener('click',async()=>{if(!dCur)return;const u=new URL(location.href);u.pathname=(window.FG_ROUTES&&FG_ROUTES.diag)||'/diag';u.searchParams.set('nick',dCur.d.basic.nickname);u.searchParams.set('mode',dMode);u.searchParams.set('count',dCount);const data={title:`${dCur.d.basic.nickname} 전적 진단 | 피파고수`,text:`${dCur.d.basic.nickname} 최근 ${dCur.a.n}경기 승률 ${Math.round(dCur.a.W/dCur.a.n*100)}%`,url:u.href};try{if(navigator.share)await navigator.share(data);else{await navigator.clipboard.writeText(u.href);$('dShare').textContent='링크 복사됨 ✓';setTimeout(()=>$('dShare').textContent='진단 공유',1600)}}catch(e){}});
-$('dPanel').addEventListener('change',e=>{const f=e.target.dataset.dfilter;if(f){dFilter[f]=f==='apps'?+e.target.value:e.target.value;dRenderPanel();return}if(!dCur)return;const s=dRead(),key=dHistoryKey(dCur.d.basic.nickname,dMode);if(e.target.dataset.goal){s.goals=s.goals||{};const o=s.goals[key]??={};o[e.target.dataset.goal]=e.target.value;dWrite(s)}});
+$('dPanel').addEventListener('change',e=>{const f=e.target.dataset.dfilter;if(f){dFilter[f]=f==='recent'?e.target.checked:f==='apps'?+e.target.value:e.target.value;dRenderPanel();return}if(!dCur)return;const s=dRead(),key=dHistoryKey(dCur.d.basic.nickname,dMode);if(e.target.dataset.goal){s.goals=s.goals||{};const o=s.goals[key]??={};o[e.target.dataset.goal]=e.target.value;dWrite(s)}});
 
 /* 공유 링크: 개인 BP·구매가는 URL에 넣지 않아요. */
 let dQueryStarted=false;

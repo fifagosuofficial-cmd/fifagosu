@@ -11,7 +11,7 @@ const hint=()=>{$("sqStyleHint").textContent=HINT[$("sqStyle").value]||""};
 const STATS={sprintspeed:"속력",acceleration:"가속력",finishing:"골 결정력",shotpower:"슛 파워",longshots:"중거리 슛",positioning:"위치 선정",shortpassing:"짧은 패스",vision:"시야",crossing:"크로스",longpassing:"긴 패스",dribbling:"드리블",ballcontrol:"볼 컨트롤",agility:"민첩성",balance:"밸런스",reactions:"반응 속도",marking:"대인 수비",standingtackle:"태클",interceptions:"가로채기",heading:"헤더",strength:"몸싸움",stamina:"스태미너",gkdiving:"GK 다이빙",gkhandling:"GK 핸들링",gkreflexes:"GK 반응속도",gkpositioning:"GK 위치 선정",jumping:"점프",curve:"커브",aggression:"적극성",composure:"침착성",slidingtackle:"슬라이딩 태클",gkkicking:"GK 킥",volleys:"발리슛",penalties:"페널티 킥",freekick:"프리킥"};
 const img="https://fco.dn.nexoncdn.co.kr/live/externalAssets/common/";
 const STORE="fg-squad-v1", RECENT="fg-squad-recent-v1";
-let worker=null,requestId=0,task=null,manifest=null,results={},active="balanced",locks={},currentOpts=null,pickerSlot=null,pickerCandidates=[],pickerSeq=0,slotBusy=false;
+let worker=null,requestId=0,task=null,manifest=null,results={},active="balanced",locks={},currentOpts=null,pickerSlot=null,pickerCandidates=[],recoCandidates=[],pickerSeq=0,slotBusy=false;
 const catalogCache=new Map();
 let bonusRules=null,bonusState="loading",relationBusy=false;
 const relationCache=Object.create(null),relationFailed=new Set();
@@ -105,7 +105,7 @@ function render(){
  $("sqOutput").hidden=false;
  $("sqModes").innerHTML=Object.entries(results).map(([k,r])=>'<button type="button" data-mode="'+k+'" aria-pressed="'+(active===k)+'">'+MODES[k]+(r.ok?"":" · 조합 없음")+"</button>").join("");
  const r=results[active];
- if(!r?.ok){$("sqSummary").textContent=r?.reason||"추천 결과 없음";$("sqPitch").innerHTML="";$("sqRows").innerHTML="";$("sqStatMatrix").innerHTML="";$("sqColorList").innerHTML="";$("sqBonusNote").textContent="";$("sqSave").disabled=$("sqShare").disabled=true;return}
+ if(!r?.ok){$("sqSummary").textContent=r?.reason||"추천 결과 없음";$("sqPitch").innerHTML="";$("sqStatMatrix").innerHTML="";$("sqColorList").innerHTML="";$("sqBonusNote").textContent="";$("sqSave").disabled=$("sqShare").disabled=true;return}
  $("sqSave").disabled=$("sqShare").disabled=false;
  const o=currentOpts, filled=r.players.filter(Boolean),complete=filled.length===11;
  const projection=B.project(r.players,bonusRules,relationCache,o.team,flags());
@@ -114,20 +114,16 @@ function render(){
  $("sqSave").disabled=$("sqShare").disabled=!complete;
  $("sqSummary").innerHTML="<div><span>선수 구매가 합계</span><b>"+money(r.price)+"</b><small>잔여 "+money(o.budget-r.price)+"</small></div><div><span>급여 합계</span><b>"+r.pay+" / "+o.salary+"</b><small>"+(r.pay===o.salary?"급여 상한 달성":"잔여 "+(o.salary-r.pay))+"</small></div><div><span>평균 포지션 OVR</span><b>"+(filled.length?avg.toFixed(1):"—")+"</b><small>"+filled.length+" / 11명 · 선택 보너스 반영</small></div>";
  const swapIcon='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h15l-4-4m4 4-4 4M20 17H5l4-4m-4 4 4 4"/></svg>';
+ const lockIcon='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></svg>';
  const trashIcon='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/></svg>';
  $("sqPitch").innerHTML=LINES[o.formation].map(line=>'<div class="sq-line">'+line.map(i=>{
    const p=r.players[i],pos=FORM[o.formation][i];
    if(!p)return '<div class="sq-player sq-empty"><small class="sq-pos">'+pos+'</small><button type="button" data-add="'+i+'" aria-label="'+pos+' 선수 검색">＋<small>선수 검색</small></button></div>';
    const locked=locks[i]?.id===p.id&&locks[i]?.grade===p.grade;
-   return '<div class="sq-player"><div class="sq-card-top"><small class="sq-pos">'+p.pos+' · '+projection.per[i].ovr+'</small><span class="sq-pay" title="급여">'+p.pay+'</span></div><div class="sq-face"><img alt="" loading="lazy" src="'+img+'playersAction/p'+p.id+'.png" data-fallback="'+img+'players/p'+p.pid+'.png"><div class="sq-card-tools"><button type="button" data-swap="'+i+'" title="대체 선수로 교체" aria-label="'+esc(p.name)+' 교체"'+(locked?' disabled':'')+'>'+swapIcon+'</button><button type="button" data-remove="'+i+'" title="선수 삭제" aria-label="'+esc(p.name)+' 삭제">'+trashIcon+'</button></div></div><b>'+esc(p.name)+'</b><small>'+esc(p.season)+' '+p.grade+'강</small><small>'+money(p.price)+'</small></div>';
+   return '<div class="sq-player"><div class="sq-card-top"><small class="sq-pos">'+p.pos+' · '+projection.per[i].ovr+'</small><span class="sq-pay" title="급여">'+p.pay+'</span></div><div class="sq-face"><img alt="" loading="lazy" src="'+img+'playersAction/p'+p.id+'.png" data-fallback="'+img+'players/p'+p.pid+'.png"><div class="sq-card-tools"><button type="button" data-swap="'+i+'" title="대체 선수로 교체" aria-label="'+esc(p.name)+' 교체"'+(locked?' disabled':'')+'>'+swapIcon+'</button><button type="button" data-remove="'+i+'" title="선수 삭제" aria-label="'+esc(p.name)+' 삭제">'+trashIcon+'</button></div></div><b>'+esc(p.name)+'</b><small>'+esc(p.season)+' '+p.grade+'강</small><small>'+money(p.price)+'</small><button type="button" class="sq-card-lock" data-lock="'+i+'" aria-pressed="'+locked+'" aria-label="'+esc(p.name)+(locked?' 고정 해제':' 고정')+'">'+lockIcon+(locked?'고정됨':'고정')+'</button></div>';
  }).join("")+"</div>").join("");
  $("sqPitch").querySelectorAll("img").forEach(el=>el.addEventListener("error",()=>{if(el.dataset.fallback){el.src=el.dataset.fallback;delete el.dataset.fallback}else el.hidden=true}));
- $("sqRows").innerHTML=r.players.map((p,i)=>{
-   if(!p)return '<tr><td><b>'+FORM[o.formation][i]+'</b></td><td colspan="8">선수 미선택</td><td><button type="button" data-add="'+i+'">선수 검색</button></td></tr>';
-   const isLocked=locks[i]?.id===p.id&&locks[i]?.grade===p.grade;
-   const b=projection.per[i],core=p.core.map(([k,v])=>esc(STATS[k]||k)+" "+(v+b.adapt+(b.stats.all||0)+(b.stats[k]||0))).join(" · ");
-   return "<tr><td><b>"+p.pos+"</b></td><td><b>"+esc(p.name)+"</b><small>"+esc(p.season)+"</small></td><td>"+p.grade+"강</td><td>"+b.ovr+(b.ovr>p.ovr?'<small class="sq-stat-plus">+'+(b.ovr-p.ovr)+'</small>':"")+"</td><td>"+p.pay+"</td><td>"+p.price.toLocaleString("ko-KR")+"<small>"+esc(p.at?.slice(0,10)||"수집일 미상")+"</small></td><td>"+(p.weak??"—")+"<small>"+(p.height?p.height+"cm":"키 미수집")+"</small></td><td>"+(p.games==null?"미수집":p.games.toLocaleString("ko-KR"))+"</td><td>"+(core||"세부 능력치 미수집 · 포지션 OVR 기준")+(b.colors.length?"<small>팀컬러: "+esc(b.colors.map(t=>t.name).join(" · "))+"</small>":"")+(p.matched?.length?"<small>스타일 특성: "+esc(p.matched.join(" · "))+"</small>":"")+(r.targets?.[p.pos]?"<small>목표 급여 "+r.targets[p.pos].pay.toFixed(1)+" · 목표 BP "+money(Math.floor(r.targets[p.pos].budget))+"</small>":"")+"</td><td><button type=\"button\" data-lock=\""+i+"\" aria-pressed=\""+isLocked+"\">"+(isLocked?"고정 해제":"고정")+"</button><button type=\"button\" data-swap=\""+i+"\""+(isLocked?" disabled":"")+">교체</button><button type=\"button\" data-remove=\""+i+"\">삭제</button></td></tr>"
- }).join("");
+
  lockView();
  if(flags().team)void loadRelations();
 }
@@ -153,7 +149,12 @@ teamInput.addEventListener("blur",()=>{teamInput.placeholder="소속 제한 없�
 function gradeHint(){
  $("sqGradeRange").hidden=$("sqGrades").value!=="custom";
 }
-function closePicker(){pickerSlot=null;pickerCandidates=[];pickerSeq++;$("sqPicker").hidden=true;}
+let pickerSession=0,pickerReturn=null,typing=null;
+function resetPicker(){pickerSlot=null;pickerCandidates=[];recoCandidates=[];pickerSeq++;pickerSession++;clearTimeout(typing)}
+function closePicker(){
+ const dialog=$("sqPicker"),back=pickerReturn;pickerReturn=null;resetPicker();
+ if(dialog.open){dialog.close();if(back&&document.contains(back))back.focus({preventScroll:true})}
+}
 function loadPosition(pos){
  if(!catalogCache.has(pos))catalogCache.set(pos,fetch("/assets/squad-data/"+encodeURIComponent(pos)+".json?v="+encodeURIComponent(ver)).then(r=>{if(!r.ok)throw Error("포지션 선수 데이터를 불러오지 못했습니다.");return r.json()}).catch(e=>{catalogCache.delete(pos);throw e}));
  return catalogCache.get(pos);
@@ -167,47 +168,62 @@ function applyPlayer(i,c,lock=false){
  results[active]={...r,players,price,pay};
  closePicker();render();return true;
 }
-async function showPicker(i){
- closePicker();pickerSlot=i;$("sqPicker").hidden=false;$("sqPickerTitle").textContent=FORM[currentOpts.formation][i]+" · 선수 직접 검색";$("sqPlayerQuery").value="";$("sqPlayerResults").innerHTML="";
- $("sqPicker").scrollIntoView({behavior:"smooth",block:"nearest"});$("sqPlayerQuery").focus({preventScroll:true});await searchPicker();
+function pickerRows(list,attr){
+ return list.map((p,j)=>'<tr><td><div class="sq-search-player"><img loading="lazy" alt="" src="'+img+'playersAction/p'+p.id+'.png"><div><b>'+esc(p.name)+'</b><small>'+esc(p.season)+'</small>'+(p.weakAlternative?'<small class="sq-weaker">상대적으로 낮은 OVR</small>':'')+'</div></div></td><td>'+p.grade+'강</td><td>'+p.ovr+'</td><td>'+p.pay+'</td><td>'+money(p.price)+'</td><td><button type="button" '+attr+'="'+j+'">선택</button></td></tr>').join("");
+}
+async function showPicker(i,trigger){
+ closePicker();const r=results[active],opts=currentOpts;if(!r?.ok||!opts)return;
+ pickerSlot=i;pickerReturn=trigger||null;const old=r.players[i],session=++pickerSession;
+ $("sqPickerTitle").textContent=FORM[opts.formation][i]+(old?" · "+old.name+" 교체":" · 선수 추가");
+ $("sqPickerBudget").textContent="사용 가능 "+money(opts.budget-r.price+(old?.price||0))+" · 급여 "+(opts.salary-r.pay+(old?.pay||0))+" · 다른 선수 유지";
+ $("sqPlayerQuery").value="";$("sqPlayerResults").innerHTML="";$("sqPickerNote").textContent="선수명 또는 시즌을 입력해 검색하세요.";
+ $("sqRecoResults").innerHTML="";$("sqRecoNote").textContent="AI 추천 후보를 찾는 중입니다…";
+ $("sqPicker").showModal();$("sqPickerClose").focus();
+ try{
+   const rows=await loadPosition(FORM[opts.formation][i]);if(session!==pickerSession)return;
+   recoCandidates=E.alternatives(rows,manifest,opts,active,r.players,i,"",true);
+   $("sqRecoResults").innerHTML=pickerRows(recoCandidates,"data-reco");
+   $("sqRecoNote").textContent=recoCandidates.length>=5?"조건에 맞는 추천 선수 "+recoCandidates.length+"명 · 강화 적용 OVR 기준":recoCandidates.length?"조건에 맞는 서로 다른 선수 "+recoCandidates.length+"명만 확인됩니다. 나머지 선수는 유지됩니다.":"현재 조건을 만족하는 대체 선수가 없습니다. 직접 검색하거나 조건을 조정해 주세요.";
+ }catch(e){if(session===pickerSession)$("sqRecoNote").textContent=e.message}
 }
 async function searchPicker(){
  const i=pickerSlot,r=results[active],opts=currentOpts;if(i===null||!r?.ok)return;
- const seq=++pickerSeq,query=$("sqPlayerQuery").value;
- $("sqPickerNote").textContent="조건에 맞는 선수를 검색 중입니다…";$("sqPlayerResults").innerHTML="";pickerCandidates=[];
+ const seq=++pickerSeq,query=$("sqPlayerQuery").value.trim();
+ $("sqPlayerResults").innerHTML="";pickerCandidates=[];
+ if(!query){$("sqPickerNote").textContent="선수명 또는 시즌을 입력해 검색하세요.";return}
+ $("sqPickerNote").textContent="조건에 맞는 선수를 검색 중입니다…";
  try{
    const rows=await loadPosition(FORM[opts.formation][i]);if(seq!==pickerSeq)return;
    pickerCandidates=E.alternatives(rows,manifest,opts,active,r.players,i,query,false);
-   $("sqPlayerResults").innerHTML=pickerCandidates.map((p,j)=>'<tr><td><div class="sq-search-player"><img loading="lazy" alt="" src="'+img+'playersAction/p'+p.id+'.png"><div><b>'+esc(p.name)+'</b><small>'+esc(p.season)+'</small></div></div></td><td>'+p.grade+'강</td><td>'+p.ovr+'</td><td>'+p.pay+'</td><td>'+money(p.price)+'</td><td><button type="button" data-pick="'+j+'">선택</button></td></tr>').join("");
-   $("sqPickerNote").textContent=pickerCandidates.length?"예산·급여·팀컬러·강화 조건을 충족하는 후보 "+pickerCandidates.length+"개 (최대 80개)":"조건에 맞는 선수가 없습니다. 이름 또는 시즌을 다시 검색해 주세요.";
+   $("sqPlayerResults").innerHTML=pickerRows(pickerCandidates,"data-pick");
+   $("sqPickerNote").textContent=pickerCandidates.length?"조건에 맞는 후보 "+pickerCandidates.length+"개 (최대 80개)":"조건에 맞는 선수가 없습니다. 이름 또는 시즌을 다시 검색해 주세요.";
  }catch(e){if(seq===pickerSeq)$("sqPickerNote").textContent=e.message}
-}
-async function swapPlayer(i){
- const r=results[active],old=r?.players[i],mode=active,opts=currentOpts;
- if(!old||slotBusy||task||locks[i]?.id===old.id&&locks[i]?.grade===old.grade)return;
- closePicker();slotBusy=true;busy(true);status(old.name+" 대체 선수 탐색 중…");
- try{
-   const rows=await loadPosition(old.pos),c=E.alternatives(rows,manifest,opts,mode,r.players,i,"",true)[0];
-   if(!c)throw Error("다른 선수들을 유지하면서 조건에 맞는 대체 선수를 찾지 못했습니다.");
-   if(!applyPlayer(i,c))throw Error("교체 조건 검증 실패");
-   status(old.name+" → "+c.name+" "+c.grade+"강 교체 완료");
- }catch(e){status(e.message,true)}finally{slotBusy=false;busy(false);render()}
 }
 function onRosterClick(e){
  const b=e.target.closest("[data-lock],[data-swap],[data-remove],[data-add]"),r=results[active];if(!b||!r?.ok||task||slotBusy)return;
  const i=Number(b.dataset.lock??b.dataset.swap??b.dataset.remove??b.dataset.add),p=r.players[i];if(!Number.isInteger(i)||i<0||i>10)return;
- if(b.hasAttribute("data-add")){showPicker(i);return}
+ if(b.hasAttribute("data-add")){showPicker(i,b);return}
  if(!p)return;
  if(b.hasAttribute("data-lock")){if(locks[i]?.id===p.id&&locks[i]?.grade===p.grade)delete locks[i];else locks[i]={id:p.id,grade:p.grade,name:p.name};render();return}
- if(b.hasAttribute("data-remove")){if(applyPlayer(i,null)){status(p.name+" 삭제 · 빈 포지션에 직접 선수를 넣어 주세요.");showPicker(i)}return}
- swapPlayer(i);
+ if(b.hasAttribute("data-remove")){if(applyPlayer(i,null)){status(p.name+" 삭제 · 빈 포지션에 직접 선수를 넣어 주세요.");showPicker(i,$("sqPitch").querySelector('[data-add="'+i+'"]'))}return}
+ if(locks[i]?.id===p.id&&locks[i]?.grade===p.grade)return;
+ showPicker(i,b);
 }
-$("sqRows").addEventListener("click",onRosterClick);
 $("sqPitch").addEventListener("click",onRosterClick);
 $("sqPickerClose").addEventListener("click",closePicker);
-let typing=null;
+$("sqPicker").addEventListener("cancel",e=>{e.preventDefault();closePicker()});
+$("sqPicker").addEventListener("click",e=>{if(e.target===$("sqPicker"))closePicker()});
 $("sqPlayerQuery").addEventListener("input",()=>{pickerSeq++;pickerCandidates=[];$("sqPlayerResults").innerHTML="";clearTimeout(typing);typing=setTimeout(searchPicker,180)});
-$("sqPlayerResults").addEventListener("click",e=>{const b=e.target.closest("[data-pick]");if(!b||pickerSlot===null)return;const c=pickerCandidates[Number(b.dataset.pick)];if(c&&applyPlayer(pickerSlot,c,true))status(c.name+" "+c.grade+"강 직접 선택 완료 · 재추천 시 유지");else status("선수 추가 조건을 확인해 주세요.",true)});
+function pickPlayer(e,attr,list){
+ const b=e.target.closest("["+attr+"]");if(!b||pickerSlot===null)return;
+ const i=pickerSlot,c=list[Number(b.getAttribute(attr))],old=results[active]?.players[i];
+ if(c&&applyPlayer(i,c,true)){
+   status((old?old.name+" → ":"")+c.name+" "+c.grade+"강 선택 완료 · 재추천 시 유지");
+   $("sqPitch").querySelector('[data-lock="'+i+'"]')?.focus({preventScroll:true});
+ }else $("sqPickerNote").textContent="선수 추가 조건을 확인해 주세요.";
+}
+$("sqPlayerResults").addEventListener("click",e=>pickPlayer(e,"data-pick",pickerCandidates));
+$("sqRecoResults").addEventListener("click",e=>pickPlayer(e,"data-reco",recoCandidates));
 $("sqSave").addEventListener("click",()=>{try{const s=saved();if(!s)return;localStorage.setItem(STORE,JSON.stringify(s));status("이 브라우저에 스쿼드를 저장했습니다.")}catch(e){status("저장 실패: "+e.message,true)}});
 $("sqLoad").addEventListener("click",()=>{try{const s=JSON.parse(localStorage.getItem(STORE)||"null");if(!s)throw Error("저장된 스쿼드가 없습니다.");restore(s)}catch(e){status(e.message,true)}});
 $("sqShare").addEventListener("click",async()=>{try{const s=saved();if(!s)return;const u=new URL("/squad/",window.FG_SITE_URL||location.origin);u.searchParams.set("s",JSON.stringify(s));if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(u.href);status("공유 주소를 복사했습니다.")}else{window.prompt("공유 주소를 복사하세요.",u.href)}}catch(e){status("공유 실패: "+e.message,true)}});

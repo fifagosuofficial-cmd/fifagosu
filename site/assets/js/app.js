@@ -813,6 +813,8 @@ function dRenderReport(d,a){
     <div><span>우선 보강</span><b>${!a.enriched?'분석 중':worst?esc(dCardLabel(worst)):dRecentRows(a.players,a.recentLineup,true).some(x=>x.action&&x.action!=='평가 보류')?'뚜렷한 보강 후보 없음':'판단 보류'}</b><small>${worst?'최근 경기 출전 · '+esc(worst.reason):a.enriched?'최근 출전 선수 기준':'랭커·평점 비교 중'}</small></div></div>`
   if(a.enriched&&a.recentPlayers?.length&&!d.sample){const b=document.createElement('button');b.type='button';b.className='ghost';b.textContent='최근 스쿼드 AI 개선 추천 →';b.addEventListener('click',()=>{try{sessionStorage.setItem('fg-squad-recent-v1',JSON.stringify({players:a.recentPlayers.map(p=>({id:+p.spId,grade:+p.grade,pos:p.pos,name:p.name,review:p.action==='교체 검토'}))}));location.assign('/squad/?import=1')}catch(e){location.assign('/squad/')}});$('dReport').appendChild(b)}
 
+  if(a.enriched&&!d.sample&&a.n>0){const b=document.createElement('button');b.type='button';b.className='ghost';b.textContent='내 진단 기록에 저장';b.addEventListener('click',async()=>{b.disabled=true;try{const nickname=d.basic.nickname,body='최근 '+a.n+'경기 · 승률 '+Math.round(a.W/a.n*100)+'%'+(a.squadValue?' · 최근 스쿼드 가치 '+fmtBP(a.squadValue):'')+(best?' · 우수 선수 '+dCardLabel(best):'')+(worst?' · 우선 보강 '+dCardLabel(worst):'');const r=await fetch('/api/community/diagnosis',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nickname,body})});const j=await r.json();if(!r.ok)throw Error(j.message);b.textContent='진단 기록 저장 완료'}catch(err){alert('저장 실패: '+err.message);b.disabled=false}});$('dReport').appendChild(b)}
+
 }
 /* One representative per match. Equal top counts are ambiguous, not a random winner. */
 function dInferTeamcolor(players,TC,excluded=null){

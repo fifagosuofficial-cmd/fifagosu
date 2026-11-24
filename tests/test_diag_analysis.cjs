@@ -4,10 +4,10 @@ const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const src=fs.readFileSync(path.join(__dirname,'../site/assets/js/app.js'),'utf8');
 const ctx={sname:id=>({877:'UC',878:'DC'}[id]||'?'),LINE:()=> '수비',RK_ATT:[],RK_DEF:[['tackle','태클'],['block','블락']]};
 vm.createContext(ctx);
-for(const [a,b] of [['function dLatestLineup(','function analyze('],['function dAssessPlayer(','function dRatePlayers('],['function dExactPrice(','function dPriceText('],['function dInferTeamcolor(','async function dLoadTeamcolors(']]){
+for(const [a,b] of [['function dRankerCompare(','async function dLoadRanker('],['function dLatestLineup(','function analyze('],['function dAssessPlayer(','function dRatePlayers('],['function dExactPrice(','function dPriceText('],['function dInferTeamcolor(','async function dLoadTeamcolors(']]){
   const i=src.indexOf(a),j=src.indexOf(b,i);assert.ok(i>=0&&j>i);vm.runInContext(src.slice(i,j),ctx);
 }
-const p={apps:10,spId:1,pos:'LB',avg:6.2,wr:.4,r:Array(10).fill(6.2),rtRef:{avg:6.5,n:100},rk:{tackle:1,block:1},rkLow:{tackle:{lb:'태클',mine:.3,avg:1},block:{lb:'블락',mine:.2,avg:1}}};
+const p={apps:10,t:{tackle:3,block:2},spId:1,pos:'LB',avg:6.2,wr:.4,r:Array(10).fill(6.2),rtRef:{avg:6.5,n:100},rk:{tackle:1,block:1},rkLow:{tackle:{lb:'태클',mine:.3,avg:1},block:{lb:'블락',mine:.2,avg:1}}};
 test('ranker and position benchmark deficits trigger review, with visible reasons',()=>{const x=ctx.dAssessPlayer(p,[p]);assert.equal(x.action,'교체 검토');assert.ok(x.risk>=2);assert.match(x.reason,/태클/);assert.match(x.reason,/10\/10경기/)});
 test('missing benchmarks and small samples never claim a confident reinforcement',()=>{assert.equal(ctx.dAssessPlayer({...p,apps:2},[]).action,'평가 보류');assert.equal(ctx.dAssessPlayer({...p,apps:4},[]).action,'평가 보류');assert.equal(ctx.dAssessPlayer({...p,rtRef:null,rk:null},[]).eval,null)});
 test('same position lower performance and higher price are described without assuming causality',()=>{const x={...p,rtRef:null,rk:null,price:200},peer={...p,spId:2,name:'다른 선수',price:100,avg:6.7,wr:.7};const q=ctx.dAssessPlayer(x,[x,peer]);assert.equal(q.action,'교체 검토');assert.match(q.reason,/가격 효율 검토/)});
@@ -75,4 +75,18 @@ test('diagnosis card labels distinguish same-name seasons and show grade',()=>{
   assert.equal(ctx.dCardLabel({pos:'CM',seasonId:877,name:'램파드',grade:9}),'CM UC 램파드 9강');
   assert.equal(ctx.dCardLabel({pos:'CM',spId:878005471,name:'램파드',grade:8}),'CM DC 램파드 8강');
   assert.match(ctx.dCardLabel({pos:'CM',seasonId:999,name:'램파드',grade:8}),/시즌 999/);
+});
+
+test('dribble and pass percentages compare rates, not per-match success counts',()=>{
+  const x={apps:10,t:{dribbleSuccess:97,dribbleTry:100,passSuccess:90,passTry:100}};
+  const high=ctx.dRankerCompare(x,'dribbleSuccess','드리블',{dribbleSuccess:20,dribbleTry:21});
+  assert.equal(high.low,false);
+  assert.equal(ctx.dRankerCompare(x,'dribbleSuccess','드리블',{dribbleSuccess:20}),null);
+  const low=ctx.dRankerCompare({...x,t:{passSuccess:60,passTry:100}},'passSuccess','패스',{passSuccess:9,passTry:10});
+  assert.equal(low.low,true);assert.equal(ctx.dRankerValue(low,low.mine),'60.0%');
+});
+test('duel cell separates percentage and labelled counts; zero attempts are unavailable',()=>{
+  assert.match(ctx.dDuelCell(29,37),/78%/);
+  assert.match(ctx.dDuelCell(29,37),/성공 29 \/ 시도 37/);
+  assert.match(ctx.dDuelCell(0,0),/>-</);
 });

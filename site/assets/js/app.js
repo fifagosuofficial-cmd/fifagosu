@@ -1315,7 +1315,7 @@ function renderCard(){
    <section class="pm2-l">
     <div class="pm2-id">
      <div class="pm2-txt">
-      <div class="pm2-name">${bigBadge(c.sid)}<b id="pmTitle">${esc(name)}</b></div>
+      <div class="pm2-name">${bigBadge(c.sid)}<b id="pmTitle">${esc(name)}</b></div><div><a href="/board/?category=review&amp;card=${encodeURIComponent(c.id)}">선수 후기</a> · <button type="button" id="fgFavoriteMember">관심 선수 저장</button></div>
       ${main?`<div class="pm2-ovr"><span class="mp">${esc(main[0])}</span><b>${ovrNow}</b></div>`:''}
       <div class="pm2-meta"><span>${esc(sname(c.sid))}</span>${D?`<i>|</i><span>${esc(String(D.nation||'').split(',')[0])}</span>${flagImg(D.nationId)}`:''}</div>
       <div class="pm2-phys">${pay?`<span>급여</span><span class="hex">${pay}</span>`:''}${D?`<i>|</i><span>${D.height||'-'}cm</span><i>|</i><span>${D.weight||'-'}kg</span><i>|</i><span>${esc(D.body||'-')}</span>`:''}${foot?`<span class="pm2-foot2"><b class="${foot.main==='L'?'on':''}">${foot.l}</b><b class="${foot.main==='R'?'on':''}">${foot.r}</b></span>`:''}</div>
@@ -1395,3 +1395,6 @@ window.addEventListener('popstate',()=>{const R=window.FG_ROUTES||{};const p=loc
     openCard(+b.dataset.card);if(+grade>1){pmGrade=+grade;renderCard()}
   });sync();
 })();
+
+// Community integration: explicit member action, no background account data upload.
+document.addEventListener("click",async e=>{if(!e.target.closest("#fgFavoriteMember")||!pmCard)return;const id=pmCard.id,grade=pmGrade,name=document.getElementById("pmTitle")?.textContent||String(id);try{const r=await fetch("/api/community/favorite",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({card_id:id,grade,name})});const j=await r.json();if(!r.ok)throw Error(j.message);alert("관심 선수에 저장했습니다.")}catch(err){alert("관심 선수 저장 실패: "+err.message)}});

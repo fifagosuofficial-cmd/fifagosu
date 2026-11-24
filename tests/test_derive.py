@@ -252,10 +252,31 @@ def test_opponent_teamcolors_season_and_unknown(tmp_path):
     assert result["opponent_teamcolor_cards"] == 3
     out = json.loads((d / "diag" / "opponent-teamcolors.json").read_text("utf-8"))
     names = lambda card: {out["names"][i] for i in out["cards"][str(card)]}
-    assert names(100000001) == {"New", "Nation"}
-    assert names(101000002) == {"Nation"}
-    assert names(101000003) == {"Old", "Nation"}
+    assert names(100000001) == {"Old", "New", "Nation"}
+    assert names(101000002) == {"Old", "New", "Nation"}
+    assert names(101000003) == {"Old", "New", "Nation"}
 
 
 def test_opponent_teamcolors_missing_metadata(tmp_path):
     assert derive.step_opponent_teamcolors(tmp_path, "2026-11-24")["opponent_teamcolors"] == "waiting-teamcolors"
+
+def test_opponent_teamcolors_official_season_mapping(tmp_path):
+    derive.save(tmp_path / "teamcolor" / "teamcolors.json", {"items": [
+        {"name": "Untouchable Champions", "type": "club", "clubId": 130759},
+        {"name": "Untouchable Champions", "type": "special"},
+        {"name": "Chelsea", "type": "club", "clubId": 5},
+        {"name": "England", "type": "nation", "nationId": 1},
+    ]})
+    derive.save(tmp_path / "meta" / "seasonid.json", [
+        {"seasonId": 877, "className": "UC (Untouchable Champions)"},
+        {"seasonId": 999, "className": "Unknown"},
+    ])
+    derive.save(tmp_path / "detail" / "1.json", {"877000001": {
+        "teamId": 130759, "nationId": 1, "clubs": [["2001 ~ 2014", "Chelsea"]]}})
+    derive.step_opponent_teamcolors(tmp_path, "2026-11-24")
+    out = json.loads((tmp_path / "diag" / "opponent-teamcolors.json").read_text("utf-8"))
+    i = out["seasonById"]["877"]
+    assert out["names"][i] == "Untouchable Champions" and out["kinds"][i] == "season"
+    assert "999" not in out["seasonById"]
+    assert out["names"].count("Untouchable Champions") == 1
+    assert {out["names"][i] for i in out["cards"]["877000001"]} == {"Chelsea", "England"}

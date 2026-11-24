@@ -148,3 +148,31 @@ test('replacement popup ranks at least five different players when feasible, not
  const limited=E.alternatives(rows.slice(0,2),manifest,o,'balanced',r.players,0,'',true);
  assert.equal(limited.length,2);
 });
+
+test('manual search uses one row per season card at grade one regardless of AI grade range',()=>{
+ const cat=fixture(),r=E.solve(cat,manifest,opts);assert.ok(r.ok);
+ const old=r.players[0],o={...opts,grades:[5,8,11],budget:5000,salary:200};
+ const x=row(7000101,50,9,120),y=row(8000101,70,9,121),wrong=row(7000102,50,9,120,[9]);
+ const rec=E.manualSearch([x,x,y,wrong],manifest,o,'balanced',r.players,0,'P');
+ assert.equal(rec.length,2);
+ assert.ok(rec.every(p=>p.grade===1&&p.price===p.prices[0]));
+ assert.deepEqual(new Set(rec.map(p=>p.id)),new Set([x[0],y[0]]));
+});
+test('changing grade updates exact price and stats while preserving card, salary and position',()=>{
+ const r=E.solve(fixture(),manifest,opts);assert.ok(r.ok);
+ const p=r.players[0],one=E.changeGrade(p,1),five=E.changeGrade(one,5);
+ assert.equal(one.grade,1);assert.equal(one.ovr,p.base);
+ assert.equal(five.price,p.prices[4]);assert.equal(five.ovr,p.base+E.BONUS[5]);
+ assert.equal(five.pay,p.pay);assert.equal(five.id,p.id);assert.equal(five.pos,p.pos);
+ assert.deepEqual(five.core,one.core.map(([k,v])=>[k,v+E.BONUS[5]]));
+ assert.equal(E.changeGrade(p,3),null);assert.equal(E.changeGrade(p,14),null);
+});
+test('explicitly fixed manual grade may differ from AI recommendation range',()=>{
+ const cat=fixture(),o={...opts,grades:[5],budget:5000,salary:200};
+ const id=cat.GK[0][0],locks={0:{id,grade:1,manual:true}};
+ const r=E.solve(cat,manifest,o,'balanced',locks);
+ assert.ok(r.ok);assert.equal(r.players[0].grade,1);
+ assert.ok(r.players.slice(1).every(p=>p.grade===5));
+ assert.ok(E.validate(r,o,locks));assert.equal(E.validate(r,o),false);
+ assert.equal(E.solve(cat,manifest,o,'balanced',{0:{id,grade:1}}).ok,false);
+});

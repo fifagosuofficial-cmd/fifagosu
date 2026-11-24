@@ -1379,11 +1379,17 @@ window.addEventListener('popstate',()=>{const R=window.FG_ROUTES||{};const p=loc
 (function(){
   const home=document.getElementById('v-home'); if(!home)return;
   home.querySelectorAll('.mk-ssn[data-sid]').forEach(el=>{el.innerHTML=sch(+el.dataset.sid)});
-  const tabs=home.querySelector('.mk-grade');
-  if(tabs)tabs.addEventListener('click',e=>{const b=e.target.closest('[data-mg]');if(!b)return;
-    tabs.querySelectorAll('[data-mg]').forEach(x=>x.setAttribute('aria-selected',x===b));
-    home.querySelectorAll('.mk-panel').forEach(p=>p.hidden=p.dataset.mp!==b.dataset.mg)});
-  home.addEventListener('click',e=>{const b=e.target.closest('[data-card]');if(!b)return;
-    const g=+(tabs&&tabs.querySelector('[aria-selected="true"]')?.dataset.mg)||1;
-    openCard(+b.dataset.card); if(g>1){pmGrade=g;renderCard()}});
+  let day='1',grade='1';
+  const sync=()=>{
+    home.querySelectorAll('[data-md]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.md===day)));
+    home.querySelectorAll('[data-mdp]').forEach(p=>p.hidden=p.dataset.mdp!==day);
+    home.querySelectorAll('[data-mg]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mg===grade)));
+    home.querySelectorAll('.mk-panel').forEach(p=>p.hidden=p.dataset.mp!==grade);
+  };
+  home.addEventListener('click',e=>{
+    const d=e.target.closest('[data-md]');if(d){day=d.dataset.md;sync();return}
+    const g=e.target.closest('[data-mg]');if(g){grade=g.dataset.mg;sync();return}
+    const b=e.target.closest('[data-card]');if(!b)return;
+    openCard(+b.dataset.card);if(+grade>1){pmGrade=+grade;renderCard()}
+  });sync();
 })();

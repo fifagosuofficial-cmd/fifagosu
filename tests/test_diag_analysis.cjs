@@ -132,7 +132,25 @@ test('teamcolor rankings require three encounters, not a single perfect result',
   const rows=[{name:'A',n:1,w:1,l:0},{name:'B',n:2,w:0,l:2},{name:'C',n:3,w:2,l:1},{name:'D',n:5,w:3,l:2},{name:'E',n:3,w:0,l:3}];
   const result=ctx.dTeamcolorRankings(rows);
   assert.deepEqual(Array.from(result.eligible,x=>x.name),['C','D','E']);
-  assert.deepEqual(Array.from(result.wins,x=>x.name),['C','D']);
-  assert.deepEqual(Array.from(result.loss,x=>x.name),['E','D','C']);
+  assert.deepEqual(Array.from(result.wins,g=>g.teams[0].name),['C','D']);
+  assert.deepEqual(Array.from(result.loss,g=>g.teams[0].name),['E','D','C']);
   assert.equal(ctx.dTeamcolorRankings(rows.slice(0,2)).eligible.length,0);
+});
+
+test('teamcolor top five groups preserve all teams tied at the same displayed percentage',()=>{
+  const rows=[{name:'A',n:3,w:3,l:0},{name:'B',n:6,w:6,l:0},{name:'C',n:4,w:3,l:1},{name:'D',n:3,w:2,l:1},{name:'E',n:5,w:3,l:2},{name:'F',n:4,w:2,l:2},{name:'G',n:6,w:3,l:3},{name:'H',n:3,w:1,l:2}];
+  const result=ctx.dTeamcolorRankings(rows);
+  assert.deepEqual(Array.from(result.wins,g=>g.pct),[100,75,67,60,50]);
+  assert.deepEqual(Array.from(result.wins[0].teams,x=>x.name),['B','A']);
+  assert.deepEqual(Array.from(result.wins[4].teams,x=>x.name),['G','F']);
+  assert.equal(result.loss.find(g=>g.pct===50).teams.length,2);
+});
+test('diagnosis layout keeps owner and advice together and report before details and teamcolor',()=>{
+  const html=fs.readFileSync(path.join(__dirname,'../site/templates/index.html'),'utf8');
+  const intro=html.indexOf('class="diag-intro"'),board=html.indexOf('id="dBoard"'),tip=html.indexOf('id="dTip"'),sum=html.indexOf('id="dSum"');
+  assert.ok(intro>=0&&intro<board&&board<tip&&tip<sum);
+  assert.ok(html.indexOf('id="dReport"')<html.indexOf('id="dDetailSec"'));
+  assert.ok(html.indexOf('id="dDetailSec"')<html.indexOf('id="dTc"'));
+  assert.ok(html.indexOf('id="dTc"')<html.indexOf('id="dWeakSec"'));
+  assert.ok(!src.includes("const secs=$('dSecs')"));
 });

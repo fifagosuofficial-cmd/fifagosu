@@ -722,27 +722,34 @@ function dAssessPlayer(x,peers){
   if(x.apps<3)return {eval:null,action:'평가 보류',reason:'3경기 미만',risk:0};
   const reasons=[], signals=[], scores=[], add=(label,risk,score)=>{reasons.push(label);signals.push(risk);scores.push(score)};
   const clamp=v=>Math.max(0,Math.min(100,v));
+  let ratingGap=0,repeatLow=0,repeatN=0,severeRanker=0,strongPeer=false;
   const ref=x.rtRef;
   if(ref&&ref.avg>0&&ref.n>=30){
-    const gap=ref.avg-x.avg;
+    const gap=ref.avg-x.avg;ratingGap=gap;
     add(`상위등급 포지션 평점 ${x.avg.toFixed(2)}/${ref.avg.toFixed(2)} (표본 ${ref.n})`,gap>=.20?2:gap>=.10?1:0,clamp(60-gap*100));
     const ratings=(x.r||[]).filter(v=>Number.isFinite(v)&&v>0);
-    if(ratings.length>=5){const low=ratings.filter(v=>v<=ref.avg-.1+1e-9).length;const frac=low/ratings.length;
+    if(ratings.length>=5){const low=ratings.filter(v=>v<=ref.avg-.1+1e-9).length;const frac=low/ratings.length;repeatLow=frac;repeatN=ratings.length;
       add(`평점 기준 미달 ${low}/${ratings.length}경기`,frac>=.6?1:0,clamp(80-60*frac))}
   }
   if(x.rk){const low=Object.values(x.rkLow||{});const keys=[...(LINE(x.pos)==='공격'||LINE(x.pos)==='미드'?RK_ATT:[]),...(LINE(x.pos)==='수비'||LINE(x.pos)==='미드'?RK_DEF:[])];
     const comparable=[...new Set(keys.map(k=>k[0]))].filter(k=>Number(x.rk[k])>=.3);
-    if(comparable.length){add(low.length?low.map(v=>`${v.lb} ${v.mine.toFixed(2)}/${v.avg.toFixed(2)}`).join(' · '):'랭커 비교 지표 기준 미달 없음',low.length>=2?2:low.length?1:0,clamp(75-50*low.length/comparable.length))}
+    if(comparable.length){severeRanker=low.filter(v=>v.avg>0&&v.mine/v.avg<.60).length;add(low.length?low.map(v=>`${v.lb} ${v.mine.toFixed(2)}/${v.avg.toFixed(2)}`).join(' · '):'랭커 비교 지표 기준 미달 없음',low.length>=2?2:low.length?1:0,clamp(75-50*low.length/comparable.length))}
   }
   const peer=peers.filter(p=>p!==x&&p.apps>=5&&p.pos===x.pos&&p.spId!==x.spId).sort((a,b)=>b.avg-a.avg||b.apps-a.apps)[0];
   if(peer&&x.apps>=5){const gap=peer.avg-x.avg,wr=peer.wr-x.wr;
+    strongPeer=peer.apps>=10&&gap>=.30-1e-9&&wr>=.15-1e-9;
     add(`동일 포지션 ${peer.name} 대비 평점 ${gap>=0?'-':'+'}${Math.abs(gap).toFixed(2)} · 승률 ${Math.round(-wr*100)}%p`,gap>=.2&&wr>=.10?2:0,clamp(60-gap*70-wr*30));
     if(x.price>0&&peer.price>0&&x.price>=peer.price*1.2&&gap>=.1&&wr>=0)reasons.push(`동일 포지션 대비 고가(${(x.price/peer.price).toFixed(1)}배)·낮은 성적: 가격 효율 검토`);
   }
   if(!scores.length)return {eval:null,action:'평가 보류',reason:'비교 가능한 상위등급·랭커·동일 포지션 표본 부족',risk:0};
   const risk=signals.reduce((a,b)=>a+b,0),score=Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
-  const action=x.apps<5?'평가 보류':risk>=2?'교체 검토':risk===1?'유지':score>=67?'기용 추천':'유지';
-  return {eval:score,action,reason:`${x.apps}경기 · ${reasons.join(' / ')}${x.apps<5?' · 5경기 미만 보강 판단 보류':''}`,risk};
+  // One low metric is a coaching signal, not proof that the card needs replacing.
+  // Require sustained low ratings plus independent ranker evidence, severe persistent
+  // rating deficit, or a well-sampled same-position alternative.
+  const persistent=repeatN>=10&&repeatLow>=.60;
+  const review=x.apps>=10&&(strongPeer||(persistent&&ratingGap>=.25-1e-9&&severeRanker>=2)||(repeatN>=10&&repeatLow>=.75&&ratingGap>=.40-1e-9));
+  const action=x.apps<5?'평가 보류':review?'교체 검토':risk===0&&score>=67?'기용 추천':'유지';
+  return {eval:score,action,reason:`${x.apps}경기 · ${reasons.join(' / ')}${x.apps<10?' · 10경기 미만 교체 판단 보류':''}`,risk};
 }
 function dRatePlayers(a){
   const by={};a.players.forEach(x=>(by[RT_GROUP[x.pos]||x.pos]??=[]).push(x));
@@ -843,8 +850,8 @@ function dPStatsView(a){
   ${rows.map(x=>{const t=st(x);return `<tr class="${x.low||x.action==='교체 검토'?'low':x.action==='기용 추천'?'hi':''}"><td><span class="pos">${x.pos}</span>${sch(x.seasonId)}${esc(x.name)}${recoFlag(x)}${a.dm||x.grade>1?`${gch(x.grade)}`:''}</td><td class="n">${x.apps}</td><td class="n"><span class="${wrc(x.wr)}">${Math.round(x.wr*100)}%</span><span class="why">${x.w}승</span></td><td class="n">${rtCell(x)}</td><td class="n">${rkCell(x,'goal',x.g)}</td><td class="n">${rkCell(x,'assist',x.a)}</td>
     <td class="n">${rkCell(x,'shoot',t.shoot)}(${rkCell(x,'effectiveShoot',t.effectiveShoot)})</td><td class="n">${rkCell(x,'passSuccess',pc(t.passSuccess,t.passTry))}</td><td class="n">${rkCell(x,'dribbleSuccess',pc(t.dribbleSuccess,t.dribbleTry))}</td>
     <td class="n">${t.ballPossesionSuccess}/${t.ballPossesionTry} <span class="why">${pc(t.ballPossesionSuccess,t.ballPossesionTry)}</span></td><td class="n">${t.aerialSuccess}/${t.aerialTry} <span class="why">${pc(t.aerialSuccess,t.aerialTry)}</span></td>
-    <td class="n">${rkCell(x,'tackle',`${t.tackle}/${t.tackleTry}`)}</td><td class="n">${t.intercept}</td><td class="n">${rkCell(x,'block',t.block)}</td><td class="n">${dPriceText(x)}</td><td class="n">${x.market?dPct(x.market.p1,x.market.days[0]):'<span class="muted">조회 불가</span>'}</td><td class="n">${x.market?dPct(x.market.p7,x.market.days[1]):'<span class="muted">조회 불가</span>'}</td><td class="n">${(x.g/x.apps).toFixed(2)}</td><td class="n">${(x.a/x.apps).toFixed(2)}</td><td class="n">${x.posRank||'-'}</td><td class="n"><span class="ev ${x.action==='교체 검토'?'bad':x.action==='기용 추천'?'good':''}" title="${esc(x.reason||'표본 부족')}">${x.eval==null?'보류':x.eval}</span></td><td><b class="act ${x.action==='교체 검토'?'bad':x.action==='기용 추천'?'good':''}">${x.action||'분석 중'}</b><small class="why diag-eval-reason">${esc(x.reason||'')}</small></td><td>${x.reco?`<button type="button" class="linkbtn" data-reco="${x.spId}">${esc(x.reco.name)} ${x.reco.grade}강</button>`:x.action==='교체 검토'?(a.enriched?'후보 없음':'분석 중'):'-'}</td><td class="n">${x.reco&&x.reco.need!=null?(x.reco.need?fmtBP(x.reco.need):'0 BP'):'-'}</td></tr>`}).join('')}
-  </tbody></table></div><p class="note">최근 ${a.n}경기 합계예요. 기존 열과 경고 기준은 유지했습니다. 포지션 순위는 같은 포지션 묶음 내 실전 기여 점수 기준이며, 실전 기여는 상위등급 포지션 평점·랭커 지표·동일 포지션 비교 표본을 기준으로 산정한 자체 점수입니다. 5경기 미만은 보강 판단을 보류하며 가격 효율은 비교 가능한 경우에만 참고합니다. 시세 변동은 수집 이력이 있는 1·5·8강만 제공하고 누락값은 0으로 계산하지 않아요.${rkNote}${rtNote(a)}</p>`;
+    <td class="n">${rkCell(x,'tackle',`${t.tackle}/${t.tackleTry}`)}</td><td class="n">${t.intercept}</td><td class="n">${rkCell(x,'block',t.block)}</td><td class="n">${dPriceText(x)}</td><td class="n">${x.market?dPct(x.market.p1,x.market.days[0]):'<span class="muted">조회 불가</span>'}</td><td class="n">${x.market?dPct(x.market.p7,x.market.days[1]):'<span class="muted">조회 불가</span>'}</td><td class="n">${(x.g/x.apps).toFixed(2)}</td><td class="n">${(x.a/x.apps).toFixed(2)}</td><td class="n">${x.posRank||'-'}</td><td class="n"><span class="ev ${x.action==='교체 검토'?'bad':x.action==='기용 추천'?'good':''}" title="${esc(x.reason||'표본 부족')}">${x.eval==null?'보류':x.eval}</span></td><td><b class="act ${x.action==='교체 검토'?'bad':x.action==='기용 추천'?'good':''}">${x.action||'분석 중'}</b></td><td>${x.reco?`<button type="button" class="linkbtn" data-reco="${x.spId}">${esc(x.reco.name)} ${x.reco.grade}강</button>`:x.action==='교체 검토'?(a.enriched?'후보 없음':'분석 중'):'-'}</td><td class="n">${x.reco&&x.reco.need!=null?(x.reco.need?fmtBP(x.reco.need):'0 BP'):'-'}</td></tr>`}).join('')}
+  </tbody></table></div><p class="note">최근 ${a.n}경기 합계예요. 기존 열과 경고 기준은 유지했습니다. 포지션 순위는 같은 포지션 묶음 내 실전 기여 점수 기준이며, 실전 기여는 상위등급 포지션 평점·랭커 지표·동일 포지션 비교 표본을 기준으로 산정한 자체 점수입니다. 교체 검토는 10경기 이상에서 반복적인 큰 평점 열세와 복수 랭커 지표 열세, 매우 큰 지속적 평점 열세 또는 충분한 동일 포지션 비교 표본이 확인될 때만 표시합니다. 가격 효율은 참고용입니다. 시세 변동은 수집 이력이 있는 1·5·8강만 제공하고 누락값은 0으로 계산하지 않아요.${rkNote}${rtNote(a)}</p>`;
 }
 function dAssetView(a){
   const s=dRead(),key=dHistoryKey(dCur.d.basic.nickname,dMode),own=(s.assets&&s.assets[key])||{},list=a.recentPlayers||[],total=a.squadValue||0;

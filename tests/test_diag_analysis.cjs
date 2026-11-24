@@ -37,3 +37,25 @@ test('peer replacement comparison requires ten appearances on both cards',()=>{
   const peer={...p,apps:9,spId:2,name:'대체 선수',avg:6.7,wr:.7,price:100};
   assert.equal(ctx.dAssessPlayer(x,[x,peer]).action,'유지');
 });
+
+test('player records start at GK then RB and proceed right to left; unknown positions last',()=>{
+  const i=src.indexOf('const D_POS_ORDER='),j=src.indexOf('\n',src.indexOf('function dComparePosition(',i));
+  assert.ok(i>=0&&j>i);
+  vm.runInContext(src.slice(i,j),ctx);
+  const positions=['LB','RCM','LAM','LCB','CAM','GK','RB','CDM','RAM','RCB','LCM','UNKNOWN'];
+  assert.deepEqual(positions.map(pos=>({pos})).sort(ctx.dComparePosition).map(x=>x.pos),['GK','RB','RCB','LCB','LB','CDM','RCM','LCM','RAM','CAM','LAM','UNKNOWN']);
+});
+test('both match modes prioritize player records, ranker comparison, detailed metrics and omit manual panels',()=>{
+  const i=src.indexOf('const DTABS='),j=src.indexOf('\n',i);
+  assert.ok(i>=0&&j>i);
+  vm.runInContext(src.slice(i,j),ctx);
+  for(const mode of ['50','52']){
+    const keys=Array.from(vm.runInContext('DTABS["'+mode+'"]',ctx),x=>x[0]);
+    assert.deepEqual(keys.slice(0,3),['pstats','ranker','stats']);
+    assert.ok(!keys.includes('squad')&&!keys.includes('asset'));
+    assert.ok(keys.includes('growth')&&keys.includes('time')&&keys.includes('shot'));
+    if(mode==='52')assert.ok(keys.includes('form')&&keys.includes('line'));
+  }
+  assert.ok(!src.includes('function dSquadView(')&&!src.includes('function dAssetView('));
+  assert.ok(!src.includes('data-buy=')&&!src.includes('data-asset='));
+});

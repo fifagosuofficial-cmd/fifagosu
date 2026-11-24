@@ -328,6 +328,42 @@ def squad_catalog(data_dir, out):
                            "dateFrom": min(dates) if dates else None, "dateTo": max(dates) if dates else None})
 
 
+def material_catalog(data_dir, out):
+    """Exact collected prices, cheapest two distinct players per enhanced OVR.
+    Allows excluding the target player from ordinary-material calculations.
+    Market execution/availability is not established by a snapshot.
+    """
+    bonus = (_load(data_dir / "rules/grade_bonus.json") or {}).get("bonus")
+    by_ovr, dates = {}, set()
+    restricted = {str(x.get("seasonId")) for x in (_load(data_dir / "meta/seasonid.json") or [])
+                  if "제한" in str(x.get("className", "")) or "bound" in str(x.get("className", "")).lower()}
+    if isinstance(bonus, list) and len(bonus) >= 14 and all(type(v) is int and v >= 0 for v in bonus[:14]):
+        for shard in range(200):
+            for key, card in (_load(data_dir / "list" / f"{shard}.json") or {}).items():
+                if not str(key).isdigit() or not isinstance(card, dict):
+                    continue
+                spid, base = int(key), card.get("ovr")
+                if spid <= 0 or str(spid // 1000000) in restricted or type(base) is not int or base <= 0 or not card.get("name"):
+                    continue
+                for grade, price in enumerate((card.get("price") or [])[:13], 1):
+                    if type(price) is not int or not 0 < price <= 9007199254740991:
+                        continue
+                    ovr = base + bonus[grade]
+                    row = [spid, card["name"], grade, ovr, price]
+                    choices = by_ovr.setdefault(ovr, {})
+                    pid = spid % 1000000
+                    if pid not in choices or price < choices[pid][4]:
+                        choices[pid] = row
+                if card.get("at"):
+                    dates.add(str(card["at"])[:10])
+    items = [row for o in sorted(by_ovr) for row in sorted(by_ovr[o].values(), key=lambda r: (r[4], r[0], r[2]))[:2]]
+    target = out / "assets" / "material-data"
+    target.mkdir(parents=True, exist_ok=True)
+    (target / "prices.json").write_text(json.dumps({"schema": 1, "date": max(dates) if dates else None, "items": items}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    rules = _load(data_dir / "rules" / "boost_points.json") or {"schema": 1, "verified": False, "rows": []}
+    (target / "rules.json").write_text(json.dumps(rules, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data")
@@ -356,6 +392,7 @@ def main(argv=None):
                       autoescape=False, keep_trailing_newline=True)
     data_dir = (ROOT / a.data) if not Path(a.data).is_absolute() else Path(a.data)
     squad_catalog(data_dir, out)
+    material_catalog(data_dir, out)
     today = dt.datetime.now(KST).strftime("%Y-%m-%d")
     news = load_news(data_dir, today)
     market = refresh_popular_market_cards(data_dir, _load(data_dir / "market" / "summary.json"))

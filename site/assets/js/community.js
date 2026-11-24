@@ -22,16 +22,54 @@ $("fcSignIn").onclick=act(async()=>{const j=await post("login",{age:$("fcAge").c
 $("fcProfileForm").onsubmit=act(async e=>{await post("profile",form(e.target));location.reload()});
 $("fcLogout").onclick=act(async()=>{await post("logout",{});location.reload()});
 $("fcWithdraw").onclick=act(async()=>{if(prompt("탈퇴하면 작성한 글·댓글 및 저장 정보가 삭제됩니다. 계속하려면 '탈퇴'를 입력하세요.")!=="탈퇴")return;await post("withdraw",{confirm:"탈퇴"});location.assign("/")});
+const boardTime=n=>{
+ const d=new Date(n*1000),fmt=(v,opts)=>new Intl.DateTimeFormat("ko-KR",{timeZone:"Asia/Seoul",...opts}).format(v),day={year:"numeric",month:"2-digit",day:"2-digit"};
+ return fmt(d,day)===fmt(new Date(),day)?fmt(d,{hour:"2-digit",minute:"2-digit",hourCycle:"h23"}):fmt(d,{month:"2-digit",day:"2-digit"});
+};
+const count=n=>Number.isSafeInteger(n)&&n>=0?n.toLocaleString("ko-KR"):"—";
+function boardRows(posts,preview=false){
+ $("fcPosts").innerHTML=posts.length?posts.map(x=>{
+ const type=x.prefix!=="normal"?prefixes[x.prefix]:labels[x.category],notice=x.prefix==="notice",title=esc(x.title);
+ const text=preview?'<span class="fc-post-title">'+title+'</span>':'<a class="fc-post-title" href="?id='+x.id+'" data-post="'+x.id+'">'+title+'</a>';
+ return '<tr class="'+(notice?"fc-notice ":"")+(x.likes>=30?"fc-hot":"")+'"><td class="fc-type" data-kind="'+esc(x.prefix==="normal"?x.category:x.prefix)+'">'+esc(type)+'</td><td class="fc-title-cell">'+text+(x.replies?'<span class="fc-replies" aria-label="댓글 '+x.replies+'">['+count(x.replies)+']</span>':"")+(x.squad?'<small class="fc-attach">스쿼드</small>':"")+'</td><td class="fc-author" title="'+esc(x.nickname)+'">'+esc(x.nickname)+'</td><td class="fc-date">'+esc(boardTime(x.created))+'</td><td class="fc-count">'+count(x.views)+'</td><td class="fc-count fc-likes">'+count(x.likes)+'</td></tr>';
+ }).join(""):'<tr><td colspan="6" class="fc-empty">'+(category==="popular"?"추천 30개 이상인 게시글이 아직 없습니다.":"등록된 게시글이 없습니다.")+'</td></tr>';
+}
+let listSeq=0;
 async function loadPosts(){
+ const seq=++listSeq;
  tabs($("fcTabs"),labels,category);$("fcPage").textContent=page;
  $("fcWrite").hidden=category==="popular";$("fcWrite").disabled=category==="popular"||!member?.nickname||!!member.suspended;
  $("fcPopularHint").hidden=category!=="popular";
  const p=new URLSearchParams({category,page,q:$("fcSearch").value});if(reviewCard&&category==="review")p.set("card",reviewCard);
- const j=await get("posts?"+p);$("fcPosts").innerHTML=j.posts.length?j.posts.map(x=>'<div class="fc-entry"><div><span class="fc-pill">'+esc(labels[x.category])+(x.prefix!=="normal"?" · "+esc(prefixes[x.prefix]):"")+'</span><a class="fc-post-title" href="?id='+x.id+'" data-post="'+x.id+'">'+esc(x.title)+'</a><small>'+esc(x.nickname)+' · '+date(x.created)+'</small></div><span>추천 '+x.likes+' · 댓글 '+x.replies+'</span></div>').join(""):"<p>등록된 게시글이 없습니다.</p>";
-
- $("fcPrev").disabled=page===1;$("fcNext").disabled=j.posts.length<30;
+ const j=await get("posts?"+p);if(seq!==listSeq)return;
+ boardRows(j.posts);$("fcPrev").disabled=page===1;$("fcNext").disabled=j.posts.length<30;
 }
-async function readPost(id){
+function localBoardPreview(){
+ const t=Math.floor(Date.now()/1000),examples=[
+ ["free","notice","피파고수 게시판 이용 안내",0,0,0],
+ ["free","question","급여 315 스쿼드 구성 질문",4,68,3],
+ ["squad","normal","대한민국 스쿼드 평가 부탁드립니다",8,210,12],
+ ["review","normal","센터백 시즌별 사용 후기",12,820,36],
+ ["tips","normal","초보 구단주를 위한 전술 설정 팁",6,610,31],
+ ["pack","normal","오늘 강화 결과 공유합니다",2,95,5],
+ ["free","normal","오늘 공식경기 어떠셨나요?",1,30,1],
+ ["squad","normal","팀컬러 맞춘 스쿼드 구성 공유",3,160,8],
+ ["review","normal","풀백 가성비 선수 사용 후기",5,125,9],
+ ["tips","normal","선수 교체할 때 확인할 능력치",2,70,4],
+ ["free","answer","스쿼드 저장 방법 안내",0,20,0],
+ ["pack","normal","선수팩 결과 공유",1,35,2]
+ ].map(([category,prefix,title,replies,views,likes],i)=>({category,prefix,title,replies,views,likes,nickname:prefix==="notice"?"예시 운영자":"예시 회원 "+i,created:t-i*180}));
+ $("fcPreviewHint").hidden=false;
+ boardRows(examples.filter(x=>category==="all"||category==="popular"&&x.likes>=30||x.category===category),true);
+}
+function previewBoard(){
+ tabs($("fcTabs"),labels,category);$("fcWrite").hidden=category==="popular";$("fcPopularHint").hidden=category!=="popular";
+ if(["localhost","127.0.0.1","[::1]"].includes(location.hostname))localBoardPreview();
+ else $("fcPosts").innerHTML='<tr><td colspan="6" class="fc-empty">회원 서버 연결 전입니다.</td></tr>';
+}
+const recordView=async id=>{try{await post("view",{post_id:id})}catch{}};
+async function readPost(id,record=false){
+ if(record)await recordView(id);
  const j=await get("post?id="+id),p=j.post;selected=id;$("fcPost").hidden=false;$("fcPost").innerHTML='<h2>'+esc(p.title)+'</h2><p class="fc-note">'+esc(p.nickname)+' · '+date(p.created)+'</p><p class="fc-text">'+esc(p.body)+'</p>'+(p.squad?'<p><a href="'+esc(squadLink(p.squad))+'">이 스쿼드 불러오기</a></p>':"")+(p.card_id?'<p><a href="/cards?card='+p.card_id+'">선수 카드 검색</a></p>':"")+(member?.nickname&&!member.suspended?'<div class="fc-row">'+btn("추천","data-action","vote")+btn("스크랩","data-action","bookmark")+btn("신고","data-action","report")+(p.own?btn("내 글 삭제","data-action","delete-post"):"")+'</div>':"")+'<h3>댓글</h3>'+j.comments.map(c=>'<div class="fc-entry"><div><small>'+esc(c.nickname)+' · '+date(c.created)+'</small><p class="fc-text">'+esc(c.body)+'</p></div>'+(c.own?btn("삭제","data-delete-comment",c.id):"")+'</div>').join("")+(member?.nickname&&!member.suspended?'<form id="fcComment"><textarea name="body" maxlength="2000" required placeholder="댓글"></textarea><button>등록</button></form>':"");
  if($("fcComment"))$("fcComment").onsubmit=act(async e=>{await post("comment",{post_id:id,...form(e.target)});await readPost(id)});
 }
@@ -41,8 +79,8 @@ function composer(){
 }
 if(screen==="board"){
  $("fcTabs").onclick=act(async e=>{const b=e.target.closest("[data-tab]");if(b){category=b.dataset.tab;page=1;reviewCard=0;await loadPosts()}});
- $("fcFind").onclick=act(async()=>{page=1;await loadPosts()});$("fcPrev").onclick=act(async()=>{if(page>1)page--;await loadPosts()});$("fcNext").onclick=act(async()=>{page++;await loadPosts()});
- $("fcPosts").onclick=delegated("[data-post]",async e=>{const b=e.target.closest("[data-post]");if(b){await readPost(Number(b.dataset.post));history.replaceState(null,"","?id="+b.dataset.post);$("fcPost").scrollIntoView({block:"start"})}});
+ $("fcSearchForm").onsubmit=act(async()=>{page=1;await loadPosts()});$("fcPrev").onclick=act(async()=>{if(page>1)page--;await loadPosts()});$("fcNext").onclick=act(async()=>{page++;await loadPosts()});
+ $("fcPosts").onclick=delegated("[data-post]",async e=>{const b=e.target.closest("[data-post]");if(b){await readPost(Number(b.dataset.post),true);history.replaceState(null,"","?id="+b.dataset.post);$("fcPost").scrollIntoView({block:"start"})}});
  $("fcCategory").innerHTML=Object.entries(labels).filter(([k])=>!["all","popular"].includes(k)).map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join("");
  $("fcCategory").onchange=composer;
  $("fcWrite").onclick=()=>{if(category==="popular"||!member?.nickname||member.suspended)return;$("fcCategory").value=category==="all"?"free":category;composer();if(category==="squad"&&query.get("compose")==="1"&&recentSquad())$("fcPostForm").attach.checked=true;if(reviewCard)$("fcPostForm").card_id.value=reviewCard;$("fcComposer").showModal()};
@@ -88,7 +126,7 @@ if(screen==="admin"){
  $("fcAdminTabs").onclick=e=>{const b=e.target.closest("[data-tab]");if(b){adminTab=b.dataset.tab;renderAdmin()}};
  $("fcAdminBody").onclick=act(async e=>{const b=e.target.closest("[data-admin]");if(!b)return;const [type,id,flag]=b.dataset.admin.split(":"),reason=prompt(type==="feedback"?"회원에게 전달할 답변":"처리 사유");if(!reason)return;await post("admin/"+type,{id:type==="member"?id:Number(id),reason,hidden:flag==="1",suspended:flag==="1"});await loadAdmin()});
 }
-(async()=>{try{const j=await get("me");member=j.member;profile();if(screen==="board"){await loadPosts();if(Number(query.get("id"))>0)await readPost(Number(query.get("id")));if(query.get("compose")==="1"&&member?.nickname&&!member.suspended)$("fcWrite").click()}
+(async()=>{try{const j=await get("me");member=j.member;profile();if(screen==="board"){await loadPosts();if(Number(query.get("id"))>0)await readPost(Number(query.get("id")),true);if(query.get("compose")==="1"&&member?.nickname&&!member.suspended)$("fcWrite").click()}
  if(screen==="mypage"&&member?.nickname&&!member.suspended)await loadMine();if(screen==="admin"){if(member?.admin&&member.nickname&&!member.suspended)await loadAdmin();else status("관리자만 접근할 수 있습니다.",true)}
-}catch(e){status(e.message,true);if(screen==="board"){tabs($("fcTabs"),labels,category);$("fcPosts").textContent="회원 서버 연결 전 화면입니다. 실제 게시글은 표시되지 않습니다.";["fcFind","fcPrev","fcNext","fcWrite"].forEach(k=>$(k).disabled=true);$("fcWrite").hidden=category==="popular";$("fcPopularHint").hidden=category!=="popular";$("fcTabs").onclick=e=>{const b=e.target.closest("[data-tab]");if(!b)return;category=b.dataset.tab;tabs($("fcTabs"),labels,category);$("fcWrite").hidden=category==="popular";$("fcPopularHint").hidden=category!=="popular"}}if(screen==="mypage"){ $("fcLogin").hidden=false;$("fcSignIn").disabled=true; $("fcMine").hidden=false;tabs($("fcMineTabs"),mineLabels,mineTab);$("fcMineTabs").querySelectorAll("button").forEach(b=>b.disabled=true);$("fcMineBody").textContent="회원 서버 연결 후 이용 가능합니다."}if(screen==="admin"){$("fcAdmin").hidden=false;tabs($("fcAdminTabs"),adminLabels,adminTab);$("fcAdminTabs").querySelectorAll("button").forEach(b=>b.disabled=true);$("fcAdminBody").textContent="관리자 인증 서버 연결 전 화면입니다. 실제 회원 정보는 표시되지 않습니다."}}})();
+}catch(e){status(e.message,true);if(screen==="board"){["fcFind","fcPrev","fcNext","fcWrite","fcSearch"].forEach(k=>$(k).disabled=true);previewBoard();$("fcTabs").onclick=e=>{const b=e.target.closest("[data-tab]");if(!b)return;category=b.dataset.tab;previewBoard()}}if(screen==="mypage"){ $("fcLogin").hidden=false;$("fcSignIn").disabled=true; $("fcMine").hidden=false;tabs($("fcMineTabs"),mineLabels,mineTab);$("fcMineTabs").querySelectorAll("button").forEach(b=>b.disabled=true);$("fcMineBody").textContent="회원 서버 연결 후 이용 가능합니다."}if(screen==="admin"){$("fcAdmin").hidden=false;tabs($("fcAdminTabs"),adminLabels,adminTab);$("fcAdminTabs").querySelectorAll("button").forEach(b=>b.disabled=true);$("fcAdminBody").textContent="관리자 인증 서버 연결 전 화면입니다. 실제 회원 정보는 표시되지 않습니다."}}})();
 })();

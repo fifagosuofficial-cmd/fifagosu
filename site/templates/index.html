@@ -129,14 +129,16 @@
     <div class="dquick-row"><b>즐겨찾기</b><div id="dFavs" class="dquick-list"><span class="muted">즐겨찾기가 없어요.</span></div></div>
     <div class="dquick-actions"><button type="button" class="ghost" id="dFav" disabled>☆ 즐겨찾기</button><button type="button" class="ghost" id="dMine" disabled>내 구단 등록</button><button type="button" class="ghost" id="dShare" disabled>진단 공유</button><small id="dUpdated"></small></div>
   </div>
-  <div class="board" id="dBoard"></div>
+  <div class="diag-intro">
+    <div class="board" id="dBoard"></div>
+    <section class="dtip" id="dTip" hidden aria-label="피파고수의 한마디"></section>
+  </div>
   <section class="dsum" id="dSum" aria-label="최근 경기 요약"></section>
   <section class="dreport" id="dReport" hidden aria-label="종합 구단 리포트"></section>
-  <section class="dtc" id="dTc" hidden aria-label="팀컬러 상대 승률"></section>
-  <section class="dtip" id="dTip" hidden aria-label="피파고수의 한마디"></section>
   <div class="dsecs" id="dSecs">
-    <section id="dWeakSec"><h2>약점 진단 <small id="dSub"></small></h2><div class="dcards" id="dCards"></div></section>
     <section id="dDetailSec"><h2>상세 분석</h2><div class="tabs" role="tablist" id="dTabs"></div><div class="panel" id="dPanel"></div></section>
+    <section class="dtc" id="dTc" hidden aria-label="팀컬러 상대 승률"></section>
+    <section id="dWeakSec"><h2>약점 진단 <small id="dSub"></small></h2><div class="dcards" id="dCards"></div></section>
   </div>
   <div class="slot" data-slot="diag-1"></div>
   <section><details class="dall"><summary>전체 경기 기록 <small id="dAllN"></small></summary><div id="dMatches"></div></details></section>

@@ -89,3 +89,45 @@ test('style scoring favors cross providers and tall heading finishers',()=>{
  const r=E.solve(cat,{stats:keys},{...opts,budget:5000,grades:[1],style:'cross'});
  assert.ok(r.ok);assert.equal(r.players[10].id,y[0]);
 });
+
+test('all 33 formation presets use exactly 11 distinct pitch slots and supported positions',()=>{
+ assert.equal(Object.keys(E.FORMATIONS).length,33);
+ for(const [id,positions] of Object.entries(E.FORMATIONS)){
+  assert.equal(positions.length,11,id);
+  assert.equal(positions.filter(p=>p==='GK').length,1,id);
+  assert.ok(positions.every(p=>E.CORE[p]),id);
+  assert.deepEqual(E.LINES[id].flat().sort((a,b)=>a-b),Array.from({length:11},(_,i)=>i),id);
+  assert.ok(Math.abs(positions.reduce((n,p)=>n+E.targets({...opts,formation:id,salary:315})[p].pay,0)-315)<1e-8,id);
+ }
+});
+test('every formation can produce a valid lineup using available position cards',()=>{
+ const positions=[...new Set(Object.values(E.FORMATIONS).flat())],cat={};
+ positions.forEach((p,i)=>{cat[p]=Array.from({length:5},(_,j)=>row(1000000+i*20+j+1,50,9,110))});
+ for(const formation of Object.keys(E.FORMATIONS)){
+   const o={...opts,formation,grades:[1]};
+   const r=E.solve(cat,manifest,o);
+   assert.ok(r.ok,formation+': '+r.reason);assert.ok(E.validate(r,o),formation);
+ }
+});
+test('silver, gold and platinum minimums include higher grades, custom range is inclusive',()=>{
+ assert.deepEqual(E.gradeRange(5,13),[5,6,7,8,9,10,11,12,13]);
+ assert.deepEqual(E.gradeRange(8,13),[8,9,10,11,12,13]);
+ assert.deepEqual(E.gradeRange(11,13),[11,12,13]);
+ assert.deepEqual(E.gradeRange(6,9),[6,7,8,9]);
+ assert.deepEqual(E.gradeRange(8,5),[]);
+});
+test('manual search and automatic substitution preserve team, grade, budget, salary and unique players',()=>{
+ const cat=fixture(),r=E.solve(cat,manifest,opts);assert.ok(r.ok);
+ const old=r.players[0],other=r.players[1];
+ const rows=[...cat.GK,row(other.id,1,1,150),row(9000001,1,1,150,[9]),row(9000002,100000,9,150),row(9000003,1,100,150)];
+ const swaps=E.alternatives(rows,manifest,opts,'balanced',r.players,0,'',true);
+ assert.ok(swaps.length);
+ assert.ok(swaps.every(p=>p.pid!==old.pid&&p.pid!==other.pid&&p.teams.includes(7)&&opts.grades.includes(p.grade)));
+ const removed=r.players.slice();removed[0]=null;
+ const found=E.alternatives(rows,manifest,opts,'balanced',removed,0,'P'+old.id,false);
+ assert.ok(found.some(p=>p.id===old.id));
+ assert.ok(found.every(p=>p.price<=opts.budget-(r.price-old.price)&&p.pay<=opts.salary-(r.pay-old.pay)));
+ assert.deepEqual(E.alternatives(rows,manifest,opts,'balanced',removed,0,'no matching player'),[]);
+ const p=swaps[0],players=r.players.slice();players[0]=p;
+ assert.ok(E.validate({...r,players,price:r.price-old.price+p.price,pay:r.pay-old.pay+p.pay},opts));
+});

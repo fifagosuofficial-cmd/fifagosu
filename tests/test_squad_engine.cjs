@@ -131,3 +131,20 @@ test('manual search and automatic substitution preserve team, grade, budget, sal
  const p=swaps[0],players=r.players.slice();players[0]=p;
  assert.ok(E.validate({...r,players,price:r.price-old.price+p.price,pay:r.pay-old.pay+p.pay},opts));
 });
+
+test('replacement popup ranks at least five different players when feasible, not five grades of one player',()=>{
+ const cat=fixture(),o={...opts,budget:5000,salary:200,grades:[1,5]};
+ const r=E.solve(cat,manifest,o);assert.ok(r.ok);
+ const old=r.players[0],taken=r.players[1];
+ const rows=[...Array.from({length:12},(_,i)=>row(7000000+i+100,50+i,9,110+i%3)),row(old.id,1,1,150),row(taken.id,1,1,150),row(9000001,1,1,150,[9])];
+ const rec=E.alternatives(rows,manifest,o,'balanced',r.players,0,'',true);
+ assert.equal(rec.length,10);
+ assert.equal(new Set(rec.map(p=>p.pid)).size,10);
+ assert.ok(rec.every(p=>p.pid!==old.pid&&p.pid!==taken.pid&&p.teams.includes(7)));
+ for(const p of rec){
+  const players=r.players.slice();players[0]=p;
+  assert.ok(E.validate({...r,players,price:r.price-old.price+p.price,pay:r.pay-old.pay+p.pay},o));
+ }
+ const limited=E.alternatives(rows.slice(0,2),manifest,o,'balanced',r.players,0,'',true);
+ assert.equal(limited.length,2);
+});

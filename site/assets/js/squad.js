@@ -2,17 +2,67 @@
 "use strict";
 const $=id=>document.getElementById(id), esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const ver=new URL(document.currentScript.src).searchParams.get("v")||"";
-const E=window.FGSquad,FORM=E.FORMATIONS,LINES=E.LINES;
+const E=window.FGSquad,B=window.FGSquadBonus,FORM=E.FORMATIONS,LINES=E.LINES;
 $("sqFormation").innerHTML=Object.entries(E.LABELS).map(([k,v])=>'<option value="'+k+'">'+v+(k==="4231"?" · LM/RM":k==="4231-2"?" · CAM 3명":"")+'</option>').join("");
 $("sqFormation").value="4231";$("sqFormationCount").textContent=Object.keys(FORM).length+"가지 포메이션";
 const MODES={performance:"성능 최우선",balanced:"밸런스형",value:"가성비형"};
 const HINT={balanced:"포지션별 필수 능력치와 BP·급여 균형.",speed:"윙어·ST는 속력·가속력·침투, 풀백은 속력·스태미너.",pass:"중원은 패스·시야·볼 컨트롤·침착성, 공격진은 연계와 약발.",longshot:"ST·CAM·CM·윙어의 중거리 슛·슛 파워·커브·관련 특성.",cross:"윙어·풀백의 크로스·커브, ST의 키·헤더·점프·위치 선정.",press:"전방·중원의 스태미너·적극성·가속력과 수비 전환.",counter:"전방의 속력·침투, 중원의 긴 패스, 수비진의 가로채기.",defense:"CB·CDM의 수비 능력·피지컬, 풀백의 기동력, GK 반응 속도."};
 const hint=()=>{$("sqStyleHint").textContent=HINT[$("sqStyle").value]||""};
-const STATS={sprintspeed:"속력",acceleration:"가속력",finishing:"골 결정력",shotpower:"슛 파워",longshots:"중거리 슛",positioning:"위치 선정",shortpassing:"짧은 패스",vision:"시야",crossing:"크로스",longpassing:"긴 패스",dribbling:"드리블",ballcontrol:"볼 컨트롤",agility:"민첩성",balance:"밸런스",reactions:"반응 속도",marking:"대인 수비",standingtackle:"태클",interceptions:"가로채기",heading:"헤더",strength:"몸싸움",stamina:"스태미너",gkdiving:"GK 다이빙",gkhandling:"GK 핸들링",gkreflexes:"GK 반응속도",gkpositioning:"GK 위치 선정",jumping:"점프",curve:"커브",aggression:"적극성",composure:"침착성",slidingtackle:"슬라이딩 태클",gkkicking:"GK 킥"};
+const STATS={sprintspeed:"속력",acceleration:"가속력",finishing:"골 결정력",shotpower:"슛 파워",longshots:"중거리 슛",positioning:"위치 선정",shortpassing:"짧은 패스",vision:"시야",crossing:"크로스",longpassing:"긴 패스",dribbling:"드리블",ballcontrol:"볼 컨트롤",agility:"민첩성",balance:"밸런스",reactions:"반응 속도",marking:"대인 수비",standingtackle:"태클",interceptions:"가로채기",heading:"헤더",strength:"몸싸움",stamina:"스태미너",gkdiving:"GK 다이빙",gkhandling:"GK 핸들링",gkreflexes:"GK 반응속도",gkpositioning:"GK 위치 선정",jumping:"점프",curve:"커브",aggression:"적극성",composure:"침착성",slidingtackle:"슬라이딩 태클",gkkicking:"GK 킥",volleys:"발리슛",penalties:"페널티 킥",freekick:"프리킥"};
 const img="https://fco.dn.nexoncdn.co.kr/live/externalAssets/common/";
 const STORE="fg-squad-v1", RECENT="fg-squad-recent-v1";
 let worker=null,requestId=0,task=null,manifest=null,results={},active="balanced",locks={},currentOpts=null,pickerSlot=null,pickerCandidates=[],pickerSeq=0,slotBusy=false;
 const catalogCache=new Map();
+let bonusRules=null,bonusState="loading",relationBusy=false;
+const relationCache=Object.create(null),relationFailed=new Set();
+const flags=()=>({adapt:$("sqAdapt").checked,team:$("sqTC").checked});
+function refreshBonusView(){if(!task&&!slotBusy&&!$("sqOutput").hidden&&results[active]?.ok)render()}
+async function loadRelations(){
+ if(relationBusy||!flags().team||!bonusRules)return;
+ const r=results[active];if(!r?.ok)return;
+ const ids=[...new Set(r.players.filter(Boolean).map(p=>p.id))].filter(id=>!Object.hasOwn(relationCache,id)&&!relationFailed.has(id));
+ if(!ids.length)return;
+ relationBusy=true;
+ $("sqBonusNote").textContent+=" · 공식 자격 조회 중";
+ const work=async()=>{while(ids.length){if(!flags().team)return;const id=ids.shift();try{
+   const response=await fetch("/api/player-teamcolors?spid="+encodeURIComponent(id),{signal:AbortSignal.timeout(20000)});
+   if(!response.ok)throw Error("조회 실패");
+   const j=await response.json();if(+j.spid!==id||!Array.isArray(j.items))throw Error("응답 형식 오류");
+   relationCache[id]=j.items.filter(x=>Number.isInteger(+x.id)&&+x.id>0);
+ }catch(e){relationFailed.add(id)}}};
+ try{await Promise.all(Array.from({length:Math.min(3,ids.length)},work))}finally{relationBusy=false;refreshBonusView()}
+}
+const bonusLabel=k=>k==="all"?"전체 능력치":STATS[k]||k;
+const effectsText=stats=>Object.entries(stats||{}).map(([k,v])=>bonusLabel(k)+" +"+v).join(" · ");
+function showBonuses(r,projection){
+ const f=flags(),names={club:"소속",feature:"관계·특성",grade:"강화"};
+ $("sqColorList").innerHTML=(f.adapt&&projection.adapt?'<div class="sq-color"><b>적응도 5단계</b><span>전체 능력치 +'+projection.adapt+'</span></div>':"")+
+ (f.team?projection.applied.map(t=>'<div class="sq-color"><small>'+names[t.kind]+'</small><b>'+esc(t.name)+' · '+t.level+'단계</b><span>'+t.count+'명 충족 / '+t.need+'명 필요 · '+t.applied+'명 적용</span><span>'+esc(effectsText(t.stats))+'</span></div>').join(""):"")||'<span class="sq-note">표시할 보너스 없음</span>';
+ const notes=[];
+ if(bonusState!=="ready")notes.push(bonusState==="loading"?"보너스 규칙 조회 중":"보너스 규칙 데이터 조회 실패");
+ if(f.adapt&&!projection.adapt)notes.push("적응도 공식 규칙 미확인");
+ if(f.team){
+   notes.push("공식 수집 단계만 계산 · 소속 후보 및 선발 인원 기준 · 게임 내 해금 여부 별도");
+   notes.push("관계·특성 자격 확인 "+projection.checked+"/"+projection.total+"명"+(relationBusy?" · 조회 중":""));
+   if(projection.checked<projection.total)notes.push("미확인 선수의 관계·특성 효과는 제외");
+ }
+ notes.push("OVR은 전체 능력치 증가분만 합산; 개별 보너스는 상세 스탯에 반영");
+ $("sqBonusNote").textContent=notes.join(" / ");
+ $("sqBonusRetry").hidden=!f.team||!r.players.some(p=>p&&relationFailed.has(p.id));
+}
+function showStatMatrix(r,projection){
+ const ps=r.players,keys=manifest.stats||[];
+ $("sqStatMatrix").innerHTML="<thead><tr><th>능력치</th>"+ps.map(p=>"<th>"+(p?esc(p.pos+" "+p.name)+"<small>"+esc(p.season)+" "+p.grade+"강</small>":"—")+"</th>").join("")+"</tr></thead><tbody>"+keys.map((k,j)=>"<tr><th>"+esc(STATS[k]||k)+"</th>"+ps.map((p,i)=>{
+   if(!p)return "<td>—</td>";
+   const v=B.statValue(p.stats?.[j],k,E.BONUS[p.grade],projection.per[i]),base=B.statValue(p.stats?.[j],k,E.BONUS[p.grade],null);
+   return v==null?"<td>—</td>":"<td>"+v+(v>base?'<small class="sq-stat-plus">+'+(v-base)+'</small>':"")+"</td>";
+ }).join("")+"</tr>").join("")+"</tbody>";
+}
+$("sqAdapt").addEventListener("change",refreshBonusView);
+$("sqTC").addEventListener("change",refreshBonusView);
+$("sqBonusRetry").addEventListener("click",()=>{for(const p of results[active]?.players||[])if(p)relationFailed.delete(p.id);refreshBonusView()});
+fetch("/assets/squad-data/bonuses.json?v="+encodeURIComponent(ver)).then(r=>{if(!r.ok)throw Error("규칙 조회 실패");return r.json()}).then(j=>{if(!Array.isArray(j.teams))throw Error("규칙 형식 오류");bonusRules=j;bonusState="ready";refreshBonusView()}).catch(()=>{bonusState="failed";refreshBonusView()});
+
 const status=(s,bad=false)=>{$("sqStatus").textContent=s;$("sqStatus").classList.toggle("sq-error",bad)};
 const money=n=>{const p=[];for(const [u,k] of [[1e12,"조"],[1e8,"억"],[1e4,"만"]]){const v=Math.floor(n/u);if(v)p.push(v.toLocaleString("ko-KR")+k);n%=u}if(n||!p.length)p.push(n.toLocaleString("ko-KR"));return p.slice(0,2).join(" ")+" BP"};
 function fields(){
@@ -55,27 +105,31 @@ function render(){
  $("sqOutput").hidden=false;
  $("sqModes").innerHTML=Object.entries(results).map(([k,r])=>'<button type="button" data-mode="'+k+'" aria-pressed="'+(active===k)+'">'+MODES[k]+(r.ok?"":" · 조합 없음")+"</button>").join("");
  const r=results[active];
- if(!r?.ok){$("sqSummary").textContent=r?.reason||"추천 결과 없음";$("sqPitch").innerHTML="";$("sqRows").innerHTML="";$("sqSave").disabled=$("sqShare").disabled=true;return}
+ if(!r?.ok){$("sqSummary").textContent=r?.reason||"추천 결과 없음";$("sqPitch").innerHTML="";$("sqRows").innerHTML="";$("sqStatMatrix").innerHTML="";$("sqColorList").innerHTML="";$("sqBonusNote").textContent="";$("sqSave").disabled=$("sqShare").disabled=true;return}
  $("sqSave").disabled=$("sqShare").disabled=false;
- const o=currentOpts, filled=r.players.filter(Boolean),complete=filled.length===11,avg=filled.length?filled.reduce((s,p)=>s+p.ovr,0)/filled.length:0;
+ const o=currentOpts, filled=r.players.filter(Boolean),complete=filled.length===11;
+ const projection=B.project(r.players,bonusRules,relationCache,o.team,flags());
+ const avg=filled.length?projection.per.filter(Boolean).reduce((s,p)=>s+p.ovr,0)/filled.length:0;
+ showBonuses(r,projection);showStatMatrix(r,projection);
  $("sqSave").disabled=$("sqShare").disabled=!complete;
- $("sqSummary").innerHTML="<div><span>선수 구매가 합계</span><b>"+money(r.price)+"</b><small>잔여 "+money(o.budget-r.price)+"</small></div><div><span>급여 합계</span><b>"+r.pay+" / "+o.salary+"</b><small>"+(r.pay===o.salary?"급여 상한 달성":"잔여 "+(o.salary-r.pay))+"</small></div><div><span>평균 포지션 OVR</span><b>"+(filled.length?avg.toFixed(1):"—")+"</b><small>"+filled.length+" / 11명 · 보너스 제외</small></div>";
+ $("sqSummary").innerHTML="<div><span>선수 구매가 합계</span><b>"+money(r.price)+"</b><small>잔여 "+money(o.budget-r.price)+"</small></div><div><span>급여 합계</span><b>"+r.pay+" / "+o.salary+"</b><small>"+(r.pay===o.salary?"급여 상한 달성":"잔여 "+(o.salary-r.pay))+"</small></div><div><span>평균 포지션 OVR</span><b>"+(filled.length?avg.toFixed(1):"—")+"</b><small>"+filled.length+" / 11명 · 선택 보너스 반영</small></div>";
  const swapIcon='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h15l-4-4m4 4-4 4M20 17H5l4-4m-4 4 4 4"/></svg>';
  const trashIcon='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/></svg>';
  $("sqPitch").innerHTML=LINES[o.formation].map(line=>'<div class="sq-line">'+line.map(i=>{
    const p=r.players[i],pos=FORM[o.formation][i];
    if(!p)return '<div class="sq-player sq-empty"><small class="sq-pos">'+pos+'</small><button type="button" data-add="'+i+'" aria-label="'+pos+' 선수 검색">＋<small>선수 검색</small></button></div>';
    const locked=locks[i]?.id===p.id&&locks[i]?.grade===p.grade;
-   return '<div class="sq-player"><div class="sq-card-top"><small class="sq-pos">'+p.pos+' · '+p.ovr+'</small><span class="sq-pay" title="급여">'+p.pay+'</span></div><div class="sq-face"><img alt="" loading="lazy" src="'+img+'playersAction/p'+p.id+'.png" data-fallback="'+img+'players/p'+p.pid+'.png"><div class="sq-card-tools"><button type="button" data-swap="'+i+'" title="대체 선수로 교체" aria-label="'+esc(p.name)+' 교체"'+(locked?' disabled':'')+'>'+swapIcon+'</button><button type="button" data-remove="'+i+'" title="선수 삭제" aria-label="'+esc(p.name)+' 삭제">'+trashIcon+'</button></div></div><b>'+esc(p.name)+'</b><small>'+esc(p.season)+' '+p.grade+'강</small><small>'+money(p.price)+'</small></div>';
+   return '<div class="sq-player"><div class="sq-card-top"><small class="sq-pos">'+p.pos+' · '+projection.per[i].ovr+'</small><span class="sq-pay" title="급여">'+p.pay+'</span></div><div class="sq-face"><img alt="" loading="lazy" src="'+img+'playersAction/p'+p.id+'.png" data-fallback="'+img+'players/p'+p.pid+'.png"><div class="sq-card-tools"><button type="button" data-swap="'+i+'" title="대체 선수로 교체" aria-label="'+esc(p.name)+' 교체"'+(locked?' disabled':'')+'>'+swapIcon+'</button><button type="button" data-remove="'+i+'" title="선수 삭제" aria-label="'+esc(p.name)+' 삭제">'+trashIcon+'</button></div></div><b>'+esc(p.name)+'</b><small>'+esc(p.season)+' '+p.grade+'강</small><small>'+money(p.price)+'</small></div>';
  }).join("")+"</div>").join("");
  $("sqPitch").querySelectorAll("img").forEach(el=>el.addEventListener("error",()=>{if(el.dataset.fallback){el.src=el.dataset.fallback;delete el.dataset.fallback}else el.hidden=true}));
  $("sqRows").innerHTML=r.players.map((p,i)=>{
    if(!p)return '<tr><td><b>'+FORM[o.formation][i]+'</b></td><td colspan="8">선수 미선택</td><td><button type="button" data-add="'+i+'">선수 검색</button></td></tr>';
    const isLocked=locks[i]?.id===p.id&&locks[i]?.grade===p.grade;
-   const core=p.core.map(([k,v])=>esc(STATS[k]||k)+" "+v).join(" · ");
-   return "<tr><td><b>"+p.pos+"</b></td><td><b>"+esc(p.name)+"</b><small>"+esc(p.season)+"</small></td><td>"+p.grade+"강</td><td>"+p.ovr+"</td><td>"+p.pay+"</td><td>"+p.price.toLocaleString("ko-KR")+"<small>"+esc(p.at?.slice(0,10)||"수집일 미상")+"</small></td><td>"+(p.weak??"—")+"<small>"+(p.height?p.height+"cm":"키 미수집")+"</small></td><td>"+(p.games==null?"미수집":p.games.toLocaleString("ko-KR"))+"</td><td>"+(core||"세부 능력치 미수집 · 포지션 OVR 기준")+(p.matched?.length?"<small>스타일 특성: "+esc(p.matched.join(" · "))+"</small>":"")+(r.targets?.[p.pos]?"<small>목표 급여 "+r.targets[p.pos].pay.toFixed(1)+" · 목표 BP "+money(Math.floor(r.targets[p.pos].budget))+"</small>":"")+"</td><td><button type=\"button\" data-lock=\""+i+"\" aria-pressed=\""+isLocked+"\">"+(isLocked?"고정 해제":"고정")+"</button><button type=\"button\" data-swap=\""+i+"\""+(isLocked?" disabled":"")+">교체</button><button type=\"button\" data-remove=\""+i+"\">삭제</button></td></tr>"
+   const b=projection.per[i],core=p.core.map(([k,v])=>esc(STATS[k]||k)+" "+(v+b.adapt+(b.stats.all||0)+(b.stats[k]||0))).join(" · ");
+   return "<tr><td><b>"+p.pos+"</b></td><td><b>"+esc(p.name)+"</b><small>"+esc(p.season)+"</small></td><td>"+p.grade+"강</td><td>"+b.ovr+(b.ovr>p.ovr?'<small class="sq-stat-plus">+'+(b.ovr-p.ovr)+'</small>':"")+"</td><td>"+p.pay+"</td><td>"+p.price.toLocaleString("ko-KR")+"<small>"+esc(p.at?.slice(0,10)||"수집일 미상")+"</small></td><td>"+(p.weak??"—")+"<small>"+(p.height?p.height+"cm":"키 미수집")+"</small></td><td>"+(p.games==null?"미수집":p.games.toLocaleString("ko-KR"))+"</td><td>"+(core||"세부 능력치 미수집 · 포지션 OVR 기준")+(b.colors.length?"<small>팀컬러: "+esc(b.colors.map(t=>t.name).join(" · "))+"</small>":"")+(p.matched?.length?"<small>스타일 특성: "+esc(p.matched.join(" · "))+"</small>":"")+(r.targets?.[p.pos]?"<small>목표 급여 "+r.targets[p.pos].pay.toFixed(1)+" · 목표 BP "+money(Math.floor(r.targets[p.pos].budget))+"</small>":"")+"</td><td><button type=\"button\" data-lock=\""+i+"\" aria-pressed=\""+isLocked+"\">"+(isLocked?"고정 해제":"고정")+"</button><button type=\"button\" data-swap=\""+i+"\""+(isLocked?" disabled":"")+">교체</button><button type=\"button\" data-remove=\""+i+"\">삭제</button></td></tr>"
  }).join("");
  lockView();
+ if(flags().team)void loadRelations();
 }
 function saved(){
  const r=results[active];if(!r?.ok||r.players.some(p=>!p))return null;

@@ -231,3 +231,31 @@ def test_reco_groups_traits_and_budget(tmp_path):
     assert 0 < len(ovrs) < 400
     assert sorted(ovrs, reverse=True) == sorted((60 + i % 50 for i in range(400)), reverse=True)[:len(ovrs)]   # 낮은 OVR부터 빠짐
     assert 100000001 in {x[0] for x in cb["items"]}         # 다른 가격대 카드는 남음
+
+
+def test_opponent_teamcolors_season_and_unknown(tmp_path):
+    d = tmp_path
+    derive.save(d / "teamcolor" / "teamcolors.json", {"items": [
+        {"name": "Old", "type": "club", "clubId": 1},
+        {"name": "New", "type": "club", "clubId": 2, "aliases": ["New FC"]},
+        {"name": "Nation", "type": "nation", "nationId": 3},
+    ]})
+    derive.save(d / "meta" / "seasonid.json", [
+        {"seasonId": 100, "className": "25 UCL"},
+        {"seasonId": 101, "className": "ICON"},
+    ])
+    detail = {"nationId": 3, "clubs": [["2010 ~ 2015", "Old"], ["2024 ~", "New FC"]]}
+    for card, row in [(100000001, detail), (101000002, detail),
+                      (101000003, dict(detail, teamId=1))]:
+        derive.save(d / "detail" / f"{card % 200}.json", {str(card): row})
+    result = derive.step_opponent_teamcolors(d, "2026-11-24")
+    assert result["opponent_teamcolor_cards"] == 3
+    out = json.loads((d / "diag" / "opponent-teamcolors.json").read_text("utf-8"))
+    names = lambda card: {out["names"][i] for i in out["cards"][str(card)]}
+    assert names(100000001) == {"New", "Nation"}
+    assert names(101000002) == {"Nation"}
+    assert names(101000003) == {"Old", "Nation"}
+
+
+def test_opponent_teamcolors_missing_metadata(tmp_path):
+    assert derive.step_opponent_teamcolors(tmp_path, "2026-11-24")["opponent_teamcolors"] == "waiting-teamcolors"

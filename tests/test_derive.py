@@ -144,6 +144,49 @@ def test_market_summary_movers_popular_and_new(tmp_path):
             assert len(pool) == 3 and len(pool[0][3]) == 13
 
 
+def test_diag_market_compact_trends_and_actual_periods(tmp_path):
+    d = tmp_path
+    derive.save(d / "market" / "all_card_history_dates.json", {
+        "basis": "full-list-snapshots",
+        "dates": ["2026-10-20", "2026-11-16", "2026-11-22", "2026-11-23"],
+        "counts": [2, 2, 2, 2],
+    })
+    derive.save(d / "market" / "all_card_history" / "1.json", {
+        "100000001": {
+            "1": [["2026-10-20", 100], ["2026-11-16", 110],
+                  ["2026-11-22", 120], ["2026-11-23", 150]],
+            "5": [["2026-11-22", 1000], ["2026-11-23", 1000]],
+            "8": [["2026-11-23", 8000]],
+        },
+        # 최신 전체 스냅샷의 가격이 없으면 과거 가격을 현재가로 재사용하지 않아요.
+        "100000201": {"1": [["2026-11-22", 999]]},
+    })
+    result = derive.step_diag_market(d, "2026-11-24")
+    assert result == {"diag_market": "ok", "diag_market_cards": 1,
+                      "diag_market_date": "2026-11-23"}
+    manifest = json.loads((d / "diag" / "market.json").read_text("utf-8"))
+    assert manifest["requestedDays"] == [1, 7, 30]
+    assert manifest["grades"] == [1, 5, 8]
+    assert manifest["historyFrom"] == "2026-10-20" and manifest["historyTo"] == "2026-11-23"
+    cards = json.loads((d / "diag" / "market-1.json").read_text("utf-8"))["cards"]
+    one, five, eight = cards["100000001"]
+    assert one == [150, 25.0, 36.4, 50.0, 1, 7, 34]
+    assert five == [1000, 0.0, None, None, 1, None, None]
+    assert eight == [8000, None, None, None, None, None, None]
+    assert "100000201" not in cards
+
+
+def test_diag_market_waits_for_full_history_and_skips_same_date(tmp_path):
+    assert derive.step_diag_market(tmp_path, "2026-11-24")["diag_market"] == "waiting-full-scan"
+    derive.save(tmp_path / "market" / "all_card_history_dates.json", {
+        "basis": "full-list-snapshots", "dates": ["2026-11-23"], "counts": [1]})
+    derive.save(tmp_path / "market" / "all_card_history" / "1.json", {
+        "100000001": {"1": [["2026-11-23", 100]]}})
+    assert derive.step_diag_market(tmp_path, "2026-11-24")["diag_market"] == "ok"
+    again = derive.step_diag_market(tmp_path, "2026-11-24")
+    assert again["diag_market"] == "skip" and again["diag_market_cards"] == 1
+
+
 def test_pcode_roundtrip():
     assert derive.pcode(124_000_000) == 6124 and derive.pdecode(6124) == 124_000_000
     assert derive.pcode(1290) == 1129 and derive.pdecode(1129) == 1290

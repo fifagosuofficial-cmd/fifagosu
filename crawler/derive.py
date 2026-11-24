@@ -12,6 +12,8 @@
   hist/{spid%200}.json                 {spid: [[1강…], [5강…], [8강…], [11강…], [13강…]]} 날짜 순서와 같은 위치
   rules/*.json                         crawler/rules/ 손 관리 규칙표 사본
   market/summary.json                  홈 '오늘의 시장': 강화별 급등·급락·인기 TOP, 시장 지수, 신규 카드
+  diag/market.json, market-{0..199}.json 전적 진단: 카드별 현재 시세와 1·7·30일 등락 조회
+  diag/opponent-teamcolors.json       전적 진단: 상대 카드 ID별 시즌 소속 클럽·국가 팀컬러
   reco/{GK,CB,FB,DM,CM,WM,AM,W,ST}.json 전적 진단 '대체 추천' 후보(포지션 묶음별, 그룹당 약 300KB 이하)
   run.json                             오늘 실행 요약
 
@@ -216,6 +218,7 @@ MARKET_RANKER_CAP = 100              # 챔피언스 이상 공식경기 사용�
 MARKET_INDEX_MIN = 30                # 표본이 이보다 적으면 시장지수는 숨겨요
 MARKET_WEEK_PRICE_MIN = 30_000      # 저가 카드의 시세 왜곡을 줄이는 비교 하한
 MARKET_COMPARE_DAYS = 1             # 최신 기록일과 바로 이전 기록일을 비교
+DIAG_TREND_DAYS = [1, 7, 30]        # 전적 진단 자산 표에서 보여 줄 비교 기간
 
 
 def _item(k, r, v, pv):
@@ -282,6 +285,106 @@ def step_market_history(data, date):
     meta["counts"] = counts[-KEEP_DAYS:]
     save(meta_path, meta)
     return {"market_history_days": len(meta["dates"]), "market_history_cards": len(today)}
+
+
+def step_diag_market(data, date):
+    """전체 목록 이력만 읽어 전적 진단용 카드별 시세 등락 파일을 만들어요.
+
+    ``diag/market-{spid % 200}.json``의 강화별 행은
+    ``[현재가, 1일%, 7일%, 30일%, 실제1일, 실제7일, 실제30일]`` 순서예요.
+    요청 날짜의 스냅샷이 없으면 그 이전의 가장 가까운 전체 스냅샷을 쓰고
+    실제 비교 일수를 함께 기록합니다. 가격이나 비교점이 없으면 0이 아니라
+    ``null``로 저장해요. 기존 이력만 읽으므로 외부 요청은 늘지 않습니다.
+    """
+    data = Path(data)
+    meta = load(data / "market" / "all_card_history_dates.json", {})
+    if meta.get("basis") != "full-list-snapshots":
+        return {"diag_market": "waiting-full-scan", "diag_market_cards": 0}
+    dates = sorted({x for x in (meta.get("dates") or []) if x})
+    if not dates:
+        return {"diag_market": "waiting-full-scan", "diag_market_cards": 0}
+    as_of = dates[-1]
+    as_of_date = dt.date.fromisoformat(as_of)
+    out_dir = data / "diag"
+    manifest_path = out_dir / "market.json"
+    old_manifest = load(manifest_path, {})
+    if (old_manifest.get("date") == as_of
+            and old_manifest.get("requestedDays") == DIAG_TREND_DAYS
+            and old_manifest.get("grades") == MARKET_GRADES):
+        return {"diag_market": "skip", "diag_market_cards": old_manifest.get("cards", 0),
+                "diag_market_date": as_of}
+
+    total = 0
+    written = set()
+    for shard_no in range(SHARDS):
+        source = load(data / "market" / "all_card_history" / f"{shard_no}.json", {})
+        cards = {}
+        for card_id, grade_rows in source.items():
+            grade_out = []
+            has_row = False
+            for grade in MARKET_GRADES:
+                prices = {}
+                for point in (grade_rows or {}).get(str(grade), []):
+                    if not isinstance(point, list) or len(point) < 2 or not point[0] or point[1] is None:
+                        continue
+                    try:
+                        day = dt.date.fromisoformat(point[0])
+                        value = int(point[1])
+                    except (TypeError, ValueError):
+                        continue
+                    if value > 0 and day <= as_of_date:
+                        prices[day] = value
+                current = prices.get(as_of_date)
+                if not current:
+                    grade_out.append(None)
+                    continue
+                changes, actual_days = [], []
+                price_dates = sorted(prices)
+                for requested in DIAG_TREND_DAYS:
+                    target = as_of_date - dt.timedelta(days=requested)
+                    prior = [day for day in price_dates if day <= target]
+                    if not prior:
+                        changes.append(None)
+                        actual_days.append(None)
+                        continue
+                    start = prior[-1]
+                    previous = prices[start]
+                    changes.append(round((current - previous) / previous * 100, 1) if previous else None)
+                    actual_days.append((as_of_date - start).days)
+                grade_out.append([current, *changes, *actual_days])
+                has_row = True
+            if has_row:
+                cards[str(card_id)] = grade_out
+        if cards:
+            save(out_dir / f"market-{shard_no}.json", {"date": as_of, "cards": cards})
+            written.add(shard_no)
+            total += len(cards)
+
+    # 예전 산출물에만 남은 샤드는 현재 카드로 오인되지 않게 비워 둬요.
+    if out_dir.exists():
+        for path in out_dir.glob("market-*.json"):
+            try:
+                shard_no = int(path.stem.split("-")[-1])
+            except ValueError:
+                continue
+            if shard_no not in written:
+                save(path, {"date": as_of, "cards": {}})
+
+    manifest = {
+        "date": as_of,
+        "basis": "full-list-snapshots",
+        "requestedDays": DIAG_TREND_DAYS,
+        "grades": MARKET_GRADES,
+        "historyDays": len(dates),
+        "historyFrom": dates[0],
+        "historyTo": as_of,
+        "cards": total,
+        "shards": SHARDS,
+        "schema": "row=[price,pct1,pct7,pct30,actualDays1,actualDays7,actualDays30]",
+    }
+    save(manifest_path, manifest)
+    log(f"전적 진단 시세 조회: {as_of} · {total}장 · {len(dates)}개 전체 스냅샷")
+    return {"diag_market": "ok", "diag_market_cards": total, "diag_market_date": as_of}
 
 
 def step_market(data, date):
@@ -568,6 +671,124 @@ def reco_teamcolor_index(data):
     return [x.get("name") for x in tcs], of
 
 
+def _season_years(name):
+    """카드 시즌명에서 실제 연도만 보수적으로 추출해요."""
+    text = str(name or "").strip()
+    to_year = lambda value: int(value) + (2000 if int(value) < 100 else 0)
+    ranged = re.search(r"(?<!\d)(20\d{2}|\d{2})\s*[-~/]\s*(20\d{2}|\d{2})(?!\d)", text)
+    if ranged:
+        start, end = to_year(ranged.group(1)), to_year(ranged.group(2))
+        return list(range(min(start, end), max(start, end) + 1))
+    single = re.match(r"^\s*(20\d{2}|\d{2})(?=\D|$)", text)
+    return [to_year(single.group(1))] if single else []
+
+
+def _club_period_contains(period, season_years):
+    """`2015 ~ 2025`, `2025 ~` 형태의 경력에 카드 시즌 연도가 포함되는지 확인해요."""
+    years = [int(x) for x in re.findall(r"(?<!\d)(?:19|20)\d{2}(?!\d)", str(period or ""))]
+    if not years or not season_years:
+        return False
+    start = years[0]
+    end = years[1] if len(years) > 1 else (9999 if "~" in str(period) else start)
+    return any(start <= year <= end for year in season_years)
+
+
+def step_opponent_teamcolors(data, date):
+    """상대 선수 11명의 팀컬러를 브라우저가 한 번에 집계할 compact 매핑을 만들어요.
+
+    클럽은 상세 ``teamId``와 공식 팀컬러 ``clubId``가 정확히 같을 때 우선
+    사용합니다. 정확 ID가 없을 때만 카드 시즌 연도를 판별하고, 그 연도가 선수
+    경력 기간에 포함되는 클럽 이름을 공식 팀컬러 이름/별칭과 맞춥니다. 시즌을
+    판별할 수 없으면 과거 전체 경력을 임의 적용하지 않고 국가만 남깁니다.
+    """
+    data = Path(data)
+    raw = load(data / "teamcolor" / "teamcolors.json", {})
+    items = raw if isinstance(raw, list) else (raw.get("items") or raw.get("teamcolors") or [])
+    tcs = [x for x in items if x.get("name") and str(x.get("type")) in ("club", "nation")]
+    if not tcs:
+        return {"opponent_teamcolors": "waiting-teamcolors", "opponent_teamcolor_cards": 0}
+
+    names = []
+    name_index = {}
+    def name_ix(value):
+        if value not in name_index:
+            name_index[value] = len(names)
+            names.append(value)
+        return name_index[value]
+
+    by_club_id, by_nation_id, club_by_name, nation_by_name = {}, {}, {}, {}
+    for tc in tcs:
+        ix = name_ix(str(tc["name"]))
+        kind = str(tc.get("type"))
+        target = club_by_name if kind == "club" else nation_by_name
+        for value in [tc.get("name"), *(tc.get("aliases") or [])]:
+            if value:
+                target.setdefault(_tnorm(value), set()).add(ix)
+        id_key = "clubId" if kind == "club" else "nationId"
+        try:
+            ident = int(tc.get(id_key) or 0)
+        except (TypeError, ValueError):
+            ident = 0
+        if ident:
+            (by_club_id if kind == "club" else by_nation_id).setdefault(ident, set()).add(ix)
+
+    season_rows = load(data / "meta" / "seasonid.json", [])
+    season_names = {int(row["seasonId"]): row.get("className") or ""
+                    for row in season_rows if row.get("seasonId") is not None}
+    cards = {}
+    stats = {"detail": 0, "mapped": 0, "clubExact": 0, "clubSeason": 0,
+             "seasonUnknown": 0, "nationOnly": 0}
+    for shard_no in range(SHARDS):
+        for card_id, detail in load(data / "detail" / f"{shard_no}.json", {}).items():
+            if not isinstance(detail, dict) or not detail:
+                continue
+            stats["detail"] += 1
+            mapped = set()
+            try:
+                nation_id = int(detail.get("nationId") or 0)
+            except (TypeError, ValueError):
+                nation_id = 0
+            mapped |= by_nation_id.get(nation_id, set())
+            nation = str(detail.get("nation") or "").split(",")[0].strip()
+            if nation:
+                mapped |= nation_by_name.get(_tnorm(nation), set())
+
+            try:
+                team_id = int(detail.get("teamId") or 0)
+            except (TypeError, ValueError):
+                team_id = 0
+            clubs = set(by_club_id.get(team_id, set()))
+            if clubs:
+                stats["clubExact"] += 1
+            else:
+                try:
+                    season_id = int(card_id) // 1_000_000
+                except (TypeError, ValueError):
+                    season_id = 0
+                years = _season_years(season_names.get(season_id, ""))
+                if not years:
+                    stats["seasonUnknown"] += 1
+                else:
+                    for club in detail.get("clubs") or []:
+                        if (isinstance(club, list) and len(club) > 1
+                                and _club_period_contains(club[0], years)):
+                            clubs |= club_by_name.get(_tnorm(club[1]), set())
+                    if clubs:
+                        stats["clubSeason"] += 1
+            mapped |= clubs
+            if mapped:
+                cards[str(card_id)] = sorted(mapped)
+                stats["mapped"] += 1
+                if not clubs:
+                    stats["nationOnly"] += 1
+
+    out = {"date": date, "basis": "detail-teamId-or-season-clubs+nation",
+           "names": names, "cards": cards, "stats": stats}
+    save(data / "diag" / "opponent-teamcolors.json", out)
+    log(f"상대 팀컬러 매핑: 상세 {stats['detail']}장 · 매핑 {stats['mapped']}장 · 이름 {len(names)}개")
+    return {"opponent_teamcolors": "ok", "opponent_teamcolor_cards": stats["mapped"]}
+
+
 def pcode(v):
     """시세를 유효숫자 3자리 정수 코드로: 지수×1000 + 가수 (124,000,000 → 6124, 1,290 → 1129). 0은 0.
     화면에서 (c % 1000) × 10^(c // 1000) 으로 되돌려요."""
@@ -717,6 +938,11 @@ def run(data=DATA, date=None, meta_get=None, no_meta=False, client=None):
     except Exception as e:
         log("All-card market history save failed:", e.__class__.__name__, str(e)[:180])
         summary["market_history"] = "error"
+    try:
+        summary.update(step_diag_market(data, date))
+    except Exception as e:  # 진단용 조회 파일 실패가 기존 시장 데이터 저장을 막지 않게
+        log("전적 진단 시세 조회 생성 실패:", e.__class__.__name__, str(e)[:180])
+        summary["diag_market"] = "error"
     if summary.get("market_history") == "waiting-full-scan":
         summary["market"] = "waiting-full-scan"
     else:
@@ -732,6 +958,11 @@ def run(data=DATA, date=None, meta_get=None, no_meta=False, client=None):
         summary["reco"] = "error"
     summary.update(step_rules(data))
     summary.update(step_teamcolors(data, client))
+    try:
+        summary.update(step_opponent_teamcolors(data, date))
+    except Exception as e:  # 상대 팀컬러 파생 실패가 기존 수집·배포를 막지 않게
+        log("상대 팀컬러 매핑 생성 실패:", e.__class__.__name__, str(e)[:180])
+        summary["opponent_teamcolors"] = "error"
     if client is not None:
         try:
             import verify_adaptation

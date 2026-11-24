@@ -390,6 +390,7 @@ def main(argv=None):
     for fname, tpl, path, title, desc, in_map in PAGES:
         render(fname, tpl, path, title, desc, in_map, root="/" if fname == "404.html" else ("../" if "/" in fname else ""),
                active=fname.split("/")[0] if fname.startswith(("news/", "press/", "patch/")) else "",
+               view="squad" if fname == "squad/index.html" else "",
                bkind="press" if fname.startswith("press/") else "official")
     if (out / "fun" / "index.html").exists():
         sitemap.append(site_url + "/fun/")

@@ -2,12 +2,51 @@
 (function(root,factory){const api=factory();if(typeof module==="object"&&module.exports)module.exports=api;else root.FGSquad=api})(typeof globalThis!=="undefined"?globalThis:this,function(){
 "use strict";
 const BONUS=[0,0,1,2,4,6,8,11,15,17,19,21,24,27];
-const FORMATIONS={
-"4231":["GK","LB","CB","CB","RB","CDM","CDM","LM","CAM","RM","ST"],
-"433":["GK","LB","CB","CB","RB","CM","CDM","CM","LW","ST","RW"],
-"4222":["GK","LB","CB","CB","RB","CDM","CDM","CAM","CAM","ST","ST"],
-"4123":["GK","LB","CB","CB","RB","CDM","CM","CM","LW","ST","RW"],
-"442":["GK","LB","CB","CB","RB","LM","CM","CM","RM","ST","ST"]};
+// Layouts run from goal to attack; one source for solver and pitch.
+const D4="LB CB CB RB",D3="CB CB CB",D5="LWB CB CB CB RWB";
+const SHAPES={
+"4231":[D4,"CDM CDM","LM CAM RM","ST"],
+"4231-2":[D4,"CDM CDM","CAM CAM CAM","ST"],
+"4222":[D4,"CDM CDM","CAM CAM","ST ST"],
+"4123":[D4,"CDM","CM CM","LW ST RW"],
+"433":[D4,"CM CDM CM","LW ST RW"],
+"433-2":[D4,"CDM","CM CM","LW ST RW"],
+"433-3":[D4,"CDM CDM","CM","LW ST RW"],
+"433-4":[D4,"CM CM","CAM","LW ST RW"],
+"433-5":[D4,"CDM","CM CM","LW CF RW"],
+"442":[D4,"LM CM CM RM","ST ST"],
+"442-2":[D4,"LM CDM CDM RM","ST ST"],
+"4132":[D4,"CDM","LM CM RM","ST ST"],
+"4141":[D4,"CDM","LM CM CM RM","ST"],
+"424":[D4,"CM CM","LW ST ST RW"],
+"4312":[D4,"CM CM CM","CAM","ST ST"],
+"4321":[D4,"CM CM CM","CF CF","ST"],
+"41212":[D4,"CDM","LM RM","CAM","ST ST"],
+"4411":[D4,"LM CM CM RM","CF","ST"],
+"451":[D4,"CM","LM CAM CAM RM","ST"],
+"42211":[D4,"CDM CDM","LM RM","CAM","ST"],
+"4213":[D4,"CDM CDM","CAM","LW ST RW"],
+"3412":[D3,"LM CM CM RM","CAM","ST ST"],
+"3142":[D3,"CDM","LM CM CM RM","ST ST"],
+"343":[D3,"LM CM CM RM","LW ST RW"],
+"343-2":[D3,"CDM","LM CAM RM","LW ST RW"],
+"31213":[D3,"CDM","CM CM","CAM","LW ST RW"],
+"32212":[D3,"CDM CDM","LM RM","CAM","ST ST"],
+"3232":[D3,"CDM CDM","LM CAM RM","ST ST"],
+"5212":[D5,"CM CM","CAM","ST ST"],
+"523":[D5,"CM CM","LW ST RW"],
+"541":[D5,"LM CM CM RM","ST"],
+"532":[D5,"CM CM CM","ST ST"],
+"51211":[D5,"CDM","CM CM","CAM","ST"]};
+const FORMATIONS={},LINES={};
+for(const [id,shape] of Object.entries(SHAPES)){
+ const rows=[["GK"],...shape.map(s=>s.split(" "))];let i=0;
+ FORMATIONS[id]=rows.flat();LINES[id]=rows.map(row=>row.map(()=>i++)).reverse();
+}
+// Retain the original 433 slot ordering for saved squads.
+LINES["433"]=[[8,9,10],[5,7],[6],[1,2,3,4],[0]];
+const LABELS=Object.fromEntries(Object.keys(SHAPES).map(k=>[k,k.split("-")[0].split("").join("-")+(k.includes("-")?" ("+k.split("-")[1]+")":"")]));
+const gradeRange=(min,max)=>Number.isInteger(min)&&Number.isInteger(max)&&min>=1&&max<=13&&min<=max?Array.from({length:max-min+1},(_,i)=>min+i):[];
 const CORE={GK:["gkdiving","gkhandling","gkreflexes","gkpositioning"],CB:["sprintspeed","marking","standingtackle","interceptions","heading","strength"],LB:["sprintspeed","acceleration","standingtackle","interceptions","stamina","crossing"],RB:["sprintspeed","acceleration","standingtackle","interceptions","stamina","crossing"],CDM:["interceptions","standingtackle","strength","shortpassing","stamina"],CM:["shortpassing","longpassing","vision","ballcontrol","stamina"],CAM:["vision","shortpassing","dribbling","finishing","longshots"],LM:["sprintspeed","acceleration","crossing","dribbling","stamina"],RM:["sprintspeed","acceleration","crossing","dribbling","stamina"],LW:["sprintspeed","acceleration","dribbling","finishing","crossing"],RW:["sprintspeed","acceleration","dribbling","finishing","crossing"],ST:["finishing","positioning","shotpower","sprintspeed","strength"]};
 // Position-specific tactical roles, not a generic OVR sort. Weights are initial heuristics.
 const STYLES={
@@ -19,7 +58,8 @@ const STYLES={
  counter:{ST:["sprintspeed","positioning","finishing","strength"],W:["sprintspeed","acceleration","dribbling"],M:["interceptions","longpassing","vision","shortpassing"],FB:["sprintspeed","standingtackle","interceptions"],CB:["sprintspeed","marking","strength","interceptions"]},
  defense:{M:["interceptions","standingtackle","strength","stamina"],FB:["marking","standingtackle","sprintspeed","stamina"],CB:["marking","standingtackle","strength","heading","interceptions"],GK:["gkreflexes","gkdiving","gkpositioning"]},
  attack:{ST:["finishing","positioning","shotpower","acceleration"],W:["finishing","dribbling","sprintspeed"],M:["vision","shortpassing","longshots"]},value:{}};
-const ROLE=p=>p==="GK"?"GK":p==="CB"?"CB":/^[LR]B$/.test(p)?"FB":/^[LR][MW]$/.test(p)?"W":p==="ST"?"ST":"M";
+CORE.CF=CORE.ST;CORE.LWB=CORE.LB;CORE.RWB=CORE.RB;
+const ROLE=p=>p==="GK"?"GK":p==="CB"?"CB":/^[LR]W?B$/.test(p)?"FB":/^[LR][MW]$/.test(p)?"W":/^(ST|CF)$/.test(p)?"ST":"M";
 // Single standard roster allocation. Tactical style changes evaluation, never the budget profile.
 const ROLE_PAY={ST:34,CAM:34,CB:33,M:29,W:29,FB:23,GK:19};
 const ROLE_BP={ST:2.1,CAM:1.8,CB:1.8,M:1,W:1,FB:.35,GK:.25};
@@ -51,9 +91,9 @@ function score(c,mode,opts,target){
  // Observed card games are only a card-level popularity tie-break; not grade-specific ranker use.
  const pop=c.games==null?0:Math.min(1.6,Math.log1p(c.games)*.18);
  const strength=mode==="performance"?1.14:1;
- const priority=c.pos==="ST"||c.pos==="CAM"||c.pos==="CB"?1.2:1;
+ const priority=/^(ST|CF|CAM|CB)$/.test(c.pos)?1.2:1;
  const cost=mode==="value"?2.5:mode==="balanced"?1.2:.35;
- const saver=c.pos==="GK"||/^[LR]B$/.test(c.pos);
+ const saver=c.pos==="GK"||/^[LR]W?B$/.test(c.pos);
  const excess=Math.max(0,c.pay-target.pay),shortage=Math.max(0,target.pay-c.pay);
  // Prefer high-pay core players and efficient fullbacks/GK without forcing a rigid per-slot cap.
  return c.quality*strength*priority+pop-cost*Math.log1p(relative)-(saver?1.15:.65)*excess-(saver?.18:.72)*shortage-gap*.12-(saver?1.5:.3)*Math.log1p(Math.max(0,relative-1));
@@ -129,10 +169,34 @@ function solve(catalog,manifest,opts,mode="balanced",locks={},bans={}){
  if(!best)return {ok:false,reason:"탐색 범위에서 완성 조합을 찾지 못했습니다. 예산·급여·팀컬러·강화 조건을 조정해 주세요."};
  return {ok:true,players:best.players.sort((a,b)=>a.slot-b.slot),price:best.price,pay:best.pay,score:best.total/11,mode,targets:allocation};
 }
+// Manual selection and one-slot replacement use exactly the same constraint/price rules.
+function alternatives(rows,manifest,opts,mode,players,slot,query="",excludeCurrent=false){
+ const pos=FORMATIONS[opts.formation]?.[slot];if(!pos)return [];
+ const other=players.filter((p,i)=>p&&i!==slot),used=new Set(other.map(p=>p.pid));
+ const remainBP=opts.budget-other.reduce((n,p)=>n+p.price,0),remainPay=opts.salary-other.reduce((n,p)=>n+p.pay,0);
+ const old=players[slot],norm=v=>String(v||"").toLowerCase().replace(/\s+/g,""),words=String(query).trim().split(/\s+/).filter(Boolean).map(norm);
+ const target=targets(opts)[pos],keys=manifest.stats||[],out=[];
+ const field=other.filter(p=>p.pos!=="GK").map(p=>p.ovr).sort((a,b)=>a-b),median=field.length>=5?field[Math.floor(field.length/2)]:null;
+ for(const row of rows||[]){
+   if(used.has(row[0]%1000000)||(excludeCurrent&&old&&row[0]%1000000===old.pid))continue;
+   if(!words.every(w=>norm(row[1]+" "+row[2]).includes(w)))continue;
+   for(const grade of opts.grades){
+     const c=candidate(row,pos,grade,opts,keys);
+     if(!c||c.price>remainBP||c.pay>remainPay)continue;
+     if(excludeCurrent&&median!=null&&c.ovr<median-18)continue;
+     out.push({...c,slot});
+   }
+ }
+ const sorted=out.sort((a,b)=>score(b,mode,opts,target)-score(a,mode,opts,target)||(b.games??-1)-(a.games??-1)||a.price-b.price||a.id-b.id);
+ if(!excludeCurrent)return sorted.slice(0,80);
+ // Swap should preserve overall wage usage as much as possible without a large quality sacrifice.
+ const best=sorted[0];if(!best)return [];
+ return sorted.filter(c=>score(c,mode,opts,target)>=score(best,mode,opts,target)-3).sort((a,b)=>b.pay-a.pay||score(b,mode,opts,target)-score(a,mode,opts,target));
+}
 function validate(result,opts){
  if(!result?.ok||result.players?.length!==11||!FORMATIONS[opts.formation])return false;
  const ps=result.players;
- return ps.every((p,i)=>p.pos===FORMATIONS[opts.formation][i]&&safe(p.price)&&safe(p.pay)&&(!opts.team||p.teams.includes(opts.team)))&&new Set(ps.map(p=>p.pid)).size===11&&ps.reduce((s,p)=>s+p.price,0)===result.price&&ps.reduce((s,p)=>s+p.pay,0)===result.pay&&result.price<=opts.budget&&result.pay<=opts.salary;
+ return ps.every((p,i)=>p.pos===FORMATIONS[opts.formation][i]&&safe(p.price)&&safe(p.pay)&&opts.grades.includes(p.grade)&&(!opts.team||p.teams.includes(opts.team)))&&new Set(ps.map(p=>p.pid)).size===11&&ps.reduce((s,p)=>s+p.price,0)===result.price&&ps.reduce((s,p)=>s+p.pay,0)===result.pay&&result.price<=opts.budget&&result.pay<=opts.salary;
 }
-return {FORMATIONS,CORE,BONUS,solve,validate,targets};
+return {FORMATIONS,LINES,LABELS,CORE,BONUS,solve,validate,targets,gradeRange,alternatives};
 });

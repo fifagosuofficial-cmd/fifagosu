@@ -55,7 +55,7 @@ jobs:
         timeout-minutes: 15
         env:
           RATING_SEEDS: ${{ vars.RATING_SEEDS }}   # 시작 닉네임 추가(쉼표로 구분, 선택)
-        run: python crawler/rating.py --api https://fifagosu.pages.dev/api
+        run: python crawler/rating.py --api https://fifagosu.com/api
 
       - name: data 브랜치에 저장 (기록 없이 최신 1개만 유지)
         if: github.event_name != 'push'

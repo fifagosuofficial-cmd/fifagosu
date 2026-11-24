@@ -48,3 +48,16 @@ test("view increment is an aggregate, same-origin request, excluding hidden post
  assert.equal(sql,"UPDATE posts SET views=views+1 WHERE id=? AND hidden=0");
  assert.deepEqual(args,[42]);
 });
+
+test("login state queue is cleaned and capped before inserting more OAuth state",async()=>{
+ const {onRequest}=await load();const seen=[];
+ const env={...enabled,COMMUNITY_DB:{prepare(sql){seen.push(sql);return {bind(){return {
+  first:async()=>sql.startsWith("SELECT count(*)")?{n:1000}:null,
+  run:async()=>({meta:{changes:1}})
+ }}}}}};
+ const r=await onRequest({request:new Request(origin+"/api/community/login",{method:"POST",headers:{Origin:origin,"Content-Type":"application/json"},body:JSON.stringify({age:true,terms:true,privacy:true,policy:"2026-11-v1"})}),env});
+ assert.equal(r.status,429);
+ assert.ok(seen.some(sql=>sql.startsWith("DELETE FROM oauth_states")));
+ assert.ok(seen.some(sql=>sql.startsWith("SELECT count(*)")));
+ assert.ok(!seen.some(sql=>sql.startsWith("INSERT INTO oauth_states")));
+});

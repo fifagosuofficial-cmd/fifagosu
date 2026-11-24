@@ -21,6 +21,7 @@
 {% else %}
 <section id="fcAdmin" hidden><nav id="fcAdminTabs" class="fc-tabs"></nav><section class="fc-panel" id="fcAdminBody"></section></section>
 {% endif %}
+{% if view=='board' %}<aside class="slot" data-slot="board-1" aria-label="광고"></aside>{% endif %}
 </main>
 {% endblock %}
 {% block scripts %}<script defer src="{{ root }}assets/js/community.js?v={{ ver }}"></script>{% endblock %}

@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <link rel="stylesheet" href="{{ root }}assets/css/main.css?v={{ ver }}">
-<script>window.FG_SITE_URL={{ SITE_URL|tojson }};window.FG_LIVE=/^https?:$/.test(location.protocol)&&!/(^|\.)(claude\.ai|claudeusercontent\.com|claude\.site)$/.test(location.hostname);</script>
+<script>window.FG_SITE_URL={{ SITE_URL|tojson }};window.FG_LIVE=/^https?:$/.test(location.protocol)&&!/(^|\.)(claude\.ai|claudeusercontent\.com|claude\.site)$/.test(location.hostname);window.FG_AD_CONFIG={{ cfg.get('ads', {})|tojson }};</script>
 {% block head %}{% endblock %}
 </head><body data-view="{{ view or '' }}"{% if (view or '') in ('home','sim','trade','diag','cards','calc','guide','squad','board','mypage','admin') or (active is defined and active in ('news','press','patch','sim')) %} class="page-wide"{% endif %}>
 <header class="top">
@@ -45,5 +45,6 @@
 {% block content %}{% endblock %}
 <footer>Data based on NEXON Open API · 선수 능력치·시세: FC온라인 데이터센터 · 피파고수는 넥슨·EA SPORTS와 관련 없는 비공식 서비스예요.<br>약점 진단은 피파고수 자체 계산이며 게임 공식 수치가 아니에요.<br><a href="{{ root }}about">소개</a> · <a href="{{ root }}privacy">개인정보처리방침</a> · <a href="{{ root }}terms">이용약관</a> · <a href="{{ root }}contact">문의</a> · <a href="{{ root }}guide/">게임 가이드</a></footer>
 </div>
+<script defer src="{{ root }}assets/js/ads.js?v={{ ver }}"></script>
 {% block scripts %}{% endblock %}
 </body></html>

@@ -420,6 +420,13 @@ mark{background:color-mix(in srgb,var(--accent) 35%,transparent);color:inherit;b
 @media (max-width:860px){.fcm-main{grid-template-columns:1fr}.fcm-l{border-right:0;border-bottom:1px solid #383b42}.idbox{grid-template-columns:1fr 120px}.photo{height:120px}.photo img{max-height:120px}}
 @media (max-width:480px){.sum{grid-template-columns:repeat(3,1fr);row-gap:8px}.trgrid,.stcols,.ptable{grid-template-columns:1fr}}
 .slot:empty{display:none}
+.slot[data-ad-slot]{min-height:110px;margin:18px 0;padding:12px;border-style:dashed;place-content:center;text-align:center;color:var(--muted);background:color-mix(in srgb,var(--surface) 86%,var(--sunk));font-size:12px;line-height:1.4;overflow:hidden}
+.slot[data-ad-slot]:empty{display:grid}
+.slot[data-ad-slot]:empty::before{content:"광고 영역";font-weight:700;letter-spacing:.08em}
+.slot[data-ad-slot]:empty::after{content:"Google AdSense · 스폰서 배너 준비 중";margin-top:4px;font-size:10px;opacity:.72}
+.slot[data-ad-slot].is-live{display:block;min-height:100px;padding:0;border:0;background:transparent}
+.slot[data-ad-slot] .adsbygoogle{min-width:0;width:100%}
+@media(max-width:560px){.slot[data-ad-slot]{min-height:92px;margin:14px 0}}
 /* 하위 페이지 메뉴(링크)·푸터 링크·문서 페이지 */
 nav.menu a:not(.fun){color:var(--muted);padding:7px 13px;border-radius:999px;white-space:nowrap;font-size:14px;text-decoration:none;border:1px solid transparent}
 nav.menu a:not(.fun):hover{color:var(--fg)}

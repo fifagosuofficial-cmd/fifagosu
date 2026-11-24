@@ -67,3 +67,41 @@ def test_simplified_navigation_and_retired_calculator(tmp_path):
     assert not (out / "calc.html").exists()
     assert "/calc /sim/ 301" in (out / "_redirects").read_text("utf-8")
     assert "https://fifagosu.com/calc" not in (out / "sitemap.xml").read_text("utf-8")
+
+def test_ad_slots_are_ready_but_do_not_load_network_without_ids(tmp_path):
+    from bs4 import BeautifulSoup
+    out = tmp_path / "site"
+    build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
+    expected = {
+        "index.html": "home-1",
+        "diag.html": "diag-1",
+        "cards.html": "cards-1",
+        "sim/index.html": "sim-1",
+        "trade/index.html": "trade-1",
+        "guide/index.html": "guide-1",
+        "news/index.html": "news-1",
+        "patch/index.html": "patch-1",
+        "squad/index.html": "squad-1",
+        "board/index.html": "board-1",
+    }
+    for file, slot in expected.items():
+        doc = BeautifulSoup((out / file).read_text("utf-8"), "html.parser")
+        assert doc.select_one(f'aside[data-slot="{slot}"][aria-label="광고"]')
+        assert doc.select_one('script[src*="assets/js/ads.js"]')
+    home = (out / "index.html").read_text("utf-8")
+    assert '"enabled": false' in home
+    assert "ca-pub-" not in home
+    loader = (out / "assets/js/ads.js").read_text("utf-8")
+    assert "pagead2.googlesyndication.com" in loader
+    assert "cfg.enabled===true" in loader
+
+def test_member_policies_match_active_login_and_ad_placeholders(tmp_path):
+    out = tmp_path / "site"
+    build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
+    privacy = (out / "privacy.html").read_text("utf-8")
+    terms = (out / "terms.html").read_text("utf-8")
+    assert "Google 로그인" in privacy
+    assert "회원가입·로그인 기능이 없고" not in privacy
+    assert "현재 미시행" not in privacy + terms
+    assert "외부 광고·방문자 분석 스크립트는 실행하지 않습니다" in privacy
+    assert "fifagosu@gmail.com" in privacy

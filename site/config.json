@@ -2,12 +2,23 @@
   "SITE_URL": "https://fifagosu.com",
   "MAX_FILES": 18000,
   "CONTACT_EMAIL": "fifagosu@gmail.com",
-  "slots": {
-    "_설명": "광고 자리(지금은 비어 있음, 높이 0). 나중에 광고·내부 홍보 카드를 켤 위치만 기록해요. 슬롯은 블록 사이에만 둬요.",
-    "home": ["home-1"],
-    "diag": ["diag-1"],
-    "cards": ["cards-1"],
-    "calc": ["calc-1"],
-    "guide": ["guide-1"]
+  "ads": {
+    "_설명": "광고 계정 승인 후 enabled와 provider를 설정하고 공개 광고 ID만 입력해요. 비밀키와 광고 코드를 HTML에 직접 붙이지 않아요.",
+    "enabled": false,
+    "provider": "none",
+    "adsense_client": "",
+    "slots": {
+      "home-1": "",
+      "diag-1": "",
+      "cards-1": "",
+      "sim-1": "",
+      "trade-1": "",
+      "guide-1": "",
+      "news-1": "",
+      "patch-1": "",
+      "post-1": "",
+      "squad-1": "",
+      "board-1": ""
+    }
   }
 }

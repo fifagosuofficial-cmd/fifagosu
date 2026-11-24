@@ -105,6 +105,7 @@ export async function onRequest({request,env}){
  if(p==="login"){
    check(b.age===true&&b.terms===true&&b.privacy===true&&b.policy===POLICY,"가입 조건과 약관을 확인하세요.");
    const state=random(),verifier=random();await run("DELETE FROM oauth_states WHERE expires<=?",now());
+    const pending=await first("SELECT count(*) n FROM oauth_states WHERE expires>?",now());check(pending.n<1000,"로그인 요청이 많습니다. 잠시 후 다시 시도해 주세요.",429);
    await run("INSERT INTO oauth_states(id,verifier,expires,policy) VALUES(?,?,?,?)",await sha(state),verifier,now()+600,POLICY);
    const url=new URL("https://accounts.google.com/o/oauth2/v2/auth");url.search=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID,redirect_uri:u.origin+"/api/community/callback",response_type:"code",scope:"openid",state,code_challenge:await challenge(verifier),code_challenge_method:"S256",prompt:"select_account"}).toString();
    return json({url:url.href},200,{"set-cookie":cookie("fg_oauth",state,600)});

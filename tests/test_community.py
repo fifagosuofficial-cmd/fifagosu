@@ -49,3 +49,21 @@ def test_board_compact_columns_and_view_counter(tmp_path):
         assert f'<th scope="col">{col}</th>' in html
     assert '<tbody id="fcPosts">' in html
     assert 'id="fcPreviewHint"' in html
+
+def test_simplified_navigation_and_retired_calculator(tmp_path):
+    from bs4 import BeautifulSoup
+    out = tmp_path / "site"
+    out.mkdir()
+    (out / "calc.html").write_text("old", encoding="utf-8")
+    build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
+    expected = ["홈", "소식", "전적 진단", "AI 스쿼드", "게시판", "카드 검색", "계산기", "선수 거래소"]
+    for file in ("index.html", "board/index.html", "news/index.html", "press/index.html", "patch/index.html", "sim/index.html"):
+        doc = BeautifulSoup((out / file).read_text("utf-8"), "html.parser")
+        assert [a.get_text(strip=True) for a in doc.select("nav.menu > a")] == expected
+        assert doc.select_one("a.fg-account-icon")["aria-label"] == "마이페이지"
+        assert doc.select_one(".fg-diag-icon")
+        if file.startswith(("news/", "press/", "patch/")):
+            assert [a.get_text(strip=True) for a in doc.select(".fg-news-switch a")] == ["공식 소식", "축구 뉴스", "패치노트"]
+    assert not (out / "calc.html").exists()
+    assert "/calc /sim/ 301" in (out / "_redirects").read_text("utf-8")
+    assert "https://fifagosu.com/calc" not in (out / "sitemap.xml").read_text("utf-8")

@@ -9,10 +9,10 @@
 <div class="sq-fields">
 <label>총 구단 예산 (현재 BP 단위)<div class="sq-budget"><input id="sqBudget" type="number" min="0.0001" step="any" value="10" required><select id="sqUnit" aria-label="예산 단위"><option value="1">BP</option><option value="10000">만</option><option value="100000000" selected>억</option><option value="1000000000000">조</option></select></div><small>2026.8.20 화폐 단위 조정 이후 기준</small></label>
 <label>급여 상한 (최대 315)<input id="sqSalary" type="number" min="11" max="315" step="1" value="315" required><small>전력 저하를 방지하면서 315에 가깝게 사용</small></label>
-<label>팀컬러 선택<input id="sqTeam" type="search" list="sqTeamList" placeholder="소속 제한 없음" autocomplete="off"><datalist id="sqTeamList"><option value="소속 제한 없음"></option></datalist><small>이름을 입력한 뒤 목록에서 선택</small></label>
+<div class="sq-team-field"><label for="sqTeam">팀컬러 선택</label><div class="sq-team-wrap"><input id="sqTeam" type="text" placeholder="소속 제한 없음" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sqTeamList"><button type="button" id="sqTeamToggle" aria-label="팀컬러 목록 열기">⌄</button><div id="sqTeamList" class="sq-team-list" role="listbox" hidden></div></div><small>이름을 입력한 뒤 목록에서 선택</small></div>
 <label>포메이션<select id="sqFormation"><option value="4231">4-2-3-1</option></select><small id="sqFormationCount"></small></label>
 <label>플레이 스타일<select id="sqStyle"><option value="balanced">밸런스</option><option value="speed">속력 · 치달 / 침투</option><option value="pass">티키타카 · 패스 연계</option><option value="longshot">중거리 슛 · 감아차기</option><option value="cross">크로스 · 헤더</option><option value="press">전방 압박</option><option value="counter">빠른 역습</option><option value="defense">수비 안정</option></select></label>
-<div class="sq-grade-field"><label>강화 단계<select id="sqGrades"><option value="silver">은빛 물결 이상 (5~13강)</option><option value="gold" selected>금빛 물결 이상 (8~13강)</option><option value="platinum">백금빛 물결 이상 (11~13강)</option><option value="custom">직접 범위 선택</option></select><small>선수별 최소 강화 조건이며 실제 물결 발동은 별도 확인</small></label>
+<div class="sq-grade-field"><label>강화 단계<select id="sqGrades"><option value="silver">은빛 물결 이상 (5~13강)</option><option value="gold" selected>금빛 물결 이상 (8~13강)</option><option value="platinum">백금빛 물결 이상 (11~13강)</option><option value="custom">직접 범위 선택</option></select><small>AI 추천 강화 범위 · 추천 후 개별 변경 가능</small></label>
 <div id="sqGradeRange" class="sq-grade-range" hidden><label>최소 강화<select id="sqGradeMin">{% for g in range(1,14) %}<option value="{{ g }}"{% if g==8 %} selected{% endif %}>{{ g }}강</option>{% endfor %}</select></label><label>최대 강화<select id="sqGradeMax">{% for g in range(1,14) %}<option value="{{ g }}"{% if g==13 %} selected{% endif %}>{{ g }}강</option>{% endfor %}</select></label></div></div>
 </div>
 <p class="sq-note" id="sqStyleHint"></p><p class="sq-note">기본 급여 배분: ST·CAM·CB 우선 투자, 윙·CM·CDM 균형, LB·RB·GK 저급여 가성비 중심. 플레이 스타일은 선수 능력치 평가에만 반영합니다.</p><p class="sq-note">선택 팀컬러는 11명 모두 후보 소속 조건을 만족해야 합니다. 클럽 경력·국적·시즌 매핑 기준이며 게임 내 실제 적용과 강화 보너스는 별도로 확인해야 합니다. 예산은 구매가 합계이며 판매 수수료를 포함하지 않습니다.</p>
@@ -29,12 +29,12 @@
 </div>
 <div id="sqSummary" class="sq-summary"></div>
 <div id="sqPitch" class="sq-pitch" aria-label="선발 11명 배치"></div>
-<div class="sq-roster-actions"><p class="sq-note">교체 버튼으로 AI 추천 또는 직접 검색 · 고정 버튼으로 재추천 시 유지</p><div class="sq-actions"><button type="button" id="sqSave">저장</button><button type="button" id="sqShare">공유 링크 복사</button></div></div>
+<div class="sq-roster-actions"><p class="sq-note">선수별 강화 버튼으로 1~13강 변경 · 교체로 직접 검색 · 고정 시 재추천에서 유지</p><div class="sq-actions"><button type="button" id="sqSave">저장</button><button type="button" id="sqShare">공유 링크 복사</button></div></div>
 <dialog id="sqPicker" class="sq-picker-modal" aria-labelledby="sqPickerTitle">
 <div class="sq-picker-head"><div><small>FIFAGOSU · AI SQUAD</small><h2 id="sqPickerTitle">선수 교체</h2><p id="sqPickerBudget" class="sq-note"></p></div><button type="button" id="sqPickerClose" aria-label="선수 교체 창 닫기">닫기 ×</button></div>
 <div class="sq-picker-body">
 <section class="sq-picker-reco"><h3>AI 추천 선수</h3><p id="sqRecoNote" role="status" class="sq-note"></p><div class="tablewrap"><table class="sq-table sq-search-table"><thead><tr><th>선수 / 시즌</th><th>강화</th><th>OVR</th><th>급여</th><th>시세</th><th>선택</th></tr></thead><tbody id="sqRecoResults"></tbody></table></div></section>
-<section class="sq-picker-search"><h3><label for="sqPlayerQuery">선수 직접 검색</label></h3><input id="sqPlayerQuery" type="search" placeholder="선수명 또는 시즌 입력 (예: 손흥민)" autocomplete="off"><p class="sq-note" id="sqPickerNote" role="status"></p><div class="tablewrap"><table class="sq-table sq-search-table"><thead><tr><th>선수 / 시즌</th><th>강화</th><th>OVR</th><th>급여</th><th>시세</th><th>선택</th></tr></thead><tbody id="sqPlayerResults"></tbody></table></div></section>
+<section class="sq-picker-search"><h3><label for="sqPlayerQuery">선수 직접 검색</label></h3><input id="sqPlayerQuery" type="search" placeholder="선수명 또는 시즌 입력 (예: 손흥민)" autocomplete="off"><p class="sq-note" id="sqPickerNote" role="status"></p><div id="sqPlayerResults" class="sq-manual-list"></div></section>
 </div></dialog>
 <p class="sq-note">OVR은 수집 포지션 OVR에 강화·적응도·팀컬러 전체 능력치 효과를 더한 표시값입니다. 공식 게임 OVR과 차이가 있을 수 있습니다. 실제 시세·보유 여부는 게임에서 확인하세요.</p>
 <section class="sq-card"><h2>선수별 전체 능력치 비교</h2><p class="sq-note">강화 및 선택한 보너스 반영 · 미수집 값은 —로 표시</p><div class="tablewrap"><table class="sq-table sq-stat-matrix" id="sqStatMatrix"></table></div></section>

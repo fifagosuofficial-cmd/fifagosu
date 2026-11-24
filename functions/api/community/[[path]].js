@@ -29,7 +29,8 @@ export async function onRequest({request,env}){
  if(!enabled)return json({enabled:false,message:"회원·게시판 서버는 아직 연결되지 않았습니다."},503);
  const q=(sql,...args)=>db.prepare(sql).bind(...args),first=(sql,...args)=>q(sql,...args).first(),all=async(sql,...args)=>(await q(sql,...args).all()).results,run=(sql,...args)=>q(sql,...args).run();
  const reqToken=getCookie(request,"fg_session");
- const member=reqToken&&/^[a-f0-9]{64}$/.test(reqToken)?await first("SELECT m.* FROM sessions s JOIN members m ON m.id=s.member_id WHERE s.hash=? AND s.expires>?",await sha(reqToken),now()):null;
+ let member=null;
+ try{member=reqToken&&/^[a-f0-9]{64}$/.test(reqToken)?await first("SELECT m.* FROM sessions s JOIN members m ON m.id=s.member_id WHERE s.hash=? AND s.expires>?",await sha(reqToken),now()):null;}catch{return json({message:"회원 정보 서버에 연결할 수 없습니다."},503)}
  const admin=adminFor(env,member);
  const me=()=>{check(member&&!member.suspended,"로그인 또는 계정 상태를 확인하세요.",401);check(member.policy===POLICY,"최신 약관에 동의한 뒤 이용하세요.",403);return member};
  const active=()=>{const m=me();check(m.nickname,"닉네임 설정이 필요합니다.",403);return m};
@@ -49,6 +50,7 @@ export async function onRequest({request,env}){
      const info=await fetch("https://openidconnect.googleapis.com/v1/userinfo",{headers:{Authorization:"Bearer "+t.access_token}});
      check(info.ok,"계정 정보를 확인할 수 없습니다.",502);
      const sub=str((await info.json()).sub,255);
+     // The access token is used for identity only; discard it immediately after use.
      await run("INSERT INTO members(id,provider,subject,created,policy,age_confirmed) VALUES(?,?,?,?,?,1) ON CONFLICT(provider,subject) DO UPDATE SET policy=excluded.policy",crypto.randomUUID(),"google",sub,now(),POLICY);
      const m=await first("SELECT id,suspended FROM members WHERE provider='google' AND subject=?",sub);
      check(m&&!m.suspended,"이용이 제한된 계정입니다.",403);
@@ -56,6 +58,12 @@ export async function onRequest({request,env}){
      await run("INSERT INTO sessions(hash,member_id,expires) VALUES(?,?,?)",await sha(sid),m.id,now()+86400*7);
      const h=new Headers({location:"/mypage/","cache-control":"no-store"});
      h.append("Set-Cookie",cookie("fg_session",sid,86400*7));h.append("Set-Cookie",cookie("fg_oauth","",0));return new Response(null,{status:303,headers:h});
+   }
+   if(p==="rankings"){
+     return json({
+       squads:await all("SELECT p.id,p.title,(SELECT count(*) FROM votes v WHERE v.post_id=p.id) likes FROM posts p WHERE p.hidden=0 AND p.category='squad' AND p.squad IS NOT NULL ORDER BY likes DESC,p.created DESC LIMIT 10"),
+       players:await all("SELECT p.card_id,count(*) reviews,(SELECT count(*) FROM votes v JOIN posts t ON t.id=v.post_id WHERE t.hidden=0 AND t.category='review' AND t.card_id=p.card_id) likes FROM posts p WHERE p.hidden=0 AND p.category='review' AND p.card_id IS NOT NULL GROUP BY p.card_id ORDER BY likes DESC,reviews DESC LIMIT 10")
+     });
    }
    if(p==="posts"){
      const cat=u.searchParams.get("category")||"all",search=(u.searchParams.get("q")||"").slice(0,100),card=Number(u.searchParams.get("card")||0),page=Math.min(100,Math.max(1,parseInt(u.searchParams.get("page")||"1",10)||1));

@@ -1178,3 +1178,12 @@ nav.menu a.core:not([aria-current]):hover{background:var(--accent);color:var(--a
 .up{color:var(--good)!important}.dn{color:var(--crit)!important}.muted{color:var(--muted)}
 @media(max-width:760px){.dr-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dtc-cols{grid-template-columns:1fr}.health>div{grid-template-columns:repeat(2,minmax(0,1fr))}.asset-sum{grid-template-columns:1fr}.compare{grid-template-columns:repeat(2,minmax(0,1fr))}.dquick-row{grid-template-columns:1fr}.dquick-actions small{width:100%;margin-left:0}.pstx th:first-child,.pstx td:first-child{min-width:175px}}
 @media(max-width:430px){.dr-grid{grid-template-columns:1fr 1fr}.dtc-cols li{grid-template-columns:minmax(0,1fr) auto}.dtc-cols li span{display:none}.compare{grid-template-columns:1fr 1fr}.goalbox label{width:100%;justify-content:space-between}.goalbox input{width:58%}}
+
+/* 전적진단 스쿼드 배치: 긴 이름과 시세가 인접 선수 영역을 침범하지 않도록 제한 */
+.formation.diag-formation{max-width:520px;min-height:520px}
+.diag-formation .pl{width:21%;min-width:0;gap:3px}
+.diag-formation .nm{width:100%;min-width:0;display:flex;align-items:center;justify-content:center;gap:3px}
+.diag-formation .nm>span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.diag-formation .nm .ssnimg{flex:none;max-width:22px;height:auto}
+.diag-formation .nm .grade{flex:none;margin:0}
+@media(max-width:480px){.diag-formation .nm{font-size:10px;gap:2px}.diag-formation .dot{height:25px;min-width:28px;font-size:11px}.diag-formation .nm .ssnimg{max-width:17px}}

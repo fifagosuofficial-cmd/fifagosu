@@ -815,25 +815,35 @@ function dRenderReport(d,a){
 /* One representative per match. Equal top counts are ambiguous, not a random winner. */
 function dInferTeamcolor(players,TC,excluded=null){
   const reject=k=>{if(excluded)excluded[k]=(excluded[k]||0)+1;return null};
-  const ids=[...new Set(players.slice(0,11).map(p=>String(p.spId)))],cnt={},known=ids.filter(id=>Array.isArray(TC.cards[id])).length;
-  if(ids.length!==11)return reject('lineup');if(known<8)return reject('coverage');
-  ids.forEach(id=>{for(const i of new Set(TC.cards[id]||[])){if(TC.names[i])cnt[i]=(cnt[i]||0)+1}});
-  const sorted=Object.entries(cnt).sort((a,b)=>b[1]-a[1]),top=sorted[0];if(!top||top[1]<6)return reject('members');if(sorted[1]?.[1]===top[1])return reject('ambiguous');
-  const [id,n]=top,margin=n-(sorted[1]?.[1]||0);
-  if(margin<2)return reject('ambiguous');
-  return {name:TC.names[id],n,known,confidence:n===11&&known===11?'매우 높음':n>=8&&known>=10?'높음':'보통'};
+  const ids=[...new Set(players.slice(0,11).map(p=>String(p.spId)))],cnt={};
+  if(ids.length<8)return reject('lineup');
+  const known=ids.filter(id=>Array.isArray(TC.cards[id])||TC.seasonById?.[String(Math.floor(Number(id)/1e6))]!=null).length;
+  if(known<8)return reject('coverage');
+  ids.forEach(id=>{
+    const memberships=new Set(TC.cards[id]||[]),season=TC.seasonById?.[String(Math.floor(Number(id)/1e6))];
+    if(season!=null)memberships.add(season);
+    for(const i of memberships)if(TC.names[i])cnt[i]=(cnt[i]||0)+1;
+  });
+  const priority={season:3,club:2,nation:1};
+  const sorted=Object.entries(cnt).filter(([,n])=>n>=8).sort((a,b)=>b[1]-a[1]||(priority[TC.kinds?.[b[0]]]||0)-(priority[TC.kinds?.[a[0]]]||0));
+  if(!sorted.length)return reject('members');
+  const [id,n]=sorted[0],kind=TC.kinds?.[id]||'unknown';
+  const tied=sorted.filter(([k,v])=>v===n&&(priority[TC.kinds?.[k]]||0)===(priority[kind]||0));
+  const names=tied.map(([k])=>TC.names[k]).sort((a,b)=>a.localeCompare(b,'ko'));
+  return {name:names.join(' / ')+(names.length>1?' (동률)':''),kind,n,known,confidence:n===11?'매우 높음':'높음',tied:names.length>1};
 }
 function dTeamcolorStats(matches,TC){
-  const agg={},valid=[],excluded={};matches.forEach(m=>{const c=dInferTeamcolor(m.matchInfo[1].player,TC,excluded);if(!c)return;valid.push(c);const x=agg[c.name]??={name:c.name,n:0,w:0,d:0,l:0,members:0,high:0};x.n++;x.members+=c.n;if(c.confidence!=='보통')x.high++;const r=m.matchInfo[0].matchDetail.matchResult;x[r==='승'?'w':r==='무'?'d':'l']++});
-  const groups=Object.values(agg);return {valid,excluded,single:groups.filter(x=>x.n===1).length,all:groups.filter(x=>x.n>=2)};
+  const agg={},valid=[],excluded={};matches.forEach(m=>{const c=dInferTeamcolor(m.matchInfo[1].player,TC,excluded);if(!c)return;valid.push(c);const key=c.kind+'|'+c.name,x=agg[key]??={name:c.name,kind:c.kind,n:0,w:0,d:0,l:0,members:0,high:0};x.n++;x.members+=c.n;if(c.confidence==='매우 높음')x.high++;const r=m.matchInfo[0].matchDetail.matchResult;x[r==='승'?'w':r==='무'?'d':'l']++});
+  const groups=Object.values(agg);return {valid,excluded,single:groups.filter(x=>x.n===1).length,all:groups};
 }
 async function dLoadTeamcolors(d,a,seq){
   $('dTc').hidden=false;$('dTc').innerHTML='<div class="dtc-head"><b>상대 팀컬러별 승률 (추정)</b><small>상대 출전선수 소속 분석 중…</small></div>';
   const TC=await dOpponentTeamcolors().catch(()=>null);if(seq!==diagSeq)return;
-  if(!TC){$('dTc').innerHTML='<div class="dtc-head"><b>상대 팀컬러별 승률 (추정)</b><small>평가 보류</small></div><p class="empty">상대 팀컬러용 카드 소속 데이터를 불러오지 못했어요.</p>';return}
-  const matches=d.matches,{all,valid,excluded,single}=dTeamcolorStats(matches,TC),wins=all.filter(x=>x.w>0).sort((x,y)=>y.w/y.n-x.w/x.n||y.n-x.n).slice(0,3),loss=all.filter(x=>x.l>0).sort((x,y)=>y.l/y.n-x.l/x.n||y.n-x.n).slice(0,3);
-  const row=(x,k)=>`<li><b>${esc(x.name)} <small>${x.high===x.n?'구성 일치 높음':'구성 일치 보통'} · 평균 ${(x.members/x.n).toFixed(1)}명${x.n<5?' · 소표본':''}</small></b><span>${x.n}경기 ${x.w}승 ${x.d}무 ${x.l}패</span><em>${Math.round((k==='w'?x.w:x.l)/x.n*100)}%</em></li>`;
-  $('dTc').innerHTML=`<div class="dtc-head"><div><b>상대 팀컬러별 승률 (추정)</b><small>최근 ${matches.length}경기 · 대표 후보 ${valid.length}경기 · 추정 보류 ${matches.length-valid.length}경기 · ${esc(TC.date||'갱신일 미상')}</small></div></div>${all.length?`<div class="dtc-cols"><div><h3>승리 TOP 3 <small>내 승률</small></h3><ol>${wins.map(x=>row(x,'w')).join('')||'<li>승리 표본 없음</li>'}</ol></div><div><h3>패배 TOP 3 <small>내 패배율</small></h3><ol>${loss.map(x=>row(x,'l')).join('')||'<li>패배 표본 없음</li>'}</ol></div></div>`:'<p class="empty">2경기 이상 대표 후보가 확인된 팀컬러가 없어요.</p>'}<p class="note">실제 적용 팀컬러는 API에서 제공되지 않아요. 공식 팀컬러 이름과 수집 카드 소속·경력 자료의 일치 인원이 6명 이상인 유일한 최상위 후보만 경기당 1개 집계합니다. 소속 확인 8명 미만·동률·근소한 차이는 제외하며, 구성 일치는 실제 적용 확률이 아닙니다. 2~4경기는 소표본입니다.</p><p class="note">표본 제외 내역: 출전 명단 부족 ${excluded.lineup||0}경기 · 소속 자료 부족 ${excluded.coverage||0}경기 · 공통 소속 6명 미만 ${excluded.members||0}경기 · 후보 간 차이 부족 ${excluded.ambiguous||0}경기. 대표 후보가 확인됐지만 1경기만 등장한 팀컬러 ${single}개는 TOP 3에서 제외합니다.</p>`
+  if(!TC||!TC.seasonById||!TC.kinds){$('dTc').innerHTML='<div class="dtc-head"><b>상대 팀컬러별 승률 (추정)</b><small>평가 보류</small></div><p class="empty">새 팀컬러 매핑 데이터를 준비 중이에요.</p>';return}
+  const matches=d.matches,{all,valid,excluded}=dTeamcolorStats(matches,TC),wins=all.filter(x=>x.w>0).sort((x,y)=>y.w/y.n-x.w/x.n||y.n-x.n).slice(0,3),loss=all.filter(x=>x.l>0).sort((x,y)=>y.l/y.n-x.l/x.n||y.n-x.n).slice(0,3);
+  const kindLabel={season:'단일 시즌',club:'클럽',nation:'국가'};
+  const row=(x,k)=>`<li><b>${esc(x.name)} <small>${kindLabel[x.kind]||'소속'} · 평균 ${(x.members/x.n).toFixed(1)}명${x.n<5?' · 소표본':''}</small></b><span>${x.n}경기 ${x.w}승 ${x.d}무 ${x.l}패</span><em>${Math.round((k==='w'?x.w:x.l)/x.n*100)}%</em></li>`;
+  $('dTc').innerHTML=`<div class="dtc-head"><div><b>상대 팀컬러별 승률 (추정)</b><small>최근 ${matches.length}경기 · 대표 후보 ${valid.length}경기 · 추정 보류 ${matches.length-valid.length}경기 · ${esc(TC.date||'갱신일 미상')}</small></div></div>${all.length?`<div class="dtc-cols"><div><h3>승리 TOP 3 <small>내 승률</small></h3><ol>${wins.map(x=>row(x,'w')).join('')||'<li>승리 표본 없음</li>'}</ol></div><div><h3>패배 TOP 3 <small>내 패배율</small></h3><ol>${loss.map(x=>row(x,'l')).join('')||'<li>패배 표본 없음</li>'}</ol></div></div><details><summary>전체 상대 팀컬러 기록 (${all.length}개)</summary><div class="tablewrap"><table><thead><tr><th>팀컬러</th><th>종류</th><th>평균 일치 인원</th><th>경기</th><th>승·무·패</th><th>승률</th></tr></thead><tbody>${all.slice().sort((a,b)=>b.n-a.n).map(x=>`<tr><td>${esc(x.name)}${x.n<5?' · 소표본':''}</td><td>${kindLabel[x.kind]||'소속'}</td><td>${(x.members/x.n).toFixed(1)}명</td><td>${x.n}</td><td>${x.w}·${x.d}·${x.l}</td><td>${Math.round(x.w/x.n*100)}%</td></tr>`).join('')}</tbody></table></div></details>`:'<p class="empty">8명 이상 공통 소속인 팀컬러가 확인되지 않았어요.</p>'}<p class="note">실제 적용 팀컬러는 API에서 제공되지 않아요. 공식 팀컬러 명칭에 대응하는 시즌·클럽 경력·국적 중 8명 이상 일치하는 최다 인원 후보를 경기당 하나 집계합니다. 인원 동률이면 단일 시즌→클럽→국가 순으로, 같은 종류의 동률은 복합 후보로 표시합니다. 1~4경기는 소표본입니다.</p><p class="note">표본 제외: 출전 명단 부족 ${excluded.lineup||0}경기 · 소속 자료 부족 ${excluded.coverage||0}경기 · 공통 소속 8명 미만 ${excluded.members||0}경기.</p>`
 }
 function timeChart(a){
   const W=640,H=260,l=40,rr=12,t=24,b=34,mid=t+(H-t-b)/2,max=Math.max(1,...a.bins.map(x=>Math.max(x.f,x.a))),sc=v=>v/max*((H-t-b)/2-6),bw=(W-l-rr)/6;

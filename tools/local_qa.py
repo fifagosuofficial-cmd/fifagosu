@@ -8,9 +8,10 @@ import urllib.parse
 import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-UPSTREAM = "https://fifagosu.pages.dev"
+UPSTREAM = "https://fifagosu.com"
 ALLOWED = {
     "/api/summary", "/api/matches", "/api/player-teamcolors",
+    "/api/prob", "/api/shop",
     "/api/fconline/v1/id", "/api/fconline/v1/user/basic",
     "/api/fconline/v1/user/maxdivision", "/api/fconline/v1/user/match",
     "/api/fconline/v1/match-detail", "/api/fconline/v1/ranker-stats",

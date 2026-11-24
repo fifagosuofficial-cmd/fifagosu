@@ -2,9 +2,9 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const src=fs.readFileSync(path.join(__dirname,'../site/assets/js/app.js'),'utf8');
-const ctx={LINE:()=> '수비',RK_ATT:[],RK_DEF:[['tackle','태클'],['block','블락']]};
+const ctx={sname:id=>({877:'UC',878:'DC'}[id]||'?'),LINE:()=> '수비',RK_ATT:[],RK_DEF:[['tackle','태클'],['block','블락']]};
 vm.createContext(ctx);
-for(const [a,b] of [['function dAssessPlayer(','function dRatePlayers('],['function dExactPrice(','function dPriceText('],['function dInferTeamcolor(','async function dLoadTeamcolors(']]){
+for(const [a,b] of [['function dLatestLineup(','function analyze('],['function dAssessPlayer(','function dRatePlayers('],['function dExactPrice(','function dPriceText('],['function dInferTeamcolor(','async function dLoadTeamcolors(']]){
   const i=src.indexOf(a),j=src.indexOf(b,i);assert.ok(i>=0&&j>i);vm.runInContext(src.slice(i,j),ctx);
 }
 const p={apps:10,spId:1,pos:'LB',avg:6.2,wr:.4,r:Array(10).fill(6.2),rtRef:{avg:6.5,n:100},rk:{tackle:1,block:1},rkLow:{tackle:{lb:'태클',mine:.3,avg:1},block:{lb:'블락',mine:.2,avg:1}}};
@@ -58,4 +58,21 @@ test('both match modes prioritize player records, ranker comparison, detailed me
   }
   assert.ok(!src.includes('function dSquadView(')&&!src.includes('function dAssetView('));
   assert.ok(!src.includes('data-buy=')&&!src.includes('data-asset='));
+});
+
+test('recent squad uses latest dated valid lineup, not input order or player names',()=>{
+  const old={spId:877005471,name:'램파드'},current={spId:878005471,name:'램파드'},other={spId:877000002,name:'다른 선수'};
+  const match=(date,player)=>({matchDate:date,matchInfo:[{player}]});
+  const lineup=ctx.dLatestLineup([match('2026-11-23T12:00:00Z',[old]),match('2026-11-24T12:00:00Z',[current,other]),match('2026-11-25T12:00:00Z',[])]);
+  const all=[old,current,other];
+  assert.deepEqual(Array.from(ctx.dRecentRows(all,lineup,true),x=>x.spId),[current.spId,other.spId]);
+  assert.equal(ctx.dRecentRows(all,lineup,false).length,3);
+  assert.equal(ctx.dRecentStatus(old,lineup),'최근 경기 미출전');
+  assert.equal(ctx.dRecentStatus(current,lineup),'최근 경기 출전');
+  assert.equal(ctx.dRecentRows(all,[],true).length,0);
+});
+test('diagnosis card labels distinguish same-name seasons and show grade',()=>{
+  assert.equal(ctx.dCardLabel({pos:'CM',seasonId:877,name:'램파드',grade:9}),'CM UC 램파드 9강');
+  assert.equal(ctx.dCardLabel({pos:'CM',spId:878005471,name:'램파드',grade:8}),'CM DC 램파드 8강');
+  assert.match(ctx.dCardLabel({pos:'CM',seasonId:999,name:'램파드',grade:8}),/시즌 999/);
 });

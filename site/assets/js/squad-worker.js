@@ -15,7 +15,7 @@ self.onmessage=async e=>{
    if(!positions)throw Error("포메이션 오류");
    const catalog=Object.fromEntries(await Promise.all([...new Set(positions)].map(async p=>[p,await load(p)])));
    const results={};
-   for(const mode of modes){const r=FGSquad.solve(catalog,manifest,opts,mode,locks,bans);if(r.ok&&!FGSquad.validate(r,opts))throw Error("추천 검증 실패");results[mode]=r}
+   for(const mode of modes){const r=FGSquad.solve(catalog,manifest,opts,mode,locks,bans);if(r.ok&&!FGSquad.validate(r,opts,locks))throw Error("추천 검증 실패");results[mode]=r}
    self.postMessage({id,results});
  }catch(err){self.postMessage({id,error:err.message||String(err)})}
 };

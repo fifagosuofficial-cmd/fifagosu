@@ -121,7 +121,8 @@ function render(){
    const p=r.players[i],pos=FORM[o.formation][i];
    if(!p)return '<div class="sq-player sq-empty"><small class="sq-pos">'+pos+'</small><button type="button" data-add="'+i+'" aria-label="'+pos+' 선수 검색">＋<small>선수 검색</small></button></div>';
    const locked=locks[i]?.id===p.id&&locks[i]?.grade===p.grade;
-   return '<div class="sq-player"><div class="sq-card-top"><small class="sq-pos">'+p.pos+' · '+projection.per[i].ovr+'</small><span class="sq-pay" title="급여">'+p.pay+'</span></div><div class="sq-face"><img alt="" loading="lazy" src="'+img+'playersAction/p'+p.id+'.png" data-fallback="'+img+'players/p'+p.pid+'.png"><div class="sq-card-tools"><button type="button" data-swap="'+i+'" title="대체 선수로 교체" aria-label="'+esc(p.name)+' 교체"'+(locked?' disabled':'')+'>'+swapIcon+'</button><button type="button" data-remove="'+i+'" title="선수 삭제" aria-label="'+esc(p.name)+' 삭제">'+trashIcon+'</button></div></div><b>'+esc(p.name)+'</b><small>'+esc(p.season)+' '+p.grade+'강</small><small>'+money(p.price)+'</small><button type="button" class="sq-card-lock" data-lock="'+i+'" aria-pressed="'+locked+'" aria-label="'+esc(p.name)+(locked?' 고정 해제':' 고정')+'">'+lockIcon+(locked?'고정됨':'고정')+'</button></div>';
+   const gradeSelect='<select class="sq-player-grade" data-grade-slot="'+i+'" aria-label="'+esc(p.name)+' 강화 단계">'+Array.from({length:13},(_,j)=>{const g=j+1,price=p.prices?.[j];return '<option value="'+g+'"'+(g===p.grade?' selected':'')+(!Number.isSafeInteger(price)||price<=0?' disabled':'')+'>'+g+'강'+(!Number.isSafeInteger(price)||price<=0?' (시세 없음)':'')+'</option>'}).join("")+'</select>';
+   return '<div class="sq-player"><div class="sq-card-top"><small class="sq-pos">'+p.pos+' · '+projection.per[i].ovr+'</small><span class="sq-pay" title="급여">'+p.pay+'</span></div><div class="sq-face"><img alt="" loading="lazy" src="'+img+'playersAction/p'+p.id+'.png" data-fallback="'+img+'players/p'+p.pid+'.png"><div class="sq-card-tools"><button type="button" data-swap="'+i+'" title="대체 선수로 교체" aria-label="'+esc(p.name)+' 교체"'+(locked?' disabled':'')+'>'+swapIcon+'</button><button type="button" data-remove="'+i+'" title="선수 삭제" aria-label="'+esc(p.name)+' 삭제">'+trashIcon+'</button></div></div><b>'+esc(p.name)+'</b><small>'+esc(p.season)+'</small>'+gradeSelect+'<small>'+money(p.price)+'</small><button type="button" class="sq-card-lock" data-lock="'+i+'" aria-pressed="'+locked+'" aria-label="'+esc(p.name)+(locked?' 고정 해제':' 고정')+'">'+lockIcon+(locked?'고정됨':'고정')+'</button></div>';
  }).join("")+"</div>").join("");
  $("sqPitch").querySelectorAll("img").forEach(el=>el.addEventListener("error",()=>{if(el.dataset.fallback){el.src=el.dataset.fallback;delete el.dataset.fallback}else el.hidden=true}));
 
@@ -136,7 +137,7 @@ function restore(s){
  if(s?.schema!==1||!Array.isArray(s.players)||s.players.length!==11)throw Error("스쿼드 저장 형식이 올바르지 않습니다.");
  applyOpts(s.opts);
  if(!s.players.every((p,i)=>Number.isSafeInteger(p.id)&&p.id>0&&Number.isInteger(p.grade)&&p.grade>=1&&p.grade<=13&&p.pos===FORM[s.opts.formation][i]))throw Error("선수 정보가 올바르지 않습니다.");
- locks=Object.fromEntries(s.players.map((p,i)=>[i,{id:p.id,grade:p.grade,name:String(p.name||p.id).slice(0,80)}]));lockView();clearOutput();request(fields(),Object.keys(MODES),locks);
+ locks=Object.fromEntries(s.players.map((p,i)=>[i,{id:p.id,grade:p.grade,name:String(p.name||p.id).slice(0,80),manual:true}]));lockView();clearOutput();request(fields(),Object.keys(MODES),locks);
 }
 $("sqForm").addEventListener("submit",e=>{e.preventDefault();request(fields(),Object.keys(MODES),locks)});
 $("sqFormation").addEventListener("change",()=>{locks={};lockView();clearOutput();status("포메이션 변경 · 고정 선수를 초기화했습니다.")});
@@ -197,8 +198,8 @@ function applyPlayer(i,c,lock=false){
  const r=results[active];if(!r?.ok)return false;
  const players=r.players.slice();players[i]=c;
  const filled=players.filter(Boolean),price=filled.reduce((n,p)=>n+p.price,0),pay=filled.reduce((n,p)=>n+p.pay,0);
- if(!Number.isSafeInteger(price)||price>currentOpts.budget||pay>currentOpts.salary||new Set(filled.map(p=>p.pid)).size!==filled.length||filled.some(p=>!currentOpts.grades.includes(p.grade)||(currentOpts.team&&!p.teams.includes(currentOpts.team))))return false;
- if(c&&lock)locks[i]={id:c.id,grade:c.grade,name:c.name};else delete locks[i];
+ if(!Number.isSafeInteger(price)||price>currentOpts.budget||pay>currentOpts.salary||new Set(filled.map(p=>p.pid)).size!==filled.length||filled.some(p=>!Number.isInteger(p.grade)||p.grade<1||p.grade>13||!Number.isSafeInteger(p.price)||p.price<=0||!Number.isSafeInteger(p.pay)||p.pay<=0||(currentOpts.team&&!p.teams.includes(currentOpts.team))))return false;
+ if(c&&lock)locks[i]={id:c.id,grade:c.grade,name:c.name,manual:true};else delete locks[i];
  results[active]={...r,players,price,pay};
  closePicker();render();return true;
 }
@@ -228,9 +229,9 @@ async function searchPicker(){
  $("sqPickerNote").textContent="조건에 맞는 선수를 검색 중입니다…";
  try{
    const rows=await loadPosition(FORM[opts.formation][i]);if(seq!==pickerSeq)return;
-   pickerCandidates=E.alternatives(rows,manifest,opts,active,r.players,i,query,false);
-   $("sqPlayerResults").innerHTML=pickerRows(pickerCandidates,"data-pick");
-   $("sqPickerNote").textContent=pickerCandidates.length?"조건에 맞는 후보 "+pickerCandidates.length+"개 (최대 80개)":"조건에 맞는 선수가 없습니다. 이름 또는 시즌을 다시 검색해 주세요.";
+   pickerCandidates=E.manualSearch(rows,manifest,opts,active,r.players,i,query);
+   $("sqPlayerResults").innerHTML=pickerCandidates.map((p,j)=>'<button type="button" class="sq-manual-card" data-pick="'+j+'"><img loading="lazy" alt="" src="'+img+'playersAction/p'+p.id+'.png"><span><b>'+esc(p.name)+'</b><small>'+esc(p.season)+'</small></span><span class="sq-manual-pay">급여 '+p.pay+'</span></button>').join("");
+   $("sqPickerNote").textContent=pickerCandidates.length?"시즌별 카드 "+pickerCandidates.length+"개 · 선택하면 1강으로 추가됩니다.":"1강 시세와 남은 예산·급여·팀컬러·포지션 조건을 충족하는 카드가 없습니다.";
  }catch(e){if(seq===pickerSeq)$("sqPickerNote").textContent=e.message}
 }
 function onRosterClick(e){
@@ -238,12 +239,21 @@ function onRosterClick(e){
  const i=Number(b.dataset.lock??b.dataset.swap??b.dataset.remove??b.dataset.add),p=r.players[i];if(!Number.isInteger(i)||i<0||i>10)return;
  if(b.hasAttribute("data-add")){showPicker(i,b);return}
  if(!p)return;
- if(b.hasAttribute("data-lock")){if(locks[i]?.id===p.id&&locks[i]?.grade===p.grade)delete locks[i];else locks[i]={id:p.id,grade:p.grade,name:p.name};render();return}
+ if(b.hasAttribute("data-lock")){if(locks[i]?.id===p.id&&locks[i]?.grade===p.grade)delete locks[i];else locks[i]={id:p.id,grade:p.grade,name:p.name,manual:true};render();return}
  if(b.hasAttribute("data-remove")){if(applyPlayer(i,null)){status(p.name+" 삭제 · 빈 포지션에 직접 선수를 넣어 주세요.");showPicker(i,$("sqPitch").querySelector('[data-add="'+i+'"]'))}return}
  if(locks[i]?.id===p.id&&locks[i]?.grade===p.grade)return;
  showPicker(i,b);
 }
 $("sqPitch").addEventListener("click",onRosterClick);
+$("sqPitch").addEventListener("change",e=>{
+ const el=e.target.closest("[data-grade-slot]"),r=results[active];if(!el||!r?.ok||task||slotBusy)return;
+ const i=Number(el.dataset.gradeSlot),p=r.players[i],grade=Number(el.value);if(!p)return;
+ const c=E.changeGrade(p,grade),locked=locks[i]?.id===p.id&&locks[i]?.grade===p.grade;
+ if(!c){el.value=String(p.grade);status("해당 강화 단계의 실제 시세를 확인할 수 없습니다.",true);return}
+ if(!applyPlayer(i,c,locked)){el.value=String(p.grade);status("예산 또는 급여 한도를 초과해 강화 단계를 변경할 수 없습니다.",true);return}
+ status(p.name+" "+p.grade+"강 → "+grade+"강 변경 완료");
+ $("sqPitch").querySelector('[data-grade-slot="'+i+'"]')?.focus({preventScroll:true});
+});
 $("sqPickerClose").addEventListener("click",closePicker);
 $("sqPicker").addEventListener("cancel",e=>{e.preventDefault();closePicker()});
 $("sqPicker").addEventListener("click",e=>{if(e.target===$("sqPicker"))closePicker()});
@@ -252,8 +262,8 @@ function pickPlayer(e,attr,list){
  const b=e.target.closest("["+attr+"]");if(!b||pickerSlot===null)return;
  const i=pickerSlot,c=list[Number(b.getAttribute(attr))],old=results[active]?.players[i];
  if(c&&applyPlayer(i,c,false)){
-   status((old?old.name+" → ":"")+c.name+" "+c.grade+"강 선택 완료 · 고정 버튼으로 유지 가능");
-   $("sqPitch").querySelector('[data-lock="'+i+'"]')?.focus({preventScroll:true});
+   status((old?old.name+" → ":"")+c.name+" "+c.grade+"강 선택 완료 · 선수 카드에서 강화 변경 가능");
+   $("sqPitch").querySelector('[data-grade-slot="'+i+'"]')?.focus({preventScroll:true});
  }else $("sqPickerNote").textContent="선수 추가 조건을 확인해 주세요.";
 }
 $("sqPlayerResults").addEventListener("click",e=>pickPlayer(e,"data-pick",pickerCandidates));

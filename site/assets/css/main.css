@@ -1202,3 +1202,22 @@ nav.menu a.core:not([aria-current]):hover{background:var(--accent);color:var(--a
 .pstx tr.low td:not(:first-child),.pstx tr.hi td:not(:first-child){color:var(--fg)}
 .pstx .duel-rate{display:block;font-weight:700;line-height:1.3}
 .pstx .duel-count{display:block;font-size:10px;font-weight:400;color:var(--muted);white-space:nowrap;line-height:1.4}
+
+/* 전적진단: 구단주 정보 옆에 자동 조언, 좁은 화면에서는 세로 배치 */
+.diag-intro{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start;min-width:0}
+.diag-intro>#dBoard{grid-template-columns:minmax(0,1fr) auto;min-width:0;align-content:start;align-items:start}
+.diag-intro>#dBoard>div:first-child{min-width:0}
+.diag-intro .nick-wrap{flex-wrap:wrap;overflow-wrap:anywhere}
+.diag-intro>#dTip{min-width:0;overflow-wrap:anywhere;margin:0}
+.diag-intro .tip-h{flex-wrap:wrap}
+.diag-intro .dtip ul{font-size:13px;line-height:1.5}
+#dSecs>#dTc{margin:0}
+@media(min-width:860px){.diag-intro:has(>#dTip:not([hidden])){grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+@media(max-width:480px){.diag-intro>#dBoard{grid-template-columns:minmax(0,1fr)}.diag-intro>#dBoard .tier{align-items:flex-start;text-align:left}}
+/* 동률 팀은 하나의 비율 행에 묶되 각 팀 전적은 분리 */
+.dtc-cols li.dtc-rank-row{grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)}
+.dtc-cols li.dtc-rank-row:last-child{border-bottom:0}
+.dtc-rank-teams{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;min-width:0}
+.dtc-rank-team{display:grid;gap:2px;min-width:0;max-width:100%}
+.dtc-cols li .dtc-rank-team b{white-space:normal;overflow-wrap:anywhere}
+.dtc-rank-team small{font-size:10px;color:var(--muted);white-space:normal}

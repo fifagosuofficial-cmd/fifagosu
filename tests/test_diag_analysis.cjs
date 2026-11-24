@@ -90,3 +90,16 @@ test('duel cell separates percentage and labelled counts; zero attempts are unav
   assert.match(ctx.dDuelCell(29,37),/성공 29 \/ 시도 37/);
   assert.match(ctx.dDuelCell(0,0),/>-</);
 });
+
+test('ranker comparison uses the same latest squad filter as player records',()=>{
+  const i=src.indexOf('function dRankerView(a){'),j=src.indexOf('function dRenderTabs()',i),view=src.slice(i,j);
+  assert.ok(view.includes('dRecentRows(a.players,a.recentLineup,dFilter.recent)'));
+  assert.ok(view.includes('dRecentCheckbox(a)'));
+});
+test('teamcolor reports exclusions and single-appearance groups separately',()=>{
+  const match=player=>({matchInfo:[{matchDetail:{matchResult:'승'}},{player}]});
+  const result=ctx.dTeamcolorStats([match(players),match(players.slice(0,7))],mk(9,4));
+  assert.equal(result.valid.length,1);assert.equal(result.excluded.lineup,1);assert.equal(result.single,1);assert.equal(result.all.length,0);
+  const out=ctx.dTeamcolorStats([match(players)],mk(8,8));
+  assert.equal(out.excluded.ambiguous,1);
+});

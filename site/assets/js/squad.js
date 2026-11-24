@@ -10,7 +10,7 @@ const img="https://fco.dn.nexoncdn.co.kr/live/externalAssets/common/";
 const STORE="fg-squad-v1", RECENT="fg-squad-recent-v1";
 let worker=null,requestId=0,task=null,manifest=null,results={},active="balanced",locks={},currentOpts=null;
 const status=(s,bad=false)=>{$("sqStatus").textContent=s;$("sqStatus").classList.toggle("sq-error",bad)};
-const money=n=>Math.floor(n/1e12)+"조 "+Math.floor(n%1e12/1e8).toLocaleString("ko-KR")+"억";
+const money=n=>n<1e8?n.toLocaleString("ko-KR")+" BP":Math.floor(n/1e12)+"조 "+Math.floor(n%1e12/1e8).toLocaleString("ko-KR")+"억";
 function fields(){
  const grades=$("sqGrades").value;
  return {budget:Math.round(Number($("sqBudget").value)*1e12),salary:Number($("sqSalary").value),team:Number($("sqTeam").value),formation:$("sqFormation").value,style:$("sqStyle").value,grades:grades==="all"?Array.from({length:13},(_,i)=>i+1):grades==="mix"?[1,5,8]:[Number(grades)]}
@@ -72,11 +72,12 @@ $("sqForm").addEventListener("submit",e=>{e.preventDefault();request(fields(),Ob
 $("sqFormation").addEventListener("change",()=>{locks={};lockView();clearOutput();status("포메이션 변경 · 고정 선수를 초기화했습니다.")});
 ["sqBudget","sqSalary","sqTeam","sqStyle","sqGrades"].forEach(id=>$(id).addEventListener("change",()=>{clearOutput();status("조건이 변경되었습니다. 다시 추천해 주세요.")}));
 $("sqModes").addEventListener("click",e=>{const b=e.target.closest("[data-mode]");if(b){active=b.dataset.mode;render()}});
-$("sqLocks").addEventListener("click",e=>{const b=e.target.closest("[data-unlock]");if(b){delete locks[b.dataset.unlock];lockView();if(!("hidden" in $("sqOutput"))||!$("sqOutput").hidden)render()}});
+$("sqLocks").addEventListener("click",e=>{const b=e.target.closest("[data-unlock]");if(b){delete locks[b.dataset.unlock];lockView();if(!$("sqOutput").hidden)render()}});
 $("sqRows").addEventListener("click",e=>{
  const b=e.target.closest("[data-lock],[data-swap]"),r=results[active];if(!b||!r?.ok)return;
  const i=Number(b.dataset.lock??b.dataset.swap),p=r.players[i];if(!p)return;
  if(b.hasAttribute("data-lock")){if(locks[i]?.id===p.id&&locks[i]?.grade===p.grade)delete locks[i];else locks[i]={id:p.id,grade:p.grade,name:p.name};render();return}
+ if(locks[i]?.id===p.id&&locks[i]?.grade===p.grade)return;
  const keep=Object.fromEntries(r.players.flatMap((p,j)=>j===i?[]:[[j,{id:p.id,grade:p.grade}]]));
  request(currentOpts,[active],keep,{[i]:{id:p.id,grade:p.grade}},true);
 });
@@ -96,6 +97,6 @@ fetch("/assets/squad-data/manifest.json?v="+encodeURIComponent(ver)).then(r=>{if
  manifest=m;
  $("sqTeam").innerHTML='<option value="0">소속 제한 없음</option>'+m.teams.filter(t=>t.cards>=11).map(t=>'<option value="'+t.id+'">'+esc(t.name)+" ("+(t.kind==="nation"?"국가":"클럽")+")</option>").join("");
  busy(false);status("시세 수집 기준 "+(m.dateFrom||"미상")+" ~ "+(m.dateTo||"미상")+" · 조건을 선택해 주세요.");
- const shared=new URLSearchParams(location.search).get("s");if(shared&&shared.length<20000){try{restore(JSON.parse(shared))}catch(e){status(e.message,true)}}
+ const params=new URLSearchParams(location.search);if(params.get("import")==="1")$("sqImport").click();const shared=params.get("s");if(shared&&shared.length<20000){try{restore(JSON.parse(shared))}catch(e){status(e.message,true)}}
 }).catch(e=>{busy(false);status(e.message,true)});
 })();

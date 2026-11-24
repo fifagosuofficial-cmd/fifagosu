@@ -86,7 +86,7 @@ def test_ad_slots_are_ready_but_do_not_load_network_without_ids(tmp_path):
     }
     for file, slot in expected.items():
         doc = BeautifulSoup((out / file).read_text("utf-8"), "html.parser")
-        assert doc.select_one(f'aside[data-slot="{slot}"][aria-label="광고"]')
+        assert doc.select_one(f'aside[data-ad-slot="{slot}"][aria-label="광고"]')
         assert doc.select_one('script[src*="assets/js/ads.js"]')
     home = (out / "index.html").read_text("utf-8")
     assert '"enabled": false' in home

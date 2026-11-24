@@ -1187,3 +1187,7 @@ nav.menu a.core:not([aria-current]):hover{background:var(--accent);color:var(--a
 .diag-formation .nm .ssnimg{flex:none;max-width:22px;height:auto}
 .diag-formation .nm .grade{flex:none;margin:0}
 @media(max-width:480px){.diag-formation .nm{font-size:10px;gap:2px}.diag-formation .dot{height:25px;min-width:28px;font-size:11px}.diag-formation .nm .ssnimg{max-width:17px}}
+/* 비교 근거를 선수별 기록 표 안에서 바로 확인 */
+.diag-eval-reason{display:block;min-width:180px;max-width:300px;white-space:normal;overflow-wrap:anywhere;line-height:1.4;margin-top:4px}
+.dtc-cols li b small{display:block;font-weight:400;font-size:11px;color:var(--muted);white-space:normal}
+.dr-grid>div small{white-space:normal;overflow-wrap:anywhere;line-height:1.4}

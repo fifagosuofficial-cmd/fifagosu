@@ -9,10 +9,11 @@
 <div class="sq-fields">
 <label>총 구단 예산 (현재 BP 단위)<div class="sq-budget"><input id="sqBudget" type="number" min="0.0001" step="any" value="10" required><select id="sqUnit" aria-label="예산 단위"><option value="1">BP</option><option value="10000">만</option><option value="100000000" selected>억</option><option value="1000000000000">조</option></select></div><small>2026.8.20 화폐 단위 조정 이후 기준</small></label>
 <label>급여 상한 (최대 315)<input id="sqSalary" type="number" min="11" max="315" step="1" value="315" required><small>전력 저하를 방지하면서 315에 가깝게 사용</small></label>
-<label>팀컬러 후보<select id="sqTeam"><option value="0">소속 제한 없음</option></select></label>
-<label>포메이션<select id="sqFormation"><option value="4231">4-2-3-1</option><option value="433">4-3-3 (CDM)</option><option value="4222">4-2-2-2</option><option value="4123">4-1-2-3</option><option value="442">4-4-2</option></select></label>
+<label>팀컬러 선택<input id="sqTeam" type="search" list="sqTeamList" value="소속 제한 없음" placeholder="팀컬러 이름 검색" autocomplete="off" required><datalist id="sqTeamList"><option value="소속 제한 없음"></option></datalist><small>이름을 입력한 뒤 목록에서 선택</small></label>
+<label>포메이션<select id="sqFormation"><option value="4231">4-2-3-1</option></select><small id="sqFormationCount"></small></label>
 <label>플레이 스타일<select id="sqStyle"><option value="balanced">밸런스</option><option value="speed">속력 · 치달 / 침투</option><option value="pass">티키타카 · 패스 연계</option><option value="longshot">중거리 슛 · 감아차기</option><option value="cross">크로스 · 헤더</option><option value="press">전방 압박</option><option value="counter">빠른 역습</option><option value="defense">수비 안정</option></select></label>
-<label>강화 단계<select id="sqGrades"><option value="mix">1·5·8강 혼합</option><option value="all">1~13강 혼합</option>{% for g in range(1,14) %}<option value="{{ g }}">{{ g }}강</option>{% endfor %}</select></label>
+<label>강화 단계<select id="sqGrades"><option value="silver">은빛 물결 이상 (5~13강)</option><option value="gold" selected>금빛 물결 이상 (8~13강)</option><option value="platinum">백금빛 물결 이상 (11~13강)</option><option value="custom">직접 범위 선택</option></select><small>선수별 최소 강화 조건이며 실제 물결 발동은 별도 확인</small></label>
+<div id="sqGradeRange" class="sq-grade-range" hidden><label>최소 강화<select id="sqGradeMin">{% for g in range(1,14) %}<option value="{{ g }}"{% if g==8 %} selected{% endif %}>{{ g }}강</option>{% endfor %}</select></label><label>최대 강화<select id="sqGradeMax">{% for g in range(1,14) %}<option value="{{ g }}"{% if g==13 %} selected{% endif %}>{{ g }}강</option>{% endfor %}</select></label></div>
 </div>
 <p class="sq-note" id="sqStyleHint"></p><p class="sq-note">기본 급여 배분: ST·CAM·CB 우선 투자, 윙·CM·CDM 균형, LB·RB·GK 저급여 가성비 중심. 플레이 스타일은 선수 능력치 평가에만 반영합니다.</p><p class="sq-note">선택 팀컬러는 11명 모두 후보 소속 조건을 만족해야 합니다. 클럽 경력·국적·시즌 매핑 기준이며 게임 내 실제 적용과 강화 보너스는 별도로 확인해야 합니다. 예산은 구매가 합계이며 판매 수수료를 포함하지 않습니다.</p>
 <div class="sq-actions"><button type="submit" id="sqRun">스쿼드 3종 추천</button><button type="button" id="sqImport">최근 진단 선수 가져오기</button><button type="button" id="sqLoad">저장한 스쿼드 불러오기</button></div>
@@ -23,11 +24,12 @@
 <div class="sq-modes" id="sqModes" role="group" aria-label="추천 유형"></div>
 <div id="sqSummary" class="sq-summary"></div>
 <div id="sqPitch" class="sq-pitch" aria-label="선발 11명 배치"></div>
+<section id="sqPicker" class="sq-card sq-picker" hidden><div class="sq-section-head"><h2 id="sqPickerTitle">선수 직접 검색</h2><button type="button" id="sqPickerClose">닫기</button></div><label for="sqPlayerQuery">선수명 또는 시즌</label><input id="sqPlayerQuery" type="search" placeholder="예: 손흥민, 26TOTS" autocomplete="off"><p class="sq-note" id="sqPickerNote" role="status"></p><div class="tablewrap"><table class="sq-table sq-search-table"><thead><tr><th>선수 / 시즌</th><th>강화</th><th>OVR</th><th>급여</th><th>시세</th><th>선택</th></tr></thead><tbody id="sqPlayerResults"></tbody></table></div></section>
 <section class="sq-card"><div class="sq-section-head"><h2>선수별 상세 비교</h2><div class="sq-actions"><button type="button" id="sqSave">저장</button><button type="button" id="sqShare">공유 링크 복사</button></div></div>
-<p class="sq-note">고정 후 재추천하면 해당 선수를 유지합니다. 개별 교체는 나머지 10명을 유지한 채 대안을 탐색합니다.</p>
+<p class="sq-note">고정 후 재추천하면 해당 선수를 유지합니다. 개별 교체는 다른 선수를 유지한 채 대안을 탐색합니다. 휴지통으로 빈 자리를 만들고 선수 검색으로 직접 채울 수 있습니다.</p>
 <div class="tablewrap"><table class="sq-table"><thead><tr><th>포지션</th><th>선수 / 시즌</th><th>강화</th><th>OVR</th><th>급여</th><th>시세 (BP)</th><th>약발 / 키</th><th>수집 경기 수</th><th>핵심 능력치 · 추천 근거</th><th>조정</th></tr></thead><tbody id="sqRows"></tbody></table></div>
 <p class="sq-note">OVR 및 능력치는 수집 기준값 + 강화 상승치입니다. 팀컬러·적응도 추가 보너스는 포함하지 않습니다. 실제 시세·보유 여부는 게임에서 확인하세요. 수집 경기 수는 카드 단위 인기도 참고 지표이며 강화별 랭커 사용률이 아닙니다. 제한된 후보 탐색으로 전역 최적해를 보장하지 않습니다.</p></section>
 </section>
 </main>
 {% endblock %}
-{% block scripts %}<script defer src="{{ root }}assets/js/squad.js?v={{ ver }}"></script>{% endblock %}
+{% block scripts %}<script defer src="{{ root }}assets/js/squad-engine.js?v={{ ver }}"></script><script defer src="{{ root }}assets/js/squad.js?v={{ ver }}"></script>{% endblock %}

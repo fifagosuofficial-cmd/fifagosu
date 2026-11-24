@@ -39,3 +39,12 @@ test("popular is a read-only derived category, even for authenticated members",a
  const r=await onRequest({request:new Request(origin+"/api/community/post",{method:"POST",headers:{Origin:origin,"Content-Type":"application/json",Cookie:"fg_session="+"a".repeat(64)},body:JSON.stringify({category:"popular",prefix:"normal",title:"test",body:"test"})}),env});
  assert.equal(r.status,400);
 });
+
+test("view increment is an aggregate, same-origin request, excluding hidden posts",async()=>{
+ const {onRequest}=await load();let sql="",args=[];
+ const env={...enabled,COMMUNITY_DB:{prepare(s){sql=s;return {bind(...a){args=a;return {run:async()=>({meta:{changes:1}})}}}}}};
+ const r=await onRequest({request:new Request(origin+"/api/community/view",{method:"POST",headers:{Origin:origin,"Content-Type":"application/json"},body:JSON.stringify({post_id:42})}),env});
+ assert.equal(r.status,200);
+ assert.equal(sql,"UPDATE posts SET views=views+1 WHERE id=? AND hidden=0");
+ assert.deepEqual(args,[42]);
+});

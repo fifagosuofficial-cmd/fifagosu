@@ -183,15 +183,22 @@ function alternatives(rows,manifest,opts,mode,players,slot,query="",excludeCurre
    for(const grade of opts.grades){
      const c=candidate(row,pos,grade,opts,keys);
      if(!c||c.price>remainBP||c.pay>remainPay)continue;
-     if(excludeCurrent&&median!=null&&c.ovr<median-18)continue;
-     out.push({...c,slot});
+     out.push({...c,slot,weakAlternative:median!=null&&c.ovr<median-18});
    }
  }
  const sorted=out.sort((a,b)=>score(b,mode,opts,target)-score(a,mode,opts,target)||(b.games??-1)-(a.games??-1)||a.price-b.price||a.id-b.id);
  if(!excludeCurrent)return sorted.slice(0,80);
- // Swap should preserve overall wage usage as much as possible without a large quality sacrifice.
- const best=sorted[0];if(!best)return [];
- return sorted.filter(c=>score(c,mode,opts,target)>=score(best,mode,opts,target)-3).sort((a,b)=>b.pay-a.pay||score(b,mode,opts,target)-score(a,mode,opts,target));
+ // Offer different real players first, prioritizing quality and wage utilization.
+ // Weaker feasible candidates are explicitly marked, never used as automatic substitutes.
+ const strong=sorted.filter(c=>!c.weakAlternative),weak=sorted.filter(c=>c.weakAlternative);
+ const best=strong[0],preferred=best?strong.filter(c=>score(c,mode,opts,target)>=score(best,mode,opts,target)-3).sort((a,b)=>b.pay-a.pay||score(b,mode,opts,target)-score(a,mode,opts,target)):[];
+ const seen=new Set(),recommended=[];
+ for(const c of [...preferred,...strong,...weak]){
+   if(seen.has(c.pid))continue;
+   seen.add(c.pid);recommended.push(c);
+   if(recommended.length>=10)break;
+ }
+ return recommended;
 }
 function validate(result,opts){
  if(!result?.ok||result.players?.length!==11||!FORMATIONS[opts.formation])return false;

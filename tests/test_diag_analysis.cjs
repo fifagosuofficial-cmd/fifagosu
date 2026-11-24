@@ -126,3 +126,13 @@ test('teamcolor reports exclusions and single-appearance groups separately',()=>
   const out=ctx.dTeamcolorStats([match(players)],mk(8,8));
   assert.equal(out.valid.length,1);assert.equal(out.all[0].n,1);assert.match(out.all[0].name,/동률/);
 });
+
+
+test('teamcolor rankings require three encounters, not a single perfect result',()=>{
+  const rows=[{name:'A',n:1,w:1,l:0},{name:'B',n:2,w:0,l:2},{name:'C',n:3,w:2,l:1},{name:'D',n:5,w:3,l:2},{name:'E',n:3,w:0,l:3}];
+  const result=ctx.dTeamcolorRankings(rows);
+  assert.deepEqual(Array.from(result.eligible,x=>x.name),['C','D','E']);
+  assert.deepEqual(Array.from(result.wins,x=>x.name),['C','D']);
+  assert.deepEqual(Array.from(result.loss,x=>x.name),['E','D','C']);
+  assert.equal(ctx.dTeamcolorRankings(rows.slice(0,2)).eligible.length,0);
+});

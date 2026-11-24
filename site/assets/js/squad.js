@@ -68,7 +68,7 @@ const money=n=>{const p=[];for(const [u,k] of [[1e12,"조"],[1e8,"억"],[1e4,"�
 function fields(){
  const preset=$("sqGrades").value;
  const grades=preset==="custom"?E.gradeRange(Number($("sqGradeMin").value),Number($("sqGradeMax").value)):E.gradeRange(({silver:5,gold:8,platinum:11})[preset],13);
- const teamName=$("sqTeam").value.trim(),team=!teamName||teamName==="소속 제한 없음"?0:manifest?.teams.find(t=>t.name===teamName)?.id;
+ const teamName=$("sqTeam").value.trim(),team=!teamName||teamName==="소속 제한 없음"?0:selectedTeam?.name===teamName?selectedTeam.id:manifest?.teams.find(t=>t.name===teamName)?.id;
  return {budget:Math.round(Number($("sqBudget").value)*Number($("sqUnit").value)),salary:Number($("sqSalary").value),team:team??-1,formation:$("sqFormation").value,style:$("sqStyle").value,grades}
 }
 function busy(on){document.querySelectorAll("#squad button,#squad input,#squad select").forEach(el=>el.disabled=on);if(!on&&!manifest)$("sqRun").disabled=true}
@@ -80,10 +80,11 @@ function lockView(){
 function validOpts(o){return o&&Number.isSafeInteger(o.budget)&&o.budget>0&&o.budget<=9e15&&Number.isInteger(o.salary)&&o.salary>=11&&o.salary<=315&&FORM[o.formation]&&Object.hasOwn(HINT,o.style)&&Array.isArray(o.grades)&&o.grades.length&&o.grades.every(g=>Number.isInteger(g)&&g>=1&&g<=13)&&(!o.team||manifest.teams.some(t=>t.id===o.team))}
 function applyOpts(o){
  if(!validOpts(o))throw Error("저장된 설정이 현재 데이터와 맞지 않습니다.");
- const unit=o.budget>=1e12?1e12:o.budget>=1e8?1e8:o.budget>=1e4?1e4:1;$("sqUnit").value=String(unit);$("sqBudget").value=String(o.budget/unit);$("sqSalary").value=String(o.salary);$("sqTeam").value=o.team?manifest.teams.find(t=>t.id===o.team)?.name||"":"";$("sqFormation").value=o.formation;$("sqStyle").value=o.style;hint();
+ const unit=o.budget>=1e12?1e12:o.budget>=1e8?1e8:o.budget>=1e4?1e4:1;$("sqUnit").value=String(unit);$("sqBudget").value=String(o.budget/unit);$("sqSalary").value=String(o.salary);selectedTeam=o.team?manifest.teams.find(t=>t.id===o.team)||null:null;$("sqTeam").value=selectedTeam?.name||"";$("sqFormation").value=o.formation;$("sqStyle").value=o.style;hint();
  const min=Math.min(...o.grades),max=Math.max(...o.grades);$("sqGrades").value=max===13&&[5,8,11].includes(min)&&o.grades.length===14-min?({5:"silver",8:"gold",11:"platinum"})[min]:"custom";$("sqGradeMin").value=String(min);$("sqGradeMax").value=String(max);gradeHint();
 }
 function request(opts,modes,ls,bs={},replace=false){
+ closeTeamList();
  if(!manifest||!validOpts(opts)){status("입력 조건을 확인해 주세요.",true);return}
  if(task||slotBusy)return;closePicker();
  if(!worker){try{worker=new Worker("/assets/js/squad-worker.js?v="+encodeURIComponent(ver));worker.onmessage=receive;worker.onerror=()=>{task=null;worker.terminate();worker=null;busy(false);status("추천 작업이 중단됐습니다. 다시 시도해 주세요.",true)}}catch(e){status("브라우저가 추천 작업을 지원하지 않습니다.",true);return}}
@@ -139,13 +140,46 @@ function restore(s){
 }
 $("sqForm").addEventListener("submit",e=>{e.preventDefault();request(fields(),Object.keys(MODES),locks)});
 $("sqFormation").addEventListener("change",()=>{locks={};lockView();clearOutput();status("포메이션 변경 · 고정 선수를 초기화했습니다.")});
-["sqBudget","sqUnit","sqSalary","sqTeam","sqStyle","sqGrades","sqGradeMin","sqGradeMax"].forEach(id=>$(id).addEventListener("change",()=>{hint();gradeHint();clearOutput();status("조건이 변경되었습니다. 다시 추천해 주세요.")}));
+["sqBudget","sqUnit","sqSalary","sqStyle","sqGrades","sqGradeMin","sqGradeMax"].forEach(id=>$(id).addEventListener("change",()=>{hint();gradeHint();clearOutput();status("조건이 변경되었습니다. 다시 추천해 주세요.")}));
 $("sqModes").addEventListener("click",e=>{const b=e.target.closest("[data-mode]");if(b&&!slotBusy){closePicker();active=b.dataset.mode;render()}});
 $("sqLocks").addEventListener("click",e=>{const b=e.target.closest("[data-unlock]");if(b){delete locks[b.dataset.unlock];lockView();if(!$("sqOutput").hidden)render()}});
-const teamInput=$("sqTeam");
-teamInput.addEventListener("focus",()=>{teamInput.placeholder="팀컬러 이름 검색";if(teamInput.value==="소속 제한 없음")teamInput.value="";else teamInput.select()});
-teamInput.addEventListener("click",()=>{if(teamInput.value==="소속 제한 없음")teamInput.value="";else teamInput.select()});
-teamInput.addEventListener("blur",()=>{teamInput.placeholder="소속 제한 없음"});
+const teamInput=$("sqTeam"),teamList=$("sqTeamList"),teamToggle=$("sqTeamToggle");
+let selectedTeam=null,teamOptions=[],teamCursor=-1;
+const teamNorm=s=>String(s||"").toLowerCase().replace(/\s+/g,"");
+function closeTeamList(){teamList.hidden=true;teamInput.setAttribute("aria-expanded","false");teamInput.removeAttribute("aria-activedescendant");teamCursor=-1}
+function showTeamList(all=false){
+ if(!manifest||teamInput.disabled)return;
+ const q=all?"":teamNorm(teamInput.value);
+ const ts=manifest.teams.filter(t=>t.cards>=11);
+ teamOptions=[{id:0,name:"소속 제한 없음",kind:"all"},...ts].filter(t=>!q||teamNorm(t.name).includes(q)).slice(0,120);
+ teamCursor=-1;teamInput.removeAttribute("aria-activedescendant");
+ teamList.innerHTML=teamOptions.length?teamOptions.map((t,i)=>'<button type="button" role="option" id="sqTeamOpt'+i+'" data-team-index="'+i+'" aria-selected="'+(t.id===(selectedTeam?.id||0))+'"><span>'+esc(t.name)+'</span><small>'+(t.kind==="nation"?"국가":t.kind==="club"?"클럽":"전체")+'</small></button>').join(""):'<p class="sq-note">검색 결과가 없습니다.</p>';
+ teamList.hidden=false;teamInput.setAttribute("aria-expanded","true");
+}
+function chooseTeam(t){
+ if(!t)return;
+ const old=selectedTeam?.id||0;selectedTeam=t.id?t:null;teamInput.value=t.id?t.name:"";closeTeamList();
+ if(old!==t.id||currentOpts&&currentOpts.team!==t.id){locks={};lockView();clearOutput();status("팀컬러가 변경되었습니다. 다시 추천해 주세요.")}
+}
+teamInput.addEventListener("focus",()=>{teamInput.select();showTeamList(true)});
+teamInput.addEventListener("click",()=>{if(teamList.hidden)showTeamList(true)});
+teamInput.addEventListener("input",()=>showTeamList());
+teamInput.addEventListener("keydown",e=>{
+ if(e.key==="Escape"){closeTeamList();return}
+ if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+   e.preventDefault();if(teamList.hidden)showTeamList(true);
+   if(!teamOptions.length)return;
+   teamCursor=teamCursor<0?(e.key==="ArrowDown"?0:teamOptions.length-1):(teamCursor+(e.key==="ArrowDown"?1:-1)+teamOptions.length)%teamOptions.length;
+   teamList.querySelectorAll("[role=option]").forEach((x,i)=>x.classList.toggle("sq-team-active",i===teamCursor));
+   const el=$("sqTeamOpt"+teamCursor);teamInput.setAttribute("aria-activedescendant",el.id);el.scrollIntoView({block:"nearest"});return;
+ }
+ if(e.key==="Enter"&&!teamList.hidden){e.preventDefault();if(teamCursor>=0)chooseTeam(teamOptions[teamCursor]);else if(teamOptions.length===1)chooseTeam(teamOptions[0])}
+});
+teamList.addEventListener("pointerdown",e=>{if(e.target.closest("[data-team-index]"))e.preventDefault()});
+teamList.addEventListener("click",e=>{const b=e.target.closest("[data-team-index]");if(b)chooseTeam(teamOptions[Number(b.dataset.teamIndex)])});
+teamToggle.addEventListener("click",()=>{if(!teamList.hidden){closeTeamList();return}teamInput.focus();showTeamList(true)});
+document.addEventListener("pointerdown",e=>{if(!e.target.closest(".sq-team-wrap"))closeTeamList()});
+teamInput.addEventListener("blur",e=>{if(!e.relatedTarget?.closest(".sq-team-wrap"))closeTeamList()});
 function gradeHint(){
  $("sqGradeRange").hidden=$("sqGrades").value!=="custom";
 }
@@ -238,7 +272,7 @@ hint();gradeHint();busy(true);
 fetch("/assets/squad-data/manifest.json?v="+encodeURIComponent(ver)).then(r=>{if(!r.ok)throw Error("선수 목록을 불러오지 못했습니다.");return r.json()}).then(m=>{
  if(m.schema!==2||!Object.values(m.positions||{}).some(n=>n>0))throw Error("실제 선수 수집 데이터가 아직 없습니다.");
  manifest=m;
- $("sqTeamList").innerHTML='<option value="소속 제한 없음"></option>'+m.teams.filter(t=>t.cards>=11).map(t=>'<option value="'+esc(t.name)+'">'+(t.kind==="nation"?"국가":"클럽")+'</option>').join("");
+ closeTeamList();
  busy(false);status("시세 수집 기준 "+(m.dateFrom||"미상")+" ~ "+(m.dateTo||"미상")+" · 조건을 선택해 주세요.");
  const params=new URLSearchParams(location.search);if(params.get("import")==="1")$("sqImport").click();const shared=params.get("s");if(shared&&shared.length<20000){try{restore(JSON.parse(shared))}catch(e){status(e.message,true)}}
 }).catch(e=>{busy(false);status(e.message,true)});

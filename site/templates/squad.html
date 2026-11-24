@@ -2,18 +2,18 @@
 {% block head %}<link rel="stylesheet" href="{{ root }}assets/css/squad.css?v={{ ver }}">{% endblock %}
 {% block content %}
 <main class="sq" id="squad">
-<header class="sq-title"><div><span class="sq-tag">FIFAGOSU · AI SQUAD</span><h1>예산은 당신이, <em>스쿼드는 AI가.</em></h1><p>실제 수집 시세와 능력치로 11명 조합을 탐색합니다. 유료 AI 없이 작동하는 자체 추천 엔진입니다.</p></div><a href="{{ root }}diag">전적 진단 →</a></header>
+<header class="sq-title"><div><span class="sq-tag">FIFAGOSU · AI SQUAD</span><h1>예산은 당신이, <em>스쿼드는 AI가.</em></h1></div><a href="{{ root }}diag">전적 진단 →</a></header>
 <section class="sq-card">
 <h2>스쿼드 조건</h2>
 <form id="sqForm">
 <div class="sq-fields">
 <label>총 구단 예산 (현재 BP 단위)<div class="sq-budget"><input id="sqBudget" type="number" min="0.0001" step="any" value="10" required><select id="sqUnit" aria-label="예산 단위"><option value="1">BP</option><option value="10000">만</option><option value="100000000" selected>억</option><option value="1000000000000">조</option></select></div><small>2026.8.20 화폐 단위 조정 이후 기준</small></label>
 <label>급여 상한 (최대 315)<input id="sqSalary" type="number" min="11" max="315" step="1" value="315" required><small>전력 저하를 방지하면서 315에 가깝게 사용</small></label>
-<label>팀컬러 선택<input id="sqTeam" type="search" list="sqTeamList" value="소속 제한 없음" placeholder="팀컬러 이름 검색" autocomplete="off" required><datalist id="sqTeamList"><option value="소속 제한 없음"></option></datalist><small>이름을 입력한 뒤 목록에서 선택</small></label>
+<label>팀컬러 선택<input id="sqTeam" type="search" list="sqTeamList" placeholder="소속 제한 없음" autocomplete="off"><datalist id="sqTeamList"><option value="소속 제한 없음"></option></datalist><small>이름을 입력한 뒤 목록에서 선택</small></label>
 <label>포메이션<select id="sqFormation"><option value="4231">4-2-3-1</option></select><small id="sqFormationCount"></small></label>
 <label>플레이 스타일<select id="sqStyle"><option value="balanced">밸런스</option><option value="speed">속력 · 치달 / 침투</option><option value="pass">티키타카 · 패스 연계</option><option value="longshot">중거리 슛 · 감아차기</option><option value="cross">크로스 · 헤더</option><option value="press">전방 압박</option><option value="counter">빠른 역습</option><option value="defense">수비 안정</option></select></label>
-<label>강화 단계<select id="sqGrades"><option value="silver">은빛 물결 이상 (5~13강)</option><option value="gold" selected>금빛 물결 이상 (8~13강)</option><option value="platinum">백금빛 물결 이상 (11~13강)</option><option value="custom">직접 범위 선택</option></select><small>선수별 최소 강화 조건이며 실제 물결 발동은 별도 확인</small></label>
-<div id="sqGradeRange" class="sq-grade-range" hidden><label>최소 강화<select id="sqGradeMin">{% for g in range(1,14) %}<option value="{{ g }}"{% if g==8 %} selected{% endif %}>{{ g }}강</option>{% endfor %}</select></label><label>최대 강화<select id="sqGradeMax">{% for g in range(1,14) %}<option value="{{ g }}"{% if g==13 %} selected{% endif %}>{{ g }}강</option>{% endfor %}</select></label></div>
+<div class="sq-grade-field"><label>강화 단계<select id="sqGrades"><option value="silver">은빛 물결 이상 (5~13강)</option><option value="gold" selected>금빛 물결 이상 (8~13강)</option><option value="platinum">백금빛 물결 이상 (11~13강)</option><option value="custom">직접 범위 선택</option></select><small>선수별 최소 강화 조건이며 실제 물결 발동은 별도 확인</small></label>
+<div id="sqGradeRange" class="sq-grade-range" hidden><label>최소 강화<select id="sqGradeMin">{% for g in range(1,14) %}<option value="{{ g }}"{% if g==8 %} selected{% endif %}>{{ g }}강</option>{% endfor %}</select></label><label>최대 강화<select id="sqGradeMax">{% for g in range(1,14) %}<option value="{{ g }}"{% if g==13 %} selected{% endif %}>{{ g }}강</option>{% endfor %}</select></label></div></div>
 </div>
 <p class="sq-note" id="sqStyleHint"></p><p class="sq-note">기본 급여 배분: ST·CAM·CB 우선 투자, 윙·CM·CDM 균형, LB·RB·GK 저급여 가성비 중심. 플레이 스타일은 선수 능력치 평가에만 반영합니다.</p><p class="sq-note">선택 팀컬러는 11명 모두 후보 소속 조건을 만족해야 합니다. 클럽 경력·국적·시즌 매핑 기준이며 게임 내 실제 적용과 강화 보너스는 별도로 확인해야 합니다. 예산은 구매가 합계이며 판매 수수료를 포함하지 않습니다.</p>
 <div class="sq-actions"><button type="submit" id="sqRun">스쿼드 3종 추천</button><button type="button" id="sqImport">최근 진단 선수 가져오기</button><button type="button" id="sqLoad">저장한 스쿼드 불러오기</button></div>

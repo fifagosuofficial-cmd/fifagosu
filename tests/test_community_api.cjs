@@ -24,3 +24,18 @@ test("non-admin member cannot create notice",async()=>{
  const r=await onRequest({request:new Request(origin+"/api/community/post",{method:"POST",headers:{Origin:origin,"Content-Type":"application/json",Cookie:"fg_session="+"a".repeat(64)},body:JSON.stringify({category:"free",prefix:"notice",title:"test",body:"test"})}),env});
  assert.equal(r.status,403);
 });
+test("popular feed applies inclusive 30-vote threshold before pagination",async()=>{
+ const {onRequest}=await load();
+ let sql="";
+ const env={...enabled,COMMUNITY_DB:{prepare(s){sql=s;return {bind(){return {all:async()=>({results:[{id:2,likes:30}]})}}}}}};
+ const r=await onRequest({request:new Request(origin+"/api/community/posts?category=popular"),env});
+ assert.equal(r.status,200);
+ assert.match(sql,/WHERE .*p\.hidden=0.*\(SELECT count\(\*\) FROM votes v WHERE v\.post_id=p\.id\)>=30.*ORDER BY likes DESC.*LIMIT 30/);
+});
+test("popular is a read-only derived category, even for authenticated members",async()=>{
+ const {onRequest}=await load();
+ const m={id:"user",subject:"regular",nickname:"test",suspended:0,policy:"2026-11-v1"};
+ const env={...enabled,COMMUNITY_DB:{prepare(sql){assert.match(sql,/FROM sessions/);return {bind(){return {first:async()=>m}}}}}};
+ const r=await onRequest({request:new Request(origin+"/api/community/post",{method:"POST",headers:{Origin:origin,"Content-Type":"application/json",Cookie:"fg_session="+"a".repeat(64)},body:JSON.stringify({category:"popular",prefix:"normal",title:"test",body:"test"})}),env});
+ assert.equal(r.status,400);
+});

@@ -197,7 +197,7 @@
     </div>
     <div class="eff-opts">
       <div class="eff-steps" id="effSteps" role="group" aria-label="강화 단계"></div>
-      <label class="eff-chk"><input type="checkbox" id="effMat"> 재료비 포함 <small>(같은 OVR 최저가 카드 × 5칸, 대략적인 추정)</small></label>
+      <label class="eff-chk"><input type="checkbox" id="effMat"> 재료비 포함 <small>(검증된 부스트 포인트 · 최대 5장 최저가 조합)</small></label>
       <label class="eff-chk">실패하면<select id="effFail"><option value="keep">단계 유지</option><option value="down">1단계 하락 (5강 이상)</option></select></label>
     </div>
     <div class="eff-budget" id="effBudget" hidden>
@@ -240,7 +240,7 @@
           <label>시작 강화<select id="smEFrom"></select></label>
           <label>목표 강화<select id="smETo"></select></label>
           <label>실패하면<select id="smEFail"><option value="keep">단계 유지</option><option value="down">1단계 하락 (5강 이상)</option></select></label>
-          <label class="mat-in">재료 카드 1장 가격 (BP)<input type="text" id="smEMat" placeholder="예: 2500000" inputmode="numeric" autocomplete="off"><span class="mat-v" id="smEMatV">재료비 0 (계산에서 빼요)</span><button type="button" class="mat-est" id="smEMatEst" hidden></button></label>
+          <label class="mat-in">재료 카드 1장 가격 (BP)<input type="text" id="smEMat" placeholder="예: 2500000" inputmode="numeric" autocomplete="off"><span class="mat-v" id="smEMatV">재료비 0 (계산에서 빼요)</span></label><label class="mat-in"><span><input type="checkbox" id="smEMatAuto"> 단계별 풀게이지 최저가 조합</span><span id="smEMatCombo" class="mat-v" aria-live="polite"></span><a href="https://fconline.nexon.com/DataCenter/PlayerGrow" target="_blank" rel="noopener">공식 강화 부스트 도우미</a></label>
         </div>
         <div id="smEStatsBox"><p class="sim-note">선수를 고르면 34개 세부 능력치가 여기 표시돼요.</p></div>
         <ol class="sim-log" id="smELog"></ol>
@@ -452,6 +452,7 @@
 <script src="{{ root }}assets/js/news.js?v={{ ver }}" defer></script>
 <script>window.FG_ROUTES={"home":"/","diag":"/diag","cards":"/cards","guide":"/guide/","sim":"/sim/","trade":"/trade/"};window.FG_TITLES={{ titles }};</script>
 <script src="{{ root }}assets/js/app.js?v={{ ver }}"></script>
+<script src="{{ root }}assets/js/material-engine.js?v={{ ver }}"></script>
 <script src="{{ root }}assets/js/sim.js?v={{ ver }}"></script>
 <script src="{{ root }}assets/js/trade.js?v={{ ver }}"></script>
 {% endblock %}

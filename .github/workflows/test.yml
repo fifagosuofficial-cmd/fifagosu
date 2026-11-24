@@ -2,7 +2,7 @@ name: test
 on:
   pull_request:
   push:
-    paths: ["crawler/**", "tests/**"]
+    paths: ["crawler/**", "site/**", "fun/**", "functions/**", "tests/**", ".github/workflows/test.yml"]
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -10,4 +10,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install -q -r crawler/requirements.txt pytest && pytest -q tests
+      - run: pip install -q -r crawler/requirements.txt -r site/requirements.txt pytest && pytest -q tests
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: node --check site/assets/js/app.js && node --test tests/test_diag_analysis.cjs tests/test_diag_favorites.cjs

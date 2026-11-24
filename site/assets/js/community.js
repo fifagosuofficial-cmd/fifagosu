@@ -26,6 +26,7 @@ async function loadPosts(){
  tabs($("fcTabs"),labels,category);$("fcPage").textContent=page;
  const p=new URLSearchParams({category,page,q:$("fcSearch").value});if(reviewCard&&category==="review")p.set("card",reviewCard);
  const j=await get("posts?"+p);$("fcPosts").innerHTML=j.posts.length?j.posts.map(x=>'<div class="fc-entry"><div><span class="fc-pill">'+esc(labels[x.category])+(x.prefix!=="normal"?" · "+esc(prefixes[x.prefix]):"")+'</span><a class="fc-post-title" href="?id='+x.id+'" data-post="'+x.id+'">'+esc(x.title)+'</a><small>'+esc(x.nickname)+' · '+date(x.created)+'</small></div><span>추천 '+x.likes+' · 댓글 '+x.replies+'</span></div>').join(""):"<p>등록된 게시글이 없습니다.</p>";
+ if(category==="popular"&&page===1){const rank=await get("rankings");$("fcPosts").insertAdjacentHTML("afterbegin",'<div class="fc-panel"><h3>인기 공유 스쿼드</h3>'+(rank.squads.map(x=>'<div class="fc-entry"><a class="fc-post-title" data-post="'+x.id+'" href="?id='+x.id+'">'+esc(x.title)+'</a><span>추천 '+x.likes+'</span></div>').join("")||"<p>공유 스쿼드가 없습니다.</p>")+'<h3>선수 후기 인기 카드</h3>'+(rank.players.map(x=>'<div class="fc-entry"><a href="/cards?card='+x.card_id+'">카드 '+x.card_id+'</a> · <a href="/board/?category=review&amp;card='+x.card_id+'">후기 '+x.reviews+'건</a><span>추천 '+x.likes+'</span></div>').join("")||"<p>선수 후기가 없습니다.</p>")+'</div>')}
  $("fcPrev").disabled=page===1;$("fcNext").disabled=j.posts.length<30;
 }
 async function readPost(id){
@@ -39,7 +40,7 @@ function composer(){
 if(screen==="board"){
  $("fcTabs").onclick=act(async e=>{const b=e.target.closest("[data-tab]");if(b){category=b.dataset.tab;page=1;reviewCard=0;await loadPosts()}});
  $("fcFind").onclick=act(async()=>{page=1;await loadPosts()});$("fcPrev").onclick=act(async()=>{if(page>1)page--;await loadPosts()});$("fcNext").onclick=act(async()=>{page++;await loadPosts()});
- $("fcPosts").onclick=act(async e=>{const b=e.target.closest("[data-post]");if(b){await readPost(Number(b.dataset.post));history.replaceState(null,"","?id="+b.dataset.post);$("fcPost").scrollIntoView({block:"start"})}});
+ $("fcPosts").onclick=delegated("[data-post]",async e=>{const b=e.target.closest("[data-post]");if(b){await readPost(Number(b.dataset.post));history.replaceState(null,"","?id="+b.dataset.post);$("fcPost").scrollIntoView({block:"start"})}});
  $("fcCategory").innerHTML=Object.entries(labels).filter(([k])=>!["all","popular"].includes(k)).map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join("");
  $("fcCategory").onchange=composer;
  $("fcWrite").onclick=()=>{$("fcCategory").value=["all","popular"].includes(category)?"free":category;composer();if(category==="squad"&&query.get("compose")==="1"&&recentSquad())$("fcPostForm").attach.checked=true;if(reviewCard)$("fcPostForm").card_id.value=reviewCard;$("fcComposer").showModal()};

@@ -69,6 +69,7 @@ export async function onRequest({request,env}){
      const cat=u.searchParams.get("category")||"all",search=(u.searchParams.get("q")||"").slice(0,100),card=Number(u.searchParams.get("card")||0),page=Math.min(100,Math.max(1,parseInt(u.searchParams.get("page")||"1",10)||1));
      check(cat==="all"||cat==="popular"||cats.has(cat),"게시판 분류 오류");
      const where=["p.hidden=0"],args=[];if(cats.has(cat)){where.push("p.category=?");args.push(cat)}
+     if(cat==="popular")where.push("(SELECT count(*) FROM votes v WHERE v.post_id=p.id)>=30");
      if(search){where.push("(instr(p.title,?)>0 OR instr(p.body,?)>0)");args.push(search,search)}
      if(card&&Number.isSafeInteger(card)){where.push("p.card_id=?");args.push(card)}
      const order=cat==="popular"?"likes DESC, replies DESC, p.created DESC":"CASE WHEN p.prefix='notice' THEN 0 ELSE 1 END,p.created DESC";

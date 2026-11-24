@@ -217,8 +217,8 @@ $("sqPlayerQuery").addEventListener("input",()=>{pickerSeq++;pickerCandidates=[]
 function pickPlayer(e,attr,list){
  const b=e.target.closest("["+attr+"]");if(!b||pickerSlot===null)return;
  const i=pickerSlot,c=list[Number(b.getAttribute(attr))],old=results[active]?.players[i];
- if(c&&applyPlayer(i,c,true)){
-   status((old?old.name+" → ":"")+c.name+" "+c.grade+"강 선택 완료 · 재추천 시 유지");
+ if(c&&applyPlayer(i,c,false)){
+   status((old?old.name+" → ":"")+c.name+" "+c.grade+"강 선택 완료 · 고정 버튼으로 유지 가능");
    $("sqPitch").querySelector('[data-lock="'+i+'"]')?.focus({preventScroll:true});
  }else $("sqPickerNote").textContent="선수 추가 조건을 확인해 주세요.";
 }

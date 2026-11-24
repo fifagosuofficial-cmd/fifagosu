@@ -694,98 +694,96 @@ def _club_period_contains(period, season_years):
 
 
 def step_opponent_teamcolors(data, date):
-    """상대 선수 11명의 팀컬러를 브라우저가 한 번에 집계할 compact 매핑을 만들어요.
-
-    클럽은 상세 ``teamId``와 공식 팀컬러 ``clubId``가 정확히 같을 때 우선
-    사용합니다. 정확 ID가 없을 때만 카드 시즌 연도를 판별하고, 그 연도가 선수
-    경력 기간에 포함되는 클럽 이름을 공식 팀컬러 이름/별칭과 맞춥니다. 시즌을
-    판별할 수 없으면 과거 전체 경력을 임의 적용하지 않고 국가만 남깁니다.
+    """공식 팀컬러 이름과 카드 시즌·클럽 경력·국적을 연결한 추정용 매핑.
+    시즌 팀컬러는 공식 명칭과 시즌 메타 명칭이 정확히 대응할 때만 추가합니다.
+    클럽 경력은 적용 가능 후보이며 실제 활성 팀컬러를 의미하지 않습니다.
     """
     data = Path(data)
     raw = load(data / "teamcolor" / "teamcolors.json", {})
     items = raw if isinstance(raw, list) else (raw.get("items") or raw.get("teamcolors") or [])
-    tcs = [x for x in items if x.get("name") and str(x.get("type")) in ("club", "nation")]
-    if not tcs:
+    if not items:
         return {"opponent_teamcolors": "waiting-teamcolors", "opponent_teamcolor_cards": 0}
 
-    names = []
-    name_index = {}
-    def name_ix(value):
-        if value not in name_index:
-            name_index[value] = len(names)
+    names, kinds, name_index = [], [], {}
+    def name_ix(value, kind):
+        key = (_tnorm(value), kind)
+        if key not in name_index:
+            name_index[key] = len(names)
             names.append(value)
-        return name_index[value]
+            kinds.append(kind)
+        return name_index[key]
+
+    season_rows = load(data / "meta" / "seasonid.json", [])
+    season_by_id, season_tc_ids = {}, set()
+    for row in season_rows:
+        if row.get("seasonId") is None:
+            continue
+        label = str(row.get("className") or "")
+        m = re.fullmatch(r"(.*?)\s*\((.*)\)", label)
+        labels = {_tnorm(x) for x in ([label, m.group(1), m.group(2)] if m else [label]) if x}
+        matches = [tc for tc in items if tc.get("name") and tc.get("type") in ("club", "special")
+                   and _tnorm(tc["name"]) in labels]
+        if not matches:
+            continue
+        # 공식 클럽형/스페셜형에 같은 시즌 이름이 중복되면 하나로 통합.
+        official = sorted(matches, key=lambda tc: (tc.get("type") != "club", tc["name"]))[0]
+        ix = name_ix(official["name"], "season")
+        season_by_id[str(row["seasonId"])] = ix
+        season_tc_ids.update(_tnorm(tc["name"]) for tc in matches)
 
     by_club_id, by_nation_id, club_by_name, nation_by_name = {}, {}, {}, {}
-    for tc in tcs:
-        ix = name_ix(str(tc["name"]))
+    for tc in items:
         kind = str(tc.get("type"))
+        if not tc.get("name") or kind not in ("club", "nation"):
+            continue
+        if kind == "club" and _tnorm(tc["name"]) in season_tc_ids:
+            continue
+        ix = name_ix(str(tc["name"]), kind)
         target = club_by_name if kind == "club" else nation_by_name
         for value in [tc.get("name"), *(tc.get("aliases") or [])]:
             if value:
                 target.setdefault(_tnorm(value), set()).add(ix)
-        id_key = "clubId" if kind == "club" else "nationId"
         try:
-            ident = int(tc.get(id_key) or 0)
+            ident = int(tc.get("clubId" if kind == "club" else "nationId") or 0)
         except (TypeError, ValueError):
             ident = 0
         if ident:
             (by_club_id if kind == "club" else by_nation_id).setdefault(ident, set()).add(ix)
 
-    season_rows = load(data / "meta" / "seasonid.json", [])
-    season_names = {int(row["seasonId"]): row.get("className") or ""
-                    for row in season_rows if row.get("seasonId") is not None}
     cards = {}
-    stats = {"detail": 0, "mapped": 0, "clubExact": 0, "clubSeason": 0,
-             "seasonUnknown": 0, "nationOnly": 0}
+    stats = {"detail": 0, "mapped": 0, "clubExact": 0, "clubCareer": 0, "seasonMatched": len(season_by_id)}
     for shard_no in range(SHARDS):
         for card_id, detail in load(data / "detail" / f"{shard_no}.json", {}).items():
             if not isinstance(detail, dict) or not detail:
                 continue
             stats["detail"] += 1
             mapped = set()
-            try:
-                nation_id = int(detail.get("nationId") or 0)
-            except (TypeError, ValueError):
-                nation_id = 0
-            mapped |= by_nation_id.get(nation_id, set())
+            for key, index in [("nationId", by_nation_id), ("teamId", by_club_id)]:
+                try:
+                    found = index.get(int(detail.get(key) or 0), set())
+                except (TypeError, ValueError):
+                    found = set()
+                mapped |= found
+                if key == "teamId" and found:
+                    stats["clubExact"] += 1
             nation = str(detail.get("nation") or "").split(",")[0].strip()
             if nation:
                 mapped |= nation_by_name.get(_tnorm(nation), set())
-
-            try:
-                team_id = int(detail.get("teamId") or 0)
-            except (TypeError, ValueError):
-                team_id = 0
-            clubs = set(by_club_id.get(team_id, set()))
-            if clubs:
-                stats["clubExact"] += 1
-            else:
-                try:
-                    season_id = int(card_id) // 1_000_000
-                except (TypeError, ValueError):
-                    season_id = 0
-                years = _season_years(season_names.get(season_id, ""))
-                if not years:
-                    stats["seasonUnknown"] += 1
-                else:
-                    for club in detail.get("clubs") or []:
-                        if (isinstance(club, list) and len(club) > 1
-                                and _club_period_contains(club[0], years)):
-                            clubs |= club_by_name.get(_tnorm(club[1]), set())
-                    if clubs:
-                        stats["clubSeason"] += 1
-            mapped |= clubs
+            career = set()
+            for club in detail.get("clubs") or []:
+                if isinstance(club, list) and len(club) > 1:
+                    career |= club_by_name.get(_tnorm(club[1]), set())
+            if career:
+                stats["clubCareer"] += 1
+                mapped |= career
             if mapped:
                 cards[str(card_id)] = sorted(mapped)
                 stats["mapped"] += 1
-                if not clubs:
-                    stats["nationOnly"] += 1
 
-    out = {"date": date, "basis": "detail-teamId-or-season-clubs+nation",
-           "names": names, "cards": cards, "stats": stats}
+    out = {"date": date, "basis": "official-names+card-season+club-career+nation-v2",
+           "names": names, "kinds": kinds, "seasonById": season_by_id, "cards": cards, "stats": stats}
     save(data / "diag" / "opponent-teamcolors.json", out)
-    log(f"상대 팀컬러 매핑: 상세 {stats['detail']}장 · 매핑 {stats['mapped']}장 · 이름 {len(names)}개")
+    log(f"상대 팀컬러 매핑: 상세 {stats['detail']}장 · 매핑 {stats['mapped']}장 · 시즌 {len(season_by_id)}개")
     return {"opponent_teamcolors": "ok", "opponent_teamcolor_cards": stats["mapped"]}
 
 

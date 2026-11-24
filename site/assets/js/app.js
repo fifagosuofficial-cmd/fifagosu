@@ -949,7 +949,7 @@ async function loadSeasons(){
 let diagSeq=0;
 async function runDiag(nick){
   nick=(nick||'').trim();if(!nick)return;
-  const seq=++diagSeq;recoClose();
+  const seq=++diagSeq;recoClose();$('dTip').hidden=true;
   let d;
   if(LIVE){
     try{runDiag.ctrl&&runDiag.ctrl.abort()}catch(e){}
@@ -967,7 +967,7 @@ async function runDiag(nick){
   }
   const a=analyze(d,dMode);dCur={d,a};
   dTab='pstats';   // 공식경기·감독모드 모두 선수별 기록이 메인
-  const secs=$('dSecs');if(a.dm)secs.prepend($('dDetailSec'));else secs.prepend($('dWeakSec'));
+  // Both modes share the fixed report → details → opponent teamcolor → weaknesses order.
   dSaveVisit(d,a);dRenderBoard(d,a);dRenderSummary(d,a);dRenderReport(d,a);dRenderTip(a);dRenderCards(a);dRenderTabs();dRenderPanel();dRenderMatches(d,a);
   $('dUpdated').textContent=`마지막 조회 ${new Date().toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}`;
   dLoadTeamcolors(d,a,seq);

@@ -73,10 +73,10 @@ export async function onRequest({request,env}){
      if(search){where.push("(instr(p.title,?)>0 OR instr(p.body,?)>0)");args.push(search,search)}
      if(card&&Number.isSafeInteger(card)){where.push("p.card_id=?");args.push(card)}
      const order=cat==="popular"?"likes DESC, replies DESC, p.created DESC":"CASE WHEN p.prefix='notice' THEN 0 ELSE 1 END,p.created DESC";
-     return json({posts:await all("SELECT p.id,p.category,p.prefix,p.title,p.created,p.card_id,COALESCE(m.nickname,'탈퇴 회원') nickname,(SELECT count(*) FROM votes v WHERE v.post_id=p.id) likes,(SELECT count(*) FROM comments c WHERE c.post_id=p.id AND c.hidden=0) replies FROM posts p LEFT JOIN members m ON p.author=m.id WHERE "+where.join(" AND ")+" ORDER BY "+order+" LIMIT 30 OFFSET ?",...args,(page-1)*30)});
+     return json({posts:await all("SELECT p.id,p.category,p.prefix,p.title,p.created,p.card_id,p.views,COALESCE(m.nickname,'탈퇴 회원') nickname,(SELECT count(*) FROM votes v WHERE v.post_id=p.id) likes,(SELECT count(*) FROM comments c WHERE c.post_id=p.id AND c.hidden=0) replies FROM posts p LEFT JOIN members m ON p.author=m.id WHERE "+where.join(" AND ")+" ORDER BY "+order+" LIMIT 30 OFFSET ?",...args,(page-1)*30)});
    }
    if(p==="post"){
-     const id=integer(Number(u.searchParams.get("id"))),post=await first("SELECT p.id,p.category,p.prefix,p.title,p.body,p.squad,p.card_id,p.created,COALESCE(m.nickname,'탈퇴 회원') nickname,p.author=? own FROM posts p LEFT JOIN members m ON p.author=m.id WHERE p.id=? AND p.hidden=0",member?.id||"",id);
+     const id=integer(Number(u.searchParams.get("id"))),post=await first("SELECT p.id,p.category,p.prefix,p.title,p.body,p.squad,p.card_id,p.created,p.views,COALESCE(m.nickname,'탈퇴 회원') nickname,p.author=? own FROM posts p LEFT JOIN members m ON p.author=m.id WHERE p.id=? AND p.hidden=0",member?.id||"",id);
      check(post,"게시물을 찾을 수 없습니다.",404);
      return json({post,comments:await all("SELECT c.id,c.body,c.created,COALESCE(m.nickname,'탈퇴 회원') nickname,c.author=? own FROM comments c LEFT JOIN members m ON c.author=m.id WHERE c.post_id=? AND c.hidden=0 ORDER BY c.created LIMIT 200",member?.id||"",id)});
    }
@@ -120,6 +120,7 @@ export async function onRequest({request,env}){
    await db.batch([q("DELETE FROM posts WHERE author=?",member.id),q("DELETE FROM comments WHERE author=?",member.id),q("DELETE FROM members WHERE id=?",member.id)]);
    return json({ok:true},200,{"set-cookie":cookie("fg_session","",0)});
  }
+ if(p==="view"){const id=integer(b.post_id);await run("UPDATE posts SET views=views+1 WHERE id=? AND hidden=0",id);return json({ok:true})}
  const m=active();
  if(p==="post"){
    check(cats.has(b.category)&&prefixes.has(b.prefix),"분류를 확인해 주세요.");

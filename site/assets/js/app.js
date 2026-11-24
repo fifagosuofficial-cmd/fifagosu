@@ -1050,6 +1050,7 @@ async function initCards(){
   const sids=Object.keys(cnt).map(Number).sort((a,b)=>sname(a).localeCompare(sname(b),'ko'));
   $('cSeason').innerHTML='<option value="">전체 시즌</option>'+sids.map(s=>`<option value="${s}">${esc(sname(s))} (${cnt[s]})</option>`).join('');
   cardsReady=true;updateMeta();renderCards();
+  if(location.pathname.replace(/\/$/,"")==="/cards"){const id=Number(new URLSearchParams(location.search).get("card"));if(Number.isSafeInteger(id)&&id>0&&CARDS.some(c=>c.id===id))openCard(id)}
 }
 function updateMeta(){
   const n=IDX&&IDX.c?Object.keys(IDX.c).length:0;

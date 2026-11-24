@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block head %}<link rel="stylesheet" href="{{ root }}assets/css/community.css?v={{ ver }}">{% endblock %}
+{% block content %}
+<main class="fg-community" data-screen="{{ view }}">
+<header class="fc-heading"><div><small>FIFAGOSU COMMUNITY</small><h1>{{ '마이페이지' if view=='mypage' else '관리자' if view=='admin' else '피파고수 게시판' }}</h1></div><a id="fcAccountLink" href="/mypage/">{{ "로그인" if view=="board" else "내 계정" }}</a></header>
+<p id="fcStatus" role="status" aria-live="polite"></p>
+<section id="fcLogin" class="fc-panel" hidden><h2>Google 로그인</h2><p>만 14세 이상만 가입할 수 있습니다. 구글 계정으로 인증하며 비밀번호를 받지 않습니다.</p><label><input id="fcAge" type="checkbox"> 만 14세 이상입니다.</label><label><input id="fcTerms" type="checkbox"> <a href="/terms" target="_blank" rel="noopener">서비스 이용약관</a>에 동의합니다.</label><label><input id="fcPrivacy" type="checkbox"> <a href="/privacy" target="_blank" rel="noopener">개인정보 처리 안내</a>를 확인하고 가입에 필요한 수집·이용에 동의합니다.</label><button id="fcSignIn" type="button">Google로 시작하기</button></section>
+<section id="fcProfile" class="fc-panel" hidden><h2>프로필</h2><form id="fcProfileForm"><label>피파고수 닉네임<input name="nickname" maxlength="20" minlength="2" required></label><label>FC온라인 닉네임 (선택)<input name="game_name" maxlength="30"></label><button>저장</button></form><button id="fcLogout" type="button">로그아웃</button> <button id="fcWithdraw" type="button">회원 탈퇴</button> <a id="fcAdminLink" href="/admin/" hidden>관리자</a></section>
+{% if view=='board' %}
+<nav id="fcTabs" class="fc-tabs" aria-label="게시판 분류"></nav>
+<section class="fc-board-list" aria-label="게시글 목록">
+<p id="fcPopularHint" hidden>추천 30개 이상 받은 게시글이 자동으로 표시됩니다.</p>
+<p id="fcPreviewHint" class="fc-note" hidden>화면 미리보기 · 아래 게시글은 디자인 확인용 예시이며 실제 회원 게시물이 아닙니다.</p>
+<table class="fc-board-table"><colgroup><col class="fc-col-type"><col class="fc-col-title"><col class="fc-col-author"><col class="fc-col-date"><col class="fc-col-views"><col class="fc-col-likes"></colgroup><thead><tr><th scope="col">분류</th><th scope="col">제목</th><th scope="col">글쓴이</th><th scope="col">날짜</th><th scope="col">조회</th><th scope="col">추천</th></tr></thead><tbody id="fcPosts"><tr><td colspan="6" class="fc-empty">게시글을 불러오는 중입니다.</td></tr></tbody></table>
+<div class="fc-board-bottom"><div class="fc-pager"><button type="button" id="fcPrev">이전</button><span id="fcPage">1</span><button type="button" id="fcNext">다음</button></div><form id="fcSearchForm" class="fc-search-form"><input id="fcSearch" placeholder="제목·내용 검색" maxlength="100" aria-label="게시글 검색"><button id="fcFind">검색</button></form><button type="button" id="fcWrite" disabled>글쓰기</button></div>
+</section>
+<section id="fcPost" class="fc-panel" hidden></section>
+<dialog id="fcComposer"><form id="fcPostForm"><h2>게시글 작성</h2><label>게시판<select name="category" id="fcCategory"></select></label><label>머릿말<select name="prefix" id="fcPrefix"></select></label><label>제목<input name="title" maxlength="100" required></label><label>내용<textarea name="body" maxlength="10000" required></textarea></label><label id="fcSquadAttach" hidden><input type="checkbox" name="attach"> 최근 스쿼드 첨부 (공개됩니다)</label><label id="fcReviewAttach" hidden>선수 카드 ID<input name="card_id" type="number" min="1"></label><div class="fc-row"><button>등록</button><button type="button" id="fcClose">닫기</button></div></form></dialog>
+{% elif view=='mypage' %}
+<section id="fcMine" hidden><nav id="fcMineTabs" class="fc-tabs"></nav><section class="fc-panel" id="fcMineBody"></section></section>
+{% else %}
+<section id="fcAdmin" hidden><nav id="fcAdminTabs" class="fc-tabs"></nav><section class="fc-panel" id="fcAdminBody"></section></section>
+{% endif %}
+</main>
+{% endblock %}
+{% block scripts %}<script defer src="{{ root }}assets/js/community.js?v={{ ver }}"></script>{% endblock %}

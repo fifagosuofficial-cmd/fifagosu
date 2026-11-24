@@ -1120,8 +1120,8 @@ a.mk-tile:hover{border-color:var(--accent)}
 .ds-tip .res{width:20px;height:20px;font-size:11px;border-radius:5px}.ds-tip b{font-family:var(--f-data)}.ds-tip small{width:100%;opacity:.75;font-size:11px}
 
 /* 전적 진단 = 사이트 핵심 기능: 선택 안 해도 메뉴에서 늘 강조 */
-nav.menu a.core:not([aria-current]){color:var(--fg);font-weight:700;background:var(--accent-soft);border-color:var(--accent)}
-nav.menu a.core:not([aria-current]):hover{background:var(--accent);color:var(--accent-ink)}
+nav.menu a.core:not([aria-current]){color:#12674f;font-weight:700;background:transparent;border-color:transparent}
+nav.menu a.core:not([aria-current]):hover{color:#0b8b63;text-decoration:underline;text-underline-offset:5px}
 /* 전적 진단: 이름 옆 '!' → 같은 포지션·같은 가격대 대체 추천 */
 .rc-flag{position:relative;display:inline-grid;place-items:center;width:18px;height:18px;margin:0 3px 0 4px;padding:0;border:0;border-radius:50%;background:var(--crit);color:#fff;font:800 11px/1 var(--f-body);vertical-align:1px;cursor:pointer;flex:none}
 .rc-flag:hover{filter:brightness(1.12)}.rc-flag:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
@@ -1227,3 +1227,8 @@ nav.menu a.core:not([aria-current]):hover{background:var(--accent);color:var(--a
 .mk-period-panel{display:grid;gap:14px;min-width:0}
 .mk-period-panel[hidden]{display:none}
 .mk-period{flex-wrap:wrap}
+
+/* Account access is separate from the navigation tabs. */
+.fg-nav-shell{max-width:760px;margin:0 auto;display:flex;align-items:flex-start;gap:14px;min-width:0}.page-wide .fg-nav-shell{max-width:1080px}.fg-nav-shell nav.menu{flex:1;min-width:0;max-width:none!important;margin:10px 0 0;justify-content:flex-start}.fg-account-icon{flex:none;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;margin:7px 0 10px auto;border:1px solid var(--line,#d6e4dd);border-radius:50%;color:var(--fg,#244438);background:var(--bg,#fff);text-decoration:none}.fg-account-icon:hover,.fg-account-icon[aria-current=page]{color:#14866a;border-color:#14866a;background:#e7f6ed}.fg-account-icon:focus-visible{outline:2px solid #14866a;outline-offset:2px}@media(min-width:1200px){.page-wide .fg-nav-shell{max-width:1440px}body[data-view=board] .fg-nav-shell{max-width:1600px}}@media(max-width:760px){.fg-nav-shell{gap:5px;padding:0 8px}.fg-nav-shell nav.menu{padding-inline:0;justify-content:flex-start}.fg-account-icon{width:36px;height:36px;margin-top:9px}.fg-account-icon svg{width:20px;height:20px}}
+
+nav.menu a.core{display:inline-flex;align-items:center;gap:5px}.fg-diag-icon{flex:none;color:currentColor}.fg-news-switch{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line,#d5e4db);padding:0 0 12px;margin:0 0 5px}.fg-news-switch a{padding:9px 16px;border-radius:6px;color:var(--muted);font-weight:600;text-decoration:none}.fg-news-switch a[aria-current=page]{background:#e4f4eb;color:#12674f}.fg-news-switch a:hover{color:#14866a}

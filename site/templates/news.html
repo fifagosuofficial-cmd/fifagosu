@@ -4,6 +4,7 @@
 {% set P = bkind == 'press' %}
 {% set board = news.boards[bkind] if news else [] %}
 <main class="wrap newsp">
+  <nav class="fg-news-switch" aria-label="소식 종류"><a href="{{ root }}news/"{% if active=='news' %} aria-current="page"{% endif %}>공식 소식</a><a href="{{ root }}press/"{% if active=='press' %} aria-current="page"{% endif %}>축구 뉴스</a><a href="{{ root }}patch/"{% if active=='patch' %} aria-current="page"{% endif %}>패치노트</a></nav>
   <div class="bd-head">
     <div>
       <h1 class="bd-h1">{{ '뉴스 게시판' if P else '소식 게시판' }}</h1>

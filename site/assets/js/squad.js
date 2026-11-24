@@ -106,13 +106,13 @@ function render(){
  $("sqOutput").hidden=false;
  $("sqModes").innerHTML=Object.entries(results).map(([k,r])=>'<button type="button" data-mode="'+k+'" aria-pressed="'+(active===k)+'">'+MODES[k]+(r.ok?"":" · 조합 없음")+"</button>").join("");
  const r=results[active];
- if(!r?.ok){$("sqSummary").textContent=r?.reason||"추천 결과 없음";$("sqPitch").innerHTML="";$("sqStatMatrix").innerHTML="";$("sqColorList").innerHTML="";$("sqBonusNote").textContent="";$("sqSave").disabled=$("sqShare").disabled=true;return}
+ if(!r?.ok){$("sqSummary").textContent=r?.reason||"추천 결과 없음";$("sqPitch").innerHTML="";$("sqStatMatrix").innerHTML="";$("sqColorList").innerHTML="";$("sqBonusNote").textContent="";$("sqSave").disabled=$("sqShare").disabled=$("sqBoardShare").disabled=$("sqCloudSave").disabled=true;return}
  $("sqSave").disabled=$("sqShare").disabled=false;
  const o=currentOpts, filled=r.players.filter(Boolean),complete=filled.length===11;
  const projection=B.project(r.players,bonusRules,relationCache,o.team,flags());
  const avg=filled.length?projection.per.filter(Boolean).reduce((s,p)=>s+p.ovr,0)/filled.length:0;
  showBonuses(r,projection);showStatMatrix(r,projection);
- $("sqSave").disabled=$("sqShare").disabled=!complete;
+ $("sqSave").disabled=$("sqShare").disabled=$("sqBoardShare").disabled=$("sqCloudSave").disabled=!complete;
  $("sqSummary").innerHTML="<div><span>선수 구매가 합계</span><b>"+money(r.price)+"</b><small>잔여 "+money(o.budget-r.price)+"</small></div><div><span>급여 합계</span><b>"+r.pay+" / "+o.salary+"</b><small>"+(r.pay===o.salary?"급여 상한 달성":"잔여 "+(o.salary-r.pay))+"</small></div><div><span>평균 포지션 OVR</span><b>"+(filled.length?avg.toFixed(1):"—")+"</b><small>"+filled.length+" / 11명 · 선택 보너스 반영</small></div>";
  const swapIcon='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h15l-4-4m4 4-4 4M20 17H5l4-4m-4 4 4 4"/></svg>';
  const lockIcon='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></svg>';
@@ -268,6 +268,8 @@ function pickPlayer(e,attr,list){
 }
 $("sqPlayerResults").addEventListener("click",e=>pickPlayer(e,"data-pick",pickerCandidates));
 $("sqRecoResults").addEventListener("click",e=>pickPlayer(e,"data-reco",recoCandidates));
+$("sqBoardShare").addEventListener("click",()=>{const s=saved();if(!s)return;try{localStorage.setItem("fg-squad-v1",JSON.stringify(s));location.assign("/board/?category=squad&compose=1")}catch(e){status(e.message,true)}});
+$("sqCloudSave").addEventListener("click",async()=>{const s=saved();if(!s)return;try{const name=prompt("스쿼드 이름");if(!name)return;const r=await fetch("/api/community/squad",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,squad:s})});const j=await r.json();if(!r.ok)throw Error(j.message);status("내 스쿼드에 저장했습니다.")}catch(e){status("온라인 저장 실패: "+e.message,true)}});
 $("sqSave").addEventListener("click",()=>{try{const s=saved();if(!s)return;localStorage.setItem(STORE,JSON.stringify(s));status("이 브라우저에 스쿼드를 저장했습니다.")}catch(e){status("저장 실패: "+e.message,true)}});
 $("sqLoad").addEventListener("click",()=>{try{const s=JSON.parse(localStorage.getItem(STORE)||"null");if(!s)throw Error("저장된 스쿼드가 없습니다.");restore(s)}catch(e){status(e.message,true)}});
 $("sqShare").addEventListener("click",async()=>{try{const s=saved();if(!s)return;const u=new URL("/squad/",window.FG_SITE_URL||location.origin);u.searchParams.set("s",JSON.stringify(s));if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(u.href);status("공유 주소를 복사했습니다.")}else{window.prompt("공유 주소를 복사하세요.",u.href)}}catch(e){status("공유 실패: "+e.message,true)}});

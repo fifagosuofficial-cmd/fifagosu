@@ -21,6 +21,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         target = urllib.parse.urlsplit(self.path)
         path = target.path
+        if path in ('/calc', '/calc/', '/calc.html'):
+            self.send_response(301)
+            self.send_header('Location', '/sim/')
+            self.end_headers()
+            return
+        if path.startswith("/api/community/"):
+            data = b'{"enabled":false,"preview":true}'
+            self.send_response(503)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if path.startswith("/api/"):
             if path not in ALLOWED and not path.startswith("/api/static/fconline/meta/"):
                 self.send_error(404, "API route not enabled in local QA")

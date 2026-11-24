@@ -35,13 +35,11 @@ VIEW_PAGES = [
      "FC온라인 선수 카드를 팔고 싶은 가격, 사고 싶은 가격을 올리고 피파고수 시세와 비교해 보세요."),
     ("index.html", "/", "home", "피파고수 — FC온라인 전적 진단·전체 카드 검색",
      "FC온라인 공식경기·감독모드 최근 30~100경기로 약점을 진단하고, 모든 시즌 선수 카드를 검색하세요. "
-  "강화별 시세·능력치, BP·강화 계산기, 게임 가이드까지."),
+  "강화별 시세·능력치, AI 스쿼드, 강화·현질 효율, 게시판까지."),
     ("diag.html", "/diag", "diag", "FC온라인 전적 진단 — 최근 경기로 내 팀 약점 찾기 | 피파고수",
      "구단주 닉네임만 넣으면 공식경기·감독모드 최근 30~100경기를 분석해 득점·실점 패턴과 약점을 알려줘요."),
     ("cards.html", "/cards", "cards", "FC온라인 선수 카드 검색 — OVR·능력치·강화별 시세 | 피파고수",
      "FC온라인 전체 시즌 선수 카드를 검색하고 OVR, 세부 능력치 34개, 1~13강 강화별 시세를 확인하세요."),
-    ("calc.html", "/calc", "calc", "FC온라인 BP·강화 계산기 — 강화 비용·확률·판매 수수료 | 피파고수",
-     "FC온라인 강화 단계별 OVR 상승, 강화 성공 확률, 판매 수수료를 계산해요."),
     ("guide/index.html", "/guide/", "guide", "FC온라인 게임 가이드 — 등급·감독모드·강화·팀컬러 | 피파고수",
      "FC온라인 공식경기 등급, 감독모드, 강화, 팀컬러, 시즌, 급여·이적시장 규칙을 정리했어요."),
 ]
@@ -54,6 +52,9 @@ GUIDE_PAGES = [
     ("market", "FC온라인 급여·이적시장 — 급여 상한·판매 수수료 구조", "FC온라인 급여가 무엇이고 어떻게 맞추는지, 이적시장 거래와 판매 수수료가 어떻게 계산되는지 설명해요."),
 ]
 PAGES = [
+    ("board/index.html", "community.html", "/board/", "FC온라인 게시판 | 피파고수", "스쿼드 평가, 선수 후기, 자유게시판", True),
+    ("mypage/index.html", "community.html", "/mypage/", "마이페이지 | 피파고수", "회원 전용 개인 보관함", False),
+    ("admin/index.html", "community.html", "/admin/", "관리자 | 피파고수", "운영 관리", False),
     ("squad/index.html", "squad.html", "/squad/", "FC온라인 AI 스쿼드 추천 — 예산·급여 맞춤 | 피파고수",
      "보유 BP와 급여, 팀컬러, 포메이션에 맞춘 선수 조합을 자동으로 추천해요.", True),
     ("patch/index.html", "patch.html", "/patch/", "FC온라인 패치노트 — 업데이트·밸런스·개선 내역 | 피파고수",
@@ -327,6 +328,42 @@ def squad_catalog(data_dir, out):
                            "dateFrom": min(dates) if dates else None, "dateTo": max(dates) if dates else None})
 
 
+def material_catalog(data_dir, out):
+    """Exact collected prices, cheapest two distinct players per enhanced OVR.
+    Allows excluding the target player from ordinary-material calculations.
+    Market execution/availability is not established by a snapshot.
+    """
+    bonus = (_load(data_dir / "rules/grade_bonus.json") or {}).get("bonus")
+    by_ovr, dates = {}, set()
+    restricted = {str(x.get("seasonId")) for x in (_load(data_dir / "meta/seasonid.json") or [])
+                  if "제한" in str(x.get("className", "")) or "bound" in str(x.get("className", "")).lower()}
+    if isinstance(bonus, list) and len(bonus) >= 14 and all(type(v) is int and v >= 0 for v in bonus[:14]):
+        for shard in range(200):
+            for key, card in (_load(data_dir / "list" / f"{shard}.json") or {}).items():
+                if not str(key).isdigit() or not isinstance(card, dict):
+                    continue
+                spid, base = int(key), card.get("ovr")
+                if spid <= 0 or str(spid // 1000000) in restricted or type(base) is not int or base <= 0 or not card.get("name"):
+                    continue
+                for grade, price in enumerate((card.get("price") or [])[:13], 1):
+                    if type(price) is not int or not 0 < price <= 9007199254740991:
+                        continue
+                    ovr = base + bonus[grade]
+                    row = [spid, card["name"], grade, ovr, price]
+                    choices = by_ovr.setdefault(ovr, {})
+                    pid = spid % 1000000
+                    if pid not in choices or price < choices[pid][4]:
+                        choices[pid] = row
+                if card.get("at"):
+                    dates.add(str(card["at"])[:10])
+    items = [row for o in sorted(by_ovr) for row in sorted(by_ovr[o].values(), key=lambda r: (r[4], r[0], r[2]))[:2]]
+    target = out / "assets" / "material-data"
+    target.mkdir(parents=True, exist_ok=True)
+    (target / "prices.json").write_text(json.dumps({"schema": 1, "date": max(dates) if dates else None, "items": items}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    rules = _load(data_dir / "rules" / "boost_points.json") or {"schema": 1, "verified": False, "rows": []}
+    (target / "rules.json").write_text(json.dumps(rules, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data")
@@ -336,6 +373,8 @@ def main(argv=None):
     site_url = cfg["SITE_URL"].rstrip("/")
     out = (ROOT / a.out) if not Path(a.out).is_absolute() else Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
+    # Remove obsolete generated calculator page from incremental local builds.
+    (out / "calc.html").unlink(missing_ok=True)
 
     for src, dst in COPY:
         s = ROOT / src
@@ -353,6 +392,7 @@ def main(argv=None):
                       autoescape=False, keep_trailing_newline=True)
     data_dir = (ROOT / a.data) if not Path(a.data).is_absolute() else Path(a.data)
     squad_catalog(data_dir, out)
+    material_catalog(data_dir, out)
     today = dt.datetime.now(KST).strftime("%Y-%m-%d")
     news = load_news(data_dir, today)
     market = refresh_popular_market_cards(data_dir, _load(data_dir / "market" / "summary.json"))
@@ -396,13 +436,13 @@ def main(argv=None):
     for fname, tpl, path, title, desc, in_map in PAGES:
         render(fname, tpl, path, title, desc, in_map, root="/" if fname == "404.html" else ("../" if "/" in fname else ""),
                active=fname.split("/")[0] if fname.startswith(("news/", "press/", "patch/")) else "",
-               view="squad" if fname == "squad/index.html" else "",
+               view=fname.split("/")[0] if fname in ("squad/index.html","board/index.html","mypage/index.html","admin/index.html") else "",
                bkind="press" if fname.startswith("press/") else "official")
     if (out / "fun" / "index.html").exists():
         sitemap.append(site_url + "/fun/")
 
     (out / "robots.txt").write_text(
-        "User-agent: *\nDisallow: /api/\nDisallow: /user/\nDisallow: /preview/\n\n"
+        "User-agent: *\nDisallow: /api/\nDisallow: /user/\nDisallow: /preview/\nDisallow: /mypage/\nDisallow: /admin/\n\n"
         f"Sitemap: {site_url}/sitemap.xml\n", encoding="utf-8")
     today = dt.datetime.now(KST).strftime("%Y-%m-%d")
     urls = "".join(f"<url><loc>{u}</loc><lastmod>{today}</lastmod></url>" for u in sitemap)
@@ -410,7 +450,7 @@ def main(argv=None):
         f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>\n',
         encoding="utf-8")
     # 옛 주소 호환: /index.html → /
-    (out / "_redirects").write_text("/index.html / 301\n/guide/patch /patch/ 301\n", encoding="utf-8")
+    (out / "_redirects").write_text("/index.html / 301\n/guide/patch /patch/ 301\n/calc /sim/ 301\n/calc.html /sim/ 301\n", encoding="utf-8")
 
     n = sum(1 for p in out.rglob("*") if p.is_file())
     data_dir = ROOT / a.data

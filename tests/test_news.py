@@ -65,12 +65,12 @@ class FakeHttp:
 
 def test_run_merge_and_incremental(tmp_path):
     r = news.run(tmp_path, FakeHttp())
-    feed = json.loads((tmp_path / "news" / "feed.json").read_text())
+    feed = json.loads((tmp_path / "news" / "feed.json").read_text(encoding="utf-8"))
     cats = {x["cat"] for x in feed["items"]}
     assert {"notice", "check", "update", "korea", "fcgame"} <= cats
     assert any("풋볼리스트" in e for e in r["errors"])          # 한 출처가 죽어도 나머지는 저장
     assert all(x["label"] and x["url"] and x["source"] for x in feed["items"])
-    assert json.loads((tmp_path / "news" / "events.json").read_text())["items"][0]["title"]
+    assert json.loads((tmp_path / "news" / "events.json").read_text(encoding="utf-8"))["items"][0]["title"]
     h = FakeHttp(); r2 = news.run(tmp_path, h)
     # 이미 읽은 공지 본문은 다시 안 읽음 (+1은 이벤트 목록 2쪽 확인 요청)
     assert r2["added"] == 0 and h.count == 4 + len(news.FEEDS)

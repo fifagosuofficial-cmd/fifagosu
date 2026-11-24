@@ -54,6 +54,9 @@ GUIDE_PAGES = [
     ("market", "FC온라인 급여·이적시장 — 급여 상한·판매 수수료 구조", "FC온라인 급여가 무엇이고 어떻게 맞추는지, 이적시장 거래와 판매 수수료가 어떻게 계산되는지 설명해요."),
 ]
 PAGES = [
+    ("board/index.html", "community.html", "/board/", "FC온라인 게시판 | 피파고수", "스쿼드 평가, 선수 후기, 자유게시판", True),
+    ("mypage/index.html", "community.html", "/mypage/", "마이페이지 | 피파고수", "회원 전용 개인 보관함", False),
+    ("admin/index.html", "community.html", "/admin/", "관리자 | 피파고수", "운영 관리", False),
     ("squad/index.html", "squad.html", "/squad/", "FC온라인 AI 스쿼드 추천 — 예산·급여 맞춤 | 피파고수",
      "보유 BP와 급여, 팀컬러, 포메이션에 맞춘 선수 조합을 자동으로 추천해요.", True),
     ("patch/index.html", "patch.html", "/patch/", "FC온라인 패치노트 — 업데이트·밸런스·개선 내역 | 피파고수",
@@ -396,13 +399,13 @@ def main(argv=None):
     for fname, tpl, path, title, desc, in_map in PAGES:
         render(fname, tpl, path, title, desc, in_map, root="/" if fname == "404.html" else ("../" if "/" in fname else ""),
                active=fname.split("/")[0] if fname.startswith(("news/", "press/", "patch/")) else "",
-               view="squad" if fname == "squad/index.html" else "",
+               view=fname.split("/")[0] if fname in ("squad/index.html","board/index.html","mypage/index.html","admin/index.html") else "",
                bkind="press" if fname.startswith("press/") else "official")
     if (out / "fun" / "index.html").exists():
         sitemap.append(site_url + "/fun/")
 
     (out / "robots.txt").write_text(
-        "User-agent: *\nDisallow: /api/\nDisallow: /user/\nDisallow: /preview/\n\n"
+        "User-agent: *\nDisallow: /api/\nDisallow: /user/\nDisallow: /preview/\nDisallow: /mypage/\nDisallow: /admin/\n\n"
         f"Sitemap: {site_url}/sitemap.xml\n", encoding="utf-8")
     today = dt.datetime.now(KST).strftime("%Y-%m-%d")
     urls = "".join(f"<url><loc>{u}</loc><lastmod>{today}</lastmod></url>" for u in sitemap)

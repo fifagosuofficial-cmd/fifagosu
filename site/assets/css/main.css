@@ -1492,3 +1492,7 @@ nav.menu a.nav-diag-feature:hover,nav.menu a.nav-diag-feature:focus-visible{anim
 .eff-row .er-score-meter u{display:none}
 .eff-row .er-money{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:760px){.eff-row .er-money{grid-template-columns:repeat(2,minmax(0,1fr))}.eff-row .er-metric:last-child{grid-column:auto;flex-direction:column;align-items:stretch;justify-content:flex-start}.eff-row .er-main .er-score{font-size:23px}}
+
+/* Six life metrics fit in three paired rows; five return metrics finish with a full-width return-on-success row. */
+.eff-row .er-money-life{grid-template-columns:repeat(3,minmax(0,1fr))}.eff-row .er-money-return{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:760px){.eff-row .er-money-life,.eff-row .er-money-return{grid-template-columns:repeat(2,minmax(0,1fr))}.eff-row .er-money-return .er-metric:last-child{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:space-between}}

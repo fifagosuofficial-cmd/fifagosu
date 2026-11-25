@@ -214,7 +214,7 @@
     </div>
     <div class="eff-opts">
       <div class="eff-steps" id="effSteps" role="group" aria-label="강화 단계"></div>
-      <label class="eff-chk"><input type="checkbox" id="effMat"> 재료비 포함 <small>(검증된 부스트 포인트 · 최대 5장 최저가 조합)</small></label>
+      <label class="eff-chk"><input type="checkbox" id="effMat"> 재료비 포함 <small>(전체 시세표용 검증 규칙 확보 시 적용 · 개별 공식 조합은 강화 시뮬)</small></label>
       <label class="eff-chk">실패하면<select id="effFail"><option value="keep">단계 유지</option><option value="down">1단계 하락 (5강 이상)</option></select></label>
     </div>
     <div class="eff-budget" id="effBudget" hidden>
@@ -258,7 +258,7 @@
           <label>시작 강화<select id="smEFrom"></select></label>
           <label>목표 강화<select id="smETo"></select></label>
           <label>실패하면<select id="smEFail"><option value="keep">단계 유지</option><option value="down">1단계 하락 (5강 이상)</option></select></label>
-          <label class="mat-in">재료 카드 1장 가격 (BP)<input type="text" id="smEMat" placeholder="예: 2500000" inputmode="numeric" autocomplete="off"><span class="mat-v" id="smEMatV">재료비 불러오는 중</span></label><label class="mat-in"><span><input type="checkbox" id="smEMatAuto" checked> 자동 재료비 (검증 조합 우선 · 없으면 5장 추정)</span><span id="smEMatCombo" class="mat-v" aria-live="polite"></span><a href="https://fconline.nexon.com/DataCenter/PlayerGrow" target="_blank" rel="noopener">공식 강화 부스트 도우미</a><small>추정 모드는 현재 강화 OVR 이상 재료 5장 시세와 풀게이지 성공률을 가정합니다. 실제 게이지·거래 수량은 확인해 주세요.</small></label>
+          <label class="mat-in">재료 카드 1장 가격 (BP)<input type="text" id="smEMat" placeholder="예: 2500000" inputmode="numeric" autocomplete="off"><span class="mat-v" id="smEMatV">재료비 불러오는 중</span></label><label class="mat-in"><span><input type="checkbox" id="smEMatAuto" checked> 자동 재료비 (공식 부스트 도우미)</span><span id="smEMatCombo" class="mat-v" aria-live="polite"></span><a href="https://fconline.nexon.com/DataCenter/PlayerGrow" target="_blank" rel="noopener">공식 강화 부스트 도우미</a><small>공식 도우미의 OVR별 월평균 최저 거래가로 최대 5장 조합을 찾고 100% 게이지를 확인합니다. 이벤트 미적용이며 실제 매물가·거래 수량은 다를 수 있습니다.</small></label>
         </div>
         <div id="smEStatsBox"><p class="sim-note">선수를 고르면 34개 세부 능력치가 여기 표시돼요.</p></div>
         <ol class="sim-log" id="smELog"></ol>

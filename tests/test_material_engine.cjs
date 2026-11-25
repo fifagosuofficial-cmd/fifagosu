@@ -21,3 +21,23 @@ test("five-card price proxy is explicitly unverified, grade-aware and excludes t
  assert.equal(x.estimate(130,1,0,1),null);
  assert.equal(x.solve(110,1,0,1),null);
 });
+
+test("official simulation no longer falls back to five-card price proxy",()=>{
+ const fs=require("node:fs"),path=require("node:path");
+ const s=fs.readFileSync(path.join(__dirname,"../site/assets/js/sim.js"),"utf8");
+ assert.ok(s.includes('/api/boost?spid='));
+ assert.ok(s.includes('plan.gauge!==100'));
+ assert.ok(!s.includes('MATERIALS?.estimate'));
+});
+const boostSource=require("node:fs").readFileSync(require("node:path").join(__dirname,"../functions/api/boost.js"),"utf8");
+const boost=()=>import("data:text/javascript;base64,"+Buffer.from(boostSource).toString("base64"));
+test("official OVR quotes optimize and verify actual gauge instead of extrapolating",async()=>{
+ const {quoteRows,cheapestFull,fetchOfficialPlan}=await boost();
+ const raw=[{ovr:121,stretc:"20.44",monthly_average_price:15805},{ovr:124,stretc:"50.00",monthly_average_price:49510},{ovr:127,stretc:"100.00",monthly_average_price:116245},{ovr:130,stretc:"100.00",monthly_average_price:0}];
+ assert.equal(quoteRows(raw).length,3);
+ const plan=cheapestFull(quoteRows(raw));assert.equal(plan.cost,79025);assert.equal(plan.cards.length,5);
+ let calls=[];const result=await fetchOfficialPlan(100004000,1,async (endpoint,fields)=>{calls.push([endpoint,fields]);return endpoint==="RecommendOVRList"?raw:{strBoostPer:"100"}},async()=>{});
+ assert.equal(result.plan.cost,79025);assert.equal(result.plan.gauge,100);assert.equal(calls[1][1].strCalinfo,",121,121,121,121,121,");
+ const fail=await fetchOfficialPlan(100004000,1,async endpoint=>endpoint==="RecommendOVRList"?raw:{strBoostPer:"99.99"},async()=>{});
+ assert.equal(fail.plan,null);
+});

@@ -108,18 +108,55 @@ let SEL=null,cur=1,tries=0,ok=0,ng=0,timer=null,KAN=5,spent=0;
 const autoMat=()=>$('smEMatAuto').checked;
 const gauge=()=>autoMat()?1:KAN/5, pOf=g=>g>=MAX?0:SUCC[g]/100*gauge();
 const baseOvr=()=>{if(!SEL)return 0;const x=typeof ix==='function'&&ix(SEL.c.id);return (SEL.l&&SEL.l.ovr)||(x&&x[0])||0};
-/* 수동 재료비는 양수만 허용. 자동은 검증 조합 또는 명시적 5장 가격 추정. */
+/* 자동은 공식 도우미가 확인한 100% 조합만 사용. */
 const korBP=v=>{v=Math.round(+v||0);if(!v)return '0';const eok=Math.floor(v/1e8),man=Math.floor(v%1e8/1e4),rest=v%1e4,p=[];
   if(eok)p.push(eok.toLocaleString()+'억');if(man)p.push(man.toLocaleString()+'만');if(rest)p.push(rest%1000===0?(rest/1000)+'천':rest.toLocaleString());return p.join(' ')};
 const matPer=()=>Math.max(0,+String($('smEMat').value).replace(/[^\d]/g,'')||0);
-const selectedPlan=g=>SEL?(materialPlan(baseOvr(),g,SEL.c.id)||MATERIALS?.estimate(baseOvr(),g,GRADE_BONUS[g]||0,SEL.c.id%1000000)||null):null;
+const officialPlans=new Map(),officialPending=new Map(),officialErrors=new Map();
+const planKey=(id,g)=>id+":"+g;
+let preparing=false;
+const selectedPlan=g=>SEL?officialPlans.get(planKey(SEL.c.id,g))||null:null;
+async function loadOfficial(g,id=SEL?.c.id){
+ if(!id||g<1||g>=MAX)return null;
+ const key=planKey(id,g);
+ if(officialPlans.has(key))return officialPlans.get(key);
+ if(officialPending.has(key))return officialPending.get(key);
+ officialErrors.delete(key);
+ const task=(async()=>{try{
+   const r=await fetch("/api/boost?spid="+encodeURIComponent(id)+"&grade="+g,{credentials:"same-origin"});
+   const d=await r.json();
+   if(!r.ok)throw Error(d.message||"공식 시세 조회 실패");
+   const plan=d.plan;
+   if(d.spid!==id||d.grade!==g||!plan?.official||plan.gauge!==100||!Number.isSafeInteger(plan.cost)||plan.cost<=0||!Array.isArray(plan.cards)||!plan.cards.length||plan.cards.length>5||plan.cards.some(c=>!Number.isSafeInteger(c.ovr)||!Number.isSafeInteger(c.price)||c.price<=0)||plan.cards.reduce((sum,c)=>sum+c.price,0)!==plan.cost)throw Error("공식 데이터에서 풀게이지 조합을 찾지 못했습니다.");
+   officialPlans.set(key,plan);return plan;
+ }catch(e){officialErrors.set(key,e.message||"공식 시세 조회 실패");return null}finally{
+   officialPending.delete(key);
+   if(SEL?.c.id===id&&cur===g){matShow();drawEv();$('smEP').textContent=autoMat()&&!selectedPlan(cur)?"미확인":(pOf(cur)*100).toFixed(pOf(cur)<.1?1:0)+"%"}
+ }})();
+ officialPending.set(key,task);
+ if(SEL?.c.id===id&&cur===g)matShow();
+ return task;
+}
+function ensureCurrent(){if(SEL&&autoMat()&&cur<MAX&&!officialErrors.has(planKey(SEL.c.id,cur)))void loadOfficial(cur)}
+function lockEnh(on){preparing=on;for(const id of ["smEOne","smEAuto","smEMany","smEReset","smEFrom","smETo","smEFail","smEMatAuto","smEQ"])$(id).disabled=on}
+async function prepareStages(from,to,down){
+ if(!autoMat())return true;if(!SEL)return false;
+ const id=SEL.c.id;
+ for(let g=down?Math.min(from,4):from;g<to;g++){
+   if(SEL?.c.id!==id||!autoMat())return false;
+   if(!selectedPlan(g)){$('smEMsg').textContent="공식 "+g+"→"+(g+1)+"강 조합 조회 중…";if(!await loadOfficial(g,id))return false}
+ }
+ return true;
+}
 const attemptCost=g=>autoMat()?selectedPlan(g)?.cost??null:matPer()>0?matPer()*KAN:null;
 function matShow(){
- const v=matPer(),plan=autoMat()?selectedPlan(cur):null;
- $('smEMat').disabled=autoMat();
- $('smEMatV').textContent=autoMat()?(plan?.estimated?"자동 추정 · 5장":"자동 조합 적용"):v?korBP(v)+' BP / 장':'재료비 입력 필요';
- $('smEMatCombo').innerHTML=plan?.estimated?'<b>'+korBP(plan.cost)+' BP · 5장 추정</b><br>현재 강화 OVR '+plan.ovr+' · 재료 OVR '+plan.materialOvr+' · '+korBP(plan.cards[0].price)+' BP × 5장 (풀게이지 충족 미검증)':plan?'<b>'+korBP(plan.cost)+' BP · '+plan.cards.length+'장 · 100%</b><br>'+plan.cards.map(c=>H(sname(Math.floor(c.id/1e6))+" "+c.name+" "+c.grade+"강 · OVR "+c.ovr+" · "+korBP(c.price)+" BP")).join('<br>'):cur>=MAX?"최대 강화":"시세 후보 없음 · 수동 입력 필요";
- $('smEGaugeV').textContent=autoMat()?(plan?.estimated?"5칸 가정 · 미검증":plan?"풀게이지 · 100%":"게이지 미확인"):`${KAN}칸 · ${KAN*20}%`;
+ const v=matPer(),plan=autoMat()?selectedPlan(cur):null,key=SEL?planKey(SEL.c.id,cur):"";
+ $('smEMat').disabled=autoMat()||preparing;
+ $('smEMatV').textContent=autoMat()?"공식 월평균 최저 거래가":v?korBP(v)+' BP / 장':'재료비 입력 필요';
+ $('smEMatCombo').innerHTML=plan?'<b>'+korBP(plan.cost)+' BP · '+plan.cards.length+'장 · 공식 게이지 100%</b><br>'+plan.cards.map(c=>'OVR '+c.ovr+' · '+korBP(c.price)+' BP').join('<br>')+'<br>지난 한 달 일일 최저 거래가 평균 · 실제 매물가와 다를 수 있음':cur>=MAX?"최대 강화":!SEL?"강화할 선수를 선택하세요.":officialPending.has(key)?"공식 강화 도우미 조회 중…":officialErrors.has(key)?H(officialErrors.get(key))+' <button type="button" id="smEBoostRetry">다시 조회</button>':"공식 조합 조회 대기";
+ if($('smEBoostRetry'))$('smEBoostRetry').onclick=()=>{void loadOfficial(cur)};
+ $('smEGaugeV').textContent=autoMat()?(plan?"풀게이지 · 100%":"게이지 미확인"):`${KAN}칸 · ${KAN*20}%`;
+ $('smEGaugeBox').querySelectorAll('[data-k]').forEach(x=>x.classList.toggle('on',autoMat()?!!plan:+x.dataset.k<=KAN));
 }
 const priceAt=g=>SEL&&SEL.l&&SEL.l.price?(SEL.l.price[g-1]||0):0;
 
@@ -138,9 +175,10 @@ $('smEQ').addEventListener('input',()=>{
   box.innerHTML=hit.slice(0,8).map(c=>{const x=ix(c.id);return `<button type="button" data-pick="${c.id}">${bigBadge(c.sid)}<b>${H(c.name)}</b><small>${H(sname(c.sid))}</small>${x&&x[0]?`<em class="${fcCls(x[0])}">${x[1]||''} ${x[0]}</em>`:''}</button>`}).join('')||'<p class="sim-note">검색 결과가 없어요.</p>';
   box.hidden=false;
 });
-$('smESug').addEventListener('click',e=>{const b=e.target.closest('[data-pick]');if(!b)return;$('smESug').hidden=true;pickPlayer(+b.dataset.pick)});
+$('smESug').addEventListener('click',e=>{const b=e.target.closest('[data-pick]');if(!b||preparing)return;$('smESug').hidden=true;pickPlayer(+b.dataset.pick)});
 document.addEventListener('click',e=>{if(!e.target.closest('#simEnh .sim-pick'))$('smESug').hidden=true});
 async function pickPlayer(id,g){
+  if(preparing)return;
   const c=(typeof CARDS!=='undefined'&&CARDS.find(x=>x.id===id))||{id,sid:Math.floor(id/1e6),name:((POOL||[]).find(x=>x[0]===id)||[])[1]||''};
   $('smEQ').value=c.name||'';SEL={c,l:null,d:null};
   if(g){$('smEFrom').value=String(g);if(+$('smETo').value<=g)$('smETo').value=String(Math.min(13,g+1))}
@@ -176,25 +214,25 @@ function drawEv(){
       <div><dt>지금 팔면</dt><dd class="${nowSell-paid>=0?'up':'dn'}">${sgn(nowSell-paid)}</dd><small>${cur}강 ${won(priceAt(cur))} · 수수료 뒤 ${won(nowSell)}</small></div>
     </dl>`;
   if(cur>=MAX){E.innerHTML='<p class="sim-note">13강은 마지막 단계예요.</p>'+head;return}
-  if(mat===null){E.innerHTML='<p class="sim-note">재료비를 확인할 수 없어 손익을 계산할 수 없습니다. 자동 추정 또는 수동 입력을 확인하세요.</p>'+head;return}
+  if(mat===null){E.innerHTML='<p class="sim-note">재료비를 확인할 수 없어 손익을 계산할 수 없습니다. 공식 도우미 조회 또는 수동 입력을 확인하세요.</p>'+head;return}
   const p=pOf(cur),up=priceAt(cur+1),fg=$('smEFail').value==='down'&&cur>=5?cur-1:cur,fv=priceAt(fg);
   if(!start||!up){E.innerHTML='<p class="sim-note">이 단계 시세가 없어 계산할 수 없어요.</p>';return}
   const cost=paid+mat,sUp=up*(1-fee),sFail=fv*(1-fee),winT=sUp-cost,loseT=sFail-cost,evT=p*winT+(1-p)*loseT;
   const firstCost=attemptCost(from),once=firstCost===null?null:priceAt(from+1)*(1-fee)-start-firstCost;
-  E.innerHTML=`<div class="ev-top"><div class="ev-step">${gchip(cur)}<i>→</i>${gchip(cur+1)}</div><div class="ev-p"><small>성공 확률${autoMat()&&selectedPlan(cur)?.estimated?" (풀게이지 가정)":""}</small><b>${(p*100).toFixed(p<.1?1:0)}%</b></div></div>
+  E.innerHTML=`<div class="ev-top"><div class="ev-step">${gchip(cur)}<i>→</i>${gchip(cur+1)}</div><div class="ev-p"><small>성공 확률</small><b>${(p*100).toFixed(p<.1?1:0)}%</b></div></div>
     <div class="ev-big ${winT>=0?'up':'dn'}"><small>이번에 성공하면 (누적)</small><b>${sgn(winT)}</b><span>${tries&&cur===from&&once!==null?`처음 1번에 성공했다면 ${sgn(once)}였어요`:`${won(cost)} 들여서 ${cur+1}강 ${won(up)} · 수수료 뒤 ${won(sUp)}`}</span></div>
     <dl class="ev-dl">
       <div><dt>이번에 실패하면 (누적)</dt><dd class="${loseT>=0?'up':'dn'}">${sgn(loseT)}</dd><small>${fg<cur?`${fg}강으로 하락 · `:''}${fg}강 ${won(fv)} · 수수료 뒤 ${won(sFail)}</small></div>
-      <div><dt>이번 시도 기댓값 (누적)</dt><dd class="${evT>=0?'up':'dn'}">${sgn(evT)}</dd><small>재료비 ${won(mat)}${autoMat()?` (${selectedPlan(cur).estimated?"5장 추정 · 풀게이지 가정":"검증 조합 "+selectedPlan(cur).cards.length+"장"})` :unit?` (${won(unit)} × ${KAN}칸)`:' · 재료비 제외'}</small></div>
+      <div><dt>이번 시도 기댓값 (누적)</dt><dd class="${evT>=0?'up':'dn'}">${sgn(evT)}</dd><small>재료비 ${won(mat)}${autoMat()?` (${"공식 조합 "+selectedPlan(cur).cards.length+"장"})` :unit?` (${won(unit)} × ${KAN}칸)`:' · 재료비 제외'}</small></div>
     </dl>${head}`;
 }
 function draw(msg,kind){
   $('smEGrade').textContent=cur;$('smETier').textContent=tier(cur);$('smECard').className='sim-card g-'+gcls(cur)+(kind?' fx-'+kind:'');
   $('smETry').textContent=tries;$('smEOk').textContent=ok;$('smENg').textContent=ng;
-  $('smEP').textContent=cur>=MAX?'최대':autoMat()&&!selectedPlan(cur)?'미확인':(pOf(cur)*100).toFixed(pOf(cur)<.1?1:0)+'%'+(autoMat()&&selectedPlan(cur)?.estimated?' (가정)':'');
+  $('smEP').textContent=cur>=MAX?'최대':autoMat()&&!selectedPlan(cur)?'미확인':(pOf(cur)*100).toFixed(pOf(cur)<.1?1:0)+'%';
   if(msg)$('smEMsg').textContent=msg;
   if(SEL)drawPlayer(kind);
-  matShow();drawEv();
+  matShow();drawEv();ensureCurrent();
 }
 function reset(){clearInterval(timer);timer=null;$('smEAuto').textContent='목표까지 자동';cur=+$('smEFrom').value;tries=ok=ng=spent=0;START=priceAt(cur);matShow();$('smELog').innerHTML='';draw(SEL?'강화 버튼을 눌러 보세요.':'먼저 선수를 고르면 능력치까지 함께 바뀌어요.')}
 function log(t,k,p){const li=document.createElement('li');li.className=k;const net=SEL&&START?priceAt(cur)*(1-feeRate())-(START+spent):null;li.innerHTML=`<b>#${tries}</b> ${t}${net!=null?` <em class="${net>=0?'up':'dn'}">누적 ${sgn(net)}</em>`:''} <small>${(p*100).toFixed(p<.1?1:0)}%</small>`;$('smELog').prepend(li);while($('smELog').children.length>60)$('smELog').lastChild.remove()}
@@ -207,23 +245,24 @@ function step(){
   if(cur>=to){draw(`목표 ${to}강 달성! 총 ${tries}회 시도했어요.${spent?' 재료비 약 '+won(spent)+' BP':''}`,'win');return false}
   return true;
 }
-$('smEOne').onclick=()=>{clearInterval(timer);timer=null;$('smEAuto').textContent='목표까지 자동';step()};
-$('smEAuto').onclick=()=>{if(timer){clearInterval(timer);timer=null;$('smEAuto').textContent='목표까지 자동';return}
+$('smEOne').onclick=async()=>{if(preparing)return;clearInterval(timer);timer=null;$('smEAuto').textContent='목표까지 자동';if(autoMat()&&SEL&&!selectedPlan(cur)){lockEnh(true);try{if(!await loadOfficial(cur)){draw('공식 재료비 확인 실패. 다시 조회하거나 수동 입력하세요.');return}}finally{lockEnh(false);matShow()}}step()};
+$('smEAuto').onclick=async()=>{if(preparing)return;if(timer){clearInterval(timer);timer=null;$('smEAuto').textContent='목표까지 자동';return}
+  if(autoMat()){lockEnh(true);try{if(!await prepareStages(cur,+$('smETo').value,$('smEFail').value==='down')){draw('일부 단계 공식 조합을 확인하지 못했습니다. 다시 시도하거나 수동 입력하세요.');return}}finally{lockEnh(false);matShow()}}
   $('smEAuto').textContent='멈추기';let n=0;timer=setInterval(()=>{if(!step()||++n>5000){clearInterval(timer);timer=null;$('smEAuto').textContent='목표까지 자동'}},90)};
 $('smEReset').onclick=reset;['smEFrom','smEFail'].forEach(id=>$(id).onchange=reset);
 $('smETo').onchange=()=>{if(+$('smETo').value<=+$('smEFrom').value)$('smETo').value=Math.min(13,+$('smEFrom').value+1);draw()};
-$('smEMany').onclick=()=>{
+$('smEMany').onclick=async()=>{if(preparing)return;
   const from=+$('smEFrom').value,to=+$('smETo').value,down=$('smEFail').value==='down',N=2000,cap=200000,res=[],costs=new Map();
+  if(autoMat()){lockEnh(true);try{if(!await prepareStages(from,to,down)){$('smEStats').textContent='일부 단계 공식 조합을 확인하지 못했습니다. 다시 시도하거나 수동 입력하세요.';return}}finally{lockEnh(false);matShow()}}
   for(let g=down?Math.min(from,4):from;g<to;g++){const cost=attemptCost(g);if(cost===null){$('smEStats').textContent='일부 단계 재료비를 확인할 수 없어 평균 비용을 계산할 수 없습니다.';return}costs.set(g,cost)}
   let totalCost=0,capped=0;for(let r=0;r<N;r++){let g=from,t=0,cost=0;while(g<to&&t<cap){t++;cost+=costs.get(g);if(Math.random()<pOf(g))g++;else if(down&&g>=5)g--}res.push(t);totalCost+=cost;if(g<to)capped++}if(capped){$('smEStats').textContent='일부 시뮬레이션이 반복 한도에 도달하여 평균 비용을 표시하지 않습니다.';return}
   res.sort((a,b)=>a-b);const q=x=>res[Math.min(N-1,Math.floor(x*N))],avg=res.reduce((a,b)=>a+b,0)/N;
   let exp=0;if(!down)for(let k=from;k<to;k++)exp+=1/pOf(k);
-  const estimated=autoMat()&&[...costs.keys()].some(g=>selectedPlan(g)?.estimated);
   const lucky=res.filter(t=>t<=to-from).length/N*100,averageMaterial=SEL?totalCost/N:0,start=priceAt(from),goal=priceAt(to),fee=feeRate();
   const cost=start+averageMaterial,net=goal*(1-fee)-cost;
   $('smEStats').innerHTML=`<div><span>평균</span><b>${avg.toFixed(1)}회</b></div><div><span>중앙값</span><b>${q(.5)}회</b></div><div><span>운 좋은 10%</span><b>${q(.1)}회 이하</b></div><div><span>운 나쁜 10%</span><b>${q(.9)}회 이상</b></div><div><span>한 번에 성공</span><b>${lucky.toFixed(lucky<1?2:1)}%</b></div>${down?'':`<div><span>이론 기대값</span><b>${exp.toFixed(1)}회</b></div>`}
-   ${SEL&&averageMaterial?`<div><span>평균 재료비${estimated?' (5장 추정)':''}</span><b>${won(averageMaterial)}</b></div>`:''}
-   ${SEL&&start&&goal?`<div class="wide"><span>${from}강 사서 ${to}강 만들어 팔면 (평균${estimated?' · 풀게이지 가정':''})</span><b class="${net>=0?'up':'dn'}">${sgn(net)} BP</b></div>`:''}`;
+   ${SEL&&averageMaterial?`<div><span>평균 재료비${autoMat()?' (공식 월평균 기준)':''}</span><b>${won(averageMaterial)}</b></div>`:''}
+   ${SEL&&start&&goal?`<div class="wide"><span>${from}강 사서 ${to}강 만들어 팔면 (평균)</span><b class="${net>=0?'up':'dn'}">${sgn(net)} BP</b></div>`:''}`;
 };
 reset();
 

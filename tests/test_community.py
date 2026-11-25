@@ -170,3 +170,15 @@ def test_live_beta_notice_removed_but_offline_preview_retained(tmp_path):
     js = (out / "assets/js/app.js").read_text("utf-8")
     assert "<b>베타</b>" not in js
     assert "$('notice').hidden=true" in js and "$('notice').hidden=false" in js
+
+
+def test_search_engine_verification_in_static_head(tmp_path):
+    from bs4 import BeautifulSoup
+    out = tmp_path / "site"
+    build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
+    doc = BeautifulSoup((out / "index.html").read_text("utf-8"), "html.parser")
+    for name, value in (("naver-site-verification", "1b853471d768b6c30cf0aba8a7944ddb34d5fd1a"), ("google-site-verification", "X-kRhBDl5EnO8iYJM1nWJVYUGEXoG_-fLkRei9spe7k")):
+        tags = doc.select(f'head meta[name="{name}"]')
+        assert len(tags) == 1 and tags[0]["content"] == value
+    assert doc.select_one('head meta[name="google-adsense-account"]')
+    assert "https://fifagosu.com/" in (out / "sitemap.xml").read_text("utf-8")

@@ -156,3 +156,14 @@ def test_page_specific_middle_ad_positions(tmp_path):
     assert len(board.select('[data-ad-slot="board-1"]')) == 1
     sq = soup("squad/index.html")
     assert sq.select_one('[data-ad-slot="squad-1"]').find_next_sibling()["id"] == "sqOutput"
+
+def test_live_beta_notice_removed_but_offline_preview_retained(tmp_path):
+    from bs4 import BeautifulSoup
+    out = tmp_path / "site"
+    build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
+    doc = BeautifulSoup((out / "diag.html").read_text("utf-8"), "html.parser")
+    assert doc.select_one("#notice[hidden]")
+    assert "Data based on NEXON Open API" in doc.footer.get_text()
+    js = (out / "assets/js/app.js").read_text("utf-8")
+    assert "<b>베타</b>" not in js
+    assert "$('notice').hidden=true" in js and "$('notice').hidden=false" in js

@@ -1322,9 +1322,10 @@ if($('hCardForm'))$('hCardForm').addEventListener('submit',e=>{e.preventDefault(
 /* ---------- 시작 ---------- */
 
 if(LIVE){
-  $('notice').innerHTML='<b>베타</b> · 전적과 카드 목록은 넥슨 Open API 실데이터예요.';
+  $('notice').hidden=true;
   if(!dQueryStarted){$('dNick').value='';$('dBoard').innerHTML='<div><div class="nick">구단주 검색</div><div class="meta">닉네임을 넣고 진단하기를 누르세요.</div></div>'}
 }else{
+  $('notice').hidden=false;
   const ks=window.FG_SNAP?Object.keys(FG_SNAP):[];const k=ks.find(x=>FG_SNAP[x].matches.length>=5);
   if(k){const m=k.split('|')[1];if(m!==dMode){dMode=m;$('dMode').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.mode===m))}$('dNick').value=FG_SNAP[k].basic.nickname;runDiag($('dNick').value)}
   else{$('dBoard').innerHTML='<div><div class="nick">구단주 검색</div><div class="meta">닉네임을 넣고 진단하기를 누르세요.</div></div>'}

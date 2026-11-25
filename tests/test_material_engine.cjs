@@ -52,8 +52,8 @@ test("efficiency ranking subtracts verified cost and recomputes return, profit a
  assert.equal(row.inv,150);assert.equal(row.rr,170/150);assert.equal(row.ev,20);assert.equal(row.win,90);
  assert.equal(ctx.effWithMaterial(r,{...cost,gauge:99}),null);
  assert.equal(ctx.effWithMaterial(r,{...cost,official:false}),null);
- const other={...r,id:2,buy:90,rr:1.4,win:200},expensive={...r,id:3,buy:1000,rr:5,win:1000};
- assert.deepEqual(Array.from(ctx.effCandidateOrder([r,other,expensive],"win"),x=>x.id),[3,2,r.id]);
+ const other={...r,id:2,buy:90,inv:90,p:.5,rr:1.4,win:200},expensive={...r,id:3,buy:1000,inv:1000,p:.01,rr:5,win:1000};
+ assert.equal(ctx.effCandidateOrder([{...r,inv:100,p:.1},other,expensive],"win")[0].id,2);
  assert.equal(ctx.effCandidateOrder([r,other,expensive],"top")[0].id,3);
  assert.ok(s.includes("await loadOfficial(r.g,r.id)"));
  assert.ok(!s.includes("if($('effMat').checked&&!MATERIALS?.ready)"));
@@ -75,11 +75,11 @@ test("ranking cards preserve full names, odds and all monetary metrics",()=>{
  const fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
  const s=fs.readFileSync(path.join(__dirname,"../site/assets/js/sim.js"),"utf8"),h=fs.readFileSync(path.join(__dirname,"../site/templates/index.html"),"utf8"),css=fs.readFileSync(path.join(__dirname,"../site/assets/css/main.css"),"utf8");
  assert.match(h,/인생강화 TOP 30/);assert.match(h,/class="sim-note sim-intro">실제 시세로 강화 손익·팩 기댓값을 계산해요/);
- const ctx={bigImg:()=>"",bigBadge:()=>"",H:s=>s,gchip:g=>String(g)};vm.createContext(ctx);vm.runInContext(s.slice(s.indexOf("function effRow("),s.indexOf("function effRender()")),ctx);
+ const ctx={bigImg:()=>"",bigBadge:()=>"",H:s=>s,gchip:g=>String(g)};vm.createContext(ctx);vm.runInContext(s.slice(s.indexOf("function effLifeScore("),s.indexOf("let effCtx=")),ctx);vm.runInContext(s.slice(s.indexOf("function effRow("),s.indexOf("function effRender()")),ctx);
  const r={id:100004000,name:"크리스티아누 호날두",g:12,p:.01,inv:613905129000,mat:7951290325,up:1950000000000,ev:-242208729000,win:556048700000,rr:.61};
  const win=ctx.effRow(r,0,"win"),rr=ctx.effRow(r,0);
  for(const out of [win,rr])for(const label of ["크리스티아누 호날두","성공 확률 1%","총 투자금","재료비","7,951,290,325 BP","성공 시 시세","기대 손익","회수율","성공 시 순이익"])assert.ok(out.includes(label),label);
- assert.ok(win.includes("+5,560억 4,870만"));assert.ok(win.includes("1조 9,500억"));
+ assert.ok(win.includes("종합지수"));assert.ok(win.includes("/100"));assert.ok(win.includes("+5,560억 4,870만"));assert.ok(win.includes("1조 9,500억"));
  assert.ok(css.includes('grid-template-areas:"r i w" "m m m" "d d d"'));assert.ok(css.includes("text-overflow:clip"));
 });
 
@@ -91,4 +91,16 @@ test("shared budget uses total investment and supports both rankings",()=>{
  const a=ctx.effWithMaterial(r,{official:true,gauge:100,cost:30}),b=ctx.effWithMaterial({...r,id:2},{official:true,gauge:100,cost:20});
  for(const mode of ["win","top"])assert.deepEqual(Array.from(ctx.effCandidateOrder(ctx.effWithinBudget([a,b],100),mode),x=>x.id),[2]);
  assert.ok(s.includes("buy>effBudget"));assert.ok(s.includes("v.inv<=ctx.budget"));assert.ok(s.includes("feeRate(),effBudget"));assert.match(h,/id="effBudgetForm"/);assert.match(h,/id="effMoney"/);
+});
+
+test("life index favors proportionate gains and probability over expensive low-odds cards",()=>{
+ const fs=require("node:fs"),vm=require("node:vm"),path=require("node:path"),s=fs.readFileSync(path.join(__dirname,"../site/assets/js/sim.js"),"utf8"),ctx={};
+ vm.createContext(ctx);vm.runInContext(s.slice(s.indexOf("function effLifeScore("),s.indexOf("let effCtx=")),ctx);
+ const a={id:1,g:12,inv:6000e8,win:5000e8,p:.01,rr:.8},b={id:2,g:7,inv:100e8,win:600e8,p:.07,rr:.7},c={id:3,g:4,inv:10e8,win:35e8,p:.5,rr:1.3};
+ assert.deepEqual(Array.from(ctx.effCandidateOrder([a,b,c],"win"),x=>x.id),[2,3,1]);
+ assert.equal(ctx.effCandidateOrder([a,b,c],"top")[0].id,3);
+ assert.ok(ctx.effLifeScore(a)<ctx.effLifeScore(b));assert.ok(ctx.effLifeScore({...b,inv:200e8})<ctx.effLifeScore(b));
+ assert.equal(ctx.effLifeScore({inv:1,win:1e15,p:1}),100);assert.equal(ctx.effLifeScore({...a,win:-1}),0);
+ assert.equal(ctx.effCandidateOrder([{...a,win:-1}],"win").length,0);
+ assert.equal(ctx.effCandidateOrder([b],"win")[0].lifeScore,ctx.effCandidateOrder([a,b,c],"win")[0].lifeScore);
 });

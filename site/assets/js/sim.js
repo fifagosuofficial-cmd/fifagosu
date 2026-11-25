@@ -85,8 +85,17 @@ function parseEffBudget(raw){
   return Number.isSafeInteger(v)&&v>0?v:null;
 }
 function effWithinBudget(rows,budget){return rows.filter(r=>r.inv<=budget)}
+// Fixed scales keep a score comparable across budgets and newly verified quotes.
+function effLifeScore(r){
+  if(!Number.isFinite(r.inv)||r.inv<=0||!Number.isFinite(r.win)||r.win<=0||!Number.isFinite(r.p))return 0;
+  const roi=Math.min(1,Math.log1p(r.win/r.inv)/Math.log(11));
+  const probability=Math.max(0,Math.min(1,r.p));
+  const profit=Math.min(1,Math.log1p(r.win/1e8)/Math.log1p(1000));
+  return 50*roi+30*probability+20*profit;
+}
 function effCandidateOrder(rows,mode){
-  return [...rows].sort((a,b)=>mode==='win'?b.win-a.win:b.rr-a.rr);
+  if(mode!=='win')return [...rows].sort((a,b)=>b.rr-a.rr);
+  return rows.filter(r=>r.win>0).map(r=>({...r,lifeScore:effLifeScore(r)})).sort((a,b)=>b.lifeScore-a.lifeScore||b.win-a.win||a.id-b.id||a.g-b.g);
 }
 let effCtx=null,effTimer=null,effWork=Promise.resolve(),effLastHTML='';
 const EFF_BATCH=6,EFF_PARALLEL=2;
@@ -117,20 +126,20 @@ function effStart(ctx,retry=false){
   }).finally(()=>{ctx.running=false;if(effActive(ctx))effPaint(ctx)});
 }
 function effRow(r,i,kind){
-  const w=Math.max(4,Math.min(100,r.rr/2*100)),win=kind==="win";
+  const win=kind==="win",score=win?effLifeScore(r):0,w=win?score:Math.max(4,Math.min(100,r.rr/2*100));
   const money=v=>{const n=Math.round(v),abs=Math.abs(n),jo=Math.floor(abs/1e12),eok=Math.floor(abs%1e12/1e8),man=Math.floor(abs%1e8/1e4),parts=[];if(jo)parts.push(jo.toLocaleString("ko-KR")+"조");if(eok)parts.push(eok.toLocaleString("ko-KR")+"억");if(man)parts.push(man.toLocaleString("ko-KR")+"만");return (n<0?"−":"")+(parts.join(" ")||abs.toLocaleString("ko-KR"))};
   const signed=v=>(v>0?"+":"")+money(v);
   const exact=v=>Math.round(v).toLocaleString("ko-KR")+" BP";
   const metric=(label,value,cls="",raw=null)=>'<span class="er-metric"><small>'+label+'</small><b class="'+cls+'"'+(raw===null?"":' title="'+exact(raw)+'"')+'>'+value+'</b></span>';
-  const main=win?'<b class="'+(r.win>0?"up":"dn")+'" title="'+exact(r.win)+'">'+signed(r.win)+'</b>':'<b class="'+(r.rr>=1?"up":"dn")+'">'+r.rr.toFixed(2)+'</b>';
+  const main=win?'<b class="er-score">'+score.toFixed(1)+'<em>/100</em></b>':'<b class="'+(r.rr>=1?"up":"dn")+'">'+r.rr.toFixed(2)+'</b>';
   return '<button type="button" class="eff-row" data-pick="'+r.id+'" data-g="'+r.g+'">'+
     '<span class="er-rank">'+(i+1)+'</span>'+
     '<span class="er-img">'+bigImg(r.id)+'</span>'+
     '<span class="er-who"><span class="er-name">'+bigBadge(Math.floor(r.id/1e6))+'<b>'+H(r.name)+'</b></span>'+
     '<span class="er-step">'+gchip(r.g)+'<i>→</i>'+gchip(r.g+1)+'<em>성공 확률 '+(r.p*100).toFixed(1).replace(/\.0$/,"")+'%</em></span></span>'+
-    '<span class="er-main"><small>'+(win?"성공 시 순이익":"회수율")+'</small>'+main+'</span>'+
-    '<span class="er-money">'+metric("총 투자금",money(r.inv),"",r.inv)+metric("재료비",r.mat?exact(r.mat):"미포함","",r.mat||null)+metric("성공 시 시세",money(r.up),"",r.up)+metric("기대 손익",signed(r.ev),r.ev>=0?"up":"dn",r.ev)+metric(win?"회수율":"성공 시 순이익",win?r.rr.toFixed(2):signed(r.win),win?(r.rr>=1?"up":"dn"):(r.win>=0?"up":"dn"),win?null:r.win)+'</span>'+
-    '<span class="er-meter" aria-hidden="true"><i style="width:'+w+'%"></i><u></u></span></button>';
+    '<span class="er-main"><small>'+(win?"종합지수":"회수율")+'</small>'+main+'</span>'+
+    '<span class="er-money">'+metric("총 투자금",money(r.inv),"",r.inv)+metric("재료비",r.mat?exact(r.mat):"미포함","",r.mat||null)+metric("성공 시 시세",money(r.up),"",r.up)+metric("기대 손익",signed(r.ev),r.ev>=0?"up":"dn",r.ev)+metric("성공 시 순이익",signed(r.win),r.win>=0?"up":"dn",r.win)+metric(win?"회수율":"성공 수익률",win?r.rr.toFixed(2):(r.win/r.inv*100).toFixed(1)+"%",win?(r.rr>=1?"up":"dn"):(r.win>=0?"up":"dn"))+(win?metric("성공 수익률",(r.win/r.inv*100).toFixed(1)+"%","up"):"")+'</span>'+
+    '<span class="er-meter'+(win?' er-score-meter':'')+'" aria-hidden="true"><i style="width:'+w+'%"></i><u></u></span></button>';
 }
 function effRender(){
   if(!effReady)return;
@@ -149,11 +158,12 @@ function effRender(){
   }
 }
 function effPaint(ctx,baseRows){
+  $('effScoreHelp').hidden=effMode!=='win';
   const rows=ctx?effMaterialRows(ctx):effWithinBudget(baseRows,effBudget);
   const fee=(feeRate()*100).toFixed(1).replace(/\.0$/,'');
   const empty=ctx?(ctx.candidates.length===0?'예산과 강화 단계에 맞는 후보가 없어요.':ctx.running?'공식 재료비를 조회하고 있어요…':ctx.issue?'조회 실패: 다시 조회해 주세요.':'예산·조건에 맞는 확인된 재료비 조합이 아직 없어요. 추가 조회를 눌러 주세요.'):'조건에 맞는 카드가 없어요.';
   const win=effMode==='win',top=effCandidateOrder(rows,effMode).slice(0,30),title=win?'인생강화 TOP':'회수율 TOP';
-  const html='<div class="eff-col"><h3>'+title+' 30'+' <small>'+(ctx?'공식 조회 완료 후보 기준':win?'성공 시 순이익 높은 순':'투자금 대비 회수 비율 순')+'</small></h3>'+(top.map((r,i)=>effRow(r,i,win?'win':undefined)).join('')||'<p class="sim-note">'+empty+'</p>')+'</div>';
+  const html='<div class="eff-col"><h3>'+title+' 30'+' <small>'+(win?'종합지수 높은 순':'투자금 대비 회수 비율 순')+(ctx?' · 공식 조회 완료 후보 기준':'')+'</small></h3>'+(top.map((r,i)=>effRow(r,i,win?'win':undefined)).join('')||'<p class="sim-note">'+empty+'</p>')+'</div>';
   if(html!==effLastHTML){$('effOut').className='eff-cols';$('effOut').innerHTML=html;effLastHTML=html}
   $('effActions').hidden=!ctx;
   if(ctx){

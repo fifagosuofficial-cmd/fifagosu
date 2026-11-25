@@ -16,7 +16,20 @@ const str=(v,max,min=1)=>{check(typeof v==="string"&&v.trim().length>=min&&v.tri
 const integer=(v,min=1,max=Number.MAX_SAFE_INTEGER)=>{check(Number.isSafeInteger(v)&&v>=min&&v<=max,"잘못된 번호입니다.");return v};
 const adminFor=(env,m)=>Boolean(m&&String(env.COMMUNITY_ADMIN_SUBS||"").split(",").map(x=>x.trim()).includes(m.subject));
 // Author verification is calculated on the server. Never return the Google subject.
-const publicAuthor=(env,{author_subject,...row})=>({...row,verified:!!author_subject&&adminFor(env,{subject:author_subject})});
+const LEVELS=[[0,"아기냥"],[30,"꼬마냥"],[100,"장난꾸러기냥"],[250,"탐험냥"],[500,"기사냥"],[1000,"마법냥"],[2000,"왕관냥"],[4000,"전설냥"],[8000,"신화냥"],[16000,"우주냥"]];
+function rankFor(points){points=Math.max(0,Number(points)||0);let i=LEVELS.length-1;while(i>0&&points<LEVELS[i][0])i--;return {level:i+1,name:LEVELS[i][1],points,next:LEVELS[i+1]?.[0]??null,floor:LEVELS[i][0]}}
+const publicAuthor=(env,{author_subject,author_id,...row},ranks=new Map())=>({...row,verified:!!author_subject&&adminFor(env,{subject:author_subject}),rank:author_id?ranks.get(author_id)||rankFor(0):null});
+// Daily activity is capped per UTC day; positive votes from other members count only on visible content.
+async function authorRanks(db,ids){const out=new Map(),unique=[...new Set(ids.filter(Boolean))];for(let i=0;i<unique.length;i+=40){const chunk=unique.slice(i,i+40),q=chunk.map(()=>"?").join(",");const sql="SELECT m.id, (SELECT COALESCE(sum(min(n,3)),0)*5 FROM (SELECT count(*) n FROM posts p WHERE p.author=m.id AND p.hidden=0 GROUP BY p.created/86400))+(SELECT COALESCE(sum(min(n,8)),0) FROM (SELECT count(*) n FROM comments c JOIN posts p ON p.id=c.post_id WHERE c.author=m.id AND c.hidden=0 AND p.hidden=0 GROUP BY c.created/86400))+(SELECT count(*)*3 FROM votes v JOIN posts p ON p.id=v.post_id WHERE p.author=m.id AND p.hidden=0 AND v.member_id<>m.id)+(SELECT count(*)*2 FROM comment_votes v JOIN comments c ON c.id=v.comment_id JOIN posts p ON p.id=c.post_id WHERE c.author=m.id AND c.hidden=0 AND p.hidden=0 AND v.value=1 AND v.member_id<>m.id) points FROM members m WHERE m.id IN ("+q+")";const rows=(await db.prepare(sql).bind(...chunk).all()).results;for(const r of rows)out.set(r.id,rankFor(r.points))}return out}
+async function publicRows(env,db,rows){const ranks=await authorRanks(db,rows.map(r=>r.author_id));return rows.map(r=>publicAuthor(env,r,ranks))}
+
+// Additive, idempotent migration. Existing votes and content are never rewritten.
+const boardDDL=["CREATE TABLE IF NOT EXISTS post_dislikes(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,PRIMARY KEY(member_id,post_id))","CREATE INDEX IF NOT EXISTS post_dislike_post ON post_dislikes(post_id)","CREATE TABLE IF NOT EXISTS comment_votes(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,value INTEGER NOT NULL CHECK(value IN (-1,1)),PRIMARY KEY(member_id,comment_id))","CREATE INDEX IF NOT EXISTS comment_vote_comment ON comment_votes(comment_id)","CREATE TABLE IF NOT EXISTS comment_replies(comment_id INTEGER PRIMARY KEY REFERENCES comments(id) ON DELETE CASCADE,parent_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE)"];
+const migrated=new WeakMap();
+async function ensureBoard(db){if(!migrated.has(db)){const job=(async()=>{const ready=await db.prepare("SELECT count(*) n FROM sqlite_master WHERE type='table' AND name IN ('post_dislikes','comment_votes','comment_replies')").first();if(ready?.n!==3)await db.batch(boardDDL.map(sql=>db.prepare(sql)))})().catch(e=>{migrated.delete(db);throw e});migrated.set(db,job)}await migrated.get(db)}
+const upCount="(SELECT count(*) FROM votes v WHERE v.post_id=p.id)";
+const downCount="(SELECT count(*) FROM post_dislikes d WHERE d.post_id=p.id)";
+const netCount=upCount+"-"+downCount;
 function squadPayload(v){
  check(v?.schema===1&&Array.isArray(v.players)&&v.players.length===11&&v.opts&&typeof v.opts==="object","스쿼드 형식이 올바르지 않습니다.");
  const players=v.players.map(p=>({id:integer(p.id),grade:integer(p.grade,1,13),name:str(p.name,80),pos:str(p.pos,4)}));
@@ -40,7 +53,7 @@ export async function onRequest({request,env}){
  const audit=async(action,target,reason)=>run("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",member.id,action,String(target),reason,now());
  try{
  if(request.method==="GET"){
-   if(p==="me")return json({enabled:true,member:member?{nickname:member.nickname,game_name:member.game_name,suspended:!!member.suspended,admin,needsPolicy:member.policy!==POLICY}:null});
+   if(p==="me"){if(!member)return json({enabled:true,member:null});await ensureBoard(db);const ranks=await authorRanks(db,[member.id]);return json({enabled:true,member:{nickname:member.nickname,game_name:member.game_name,suspended:!!member.suspended,admin,rank:ranks.get(member.id)||rankFor(0),needsPolicy:member.policy!==POLICY}})}
    if(p==="callback"){
      const state=u.searchParams.get("state"),code=u.searchParams.get("code");
      check(state&&state===getCookie(request,"fg_oauth")&&/^[a-f0-9]{64}$/.test(state)&&code,"인증 요청이 만료되었습니다.");
@@ -62,25 +75,28 @@ export async function onRequest({request,env}){
      h.append("Set-Cookie",cookie("fg_session",sid,86400*7));h.append("Set-Cookie",cookie("fg_oauth","",0));return new Response(null,{status:303,headers:h});
    }
    if(p==="rankings"){
+     await ensureBoard(db);
      return json({
-       squads:await all("SELECT p.id,p.title,(SELECT count(*) FROM votes v WHERE v.post_id=p.id) likes FROM posts p WHERE p.hidden=0 AND p.category='squad' AND p.squad IS NOT NULL ORDER BY likes DESC,p.created DESC LIMIT 10"),
+       squads:await all("SELECT p.id,p.title,("+netCount+") likes FROM posts p WHERE p.hidden=0 AND p.category='squad' AND p.squad IS NOT NULL ORDER BY likes DESC,p.created DESC LIMIT 10"),
        players:await all("SELECT p.card_id,count(*) reviews,(SELECT count(*) FROM votes v JOIN posts t ON t.id=v.post_id WHERE t.hidden=0 AND t.category='review' AND t.card_id=p.card_id) likes FROM posts p WHERE p.hidden=0 AND p.category='review' AND p.card_id IS NOT NULL GROUP BY p.card_id ORDER BY likes DESC,reviews DESC LIMIT 10")
      });
    }
    if(p==="posts"){
+     await ensureBoard(db);
      const cat=u.searchParams.get("category")||"all",search=(u.searchParams.get("q")||"").slice(0,100),card=Number(u.searchParams.get("card")||0),page=Math.min(100,Math.max(1,parseInt(u.searchParams.get("page")||"1",10)||1));
      check(cat==="all"||cat==="popular"||cats.has(cat),"게시판 분류 오류");
      const where=["p.hidden=0"],args=[];if(cats.has(cat)){where.push("p.category=?");args.push(cat)}
-     if(cat==="popular")where.push("(SELECT count(*) FROM votes v WHERE v.post_id=p.id)>=30");
-     if(search){where.push("(instr(p.title,?)>0 OR instr(p.body,?)>0)");args.push(search,search)}
+     if(cat==="popular")where.push("("+netCount+")>=30");
+     if(search){const mode=u.searchParams.get("search")||"all";if(mode==="author"){where.push("instr(COALESCE(m.nickname,''),?)>0");args.push(search)}else if(mode==="title"){where.push("instr(p.title,?)>0");args.push(search)}else{where.push("(instr(p.title,?)>0 OR instr(p.body,?)>0)");args.push(search,search)}}
      if(card&&Number.isSafeInteger(card)){where.push("p.card_id=?");args.push(card)}
      const order=cat==="popular"?"likes DESC, replies DESC, p.created DESC":"CASE WHEN p.prefix='notice' THEN 0 ELSE 1 END,p.created DESC";
-     return json({posts:(await all("SELECT p.id,p.category,p.prefix,p.title,p.created,p.card_id,p.views,COALESCE(m.nickname,'탈퇴 회원') nickname,m.subject author_subject,(SELECT count(*) FROM votes v WHERE v.post_id=p.id) likes,(SELECT count(*) FROM comments c WHERE c.post_id=p.id AND c.hidden=0) replies FROM posts p LEFT JOIN members m ON p.author=m.id WHERE "+where.join(" AND ")+" ORDER BY "+order+" LIMIT 30 OFFSET ?",...args,(page-1)*30)).map(row=>publicAuthor(env,row))});
+     return json({posts:await publicRows(env,db,await all("SELECT p.id,p.category,p.prefix,p.title,p.created,p.card_id,p.views,COALESCE(m.nickname,'탈퇴 회원') nickname,m.subject author_subject,m.id author_id,("+netCount+") likes,(SELECT count(*) FROM comments c WHERE c.post_id=p.id AND c.hidden=0) replies FROM posts p LEFT JOIN members m ON p.author=m.id WHERE "+where.join(" AND ")+" ORDER BY "+order+" LIMIT 30 OFFSET ?",...args,(page-1)*30))});
    }
    if(p==="post"){
-     const id=integer(Number(u.searchParams.get("id"))),post=await first("SELECT p.id,p.category,p.prefix,p.title,p.body,p.squad,p.card_id,p.created,p.views,COALESCE(m.nickname,'탈퇴 회원') nickname,m.subject author_subject,p.author=? own FROM posts p LEFT JOIN members m ON p.author=m.id WHERE p.id=? AND p.hidden=0",member?.id||"",id);
+     await ensureBoard(db);
+     const id=integer(Number(u.searchParams.get("id"))),post=await first("SELECT p.id,p.category,p.prefix,p.title,p.body,p.squad,p.card_id,p.created,p.views,COALESCE(m.nickname,'탈퇴 회원') nickname,m.subject author_subject,m.id author_id,p.author=? own,"+upCount+" likes,"+downCount+" dislikes,CASE WHEN EXISTS(SELECT 1 FROM votes v WHERE v.post_id=p.id AND v.member_id=?) THEN 1 WHEN EXISTS(SELECT 1 FROM post_dislikes d WHERE d.post_id=p.id AND d.member_id=?) THEN -1 ELSE 0 END my_vote,EXISTS(SELECT 1 FROM bookmarks b WHERE b.post_id=p.id AND b.member_id=?) bookmarked FROM posts p LEFT JOIN members m ON p.author=m.id WHERE p.id=? AND p.hidden=0",member?.id||"",member?.id||"",member?.id||"",member?.id||"",id);
      check(post,"게시물을 찾을 수 없습니다.",404);
-     return json({post:publicAuthor(env,post),comments:(await all("SELECT c.id,c.body,c.created,COALESCE(m.nickname,'탈퇴 회원') nickname,m.subject author_subject,c.author=? own FROM comments c LEFT JOIN members m ON c.author=m.id WHERE c.post_id=? AND c.hidden=0 ORDER BY c.created LIMIT 200",member?.id||"",id)).map(row=>publicAuthor(env,row))});
+     const comments=await all("SELECT c.id,c.body,c.created,COALESCE(m.nickname,'탈퇴 회원') nickname,m.subject author_subject,m.id author_id,c.author=? own,(SELECT parent_id FROM comment_replies r WHERE r.comment_id=c.id) parent_id,(SELECT count(*) FROM comment_votes v WHERE v.comment_id=c.id AND v.value=1) likes,(SELECT count(*) FROM comment_votes v WHERE v.comment_id=c.id AND v.value=-1) dislikes,COALESCE((SELECT value FROM comment_votes v WHERE v.comment_id=c.id AND v.member_id=?),0) my_vote FROM comments c LEFT JOIN members m ON c.author=m.id WHERE c.post_id=? AND c.hidden=0 ORDER BY c.created LIMIT 200",member?.id||"",member?.id||"",id);const [cleanPost,...cleanComments]=await publicRows(env,db,[post,...comments]);return json({post:cleanPost,comments:cleanComments});
    }
    if(p==="mine"){const m=active();return json({
      squads:await all("SELECT id,name,payload,created FROM squads WHERE member_id=? ORDER BY created DESC LIMIT 100",m.id),
@@ -96,6 +112,7 @@ export async function onRequest({request,env}){
      reports:await all("SELECT id,post_id,reason,status,created FROM reports ORDER BY status,created DESC LIMIT 100"),
      feedback:await all("SELECT f.id,f.kind,f.body,f.status,f.reply,f.created,m.nickname FROM feedback f JOIN members m ON m.id=f.member_id ORDER BY f.created DESC LIMIT 100"),
      posts:await all("SELECT id,title,prefix,hidden,created FROM posts ORDER BY created DESC LIMIT 100"),
+     comments:await all("SELECT id,post_id,body,hidden,created FROM comments ORDER BY created DESC LIMIT 100"),
      audit:await all("SELECT action,target,reason,created FROM audit ORDER BY created DESC LIMIT 100")
    })}
    throw new Err("페이지를 찾을 수 없습니다.",404);
@@ -135,12 +152,16 @@ export async function onRequest({request,env}){
    const r=await run("INSERT INTO posts(author,category,prefix,title,body,squad,card_id,created) VALUES(?,?,?,?,?,?,?,?)",m.id,b.category,b.prefix,str(b.title,100),str(b.body,10000),squad,card,now());return json({ok:true,id:r.meta.last_row_id});
  }
  if(p==="comment"||p==="vote"||p==="bookmark"||p==="report"){
-   const id=integer(b.post_id);check(await first("SELECT id FROM posts WHERE id=? AND hidden=0",id),"게시물을 찾을 수 없습니다.",404);
-   if(p==="comment"){const r=await first("SELECT count(*) n FROM comments WHERE author=? AND created>?",m.id,now()-60);check(r.n<8,"댓글을 너무 자주 작성했습니다.",429);await run("INSERT INTO comments(post_id,author,body,created) VALUES(?,?,?,?)",id,m.id,str(b.body,2000),now())}
-   if(p==="vote"||p==="bookmark"){const table=p==="vote"?"votes":"bookmarks";if(b.remove===true)await run("DELETE FROM "+table+" WHERE member_id=? AND post_id=?",m.id,id);else await run("INSERT OR IGNORE INTO "+table+"(member_id,post_id) VALUES(?,?)",m.id,id)}
+   const id=integer(b.post_id),target=await first("SELECT id,author FROM posts WHERE id=? AND hidden=0",id);check(target,"게시물을 찾을 수 없습니다.",404);
+   if(p==="comment"){const r=await first("SELECT count(*) n FROM comments WHERE author=? AND created>?",m.id,now()-60);check(r.n<8,"댓글을 너무 자주 작성했습니다.",429);const body=str(b.body,2000);if(b.parent_id!=null){await ensureBoard(db);const parent=integer(b.parent_id);check(await first("SELECT id FROM comments WHERE id=? AND post_id=? AND hidden=0",parent,id),"답글 대상을 찾을 수 없습니다.",404);const root=await first("SELECT parent_id FROM comment_replies WHERE comment_id=?",parent);await db.batch([q("INSERT INTO comments(post_id,author,body,created) VALUES(?,?,?,?)",id,m.id,body,now()),q("INSERT INTO comment_replies(comment_id,parent_id) VALUES(last_insert_rowid(),?)",root?.parent_id||parent)])}else await run("INSERT INTO comments(post_id,author,body,created) VALUES(?,?,?,?)",id,m.id,body,now())}
+   if(p==="vote"){const value=b.remove===true?0:b.value??1;check([-1,0,1].includes(value),"투표 값 오류");check(value===0||target.author!==m.id,"내 글에는 투표할 수 없습니다.",403);await ensureBoard(db);await db.batch([q("DELETE FROM votes WHERE member_id=? AND post_id=?",m.id,id),q("DELETE FROM post_dislikes WHERE member_id=? AND post_id=?",m.id,id),...(value?[q("INSERT OR IGNORE INTO "+(value===1?"votes":"post_dislikes")+"(member_id,post_id) VALUES(?,?)",m.id,id)]:[])])}
+   if(p==="bookmark"){if(b.remove===true)await run("DELETE FROM bookmarks WHERE member_id=? AND post_id=?",m.id,id);else await run("INSERT OR IGNORE INTO bookmarks(member_id,post_id) VALUES(?,?)",m.id,id)}
    if(p==="report")await run("INSERT OR IGNORE INTO reports(member_id,post_id,reason,created) VALUES(?,?,?,?)",m.id,id,str(b.reason,1000),now());
    return json({ok:true});
  }
+ if(p==="comment-vote"){const id=integer(b.id),value=b.value;check([-1,0,1].includes(value),"투표 값 오류");const target=await first("SELECT c.author FROM comments c JOIN posts p ON p.id=c.post_id WHERE c.id=? AND c.hidden=0 AND p.hidden=0",id);check(target,"댓글을 찾을 수 없습니다.",404);check(target.author!==m.id,"내 댓글에는 투표할 수 없습니다.",403);await ensureBoard(db);if(value===0)await run("DELETE FROM comment_votes WHERE member_id=? AND comment_id=?",m.id,id);else await run("INSERT INTO comment_votes(member_id,comment_id,value) VALUES(?,?,?) ON CONFLICT(member_id,comment_id) DO UPDATE SET value=excluded.value",m.id,id,value);return json({ok:true})}
+ if(p==="edit-post"){const id=integer(b.id);const target=await first("SELECT author FROM posts WHERE id=? AND hidden=0",id);check(target&&target.author===m.id,"작성자만 수정할 수 있습니다.",403);await run("UPDATE posts SET title=?,body=? WHERE id=? AND author=?",str(b.title,100),str(b.body,10000),id,m.id);return json({ok:true})}
+ if(p==="edit-comment"){const id=integer(b.id);const target=await first("SELECT c.author FROM comments c JOIN posts p ON p.id=c.post_id WHERE c.id=? AND c.hidden=0 AND p.hidden=0",id);check(target&&target.author===m.id,"작성자만 수정할 수 있습니다.",403);await run("UPDATE comments SET body=? WHERE id=? AND author=?",str(b.body,2000),id,m.id);return json({ok:true})}
  if(p==="delete-post"||p==="delete-comment"){const table=p==="delete-post"?"posts":"comments";await run("DELETE FROM "+table+" WHERE id=? AND author=?",integer(b.id),m.id);return json({ok:true})}
  if(p==="feedback"){check(["suggestion","bug","rights","privacy"].includes(b.kind),"문의 종류를 확인하세요.");const r=await first("SELECT count(*) n FROM feedback WHERE member_id=? AND created>?",m.id,now()-60);check(r.n<3,"잠시 후 다시 문의해 주세요.",429);await run("INSERT INTO feedback(member_id,kind,body,created) VALUES(?,?,?,?)",m.id,b.kind,str(b.body,5000),now());return json({ok:true})}
  if(p==="squad"){const payload=JSON.stringify(squadPayload(b.squad));const count=await first("SELECT count(*) n FROM squads WHERE member_id=?",m.id);check(count.n<100,"스쿼드 저장 한도입니다.");await run("INSERT INTO squads(member_id,name,payload,created) VALUES(?,?,?,?)",m.id,str(b.name,60),payload,now());return json({ok:true})}
@@ -156,6 +177,9 @@ export async function onRequest({request,env}){
  if(p.startsWith("admin/")){
    requireAdmin();const reason=str(b.reason,1000);
    if(p==="admin/post"){const id=integer(b.id);await db.batch([q("UPDATE posts SET hidden=? WHERE id=?",b.hidden===true?1:0,id),q("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",m.id,b.hidden===true?"hide-post":"restore-post",String(id),reason,now())]);return json({ok:true})}
+   if(p==="admin/comment"){const id=integer(b.id);await db.batch([q("UPDATE comments SET hidden=? WHERE id=?",b.hidden===true?1:0,id),q("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",m.id,b.hidden===true?"hide-comment":"restore-comment",String(id),reason,now())]);return json({ok:true})}
+   if(p==="admin/move"){const id=integer(b.id);check(cats.has(b.category),"분류 오류");await db.batch([q("UPDATE posts SET category=?,prefix=CASE WHEN ?='free' THEN prefix ELSE 'normal' END WHERE id=?",b.category,b.category,id),q("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",m.id,"move-post",String(id),reason,now())]);return json({ok:true})}
+   if(p==="admin/pin"){const id=integer(b.id);await db.batch([q("UPDATE posts SET prefix=? WHERE id=? AND category='free'",b.pin===true?"notice":"normal",id),q("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",m.id,b.pin===true?"pin-post":"unpin-post",String(id),reason,now())]);return json({ok:true})}
    if(p==="admin/member"){const id=str(b.id,80);check(id!==m.id,"본인 계정은 제한할 수 없습니다.");const target=await first("SELECT subject FROM members WHERE id=?",id);check(target&&!adminFor(env,target),"관리자 계정은 제한할 수 없습니다.",403);await db.batch([q("UPDATE members SET suspended=? WHERE id=?",b.suspended===true?1:0,id),q("DELETE FROM sessions WHERE member_id=?",id),q("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",m.id,b.suspended===true?"suspend":"restore-member",id,reason,now())]);return json({ok:true})}
    if(p==="admin/feedback"||p==="admin/report"){const id=integer(b.id);if(p==="admin/feedback")await run("UPDATE feedback SET status='closed',reply=? WHERE id=?",reason,id);else await run("UPDATE reports SET status='closed' WHERE id=?",id);await audit(p,id,reason);return json({ok:true})}
  }

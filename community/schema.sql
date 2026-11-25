@@ -21,3 +21,10 @@ CREATE INDEX IF NOT EXISTS squad_owner ON squads(member_id);
 CREATE INDEX IF NOT EXISTS diag_owner ON diagnoses(member_id);
 CREATE INDEX IF NOT EXISTS feedback_owner ON feedback(member_id);
 CREATE INDEX IF NOT EXISTS audit_time ON audit(created);
+
+-- Community v2 additive migration
+CREATE TABLE IF NOT EXISTS post_dislikes(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,PRIMARY KEY(member_id,post_id));
+CREATE INDEX IF NOT EXISTS post_dislike_post ON post_dislikes(post_id);
+CREATE TABLE IF NOT EXISTS comment_votes(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,value INTEGER NOT NULL CHECK(value IN (-1,1)),PRIMARY KEY(member_id,comment_id));
+CREATE INDEX IF NOT EXISTS comment_vote_comment ON comment_votes(comment_id);
+CREATE TABLE IF NOT EXISTS comment_replies(comment_id INTEGER PRIMARY KEY REFERENCES comments(id) ON DELETE CASCADE,parent_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE);

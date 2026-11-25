@@ -1389,3 +1389,18 @@ document.querySelectorAll('[data-market-dashboard]').forEach(initMarketDashboard
 
 // Community integration: explicit member action, no background account data upload.
 document.addEventListener("click",async e=>{if(!e.target.closest("#fgFavoriteMember")||!pmCard)return;const id=pmCard.id,grade=pmGrade,name=document.getElementById("pmTitle")?.textContent||String(id);try{const r=await fetch("/api/community/favorite",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({card_id:id,grade,name})});const j=await r.json();if(!r.ok)throw Error(j.message);alert("관심 선수에 저장했습니다.")}catch(err){alert("관심 선수 저장 실패: "+err.message)}});
+
+// Diagnostic tooltips live under body, outside the scrolling/sticky table.
+(()=>{const panel=document.getElementById('dPanel');if(!panel)return;
+const selector='.rk-low[data-tip],.rc-flag[data-tip]';let active=null,tip=null;
+const hide=()=>{if(active){active.removeAttribute('aria-describedby');active=null}if(tip)tip.hidden=true};
+const show=el=>{if(!el||!el.dataset.tip)return;hide();if(!tip){tip=document.createElement('div');tip.id='fgDiagFloatTip';tip.className='diag-float-tip';tip.setAttribute('role','tooltip');document.body.appendChild(tip)}active=el;tip.textContent=el.dataset.tip;tip.hidden=false;el.setAttribute('aria-describedby',tip.id);
+const r=el.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight,margin=8;let left=Math.min(Math.max(margin,r.left),Math.max(margin,window.innerWidth-w-margin)),top=r.bottom+8;if(top+h>window.innerHeight-margin)top=r.top-h-8;tip.style.left=left+'px';tip.style.top=Math.max(margin,top)+'px'};
+panel.addEventListener('pointerover',e=>{if(e.pointerType==='touch')return;const el=e.target.closest(selector);if(el&&el!==active)show(el)});
+panel.addEventListener('pointerout',e=>{if(active&&!active.contains(e.relatedTarget))hide()});
+panel.addEventListener('focusin',e=>{const el=e.target.closest(selector);if(el)show(el)});
+panel.addEventListener('focusout',e=>{if(active&&!active.contains(e.relatedTarget))hide()});
+panel.addEventListener('click',e=>{const el=e.target.closest(selector);if(el?.classList.contains('rk-low')){if(active===el&&e.pointerType!=='touch')hide();else show(el)}else hide()});
+document.addEventListener('pointerdown',e=>{if(active&&!active.contains(e.target))hide()});document.addEventListener('keydown',e=>{if(e.key==='Escape')hide()});
+window.addEventListener('scroll',hide,true);window.addEventListener('resize',hide);document.addEventListener('fg:view',hide);
+})();

@@ -1326,3 +1326,7 @@ nav.menu a.core{display:inline-flex;align-items:center;gap:5px}.fg-diag-icon{fle
   .diag-report-shell .ds-kpi b{font-size:14px;line-height:1.2;white-space:normal}
   .diag-report-shell .dr-insights{grid-template-columns:minmax(0,.9fr) minmax(0,1.25fr)}
 }
+
+/* Diagnostic floating tooltip: not clipped by sticky cells or overflow containers. */
+.rk-low[data-tip]:hover::after,.rk-low[data-tip]:focus::after,.rc-flag[data-tip]:hover::after,.rc-flag[data-tip]:focus-visible::after{content:none!important}
+.diag-float-tip{position:fixed;z-index:60;pointer-events:none;max-width:min(300px,calc(100vw - 16px));padding:9px 12px;border-radius:8px;background:#17211d;color:#fff;font:500 13px/1.55 var(--f-body);white-space:normal;overflow-wrap:anywhere;box-shadow:0 6px 20px #0003}.diag-float-tip[hidden]{display:none}

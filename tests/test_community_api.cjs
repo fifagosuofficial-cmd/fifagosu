@@ -27,10 +27,10 @@ test("non-admin member cannot create notice",async()=>{
 test("popular feed applies inclusive 30-vote threshold before pagination",async()=>{
  const {onRequest}=await load();
  let sql="";
- const env={...enabled,COMMUNITY_DB:{prepare(s){sql=s;return {bind(){return {all:async()=>({results:[{id:2,likes:30}]})}}}}}};
+ const env={...enabled,COMMUNITY_DB:{prepare(s){if(s.includes("sqlite_master"))return {first:async()=>({n:3})};sql=s;return {bind(){return {all:async()=>({results:[{id:2,likes:30}]})}}}}}};
  const r=await onRequest({request:new Request(origin+"/api/community/posts?category=popular"),env});
  assert.equal(r.status,200);
- assert.match(sql,/WHERE .*p\.hidden=0.*\(SELECT count\(\*\) FROM votes v WHERE v\.post_id=p\.id\)>=30.*ORDER BY likes DESC.*LIMIT 30/);
+ assert.match(sql,/WHERE .*p\.hidden=0.*\(\(SELECT count\(\*\) FROM votes v WHERE v\.post_id=p\.id\)-\(SELECT count\(\*\) FROM post_dislikes d WHERE d\.post_id=p\.id\)\)>=30.*ORDER BY likes DESC.*LIMIT 30/);
 });
 test("popular is a read-only derived category, even for authenticated members",async()=>{
  const {onRequest}=await load();
@@ -66,7 +66,7 @@ test("login state queue is cleaned and capped before inserting more OAuth state"
 test("public verification uses the allowlisted subject, never a nickname, and never leaks subject",async()=>{
  const {onRequest}=await load();
  const rows=[{id:1,nickname:"피파고수",author_subject:"ordinary"},{id:2,nickname:"different",author_subject:"owner-sub"}];
- const env={...enabled,COMMUNITY_ADMIN_SUBS:"owner-sub",COMMUNITY_DB:{prepare(sql){return {bind(){return {all:async()=>({results:rows}),first:async()=>rows[1]}}}}}};
+ const env={...enabled,COMMUNITY_ADMIN_SUBS:"owner-sub",COMMUNITY_DB:{prepare(sql){if(sql.includes("sqlite_master"))return {first:async()=>({n:3})};return {bind(){return {all:async()=>({results:rows}),first:async()=>rows[1]}}}}}};
  let r=await onRequest({request:new Request(origin+"/api/community/posts"),env});
  assert.equal(r.status,200);let j=await r.json();
  assert.deepEqual(j.posts.map(x=>x.verified),[false,true]);
@@ -76,4 +76,63 @@ test("public verification uses the allowlisted subject, never a nickname, and ne
  assert.equal(j.post.verified,true);assert.ok(!("author_subject" in j.post));
  assert.deepEqual(j.comments.map(x=>x.verified),[false,true]);
  assert.ok(j.comments.every(x=>!("author_subject" in x)));
+});
+
+
+// SQLite-backed D1 adapter: exercises actual legacy schema migration and transactional SQL.
+const {DatabaseSync}=require("node:sqlite"),{createHash}=require("node:crypto");
+const legacySchema=fs.readFileSync(path.join(__dirname,"../community/schema.sql"),"utf8").split("-- Community v2 additive migration")[0];
+function fixture(){
+ const sql=new DatabaseSync(":memory:");sql.exec(legacySchema);
+ const insert=sql.prepare("INSERT INTO members(id,provider,subject,nickname,created,policy,age_confirmed) VALUES(?,?,?,?,?,?,1)");
+ insert.run("a","google","owner-sub","피파고수",1,"2026-11-v1");insert.run("b","google","regular-sub","테스트회원",1,"2026-11-v1");
+ const ts=Math.floor(Date.now()/1000)-3600;
+ for(const [id,token] of [["a","a".repeat(64)],["b","b".repeat(64)]])sql.prepare("INSERT INTO sessions(hash,member_id,expires) VALUES(?,?,?)").run(createHash("sha256").update(token).digest("hex"),id,ts+86400);
+ sql.prepare("INSERT INTO posts(author,category,prefix,title,body,created) VALUES('a','free','normal','old post','old body',?)").run(ts);
+ sql.prepare("INSERT INTO comments(post_id,author,body,created) VALUES(1,'a','old comment',?)").run(ts);
+ sql.exec("INSERT INTO votes(member_id,post_id) VALUES('b',1)");
+ function prep(q,args=[]){return {bind(...a){return prep(q,a)},first:async()=>sql.prepare(q).get(...args)??null,all:async()=>({results:sql.prepare(q).all(...args)}),run:async()=>{const r=sql.prepare(q).run(...args);return {meta:{changes:Number(r.changes),last_row_id:Number(r.lastInsertRowid)}}}}}
+ const db={prepare:prep,batch:async statements=>{sql.exec("BEGIN");try{const out=[];for(const st of statements)out.push(await st.run());sql.exec("COMMIT");return out}catch(e){sql.exec("ROLLBACK");throw e}}};
+ const env={...enabled,COMMUNITY_DB:db,COMMUNITY_ADMIN_SUBS:"owner-sub"};
+ return {sql,env,ts};
+}
+async function callFixture(env,route,body=null,who=""){const {onRequest}=await load(),headers=who?{Cookie:"fg_session="+who.repeat(64)}:{};if(body!==null)Object.assign(headers,{Origin:origin,"Content-Type":"application/json"});const r=await onRequest({request:new Request(origin+"/api/community/"+route,{headers,method:body===null?"GET":"POST",...(body===null?{}:{body:JSON.stringify(body)})}),env});return {status:r.status,data:await r.json()}}
+test("legacy database migrates in place; post votes switch, cancel, and reject own votes",async()=>{
+ const {sql,env}=fixture();
+ let r=await callFixture(env,"post?id=1",null,"b");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.post.likes,1);assert.equal(r.data.post.my_vote,1);assert.equal(r.data.post.rank.points,9);assert.equal(r.data.post.verified,true);assert.ok(!("author_id" in r.data.post));assert.ok(!("author_subject" in r.data.post));
+ r=await callFixture(env,"vote",{post_id:1,value:-1},"b");assert.equal(r.status,200);
+ r=await callFixture(env,"post?id=1",null,"b");assert.equal(r.data.post.likes,0);assert.equal(r.data.post.dislikes,1);assert.equal(r.data.post.my_vote,-1);assert.equal(r.data.post.rank.points,6);
+ r=await callFixture(env,"posts");assert.equal(r.status,200);assert.equal(r.data.posts[0].likes,-1);
+ r=await callFixture(env,"vote",{post_id:1,value:0},"b");assert.equal(r.status,200);
+ r=await callFixture(env,"vote",{post_id:1,value:1},"a");assert.equal(r.status,403);
+ assert.equal(sql.prepare("SELECT count(*) n FROM posts").get().n,1);
+ assert.equal(sql.prepare("SELECT count(*) n FROM votes").get().n,0);
+ assert.equal(sql.prepare("SELECT count(*) n FROM post_dislikes").get().n,0);
+ sql.close();
+});
+test("comment replies, vote changes, owner edit and admin hide use existing records",async()=>{
+ const {env,sql}=fixture();
+ let r=await callFixture(env,"comment",{post_id:1,parent_id:1,body:"reply"},"b");assert.equal(r.status,200,JSON.stringify(r.data));
+ r=await callFixture(env,"post?id=1",null,"b");assert.equal(r.data.comments[1].parent_id,1);
+ r=await callFixture(env,"comment-vote",{id:1,value:1},"b");assert.equal(r.status,200);
+ r=await callFixture(env,"comment-vote",{id:1,value:-1},"b");assert.equal(r.status,200);
+ r=await callFixture(env,"comment-vote",{id:1,value:1},"a");assert.equal(r.status,403);
+ r=await callFixture(env,"edit-comment",{id:1,body:"bad edit"},"b");assert.equal(r.status,403);
+ r=await callFixture(env,"edit-comment",{id:1,body:"updated"},"a");assert.equal(r.status,200);
+ r=await callFixture(env,"edit-post",{id:1,title:"updated title",body:"updated body"},"a");assert.equal(r.status,200);
+ r=await callFixture(env,"admin/comment",{id:2,hidden:true,reason:"test"},"b");assert.equal(r.status,403);
+ r=await callFixture(env,"admin/comment",{id:2,hidden:true,reason:"test"},"a");assert.equal(r.status,200);
+ r=await callFixture(env,"post?id=1");assert.equal(r.data.post.title,"updated title");assert.equal(r.data.comments.length,1);assert.equal(r.data.comments[0].dislikes,1);
+ sql.close();
+});
+test("cat rank caps activity, excludes self votes, hides private identifiers",async()=>{
+ const {env,sql,ts}=fixture();
+ for(let i=0;i<8;i++)sql.prepare("INSERT INTO posts(author,category,prefix,title,body,created) VALUES('a','free','normal','spam','body',?)").run(ts);
+ for(let i=0;i<12;i++)sql.prepare("INSERT INTO comments(post_id,author,body,created) VALUES(1,'a','spam',?)").run(ts);
+ sql.exec("INSERT INTO votes(member_id,post_id) VALUES('a',1)");
+ let r=await callFixture(env,"me",null,"a");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.member.rank.points,26);assert.equal(r.data.member.rank.level,1);assert.equal(r.data.member.rank.next,30);
+ await callFixture(env,"comment-vote",{id:1,value:1},"b");
+ await callFixture(env,"vote",{post_id:2,value:1},"b");
+ r=await callFixture(env,"me",null,"a");assert.equal(r.data.member.rank.points,31);assert.equal(r.data.member.rank.level,2);
+ assert.ok(!("subject" in r.data.member));sql.close();
 });

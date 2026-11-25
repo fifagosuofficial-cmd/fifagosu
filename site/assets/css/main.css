@@ -1407,3 +1407,15 @@ nav.menu a.nav-fun{display:inline-flex;align-items:center;gap:5px}.fg-fun-icon{f
 
 /* Verified material-cost ranking progress and bounded extra queries. */
 .eff-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:9px 10px;margin:6px 0 12px;border:1px solid var(--line);border-radius:8px;background:var(--sunk);font-size:12px;color:var(--muted)}.eff-actions[hidden],.eff-actions button[hidden]{display:none!important}.eff-actions>div{display:flex;gap:6px;flex-wrap:wrap}.eff-actions button{min-height:34px;font-size:12px}.eff-actions button:disabled{opacity:.55;cursor:default}@media(max-width:760px){.eff-actions>span{width:100%}.eff-actions button{min-height:40px}}
+
+/* Player-stat explanations are available on demand, without taking up table space. */
+.pstats-filters{position:relative;align-items:center}
+.dps-help{margin-left:auto;flex:none;align-self:center}
+.dps-help>summary{list-style:none;display:grid;place-items:center;width:28px;height:28px;box-sizing:border-box;border:1px solid var(--line);border-radius:50%;background:var(--sunk);color:var(--muted);font:700 15px/1 var(--f-body);cursor:pointer;user-select:none}
+.dps-help>summary::-webkit-details-marker{display:none}
+.dps-help>summary::marker{content:""}
+.dps-help>summary:hover,.dps-help[open]>summary{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.dps-help>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dps-help-popup{position:absolute;top:100%;right:0;z-index:9;width:min(440px,100%);max-height:min(65vh,420px);overflow:auto;box-sizing:border-box;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--fg);box-shadow:0 8px 24px rgba(0,0,0,.16);font-size:13px;line-height:1.65}
+.dps-help-popup .note{margin:5px 0 0;font-size:12px;line-height:1.7}
+@media(max-width:760px){.pstats-filters .d-recent-filter{grid-column:1/4;grid-row:1}.dps-help{grid-column:4;grid-row:1;justify-self:end}.dps-help>summary{width:28px;height:28px}.dps-help-popup{padding:12px;max-height:60vh}}

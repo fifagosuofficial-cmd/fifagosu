@@ -184,3 +184,11 @@ test('mobile comparison tables show every player in each group and retain every 
  assert.match(html,/data-reco="123"/);assert.match(html,/전체화면/);
  assert.ok(!html.includes('<details'));assert.match(ctx.dPStatsMobile([],columns),/조건에 맞는 선수 기록이 없어요/);
 });
+
+test("player record explanation is hidden in a single accessible help disclosure",()=>{
+ const a=src.indexOf("function dPStatsView(a){"),b=src.indexOf("function dGrowthView",a),view=src.slice(a,b);
+ assert.equal((view.match(/<details class="dps-help">/g)||[]).length,1);
+ assert.match(view,/<summary aria-label="선수별 기록 설명"[^>]*>\?<\/summary>/);
+ assert.match(view,/<div class="dps-help-popup">[\s\S]*?최근 \$\{a.n\}경기 합계예요\.[\s\S]*?\$\{rkNote\}\$\{rtNote\(a\)\}<\/p><\/div><\/details>/);
+ assert.ok(!view.includes('dPStatsMobile(records,columns)}<p class="note">'));
+});

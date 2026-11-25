@@ -792,10 +792,11 @@ a.mk-tile:hover{border-color:var(--accent)}
 .mk-n{font:700 12px var(--f-data);color:var(--muted);text-align:center}
 .mk-ssn img,.mk-ssn .ssnimg{height:16px;width:auto;display:block}.mk-ssn .ssn{font-size:10px}
 .mk-nm{display:grid;min-width:0}.mk-nm b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mk-nm small{font:600 11px var(--f-data);color:var(--muted)}
+.mk-grade-badge{display:inline-block;margin-right:4px;padding:1px 4px;border-radius:4px;background:var(--raise);color:var(--accent);font:800 10px var(--f-data);font-style:normal}
 .mk-pr{font:600 13px var(--f-data);white-space:nowrap}
 .mk-c{font:800 13px var(--f-data);text-align:right;color:var(--muted)}
 .mk-c.up{color:var(--up)}.mk-c.down{color:var(--down)}
-.mk-c b,.mk-c small{display:block}.mk-c small{margin-top:1px;font:500 9px/1.2 var(--f-body);white-space:normal;overflow-wrap:anywhere;color:var(--muted)}
+.mk-c b,.mk-c small,.mk-c i{display:block}.mk-c small{margin-top:1px;font:500 9px/1.2 var(--f-body);white-space:normal;overflow-wrap:anywhere;color:var(--muted)}.mk-c i{font-style:normal;color:inherit}
 .mk-empty{color:var(--muted);font-size:13px;padding:14px 2px;margin:0}
 .mk-pop-note{padding:0 2px 8px}
 .mk-new h2,.mk-news .h2-sec{font-size:16px;display:flex;align-items:center;gap:8px}
@@ -1231,7 +1232,7 @@ nav.menu a.core:not([aria-current]):hover{color:#0b8b63;text-decoration:underlin
 .dtc-cols li .dtc-rank-team b{white-space:normal;overflow-wrap:anywhere}
 .dtc-rank-team small{font-size:10px;color:var(--muted);white-space:normal}
 
-/* 뉴스 목록은 사이드바 없이 전체 폭 사용. 홈 비교 기간과 강화 기준은 독립적으로 선택. */
+/* 뉴스 목록은 사이드바 없이 전체 폭 사용. 홈 시장은 기간별 통합 강화 목록으로 표시. */
 .h2-grid.press-full{grid-template-columns:minmax(0,1fr)}
 .mk-period-panel{display:grid;gap:14px;min-width:0}
 .mk-period-panel[hidden]{display:none}

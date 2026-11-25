@@ -149,6 +149,21 @@ def test_market_summary_movers_popular_and_new(tmp_path):
             assert len(pool) == 3 and len(pool[0][3]) == 13
 
 
+def test_market_history_keeps_all_thirteen_grades_without_changing_diag_schema(tmp_path):
+    day = "2026-11-25"
+    derive.save(tmp_path / "state.json", {
+        "full_snapshot_date": day, "full_at": f"{day}T02:00:00+09:00"})
+    prices = [grade * 1_000_000 for grade in range(1, 14)]
+    derive.save(tmp_path / "list" / "1.json", {
+        "100000001": {"at": f"{day}T01:00:00+09:00", "price": prices}})
+    result = derive.step_market_history(tmp_path, day)
+    assert result["market_history_cards"] == 1
+    rows = json.loads((tmp_path / "market" / "all_card_history" / "1.json").read_text("utf-8"))
+    assert set(rows["100000001"]) == {str(grade) for grade in range(1, 14)}
+    meta = json.loads((tmp_path / "market" / "all_card_history_dates.json").read_text("utf-8"))
+    assert meta["grades"] == list(range(1, 14))
+
+
 def test_diag_market_compact_trends_and_actual_periods(tmp_path):
     d = tmp_path
     derive.save(d / "market" / "all_card_history_dates.json", {

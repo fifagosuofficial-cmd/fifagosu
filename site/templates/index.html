@@ -34,7 +34,7 @@
   <div class="mk-period-panel" data-mdp="{{ d }}"{% if not loop.first %} hidden{% endif %}>
   <section class="mk-strip" aria-label="시장 요약">
     <div class="mk-tile">
-      <span class="mk-k">피파고수 시장지수 <small>{{ market.rankLabel|default('상위 랭커 사용 기준') }} · 1강 {{ d }}일 전 대비{% if ix %} · 표본 {{ ix.n }}장{% endif %}</small></span>
+      <span class="mk-k">1강 시장 흐름 <small>{{ d }}일 전 대비{% if ix %} · 표본 {{ ix.n }}장{% endif %}</small></span>
       {% if ix %}<span class="mk-v {{ 'up' if ix.median > 0 else ('down' if ix.median < 0 else '') }}">{{ M.pct(ix.median) }}</span>
       {% else %}<span class="mk-v mk-wait">{% if not P.ready %}전체 카드 이력 {{ P.historyDays }}/{{ P.required }}일 누적{% else %}표본 {{ P.sample }}/{{ market.indexMinimum|default(30) }}장{% endif %}</span>{% endif %}
     </div>
@@ -53,32 +53,25 @@
       <span class="mk-v mk-sm"><b class="bd-st st-{{ news.check.state }}">{{ news.check.state_label }}</b> {{ news.check.short }}</span></a>{% endif %}
   </section>
 
-  <div class="mk-bar2">
-    <div class="mk-grade" role="tablist" aria-label="강화 기준">
-      <span>강화 기준</span>{% for g in market.grades %}<button type="button" role="tab" data-mg="{{ g }}" aria-selected="{{ 'true' if loop.first else 'false' }}" class="g-{{ 'bronze' if g < 5 else ('silver' if g < 8 else 'gold') }}">{{ g }}강</button>{% endfor %}
-    </div>
-    <small class="mk-rule">변동률 3% 이상 · 절대 변동액 상위 20% · 관측 3회 이상 · {{ d }}일 전 대비{% if P.ready %} ({{ P.prev[5:7]|int }}.{{ P.prev[8:10]|int }} → {{ P.date[5:7]|int }}.{{ P.date[8:10]|int }}){% else %} · 비교 이력 부족{% endif %}</small>
-  </div>
-  {% for g in market.grades %}{% set B = P.byGrade[g|string] %}
-  <div class="mk-panel" data-mp="{{ g }}"{% if not loop.first %} hidden{% endif %}>
+  <div class="mk-bar2"><small class="mk-rule"><b>전체 시즌·전체 강화 카드의 실제 시세 변동 기준</b> · 변동률 3% 이상 · 절대 변동액 상위 20% · 관측 3회 이상 · {{ d }}일 전 대비{% if P.ready %} ({{ P.prev[5:7]|int }}.{{ P.prev[8:10]|int }} → {{ P.date[5:7]|int }}.{{ P.date[8:10]|int }}){% else %} · 비교 이력 부족{% endif %}</small></div>
+  <div class="mk-panel">
     <section class="mk-box mk-up">
-      <h2>{{ d }}일 전 대비 급등 TOP {{ B.risers|length or 10 }}</h2>
-      {% if B.risers %}<ol class="mk-list">{% for x in B.risers %}{{ M.row(x, loop.index) }}{% endfor %}</ol>
+      <h2>{{ d }}일 전 대비 급등 TOP {{ P.risers|length or 10 }}</h2>
+      {% if P.risers %}<ol class="mk-list">{% for x in P.risers %}{{ M.row(x, loop.index, true) }}{% endfor %}</ol>
       {% else %}<p class="mk-empty">{% if not P.ready %}{{ d }}일 전 시세 이력이 아직 없어요.{% else %}해당 기간 등락 카드가 없어요.{% endif %}</p>{% endif %}
     </section>
     <section class="mk-box mk-down">
-      <h2>{{ d }}일 전 대비 급락 TOP {{ B.fallers|length or 10 }}</h2>
-      {% if B.fallers %}<ol class="mk-list">{% for x in B.fallers %}{{ M.row(x, loop.index) }}{% endfor %}</ol>
+      <h2>{{ d }}일 전 대비 급락 TOP {{ P.fallers|length or 10 }}</h2>
+      {% if P.fallers %}<ol class="mk-list">{% for x in P.fallers %}{{ M.row(x, loop.index, true) }}{% endfor %}</ol>
       {% else %}<p class="mk-empty">{% if not P.ready %}{{ d }}일 전 시세 이력이 아직 없어요.{% else %}해당 기간 등락 카드가 없어요.{% endif %}</p>{% endif %}
     </section>
     <section class="mk-box">
-      <h2>인기 카드 시세</h2>
-      <p class="mk-empty mk-pop-note">{{ market.popularLabel|default(market.rankLabel|default('상위 랭커 사용 기준')) }}</p>
-      {% if B.popular %}<ol class="mk-list">{% for x in B.popular %}{{ M.row(x, loop.index) }}{% endfor %}</ol>
+      <h2>인기 카드 1강 시세</h2>
+      <p class="mk-empty mk-pop-note">{{ market.popularLabel|default('상위 랭커 사용 경기 수 TOP 10') }}</p>
+      {% if P.popular %}<ol class="mk-list">{% for x in P.popular %}{{ M.row(x, loop.index, false, true) }}{% endfor %}</ol>
       {% else %}<p class="mk-empty">상위 랭커 사용 표본을 모으고 있어요.</p>{% endif %}
     </section>
   </div>
-  {% endfor %}
   </div>
   {% endfor %}
   {% if market.newCards %}
@@ -126,8 +119,7 @@
     <div class="seg" role="group" aria-label="분석 경기 수" id="dCount"><button type="button" data-n="30" aria-pressed="true">30경기</button><button type="button" data-n="50" aria-pressed="false">50경기</button><button type="button" data-n="100" aria-pressed="false">100경기</button></div>
     <button class="go" type="submit">진단하기</button>
   </form>
-  <div class="dquick" id="dQuick" aria-label="구단주 빠른 조회">
-    <div class="dquick-row"><b>빠른 조회</b><div id="dRecent" class="dquick-list"><span class="muted">최근 검색이 없어요.</span></div></div>
+  <div class="dquick" id="dQuick" aria-label="구단주 즐겨찾기">
     <div class="dquick-row"><b>즐겨찾기</b><div id="dFavs" class="dquick-list"><span class="muted">즐겨찾기가 없어요.</span></div></div>
     <div class="dquick-actions"><button type="button" class="ghost" id="dFav" disabled>☆ 즐겨찾기</button><button type="button" class="ghost" id="dMine" disabled>내 구단 등록</button><button type="button" class="ghost" id="dShare" disabled>진단 공유</button><small id="dUpdated"></small></div>
   </div>

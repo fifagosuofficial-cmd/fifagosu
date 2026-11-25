@@ -26,7 +26,7 @@ SITE = Path(__file__).resolve().parent
 ROOT = SITE.parent
 KST = dt.timezone(dt.timedelta(hours=9))
 sys.path.insert(0, str(ROOT / "crawler"))
-from market_rank import MAX_SAFE_INTEGER, rank_market_moves  # noqa: E402
+from market_rank import MAX_SAFE_INTEGER, merge_market_moves, rank_market_moves  # noqa: E402
 
 # 고정 페이지: (출력 파일, 템플릿, 경로, 제목, 설명, sitemap 포함 여부, 추가 값)
 MAIN_T = "index.html"
@@ -147,7 +147,7 @@ def _load(p):
 
 
 def refresh_popular_market_cards(data_dir, market):
-    """Build-time safeguard: always show popularity from the full card list."""
+    """Build-time safeguard: always show 1-grade popularity from the full card list."""
     if not market or not market.get("byGrade"):
         return market
     listed = {}
@@ -157,10 +157,8 @@ def refresh_popular_market_cards(data_dir, market):
         ((int(card_id), rec) for card_id, rec in listed.items() if int(rec.get("games") or 0) > 0),
         key=lambda item: (-int(item[1].get("games") or 0), item[0]),
     )
-    for grade in market.get("grades") or []:
-        bucket = market["byGrade"].get(str(grade))
-        if not bucket:
-            continue
+    for grade in (1,):
+        bucket = market["byGrade"].setdefault(str(grade), {})
         moves = {int(item["id"]): item for kind in ("risers", "fallers") for item in bucket.get(kind, [])}
         popular = []
         for card_id, rec in ranked:
@@ -178,7 +176,7 @@ def refresh_popular_market_cards(data_dir, market):
             if len(popular) == 10:
                 break
         bucket["popular"] = popular
-    market["popularLabel"] = "전체 카드 사용 경기 수 TOP 10 기준"
+    market["popularLabel"] = "상위 랭커 사용 경기 수 TOP 10"
     return market
 
 
@@ -190,7 +188,7 @@ def market_period_views(data_dir, market):
     dates = sorted(set(meta.get("dates") or [])) if meta.get("basis") == "full-list-snapshots" else []
     end = dates[-1] if dates else market["date"]
     end_day = dt.date.fromisoformat(end)
-    grades = market["grades"]
+    grades = list(range(1, 14))
     minimum = market.get("indexMinimum", 30)
     listed, history = {}, {}
     for shard in range(200):
@@ -222,16 +220,18 @@ def market_period_views(data_dir, market):
                     item = {"id": int(card_id), "n": rec.get("name") or "", "s": int(card_id)//1000000,
                             "o": rec.get("ovr") or (pos[1] if len(pos)>1 else None), "p": pos[0],
                             "v": last, "pv": first, "c": round((last-first)/first*100,1),
-                            "d": last-first, "u": int(rec.get("games") or 0),
+                            "d": last-first, "u": int(rec.get("games") or 0), "g": grade,
                             "fromDate": start, "toDate": end}
                     changes.append(item)
+                    valid_prices = [value for date, value in rows if date <= end and
+                                    type(value) is int and 0 < value <= MAX_SAFE_INTEGER]
                     candidates.append({"id": int(card_id), "first": first, "last": last,
                                        "games": int(rec.get("games") or 0),
-                                       "observations": sum(type(value) is int and 0 < value <= MAX_SAFE_INTEGER for _, value in rows),
+                                       "observations": len(valid_prices), "prices": valid_prices[-3:],
                                        "new_date": new_dates.get(int(card_id)), "item": item})
                     if min(first, last) >= 30000:
                         index_changes.append(item)
-            ranked_moves = rank_market_moves(candidates, end, 10)
+            ranked_moves = rank_market_moves(candidates, end, 50)
             by_id = {x["id"]: x for x in changes}
             popular = []
             for p in market["byGrade"].get(str(grade), {}).get("popular", []):
@@ -247,11 +247,17 @@ def market_period_views(data_dir, market):
                 if sample >= minimum:
                     index = {"median": round((vals[(sample-1)//2]+vals[sample//2])/2,1),
                              "n": sample, "up": sum(v>0 for v in vals), "down": sum(v<0 for v in vals)}
-        periods[str(days)] = {"index": index, "byGrade": buckets, "prev": start, "date": end,
+        integrated = merge_market_moves(buckets, top=10, max_per_card=2)
+        periods[str(days)] = {"index": index, "byGrade": buckets,
+                              "risers": integrated["risers"],
+                              "fallers": integrated["fallers"],
+                              "popular": buckets.get("1", {}).get("popular", []),
+                              "prev": start, "date": end,
                               "ready": ready, "sample": index_sample,
                               "historyDays": len([d for d in dates if start<=d<=end]),
                               "required": days+1}
     market["periods"] = periods
+    market["grades"] = grades
     return market
 
 

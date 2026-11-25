@@ -203,3 +203,17 @@ test("profile no longer returns or stores optional FC online nickname",async()=>
  assert.equal(m.nickname,"새닉네임");assert.equal(m.game_name,null);
  sql.close();
 });
+
+
+test("board article navigation does not block on view writes or list refresh",()=>{
+ const js=fs.readFileSync(path.join(__dirname,"../site/assets/js/community.js"),"utf8");
+ const start=js.indexOf("async function readPost("),end=js.indexOf("function showReply",start),read=js.slice(start,end);
+ assert.ok(read.includes('await (preloaded||get("post?id="+id))'));
+ assert.ok(read.includes("if(record)void recordView(id)"));
+ assert.ok(!read.includes("await recordView"));
+ assert.ok(!read.includes("await loadPosts"));
+ assert.ok(read.includes("if(seq!==postSeq)return"));
+ assert.ok(js.includes('history.pushState(null,"",postURL(id))'));
+ assert.ok(js.includes('window.addEventListener("popstate"'));
+ assert.ok(js.includes('initialPost=initialId>0?get("post?id="+initialId)'));
+});

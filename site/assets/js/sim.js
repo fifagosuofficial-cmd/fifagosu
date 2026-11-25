@@ -218,7 +218,7 @@ const priceAt=g=>SEL&&SEL.l&&SEL.l.price?(SEL.l.price[g-1]||0):0;
 $('smEGaugeBox').addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b||autoMat())return;KAN=+b.dataset.k;$('smEGaugeBox').querySelectorAll('[data-k]').forEach(x=>x.classList.toggle('on',+x.dataset.k<=KAN));$('smEGaugeV').textContent=`${KAN}칸 · ${KAN*20}%`;draw()});
 $('smEMat').addEventListener('input',()=>{const d=$('smEMat').value.replace(/[^\d]/g,'');if(d!==$('smEMat').value)$('smEMat').value=d;matShow();drawEv()});
 $('smEMatAuto').addEventListener('change',reset);
-matShow();drawEv();
+queueMicrotask(()=>{matShow();drawEv()});
 onFee.push(()=>drawEv());
 
 /* 선수 검색 */

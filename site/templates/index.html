@@ -214,7 +214,7 @@
     </div>
     <div class="eff-opts">
       <div class="eff-steps" id="effSteps" role="group" aria-label="강화 단계"></div>
-      <label class="eff-chk"><input type="checkbox" id="effMat"> 재료비 포함 <small>(전체 시세표용 검증 규칙 확보 시 적용 · 개별 공식 조합은 강화 시뮬)</small></label>
+      <label class="eff-chk"><input type="checkbox" id="effMat"> 재료비 포함 <small>(공식 풀게이지 재료비 자동 조회)</small></label>
       <label class="eff-chk">실패하면<select id="effFail"><option value="keep">단계 유지</option><option value="down">1단계 하락 (5강 이상)</option></select></label>
     </div>
     <div class="eff-budget" id="effBudget" hidden>
@@ -222,6 +222,7 @@
       <div class="eff-quick" id="effQuick"><button type="button" data-b="0.5">5천만</button><button type="button" data-b="1">1억</button><button type="button" data-b="5">5억</button><button type="button" data-b="10">10억</button><button type="button" data-b="50">50억</button><button type="button" data-b="200">200억</button></div>
     </div>
     <p class="sim-note" id="effInfo">시세를 불러오는 중…</p>
+    <div class="eff-actions" id="effActions" hidden><span id="effProgress" role="status" aria-live="polite"></span><div><button type="button" class="ghost" id="effMore">후보 6건 추가 조회</button><button type="button" class="ghost" id="effRetry" hidden>다시 조회</button></div></div>
     <div class="eff-cols" id="effOut"></div>
     <aside class="slot" data-ad-slot="sim-1" aria-label="광고"></aside>
     <p class="sim-note">회수율 = (성공 확률 × 한 단계 위 시세 × (1 − 수수료) + 실패 확률 × 실패 후 시세 × (1 − 수수료)) ÷ (지금 시세 + 재료비). 사서 강화하고 바로 판다고 가정했어요. 1.00이 넘으면 평균적으로 남는 강화예요. 성공 확률은 넥슨 공지 풀 게이지(5칸) 기준이고, 시세는 하루 1번 수집한 값이라 실제와 다를 수 있어요.</p>

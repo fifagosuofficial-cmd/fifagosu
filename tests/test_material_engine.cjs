@@ -41,3 +41,20 @@ test("official OVR quotes optimize and verify actual gauge instead of extrapolat
  const fail=await fetchOfficialPlan(100004000,1,async endpoint=>endpoint==="RecommendOVRList"?raw:{strBoostPer:"99.99"},async()=>{});
  assert.equal(fail.plan,null);
 });
+
+test("efficiency ranking subtracts verified cost and recomputes return, profit and budget",()=>{
+ const fs=require("node:fs"),vm=require("node:vm"),path=require("node:path");
+ const s=fs.readFileSync(path.join(__dirname,"../site/assets/js/sim.js"),"utf8");
+ const a=s.indexOf("function effWithMaterial("),b=s.indexOf("let effCtx=",a);
+ const ctx={};vm.createContext(ctx);vm.runInContext(s.slice(a,b),ctx);
+ const r={id:100004000,g:4,buy:100,ret:170,netUp:240,rr:1.7,win:140};
+ const cost={official:true,gauge:100,cost:50};const row=ctx.effWithMaterial(r,cost);
+ assert.equal(row.inv,150);assert.equal(row.rr,170/150);assert.equal(row.ev,20);assert.equal(row.win,90);
+ assert.equal(ctx.effWithMaterial(r,{...cost,gauge:99}),null);
+ assert.equal(ctx.effWithMaterial(r,{...cost,official:false}),null);
+ const other={...r,id:2,buy:90,rr:1.4,win:200},expensive={...r,id:3,buy:1000,rr:5,win:1000};
+ assert.deepEqual(Array.from(ctx.effCandidateOrder([r,other,expensive],"budget",120),x=>x.id),[r.id,2]);
+ assert.equal(ctx.effCandidateOrder([r,other,expensive],"top",0)[0].id,3);
+ assert.ok(s.includes("await loadOfficial(r.g,r.id)"));
+ assert.ok(!s.includes("if($('effMat').checked&&!MATERIALS?.ready)"));
+});

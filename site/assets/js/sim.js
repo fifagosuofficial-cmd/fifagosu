@@ -46,24 +46,72 @@ $('effQuick').addEventListener('click',e=>{const b=e.target.closest('[data-b]');
 ['effMat','effFail'].forEach(id=>$(id).addEventListener('change',effRender));$('effMoney').addEventListener('input',effRender);
 onFee.push(()=>{if(effReady)effRender()});
 async function effInit(){
-  if(effReady)return;
+  if(effReady){effRender();return}
   $('effInfo').textContent='시세를 불러오는 중…';
   await Promise.all([loadPool(),loadMaterials(),typeof loadIdx==='function'?loadIdx():null]);
   effReady=true;effRender();
 }
 function effRows(){
-  const fee=feeRate(),down=$('effFail').value==='down',useMat=$('effMat').checked,rows=[];
+  const fee=feeRate(),down=$('effFail').value==='down',rows=[];
   for(const [id,name,ovr,pr] of POOL){
     for(let g=1;g<MAX;g++){
       if(effStep&&g!==effStep)continue;
       const buy=pr[g-1],up=pr[g];if(!buy||!up||buy<1e6)continue;
-      const plan=useMat?materialPlan(ovr,g,id):null;if(useMat&&!plan)continue;
-      const p=SUCC[g]/100,fg=down&&g>=5?g-1:g,failV=pr[fg-1]||0,mat=plan?.cost||0,inv=buy+mat;
-      const ret=(p*up+(1-p)*failV)*(1-fee);
-      rows.push({id,name,ovr,g,p,buy,up,mat,plan,inv,rr:ret/inv,ev:ret-inv,win:up*(1-fee)-inv,failV});
+      const p=SUCC[g]/100,fg=down&&g>=5?g-1:g,failV=pr[fg-1];
+      if(!Number.isFinite(p)||!failV)continue;
+      const ret=(p*up+(1-p)*failV)*(1-fee),netUp=up*(1-fee);
+      rows.push({id:Number(id),name,ovr,g,p,buy,up,mat:0,plan:null,inv:buy,ret,netUp,rr:ret/buy,ev:ret-buy,win:netUp-buy,failV});
     }
   }
   return rows;
+}
+// Adding a cost must lower return and profit, and cannot enlarge a budget.
+function effWithMaterial(row,plan){
+  if(!plan?.official||plan.gauge!==100||!Number.isSafeInteger(plan.cost)||plan.cost<=0)return null;
+  const inv=row.buy+plan.cost;if(!Number.isFinite(inv)||inv<=0)return null;
+  return {...row,mat:plan.cost,plan,inv,rr:row.ret/inv,ev:row.ret-inv,win:row.netUp-inv};
+}
+function effCandidateOrder(rows,mode,budget){
+  const eligible=mode==='budget'?rows.filter(r=>r.buy<=budget):rows;
+  const rr=[...eligible].sort((a,b)=>b.rr-a.rr),out=[],seen=new Set();
+  const push=r=>{if(!r)return;const k=r.id+':'+r.g;if(!seen.has(k)){seen.add(k);out.push(r)}};
+  if(mode==='budget'){
+    const win=[...eligible].sort((a,b)=>b.win-a.win);
+    for(let i=0;i<rr.length;i++){push(rr[i]);push(win[i])}
+  }else rr.forEach(push);
+  return out;
+}
+let effCtx=null,effTimer=null,effWork=Promise.resolve();
+const EFF_BATCH=6;
+function effActive(ctx){return effCtx===ctx&&$('effMat').checked&&!$('simEff').hidden&&!$('v-sim').hidden}
+function effMaterialRows(ctx){
+  return ctx.candidates.map(r=>effWithMaterial(r,officialPlans.get(planKey(r.id,r.g)))).filter(Boolean);
+}
+function effStart(ctx,retry=false){
+  if(!effActive(ctx)||ctx.running)return;
+  if(retry){for(const k of ctx.retry)ctx.attempted.delete(k);ctx.retry.clear();ctx.issue=''}
+  ctx.running=true;ctx.done=0;ctx.issue='';effPaint(ctx);
+  effWork=effWork.catch(()=>{}).then(async()=>{
+    if(!effActive(ctx))return;
+    const next=[];
+    for(const r of ctx.candidates){const k=planKey(r.id,r.g);if(officialPlans.has(k)||ctx.attempted.has(k))continue;next.push(r);if(next.length>=EFF_BATCH)break}
+    for(const r of next){
+      if(!effActive(ctx))break;
+      const k=planKey(r.id,r.g);
+      if(officialPlans.has(k))continue;
+      ctx.attempted.add(k);ctx.current=r.name+' '+r.g+'→'+(r.g+1)+'강';
+      effPaint(ctx);
+      const plan=await loadOfficial(r.g,r.id);
+      ctx.done++;
+      if(!plan){
+        const code=officialErrorCodes.get(k);
+        if(code!=='no_full_combo'&&code!=='not_verified'){
+          ctx.retry.add(k);ctx.issue=officialErrors.get(k)||'공식 조회 오류';break;
+        }
+      }
+      if(effActive(ctx))effPaint(ctx);
+    }
+  }).finally(()=>{ctx.running=false;ctx.current='';if(effActive(ctx))effPaint(ctx)});
 }
 function effRow(r,i,kind){
   const w=Math.max(4,Math.min(100,r.rr/2*100));
@@ -73,32 +121,51 @@ function effRow(r,i,kind){
     <span class="er-img">${bigImg(r.id)}</span>
     <span class="er-who"><span class="er-name">${bigBadge(Math.floor(r.id/1e6))}<b>${H(r.name)}</b></span>
       <span class="er-step">${gchip(r.g)}<i>→</i>${gchip(r.g+1)}<em>${(r.p*100).toFixed(0)}%</em></span></span>
-    <span class="er-money"><span>투자 <b>${won(r.inv)}</b>${r.mat?` <small>(재료 ${won(r.mat)})</small>`:''}</span><span>성공 <b class="up">${won(r.up)}</b> · 기댓값 <b class="${r.ev>=0?'up':'dn'}">${sgn(r.ev)}</b></span></span>
+    <span class="er-money"><span>투자 <b>${won(r.inv)}</b>${r.mat?` <small>(재료 ${r.mat.toLocaleString("ko-KR")} BP)</small>`:''}</span><span>성공 <b class="up">${won(r.up)}</b> · 기댓값 <b class="${r.ev>=0?'up':'dn'}">${sgn(r.ev)}</b></span></span>
     <span class="er-main">${main}</span>
     <span class="er-meter" aria-hidden="true"><i style="width:${w}%"></i><u></u></span>
   </button>`;
 }
 function effRender(){
   if(!effReady)return;
-  if(!POOL){$('effInfo').textContent='강화별 시세 풀(market/pool.json)이 아직 없어요. 매일 새벽 수집이 한 번 돌면 자동으로 채워져요.';$('effOut').innerHTML='';return}
-  if($('effMat').checked&&!MATERIALS?.ready){$('effInfo').textContent='공식 부스트 포인트 확인 전에는 풀게이지 재료비를 계산하지 않습니다. 재료비 포함을 해제하면 재료비 제외 순위를 볼 수 있어요.';$('effOut').innerHTML='';return}
-  const rows=effRows();
+  clearTimeout(effTimer);
+  if(!POOL){$('effInfo').textContent='강화별 시세 풀이 아직 없어요.';$('effOut').innerHTML='';$('effActions').hidden=true;return}
+  const mat=$('effMat').checked,budget=Math.max(0,+$('effMoney').value||0)*1e8;
+  if(!mat){effCtx=null;effPaint(null,effRows());return}
+  const key=[effMode,effStep,budget,$('effFail').value,feeRate()].join(':');
+  if(!effCtx||effCtx.key!==key){
+    effCtx={key,candidates:effCandidateOrder(effRows(),effMode,budget),attempted:new Set(),retry:new Set(),running:false,done:0,current:'',issue:'',started:false};
+  }
+  const ctx=effCtx;effPaint(ctx);
+  if(effActive(ctx)&&!ctx.started&&ctx.candidates.length){
+    effTimer=setTimeout(()=>{if(effActive(ctx)&&!ctx.started){ctx.started=true;effStart(ctx)}},350);
+  }
+}
+function effPaint(ctx,baseRows){
+  const rows=ctx?effMaterialRows(ctx):baseRows;
   const fee=(feeRate()*100).toFixed(1).replace(/\.0$/,'');
+  const empty=ctx?(ctx.running?'공식 재료비를 조회하고 있어요…':ctx.issue?'조회 실패: 아래에서 다시 조회해 주세요.':'확인된 풀게이지 조합이 아직 없어요. 추가 조회를 눌러 주세요.'):'조건에 맞는 카드가 없어요.';
   let html='';
   if(effMode==='top'){
-    const top=rows.sort((a,b)=>b.rr-a.rr).slice(0,30);
-    html=`<div class="eff-col"><h3>회수율 TOP 30 <small>가격과 상관없이 남는 비율 순</small></h3>${top.map((r,i)=>effRow(r,i)).join('')||'<p class="sim-note">조건에 맞는 카드가 없어요.</p>'}</div>`;
+    const top=[...rows].sort((a,b)=>b.rr-a.rr).slice(0,30);
+    html='<div class="eff-col"><h3>'+ (ctx?'재료비 포함 회수율 TOP '+top.length:'회수율 TOP 30')+' <small>'+(ctx?'공식 조회 완료 후보 기준':'가격과 상관없이 남는 비율 순')+'</small></h3>'+(top.map((r,i)=>effRow(r,i)).join('')||'<p class="sim-note">'+empty+'</p>')+'</div>';
   }else{
     const b=Math.max(0,+$('effMoney').value||0)*1e8,lo=b/10,inb=rows.filter(r=>r.inv<=b&&r.inv>lo);
     const safe=[...inb].sort((a,b)=>b.rr-a.rr).slice(0,15),big=[...inb].sort((a,b)=>b.win-a.win).slice(0,15);
-    html=`<p class="sim-note eff-range">${won(lo)} 초과 ~ ${won(b)} 이하 투자 · ${inb.length.toLocaleString()}가지 강화</p>
-    <div class="eff-col"><h3>남는 강화 <small>회수율 높은 순</small></h3>${safe.map((r,i)=>effRow(r,i)).join('')||'<p class="sim-note">예산 안에 맞는 강화가 없어요.</p>'}</div>
-    <div class="eff-col"><h3>한방 강화 <small>성공하면 많이 남는 순</small></h3>${big.map((r,i)=>effRow(r,i,'win')).join('')||'<p class="sim-note">예산 안에 맞는 강화가 없어요.</p>'}</div>`;
+    html='<p class="sim-note eff-range">'+won(lo)+' 초과 ~ '+won(b)+' 이하 투자 · '+inb.length.toLocaleString()+'가지 강화</p><div class="eff-col"><h3>남는 강화 <small>회수율 높은 순</small></h3>'+(safe.map((r,i)=>effRow(r,i)).join('')||'<p class="sim-note">'+(ctx&&!rows.length?empty:'예산 안에 맞는 강화가 없어요.')+'</p>')+'</div><div class="eff-col"><h3>한방 강화 <small>성공하면 많이 남는 순</small></h3>'+(big.map((r,i)=>effRow(r,i,'win')).join('')||'<p class="sim-note">'+(ctx&&!rows.length?empty:'예산 안에 맞는 강화가 없어요.')+'</p>')+'</div>';
   }
-  $('effOut').className='eff-cols'+(effMode==='budget'?' two':'');
-  $('effOut').innerHTML=html;
-  $('effInfo').textContent=`시세 풀 ${POOL.length.toLocaleString()}장 · 판매 수수료 ${fee}% · ${$('effMat').checked?'검증된 조합 있는 카드만 · 재료비 포함':'재료비 제외'} · 줄을 누르면 강화 시뮬로 이어서 해 볼 수 있어요.`;
+  $('effOut').className='eff-cols'+(effMode==='budget'?' two':'');$('effOut').innerHTML=html;
+  $('effActions').hidden=!ctx;
+  if(ctx){
+    const remaining=ctx.candidates.some(r=>!officialPlans.has(planKey(r.id,r.g))&&!ctx.attempted.has(planKey(r.id,r.g)));
+    $('effInfo').textContent='재료비 포함 · 공식 월평균 거래가 · 확인 '+rows.length.toLocaleString()+' / 후보 '+ctx.candidates.length.toLocaleString()+'건 · 수수료 '+fee+'% · 전체 시장 순위 아님';
+    $('effProgress').textContent=ctx.running?'조회 중 '+ctx.done+'/'+EFF_BATCH+(ctx.current?' · '+ctx.current:''):ctx.issue?ctx.issue:'조회된 카드만 순위에 반영됩니다. 추가 조회 시 순위가 달라질 수 있습니다.';
+    $('effMore').disabled=ctx.running||!remaining;
+    $('effRetry').hidden=!ctx.retry.size;$('effRetry').disabled=ctx.running;
+  }else $('effInfo').textContent='시세 풀 '+POOL.length.toLocaleString()+'장 · 판매 수수료 '+fee+'% · 재료비 제외 · 줄을 누르면 강화 시뮬로 이어서 해 볼 수 있어요.';
 }
+$('effMore').addEventListener('click',()=>{if(effCtx){effCtx.started=true;effStart(effCtx)}});
+$('effRetry').addEventListener('click',()=>{if(effCtx){effCtx.started=true;effStart(effCtx,true)}});
 $('effOut').addEventListener('click',e=>{const b=e.target.closest('[data-pick]');if(!b)return;setTab('enh');pickPlayer(+b.dataset.pick,+b.dataset.g)});
 
 /* ================= 강화 시뮬 ================= */
@@ -112,7 +179,7 @@ const baseOvr=()=>{if(!SEL)return 0;const x=typeof ix==='function'&&ix(SEL.c.id)
 const korBP=v=>{v=Math.round(+v||0);if(!v)return '0';const eok=Math.floor(v/1e8),man=Math.floor(v%1e8/1e4),rest=v%1e4,p=[];
   if(eok)p.push(eok.toLocaleString()+'억');if(man)p.push(man.toLocaleString()+'만');if(rest)p.push(rest%1000===0?(rest/1000)+'천':rest.toLocaleString());return p.join(' ')};
 const matPer=()=>Math.max(0,+String($('smEMat').value).replace(/[^\d]/g,'')||0);
-const officialPlans=new Map(),officialPending=new Map(),officialErrors=new Map();
+const officialPlans=new Map(),officialPending=new Map(),officialErrors=new Map(),officialErrorCodes=new Map();
 const planKey=(id,g)=>id+":"+g;
 let preparing=false;
 const selectedPlan=g=>SEL?officialPlans.get(planKey(SEL.c.id,g))||null:null;
@@ -121,15 +188,16 @@ async function loadOfficial(g,id=SEL?.c.id){
  const key=planKey(id,g);
  if(officialPlans.has(key))return officialPlans.get(key);
  if(officialPending.has(key))return officialPending.get(key);
- officialErrors.delete(key);
+ officialErrors.delete(key);officialErrorCodes.delete(key);
  const task=(async()=>{try{
    const r=await fetch("/api/boost?spid="+encodeURIComponent(id)+"&grade="+g,{credentials:"same-origin"});
    const d=await r.json().catch(()=>null);
-   if(!r.ok||!d)throw Error(d?.message||"공식 도우미 연결 오류 ("+r.status+")");
+   if(!r.ok||!d){const e=Error(d?.message||"공식 도우미 연결 오류 ("+r.status+")");e.code=d?.code||"http_"+r.status;throw e}
    const plan=d.plan;
+   if(!plan&&["no_full_combo","not_verified"].includes(d.reason)){const e=Error("공식 데이터에서 풀게이지 조합을 찾지 못했습니다.");e.code=d.reason;throw e}
    if(d.spid!==id||d.grade!==g||!plan?.official||plan.gauge!==100||!Number.isSafeInteger(plan.cost)||plan.cost<=0||!Array.isArray(plan.cards)||!plan.cards.length||plan.cards.length>5||plan.cards.some(c=>!Number.isSafeInteger(c.ovr)||!Number.isSafeInteger(c.price)||c.price<=0)||plan.cards.reduce((sum,c)=>sum+c.price,0)!==plan.cost)throw Error("공식 데이터에서 풀게이지 조합을 찾지 못했습니다.");
    officialPlans.set(key,plan);return plan;
- }catch(e){officialErrors.set(key,e.message||"공식 시세 조회 실패");return null}finally{
+ }catch(e){officialErrors.set(key,e.message||"공식 시세 조회 실패");officialErrorCodes.set(key,e.code||"network");return null}finally{
    officialPending.delete(key);
    if(SEL?.c.id===id&&cur===g){matShow();drawEv();$('smEP').textContent=autoMat()&&!selectedPlan(cur)?"미확인":(pOf(cur)*100).toFixed(pOf(cur)<.1?1:0)+"%"}
  }})();

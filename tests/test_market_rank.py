@@ -1,4 +1,9 @@
-from crawler.market_rank import rank_market_moves
+import sys
+from pathlib import Path
+
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "crawler"))
+from market_rank import rank_market_moves  # noqa: E402
 
 
 def card(card_id, first, last, games=100, observations=4, new_date=None):

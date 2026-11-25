@@ -1,7 +1,7 @@
 const test=require("node:test"),assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path");
 const source=fs.readFileSync(path.join(__dirname,"../functions/api/community/[[path]].js"),"utf8");
 const load=()=>import("data:text/javascript;base64,"+Buffer.from(source).toString("base64"));
-const origin="https://example.test",enabled={COMMUNITY_ENABLED:"1",COMMUNITY_POLICY_VERSION:"2026-11-v1",GOOGLE_CLIENT_ID:"test",GOOGLE_CLIENT_SECRET:"test",COMMUNITY_ORIGIN:origin,COMMUNITY_DB:{}};
+const origin="https://example.test",enabled={COMMUNITY_ENABLED:"1",COMMUNITY_POLICY_VERSION:"2026-11-v2",GOOGLE_CLIENT_ID:"test",GOOGLE_CLIENT_SECRET:"test",COMMUNITY_ORIGIN:origin,COMMUNITY_DB:{}};
 test("missing configuration fails closed",async()=>{
  const {onRequest}=await load();const r=await onRequest({request:new Request(origin+"/api/community/me"),env:{}});
  assert.equal(r.status,503);assert.equal((await r.json()).enabled,false);
@@ -14,12 +14,12 @@ test("anonymous identity and unauthorized admin routes do not expose data",async
 test("cross-site POST fails before mutation; under-14 declaration rejected",async()=>{
  const {onRequest}=await load();
  const req=(o,body)=>new Request(origin+"/api/community/login",{method:"POST",headers:{Origin:o,"Content-Type":"application/json"},body:JSON.stringify(body)});
- let r=await onRequest({request:req("https://other.test",{age:true,terms:true,privacy:true,policy:"2026-11-v1"}),env:enabled});assert.equal(r.status,403);
- r=await onRequest({request:req(origin,{age:false,terms:true,privacy:true,policy:"2026-11-v1"}),env:enabled});assert.equal(r.status,400);
+ let r=await onRequest({request:req("https://other.test",{age:true,terms:true,privacy:true,policy:"2026-11-v2"}),env:enabled});assert.equal(r.status,403);
+ r=await onRequest({request:req(origin,{age:false,terms:true,privacy:true,policy:"2026-11-v2"}),env:enabled});assert.equal(r.status,400);
 });
 test("non-admin member cannot create notice",async()=>{
  const {onRequest}=await load();
- const m={id:"user",subject:"regular",nickname:"test",suspended:0,policy:"2026-11-v1"};
+ const m={id:"user",subject:"regular",nickname:"test",suspended:0,policy:"2026-11-v2"};
  const env={...enabled,COMMUNITY_DB:{prepare(sql){assert.match(sql,/FROM sessions/);return {bind(){return {first:async()=>m}}}}}};
  const r=await onRequest({request:new Request(origin+"/api/community/post",{method:"POST",headers:{Origin:origin,"Content-Type":"application/json",Cookie:"fg_session="+"a".repeat(64)},body:JSON.stringify({category:"free",prefix:"notice",title:"test",body:"test"})}),env});
  assert.equal(r.status,403);
@@ -34,7 +34,7 @@ test("popular feed applies inclusive 30-vote threshold before pagination",async(
 });
 test("popular is a read-only derived category, even for authenticated members",async()=>{
  const {onRequest}=await load();
- const m={id:"user",subject:"regular",nickname:"test",suspended:0,policy:"2026-11-v1"};
+ const m={id:"user",subject:"regular",nickname:"test",suspended:0,policy:"2026-11-v2"};
  const env={...enabled,COMMUNITY_DB:{prepare(sql){assert.match(sql,/FROM sessions/);return {bind(){return {first:async()=>m}}}}}};
  const r=await onRequest({request:new Request(origin+"/api/community/post",{method:"POST",headers:{Origin:origin,"Content-Type":"application/json",Cookie:"fg_session="+"a".repeat(64)},body:JSON.stringify({category:"popular",prefix:"normal",title:"test",body:"test"})}),env});
  assert.equal(r.status,400);
@@ -55,7 +55,7 @@ test("login state queue is cleaned and capped before inserting more OAuth state"
   first:async()=>sql.startsWith("SELECT count(*)")?{n:1000}:null,
   run:async()=>({meta:{changes:1}})
  }}}}}};
- const r=await onRequest({request:new Request(origin+"/api/community/login",{method:"POST",headers:{Origin:origin,"Content-Type":"application/json"},body:JSON.stringify({age:true,terms:true,privacy:true,policy:"2026-11-v1"})}),env});
+ const r=await onRequest({request:new Request(origin+"/api/community/login",{method:"POST",headers:{Origin:origin,"Content-Type":"application/json"},body:JSON.stringify({age:true,terms:true,privacy:true,policy:"2026-11-v2"})}),env});
  assert.equal(r.status,429);
  assert.ok(seen.some(sql=>sql.startsWith("DELETE FROM oauth_states")));
  assert.ok(seen.some(sql=>sql.startsWith("SELECT count(*)")));
@@ -85,7 +85,7 @@ const legacySchema=fs.readFileSync(path.join(__dirname,"../community/schema.sql"
 function fixture(){
  const sql=new DatabaseSync(":memory:");sql.exec(legacySchema);
  const insert=sql.prepare("INSERT INTO members(id,provider,subject,nickname,created,policy,age_confirmed) VALUES(?,?,?,?,?,?,1)");
- insert.run("a","google","owner-sub","피파고수",1,"2026-11-v1");insert.run("b","google","regular-sub","테스트회원",1,"2026-11-v1");
+ insert.run("a","google","owner-sub","피파고수",1,"2026-11-v2");insert.run("b","google","regular-sub","테스트회원",1,"2026-11-v2");
  const ts=Math.floor(Date.now()/1000)-3600;
  for(const [id,token] of [["a","a".repeat(64)],["b","b".repeat(64)]])sql.prepare("INSERT INTO sessions(hash,member_id,expires) VALUES(?,?,?)").run(createHash("sha256").update(token).digest("hex"),id,ts+86400);
  sql.prepare("INSERT INTO posts(author,category,prefix,title,body,created) VALUES('a','free','normal','old post','old body',?)").run(ts);
@@ -150,4 +150,21 @@ test("admin overview counts full database, has seven KST buckets and denies ordi
  const {sql,env}=fixture();
  let r=await callFixture(env,"admin",null,"b");assert.equal(r.status,403);
  r=await callFixture(env,"admin",null,"a");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.stats.members,2);assert.equal(r.data.stats.posts,1);assert.equal(r.data.stats.comments,1);assert.equal(r.data.stats.open_reports,0);assert.equal(r.data.days.length,7);assert.ok(r.data.days.every(d=>Number.isInteger(d.posts)&&Number.isInteger(d.comments)&&Number.isInteger(d.members)));assert.equal(r.data.days.reduce((n,d)=>n+d.posts,0),1);assert.equal(r.data.posts[0].category,"free");sql.close();
+});
+
+
+test("legacy consent is not invented; explicit reconsent records v2 and purges expired rows",async()=>{
+ const {sql,env,ts}=fixture();sql.prepare("UPDATE members SET policy=? WHERE id='b'").run("2026-11-v1");
+ sql.prepare("INSERT INTO oauth_states VALUES(?,?,?,?)").run("expired","verifier",ts,"2026-11-v1");
+ sql.prepare("INSERT INTO sessions VALUES(?,?,?)").run("expired","b",ts);
+ sql.prepare("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)").run("a","test","1","old",ts-366*86400);
+ let r=await callFixture(env,"me",null,"b");assert.equal(r.data.member.needsPolicy,true);
+ r=await callFixture(env,"post",{category:"free",prefix:"normal",title:"test",body:"test"},"b");assert.equal(r.status,403);
+ r=await callFixture(env,"consent",{age:true,terms:true,privacy:false,policy:"2026-11-v2"},"b");assert.equal(r.status,400);
+ r=await callFixture({...env,COMMUNITY_POLICY_VERSION:"2026-11-v1"},"consent",{age:true,terms:true,privacy:true,policy:"2026-11-v2"},"b");assert.equal(r.status,200,JSON.stringify(r.data));
+ assert.equal(sql.prepare("SELECT policy FROM members WHERE id='b'").get().policy,"2026-11-v2");
+ assert.equal(sql.prepare("SELECT count(*) n FROM member_consents WHERE member_id='b' AND policy='2026-11-v2' AND privacy_agreed=1").get().n,1);
+ for(const table of ["oauth_states","audit"])assert.equal(sql.prepare("SELECT count(*) n FROM "+table).get().n,0);
+ assert.equal(sql.prepare("SELECT count(*) n FROM sessions WHERE hash='expired'").get().n,0);
+ r=await callFixture(env,"withdraw",{confirm:"탈퇴"},"b");assert.equal(r.status,200);assert.equal(sql.prepare("SELECT count(*) n FROM member_consents").get().n,0);sql.close();
 });

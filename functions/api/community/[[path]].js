@@ -1,5 +1,6 @@
 // Community API. Disabled unless operator explicitly configures reviewed policies and bindings.
-const POLICY="2026-11-v1";
+// Deployment gate retains v1 compatibility; v2 is the new member consent revision.
+const POLICY="2026-11-v2", LEGACY_POLICY="2026-11-v1";
 const cats=new Set(["free","squad","review","tips","pack"]);
 const prefixes=new Set(["normal","question","answer","notice"]);
 const enc=new TextEncoder(), now=()=>Math.floor(Date.now()/1000);
@@ -40,9 +41,12 @@ function squadPayload(v){
 }
 export async function onRequest({request,env}){
  const u=new URL(request.url),p=u.pathname.replace(/^\/api\/community\/?/,"").replace(/\/$/,""),db=env.COMMUNITY_DB;
- const enabled=env.COMMUNITY_ENABLED==="1"&&env.COMMUNITY_POLICY_VERSION===POLICY&&!!db&&!!env.GOOGLE_CLIENT_ID&&!!env.GOOGLE_CLIENT_SECRET&&env.COMMUNITY_ORIGIN===u.origin&&u.protocol==="https:";
+ const enabled=env.COMMUNITY_ENABLED==="1"&&[POLICY,LEGACY_POLICY].includes(env.COMMUNITY_POLICY_VERSION)&&!!db&&!!env.GOOGLE_CLIENT_ID&&!!env.GOOGLE_CLIENT_SECRET&&env.COMMUNITY_ORIGIN===u.origin&&u.protocol==="https:";
  if(!enabled)return json({enabled:false,message:"회원·게시판 서버는 아직 연결되지 않았습니다."},503);
  const q=(sql,...args)=>db.prepare(sql).bind(...args),first=(sql,...args)=>q(sql,...args).first(),all=async(sql,...args)=>(await q(sql,...args).all()).results,run=(sql,...args)=>q(sql,...args).run();
+ const ensureConsent=()=>db.prepare("CREATE TABLE IF NOT EXISTS member_consents(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,policy TEXT NOT NULL,agreed_at INTEGER NOT NULL,age_confirmed INTEGER NOT NULL CHECK(age_confirmed=1),terms_agreed INTEGER NOT NULL CHECK(terms_agreed=1),privacy_agreed INTEGER NOT NULL CHECK(privacy_agreed=1),PRIMARY KEY(member_id,policy))").run();
+ const recordConsent=id=>q("INSERT INTO member_consents(member_id,policy,agreed_at,age_confirmed,terms_agreed,privacy_agreed) VALUES(?,?,?,1,1,1) ON CONFLICT(member_id,policy) DO UPDATE SET agreed_at=excluded.agreed_at",id,POLICY,now());
+ const cleanup=async()=>{const t=now();await db.batch([q("DELETE FROM oauth_states WHERE expires<=?",t),q("DELETE FROM sessions WHERE expires<=?",t),q("DELETE FROM audit WHERE created<=?",t-365*86400)])};
  const reqToken=getCookie(request,"fg_session");
  let member=null;
  try{member=reqToken&&/^[a-f0-9]{64}$/.test(reqToken)?await first("SELECT m.* FROM sessions s JOIN members m ON m.id=s.member_id WHERE s.hash=? AND s.expires>?",await sha(reqToken),now()):null;}catch{return json({message:"회원 정보 서버에 연결할 수 없습니다."},503)}
@@ -66,11 +70,11 @@ export async function onRequest({request,env}){
      check(info.ok,"계정 정보를 확인할 수 없습니다.",502);
      const sub=str((await info.json()).sub,255);
      // The access token is used for identity only; discard it immediately after use.
-     await run("INSERT INTO members(id,provider,subject,created,policy,age_confirmed) VALUES(?,?,?,?,?,1) ON CONFLICT(provider,subject) DO UPDATE SET policy=excluded.policy",crypto.randomUUID(),"google",sub,now(),POLICY);
+     await run("INSERT INTO members(id,provider,subject,created,policy,age_confirmed) VALUES(?,?,?,?,?,1) ON CONFLICT(provider,subject) DO NOTHING",crypto.randomUUID(),"google",sub,now(),POLICY);
      const m=await first("SELECT id,suspended FROM members WHERE provider='google' AND subject=?",sub);
      check(m&&!m.suspended,"이용이 제한된 계정입니다.",403);
-     const sid=random();await run("DELETE FROM sessions WHERE expires<=?",now());
-     await run("INSERT INTO sessions(hash,member_id,expires) VALUES(?,?,?)",await sha(sid),m.id,now()+86400*7);
+     const sid=random();await ensureConsent();await cleanup();
+     await db.batch([q("UPDATE members SET policy=? WHERE id=?",POLICY,m.id),recordConsent(m.id),q("INSERT INTO sessions(hash,member_id,expires) VALUES(?,?,?)",await sha(sid),m.id,now()+86400*7)]);
      const h=new Headers({location:"/mypage/","cache-control":"no-store"});
      h.append("Set-Cookie",cookie("fg_session",sid,86400*7));h.append("Set-Cookie",cookie("fg_oauth","",0));return new Response(null,{status:303,headers:h});
    }
@@ -107,7 +111,7 @@ export async function onRequest({request,env}){
      bookmarks:await all("SELECT p.id,p.title FROM bookmarks b JOIN posts p ON p.id=b.post_id WHERE b.member_id=? AND p.hidden=0 LIMIT 100",m.id),
      history:await all("SELECT h.squad_id,h.bp,h.observed FROM value_history h JOIN squads s ON s.id=h.squad_id WHERE s.member_id=? ORDER BY h.observed DESC LIMIT 300",m.id)
    })}
-   if(p==="admin"){requireAdmin();
+   if(p==="admin"){requireAdmin();await cleanup();
      const kstDay=Math.floor((now()+32400)/86400),start=(kstDay-6)*86400-32400,today=kstDay*86400-32400;
      const stats=await first("SELECT (SELECT count(*) FROM members) members,(SELECT count(*) FROM members WHERE created>=?) new_members,(SELECT count(*) FROM members WHERE suspended=1) suspended,(SELECT count(*) FROM posts WHERE hidden=0) posts,(SELECT count(*) FROM posts WHERE created>=? AND hidden=0) new_posts,(SELECT count(*) FROM comments WHERE hidden=0 AND post_id IN (SELECT id FROM posts WHERE hidden=0)) comments,(SELECT count(*) FROM comments WHERE created>=? AND hidden=0 AND post_id IN (SELECT id FROM posts WHERE hidden=0)) new_comments,(SELECT count(*) FROM reports WHERE status='open') open_reports,(SELECT count(*) FROM feedback WHERE status='open') open_feedback,(SELECT COALESCE(sum(views),0) FROM posts WHERE hidden=0) views",today,today,today);
      const activity=await all("SELECT (created+32400)/86400 day,'members' kind,count(*) n FROM members WHERE created>=? GROUP BY day UNION ALL SELECT (created+32400)/86400 day,'posts' kind,count(*) n FROM posts WHERE created>=? AND hidden=0 GROUP BY day UNION ALL SELECT (created+32400)/86400 day,'comments' kind,count(*) n FROM comments WHERE created>=? AND hidden=0 AND post_id IN (SELECT id FROM posts WHERE hidden=0) GROUP BY day",start,start,start);
@@ -134,11 +138,17 @@ export async function onRequest({request,env}){
    const url=new URL("https://accounts.google.com/o/oauth2/v2/auth");url.search=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID,redirect_uri:u.origin+"/api/community/callback",response_type:"code",scope:"openid",state,code_challenge:await challenge(verifier),code_challenge_method:"S256",prompt:"select_account"}).toString();
    return json({url:url.href},200,{"set-cookie":cookie("fg_oauth",state,600)});
  }
+ if(p==="consent"){
+   check(member&&!member.suspended,"로그인 또는 계정 상태를 확인하세요.",401);
+   check(b.age===true&&b.terms===true&&b.privacy===true&&b.policy===POLICY,"최신 가입 안내에 동의해 주세요.");
+   await ensureConsent();await cleanup();await db.batch([q("UPDATE members SET policy=? WHERE id=?",POLICY,member.id),recordConsent(member.id)]);return json({ok:true});
+ }
  if(p==="logout"){if(reqToken)await run("DELETE FROM sessions WHERE hash=?",await sha(reqToken));return json({ok:true},200,{"set-cookie":cookie("fg_session","",0)})}
  if(p==="profile"){
    const m=me(),nick=str(b.nickname,20,2);check(/^[\p{L}\p{N}_ -]+$/u.test(nick)&&!/(운영자|관리자|admin|moderator)/i.test(nick),"사용할 수 없는 닉네임입니다.");
+   const game=b.game_name?str(b.game_name,30):null;check(!game||game===m.game_name||b.game_name_consent==="yes","선택 FC온라인 닉네임 수집에 동의해 주세요.");
    const dup=await first("SELECT id FROM members WHERE nickname=? COLLATE NOCASE AND id<>?",nick,m.id);check(!dup,"이미 사용 중인 닉네임입니다.",409);
-   await run("UPDATE members SET nickname=?,game_name=? WHERE id=?",nick,b.game_name?str(b.game_name,30):null,m.id);return json({ok:true});
+   await run("UPDATE members SET nickname=?,game_name=? WHERE id=?",nick,game,m.id);return json({ok:true});
  }
  if(p==="withdraw"){
    check(member&&b.confirm==="탈퇴","회원 탈퇴 확인이 필요합니다.");

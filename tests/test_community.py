@@ -201,3 +201,15 @@ def test_kickkick_menu_visible_with_and_without_news(tmp_path, monkeypatch):
         assert len(links) == 1 and links[0].get_text(strip=True) == "킥킥"
         assert not doc.select("#v-home a.funlink")
         assert doc.select_one("#smEMatAuto").has_attr("checked")
+
+
+def test_member_consent_disclosures(tmp_path):
+    from bs4 import BeautifulSoup
+    out=tmp_path / "site"
+    build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
+    doc=BeautifulSoup((out / "mypage/index.html").read_text("utf-8"),"html.parser")
+    notice=doc.select_one("#fcConsentNotice").get_text()
+    assert all(k in notice for k in ("목적","항목","보유기간","거부권","2026-11-v2"))
+    assert doc.select_one('input[name="game_name_consent"]')
+    privacy=(out / "privacy.html").read_text("utf-8")
+    assert "Time Travel" in privacy and "2026-11-v2" in privacy

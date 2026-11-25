@@ -28,3 +28,6 @@ CREATE INDEX IF NOT EXISTS post_dislike_post ON post_dislikes(post_id);
 CREATE TABLE IF NOT EXISTS comment_votes(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,value INTEGER NOT NULL CHECK(value IN (-1,1)),PRIMARY KEY(member_id,comment_id));
 CREATE INDEX IF NOT EXISTS comment_vote_comment ON comment_votes(comment_id);
 CREATE TABLE IF NOT EXISTS comment_replies(comment_id INTEGER PRIMARY KEY REFERENCES comments(id) ON DELETE CASCADE,parent_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE);
+
+-- Consent evidence, additive migration. No fabricated backfill for legacy members.
+CREATE TABLE IF NOT EXISTS member_consents(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,policy TEXT NOT NULL,agreed_at INTEGER NOT NULL,age_confirmed INTEGER NOT NULL CHECK(age_confirmed=1),terms_agreed INTEGER NOT NULL CHECK(terms_agreed=1),privacy_agreed INTEGER NOT NULL CHECK(privacy_agreed=1),PRIMARY KEY(member_id,policy));

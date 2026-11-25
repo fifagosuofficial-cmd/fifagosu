@@ -1430,3 +1430,29 @@ nav.menu a.nav-fun{display:inline-flex;align-items:center;gap:5px}.fg-fun-icon{f
   .dps-table-2 .duel-count{display:block;max-width:100%;font-size:9px;line-height:1.15;white-space:normal;overflow-wrap:anywhere}
   .dps-table-2 .duel-rate{line-height:1.2}
 }
+
+/* Featured diagnosis navigation: reserve space for a small callout, with no layout shift. */
+.fg-nav-shell nav.menu{padding-top:20px}
+nav.menu a.nav-diag-feature{position:relative;isolation:isolate}
+nav.menu a.nav-diag-feature:not([aria-current]){background:var(--accent-soft);border-color:var(--accent);color:#12674f;box-shadow:0 2px 5px rgba(0,120,75,.12);animation:fg-diag-float 3.2s ease-in-out infinite}
+nav.menu a.nav-diag-feature:hover,nav.menu a.nav-diag-feature:focus-visible{animation-play-state:paused}
+.fg-diag-bubble{position:absolute;bottom:calc(100% + 3px);left:50%;transform:translateX(-50%);padding:2px 6px;border-radius:6px;background:#12674f;color:#fff;font:700 10px/1.25 var(--f-body);white-space:nowrap;pointer-events:none}
+.fg-diag-bubble::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);border:4px solid transparent;border-top-color:#12674f;border-bottom:0}
+@keyframes fg-diag-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+@media(prefers-reduced-motion:reduce){nav.menu a.nav-diag-feature:not([aria-current]){animation:none}}
+@media(max-width:760px){
+  .fg-nav-shell nav.menu{padding-top:20px!important}
+  .fg-account-icon{margin-top:27px}
+  .fg-diag-bubble{font-size:9px;padding:2px 5px}
+  .sim-fee-bar{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:3px;padding:6px 5px;min-width:0;white-space:nowrap}
+  .sim-fee-bar .sfb-t,.sim-fee-bar .sfb-chip small{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .sim-fee-bar .sfb-chip{gap:3px;padding:5px 4px;font-size:10px;min-height:32px;box-sizing:border-box}
+  .sim-fee-bar .sfb-chip input{width:13px;height:13px;flex:none}
+  .sim-fee-bar .sfb-sel{gap:3px;font-size:10px;min-width:0}
+  .sim-fee-bar .sfb-sel select{flex:1;min-width:0;width:100%;font-size:11px;padding:4px 1px;min-height:32px}
+  .sim-fee-bar .sfb-out{width:auto;margin:0;display:flex;align-items:center;gap:2px;font-size:10px}
+  .sim-fee-bar .sfb-out-label{font-size:0}
+  .sim-fee-bar .sfb-out-label::after{content:"수수료";font-size:10px}
+  .sim-fee-bar .sfb-out b{margin:0;font-size:13px}
+}
+@media(max-width:360px){.sim-fee-bar .sfb-top-label{font-size:0}.sim-fee-bar .sfb-top-label::after{content:"TOP";font-size:10px}.sim-fee-bar{gap:2px;padding-inline:3px}}

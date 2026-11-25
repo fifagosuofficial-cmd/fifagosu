@@ -40,7 +40,7 @@
   <nav class="menu" aria-label="메뉴">
     <a href="{{ root }}">홈</a>
     <a href="{{ root }}news/"{% if active is defined and active in ('news','press','patch') %} aria-current="page"{% endif %}>소식</a>
-    <a class="core" href="{{ root }}diag"><svg class="fg-diag-icon" viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v14h14M6 13l4-5 3 3 4-6"/><path d="M14 5h3v3"/></svg><span>전적 진단</span></a>
+    <a class="core nav-diag-feature" href="{{ root }}diag"><svg class="fg-diag-icon" viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v14h14M6 13l4-5 3 3 4-6"/><path d="M14 5h3v3"/></svg><span>전적 진단</span><span class="fg-diag-bubble" aria-hidden="true">내 약점 찾기!</span></a>
     <a href="{{ root }}trade/">선수 거래소</a>
     <a href="{{ root }}squad/"{% if view=='squad' %} aria-current="page"{% endif %}>AI 스쿼드</a>
     <a href="{{ root }}board/"{% if view=='board' %} aria-current="page"{% endif %}>게시판</a>

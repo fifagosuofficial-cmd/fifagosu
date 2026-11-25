@@ -77,3 +77,24 @@ def test_market_table_fits_narrow_screens_without_sparkline():
     assert '.mk-stock-table .mk-delta{display:none}' in css
     assert '.mk-stock-table .mk-mobile-delta{display:block;' in css
     assert '.mk-stock-table{min-width:480px}' not in css
+
+
+def test_diagnosis_nav_has_compact_callout_and_respects_motion_preference():
+    css = (ROOT / "site/assets/css/main.css").read_text("utf-8")
+    for name in ("base.html", "index.html"):
+        html = (ROOT / "site/templates" / name).read_text("utf-8")
+        assert 'class="core nav-diag-feature"' in html
+        assert '<span class="fg-diag-bubble" aria-hidden="true">내 약점 찾기!</span>' in html
+    assert "@keyframes fg-diag-float" in css
+    assert "translateY(-2px)" in css
+    assert "@media(prefers-reduced-motion:reduce)" in css
+    assert ".fg-nav-shell nav.menu{padding-top:20px!important}" in css
+
+
+def test_mobile_fee_controls_keep_all_discounts_in_one_row():
+    html = (ROOT / "site/templates/index.html").read_text("utf-8")
+    css = (ROOT / "site/assets/css/main.css").read_text("utf-8")
+    for control in ("smfPc", "smfTop", "smfCoupon", "smfRate"):
+        assert html.count(f'id="{control}"') == 1
+    assert ".sim-fee-bar{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto" in css
+    assert ".sim-fee-bar .sfb-out{width:auto;margin:0" in css

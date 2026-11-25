@@ -209,7 +209,7 @@
   <!-- ===== 강화 효율 ===== -->
   <section class="sim-panel" id="simEff">
     <div class="eff-mode" role="tablist" aria-label="강화 효율 보기">
-      <button type="button" data-em="win" aria-selected="true">인생강화 TOP 30</button>
+      <button type="button" data-em="win" aria-selected="true">인생강화 TOP</button>
       <button type="button" data-em="top" aria-selected="false">회수율 TOP</button>
     </div>
     <form class="eff-budget-search" id="effBudgetForm" aria-label="강화 예산 검색">
@@ -223,6 +223,7 @@
       <label class="eff-chk"><input type="checkbox" id="effMat" checked> 재료비 포함 <small>(공식 풀게이지 재료비 자동 조회)</small></label>
       <label class="eff-chk">실패하면<select id="effFail"><option value="keep">단계 유지</option><option value="down">1단계 하락 (5강 이상)</option></select></label>
     </div>
+    <div class="eff-sortbar" id="effSort"><span>정렬 기준</span><div role="group" aria-label="인생강화 정렬 기준"><button type="button" data-order="score" aria-pressed="true">종합지수 높은 순</button><button type="button" data-order="profit" aria-pressed="false">순이익 높은 순</button></div></div>
     <details class="eff-score-help" id="effScoreHelp"><summary>종합지수 산정 기준 <span>ⓘ</span></summary><p>피파고수 자체 지표(100점): 성공 수익률 50점 + 성공 확률 30점 + 성공 순이익 20점. 수익률과 순이익은 로그 방식으로 환산하며 각각 1,000%와 1,000억 BP에서 만점입니다. 성공 순이익이 양수인 카드만 평가합니다. 높은 점수가 실제 이익을 보장하지 않으며, 성공 확률과 회수율도 확인하세요.</p></details>
     <p class="sim-note" id="effInfo">시세를 불러오는 중…</p>
     <div class="eff-actions" id="effActions" hidden><span id="effProgress" role="status" aria-live="polite"></span><div><button type="button" class="ghost" id="effMore">후보 6건 추가 조회</button><button type="button" class="ghost" id="effRetry" hidden>다시 조회</button></div></div>

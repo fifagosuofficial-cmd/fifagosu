@@ -32,10 +32,11 @@ function setTab(t){
 tabs.addEventListener('click',e=>{const b=e.target.closest('[data-sim]');if(b)setTab(b.dataset.sim)});
 
 /* ================= 강화 효율 ================= */
-let effMode='win', effStep=0, effReady=false,effInitP=null,effBudget=Infinity;
+let effMode='win', effStep=0, effReady=false,effInitP=null,effBudget=Infinity,effSort='score';
 $('effSteps').innerHTML=`<button type="button" data-s="0" aria-pressed="true">전체</button>`+Array.from({length:12},(_,i)=>`<button type="button" data-s="${i+1}" aria-pressed="false">${i+1}→${i+2}</button>`).join('');
 $('effSteps').addEventListener('click',e=>{const b=e.target.closest('[data-s]');if(!b)return;effStep=+b.dataset.s;$('effSteps').querySelectorAll('[data-s]').forEach(x=>x.setAttribute('aria-pressed',x===b));effRender()});
 document.querySelector('.eff-mode').addEventListener('click',e=>{const b=e.target.closest('[data-em]');if(!b)return;effMode=b.dataset.em;document.querySelectorAll('.eff-mode [data-em]').forEach(x=>x.setAttribute('aria-selected',x===b));effRender()});
+$('effSort').addEventListener('click',e=>{const b=e.target.closest('[data-order]');if(!b||b.dataset.order===effSort)return;effSort=b.dataset.order;$('effSort').querySelectorAll('[data-order]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));effRender()});
 ['effMat','effFail'].forEach(id=>$(id).addEventListener('change',effRender));
 function applyEffBudget(){
   const input=$('effMoney'),budget=parseEffBudget(input.value);
@@ -93,9 +94,9 @@ function effLifeScore(r){
   const profit=Math.min(1,Math.log1p(r.win/1e8)/Math.log1p(1000));
   return 50*roi+30*probability+20*profit;
 }
-function effCandidateOrder(rows,mode){
+function effCandidateOrder(rows,mode,order='score'){
   if(mode!=='win')return [...rows].sort((a,b)=>b.rr-a.rr);
-  return rows.filter(r=>r.win>0).map(r=>({...r,lifeScore:effLifeScore(r)})).sort((a,b)=>b.lifeScore-a.lifeScore||b.win-a.win||a.id-b.id||a.g-b.g);
+  return rows.filter(r=>r.win>0).map(r=>({...r,lifeScore:effLifeScore(r)})).sort((a,b)=>(order==='profit'?b.win-a.win||b.lifeScore-a.lifeScore:b.lifeScore-a.lifeScore||b.win-a.win)||a.id-b.id||a.g-b.g);
 }
 let effCtx=null,effTimer=null,effWork=Promise.resolve(),effLastHTML='';
 const EFF_BATCH=6,EFF_PARALLEL=2;
@@ -147,9 +148,9 @@ function effRender(){
   if(!POOL){$('effInfo').textContent='강화별 시세 풀이 아직 없어요.';$('effOut').innerHTML='';effLastHTML='';$('effActions').hidden=true;return}
   const mat=$('effMat').checked;
   if(!mat){effCtx=null;effPaint(null,effRows());return}
-  const key=[effMode,effStep,$('effFail').value,feeRate(),effBudget].join(':');
+  const key=[effMode,effStep,$('effFail').value,feeRate(),effBudget,effMode==='win'?effSort:'return'].join(':');
   if(!effCtx||effCtx.key!==key){
-    const candidates=effCandidateOrder(effRows(),effMode);
+    const candidates=effCandidateOrder(effRows(),effMode,effSort);
     effCtx={key,budget:effBudget,candidates,byKey:new Map(candidates.map(r=>[planKey(r.id,r.g),r])),attempted:new Set(),retry:new Set(),running:false,done:0,issue:'',started:false};
   }
   const ctx=effCtx;effPaint(ctx);
@@ -158,12 +159,12 @@ function effRender(){
   }
 }
 function effPaint(ctx,baseRows){
-  $('effScoreHelp').hidden=effMode!=='win';
+  $('effScoreHelp').hidden=$('effSort').hidden=effMode!=='win';
   const rows=ctx?effMaterialRows(ctx):effWithinBudget(baseRows,effBudget);
   const fee=(feeRate()*100).toFixed(1).replace(/\.0$/,'');
   const empty=ctx?(ctx.candidates.length===0?'예산과 강화 단계에 맞는 후보가 없어요.':ctx.running?'공식 재료비를 조회하고 있어요…':ctx.issue?'조회 실패: 다시 조회해 주세요.':'예산·조건에 맞는 확인된 재료비 조합이 아직 없어요. 추가 조회를 눌러 주세요.'):'조건에 맞는 카드가 없어요.';
-  const win=effMode==='win',top=effCandidateOrder(rows,effMode).slice(0,30),title=win?'인생강화 TOP':'회수율 TOP';
-  const html='<div class="eff-col"><h3>'+title+' 30'+' <small>'+(win?'종합지수 높은 순':'투자금 대비 회수 비율 순')+(ctx?' · 공식 조회 완료 후보 기준':'')+'</small></h3>'+(top.map((r,i)=>effRow(r,i,win?'win':undefined)).join('')||'<p class="sim-note">'+empty+'</p>')+'</div>';
+  const win=effMode==='win',top=effCandidateOrder(rows,effMode,effSort).slice(0,30),title=win?'인생강화 TOP':'회수율 TOP 30';
+  const html='<div class="eff-col"><h3>'+title+' <small>'+(win?(effSort==='profit'?'순이익 높은 순':'종합지수 높은 순'):'투자금 대비 회수 비율 순')+(ctx?' · 공식 조회 완료 후보 기준':'')+'</small></h3>'+(top.map((r,i)=>effRow(r,i,win?'win':undefined)).join('')||'<p class="sim-note">'+empty+'</p>')+'</div>';
   if(html!==effLastHTML){$('effOut').className='eff-cols';$('effOut').innerHTML=html;effLastHTML=html}
   $('effActions').hidden=!ctx;
   if(ctx){

@@ -74,7 +74,7 @@ test("cached boost endpoint returns only verified recent plans and never calls u
 test("ranking cards preserve full names, odds and all monetary metrics",()=>{
  const fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
  const s=fs.readFileSync(path.join(__dirname,"../site/assets/js/sim.js"),"utf8"),h=fs.readFileSync(path.join(__dirname,"../site/templates/index.html"),"utf8"),css=fs.readFileSync(path.join(__dirname,"../site/assets/css/main.css"),"utf8");
- assert.match(h,/인생강화 TOP 30/);assert.match(h,/class="sim-note sim-intro">실제 시세로 강화 손익·팩 기댓값을 계산해요/);
+ assert.match(h,/>인생강화 TOP<\/button>/);assert.ok(!h.includes('인생강화 TOP 30'));assert.match(h,/class="sim-note sim-intro">실제 시세로 강화 손익·팩 기댓값을 계산해요/);
  const ctx={bigImg:()=>"",bigBadge:()=>"",H:s=>s,gchip:g=>String(g)};vm.createContext(ctx);vm.runInContext(s.slice(s.indexOf("function effLifeScore("),s.indexOf("let effCtx=")),ctx);vm.runInContext(s.slice(s.indexOf("function effRow("),s.indexOf("function effRender()")),ctx);
  const r={id:100004000,name:"크리스티아누 호날두",g:12,p:.01,inv:613905129000,mat:7951290325,up:1950000000000,ev:-242208729000,win:556048700000,rr:.61};
  const win=ctx.effRow(r,0,"win"),rr=ctx.effRow(r,0);
@@ -106,4 +106,19 @@ test("life index favors proportionate gains and probability over expensive low-o
  assert.equal(ctx.effLifeScore({inv:1,win:1e15,p:1}),100);assert.equal(ctx.effLifeScore({...a,win:-1}),0);
  assert.equal(ctx.effCandidateOrder([{...a,win:-1}],"win").length,0);
  assert.equal(ctx.effCandidateOrder([b],"win")[0].lifeScore,ctx.effCandidateOrder([a,b,c],"win")[0].lifeScore);
+});
+
+test("life ranking sort respects budget before selecting the top thirty",()=>{
+ const fs=require("node:fs"),vm=require("node:vm"),path=require("node:path"),s=fs.readFileSync(path.join(__dirname,"../site/assets/js/sim.js"),"utf8"),h=fs.readFileSync(path.join(__dirname,"../site/templates/index.html"),"utf8"),ctx={};
+ vm.createContext(ctx);vm.runInContext(s.slice(s.indexOf("function effWithMaterial("),s.indexOf("let effCtx=")),ctx);
+ const a={id:1,g:12,inv:6000e8,win:5000e8,p:.01,rr:.8},b={id:2,g:7,inv:100e8,win:600e8,p:.07,rr:.7},c={id:3,g:4,inv:10e8,win:35e8,p:.5,rr:1.3},d={id:4,g:8,inv:90e8,win:700e8,p:.001,rr:.6};
+ const rows=[a,b,c,d];
+ assert.equal(ctx.effCandidateOrder(rows,"win")[0].id,4);
+ assert.equal(ctx.effCandidateOrder(rows,"win","profit")[0].id,1);
+ const eligible=ctx.effWithinBudget(rows,100e8);
+ assert.deepEqual(Array.from(ctx.effCandidateOrder(eligible,"win","profit"),r=>r.id),[4,2,3]);
+ assert.ok(ctx.effCandidateOrder(eligible,"win","score").every(r=>r.inv<=100e8));
+ assert.equal(ctx.effCandidateOrder(rows,"top","profit")[0].id,3);
+ assert.ok(s.includes("effCandidateOrder(effRows(),effMode,effSort)"));assert.ok(s.includes("effCandidateOrder(rows,effMode,effSort).slice(0,30)"));
+ assert.ok(h.includes('data-order="score" aria-pressed="true"'));assert.ok(h.includes('data-order="profit" aria-pressed="false"'));
 });

@@ -1496,3 +1496,7 @@ nav.menu a.nav-diag-feature:hover,nav.menu a.nav-diag-feature:focus-visible{anim
 /* Six life metrics fit in three paired rows; five return metrics finish with a full-width return-on-success row. */
 .eff-row .er-money-life{grid-template-columns:repeat(3,minmax(0,1fr))}.eff-row .er-money-return{grid-template-columns:repeat(5,minmax(0,1fr))}
 @media(max-width:760px){.eff-row .er-money-life,.eff-row .er-money-return{grid-template-columns:repeat(2,minmax(0,1fr))}.eff-row .er-money-return .er-metric:last-child{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:space-between}}
+
+/* Independent ranking sort controls: budget and grade filters stay in force. */
+.eff-sortbar{display:flex;align-items:center;gap:8px;justify-content:space-between;min-width:0}.eff-sortbar[hidden]{display:none!important}.eff-sortbar>span{font:700 12px var(--f-body);color:var(--muted);white-space:nowrap}.eff-sortbar>div{display:flex;gap:3px;min-width:0;padding:3px;background:var(--sunk);border-radius:8px}.eff-sortbar button{border:1px solid transparent;background:transparent;color:var(--muted);font:600 12px var(--f-body);padding:6px 10px;white-space:nowrap;border-radius:6px;cursor:pointer}.eff-sortbar button[aria-pressed=true]{background:var(--surface);border-color:var(--accent);color:var(--fg);font-weight:700}.eff-sortbar button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+@media(max-width:760px){.eff-sortbar>div{flex:1}.eff-sortbar button{flex:1;min-width:0;font-size:11px;padding:8px 3px}.eff-sortbar{gap:5px}}

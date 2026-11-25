@@ -124,8 +124,8 @@ async function loadOfficial(g,id=SEL?.c.id){
  officialErrors.delete(key);
  const task=(async()=>{try{
    const r=await fetch("/api/boost?spid="+encodeURIComponent(id)+"&grade="+g,{credentials:"same-origin"});
-   const d=await r.json();
-   if(!r.ok)throw Error(d.message||"공식 시세 조회 실패");
+   const d=await r.json().catch(()=>null);
+   if(!r.ok||!d)throw Error(d?.message||"공식 도우미 연결 오류 ("+r.status+")");
    const plan=d.plan;
    if(d.spid!==id||d.grade!==g||!plan?.official||plan.gauge!==100||!Number.isSafeInteger(plan.cost)||plan.cost<=0||!Array.isArray(plan.cards)||!plan.cards.length||plan.cards.length>5||plan.cards.some(c=>!Number.isSafeInteger(c.ovr)||!Number.isSafeInteger(c.price)||c.price<=0)||plan.cards.reduce((sum,c)=>sum+c.price,0)!==plan.cost)throw Error("공식 데이터에서 풀게이지 조합을 찾지 못했습니다.");
    officialPlans.set(key,plan);return plan;

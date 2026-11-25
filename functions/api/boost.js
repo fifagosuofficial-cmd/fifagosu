@@ -30,20 +30,28 @@ export function cheapestFull(rows,conservative=false){
 const ddl=["CREATE TABLE IF NOT EXISTS boost_quote_cache (key TEXT PRIMARY KEY, created INTEGER NOT NULL, body TEXT NOT NULL)","CREATE INDEX IF NOT EXISTS boost_quote_created ON boost_quote_cache(created)","CREATE TABLE IF NOT EXISTS boost_quote_gate (id INTEGER PRIMARY KEY CHECK(id=1), bucket INTEGER NOT NULL, n INTEGER NOT NULL)"];
 const ready=new WeakMap(),inflight=new Map();
 async function ensure(db){if(!ready.has(db))ready.set(db,db.batch(ddl.map(s=>db.prepare(s))).catch(e=>{ready.delete(db);throw e}));await ready.get(db)}
+function fault(code,status=503){const e=Error(code);e.code=code;e.status=status;return e}
 async function upstream(endpoint,fields,spid,grade){
- const r=await fetch(BASE+"/datacenter/"+endpoint,{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded; charset=UTF-8","x-requested-with":"XMLHttpRequest","accept":"application/json, text/plain, */*","origin":BASE,"referer":SOURCE+"?spid="+spid+"&n1Strong="+grade,"user-agent":"Mozilla/5.0 (compatible; FIFAGOSU-DataBot/1.0; +https://fifagosu.com)"},body:new URLSearchParams(fields).toString(),signal:AbortSignal.timeout(12000),redirect:"error"});
- if(!r.ok){const err=Error("official response");err.status=r.status===429||r.status===403?429:502;throw err}
- const raw=await r.text();if(raw.length>3000000)throw Error("oversize official response");return JSON.parse(raw);
+ const kind=endpoint==="RecommendOVRList"?"quotes":"verify";
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
+ try{
+  let r;
+  try{r=await fetch(BASE+"/datacenter/"+endpoint,{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded; charset=UTF-8","x-requested-with":"XMLHttpRequest","accept":"application/json, text/plain, */*","accept-language":"ko-KR,ko;q=0.9","origin":BASE,"referer":SOURCE,"user-agent":"Mozilla/5.0 (compatible; FIFAGOSU-DataBot/1.0)"},body:new URLSearchParams(fields).toString(),signal:controller.signal,redirect:"manual"})}
+  catch{throw fault(kind+(controller.signal.aborted?"_timeout":"_network"))}
+  if(!r.ok)throw fault(kind+"_http_"+r.status,r.status===429||r.status===403?429:503);
+  const raw=await r.text();if(raw.length>3000000)throw fault(kind+"_size");
+  try{return JSON.parse(raw)}catch{throw fault(kind+"_format")}
+ }finally{clearTimeout(timer)}
 }
 const pause=()=>new Promise(r=>setTimeout(r,1500));
 export async function fetchOfficialPlan(spid,grade,call=upstream,delay=pause){
  const args={n8SpId:String(spid),n1Strong:String(grade),n4BoostPer:"0"};
  const rows=quoteRows(await call("RecommendOVRList",args,spid,grade));
- if(!rows.length)throw Error("no valid OVR quotes");
+ if(!rows.length)throw fault("quotes_empty");
  const plan=cheapestFull(rows);
  if(!plan)return {source:SOURCE,spid,grade,rows,plan:null,reason:"no_full_combo"};
  async function verify(candidate){await delay();const raw=await call("PlayerGrowCalApi",{...args,idx:"1",strCalinfo:","+candidate.cards.map(c=>c.ovr).join(",")+","},spid,grade);
-  const d=raw?.ResultData??raw;const gauge=pct(d?.strBoostPer);if(!Number.isFinite(gauge)||gauge<0||gauge>100)throw Error("invalid official gauge");
+  const d=raw?.ResultData??raw;const gauge=pct(d?.strBoostPer);if(!Number.isFinite(gauge)||gauge<0||gauge>100)throw fault("verify_format");
   return gauge;
  }
  let chosen=plan,gauge=await verify(chosen);
@@ -57,21 +65,23 @@ export async function onRequestGet({request,env,waitUntil}){
  if(!/^\d{8,9}$/.test(id)||! /^(?:[1-9]|1[012])$/.test(g)||request.headers.get("sec-fetch-site")==="cross-site")return json(400,{message:"선수와 강화 단계를 확인해 주세요."});
  const spid=Number(id),grade=Number(g),key=spid+":"+grade,db=env.COMMUNITY_DB;
  if(!db)return json(503,{message:"공식 강화 도우미 연결 준비 중입니다."});
+ let stage="cache_init";
  try{
-  await ensure(db);const now=Math.floor(Date.now()/1000);
+  await ensure(db);const now=Math.floor(Date.now()/1000);stage="cache_read";
   const hit=await db.prepare("SELECT body,created FROM boost_quote_cache WHERE key=? AND created>?").bind(key,now-TTL).first();
   if(hit){return json(200,JSON.parse(hit.body),Math.max(1,TTL-now+hit.created))}
   if(!inflight.has(key)){
    const task=(async()=>{
     // Global aggregate request budget. No IP or account data in this table.
-    const bucket=Math.floor(now/60),gate=await db.prepare("INSERT INTO boost_quote_gate(id,bucket,n) VALUES(1,?,1) ON CONFLICT(id) DO UPDATE SET bucket=excluded.bucket,n=CASE WHEN bucket=excluded.bucket THEN n+1 ELSE 1 END WHERE bucket<>excluded.bucket OR n<8 RETURNING n").bind(bucket).first();
-    if(!gate){const err=Error("rate limit");err.status=429;throw err}
-    const data={...await fetchOfficialPlan(spid,grade),generated:now};
+    stage="request_budget";const bucket=Math.floor(now/60),gate=await db.prepare("INSERT INTO boost_quote_gate(id,bucket,n) VALUES(1,?,1) ON CONFLICT(id) DO UPDATE SET bucket=excluded.bucket,n=CASE WHEN bucket=excluded.bucket THEN n+1 ELSE 1 END WHERE bucket<>excluded.bucket OR n<8 RETURNING n").bind(bucket).first();
+    if(!gate)throw fault("request_limit",429);
+    stage="official";const data={...await fetchOfficialPlan(spid,grade),generated:now};
+    stage="cache_write";
     await db.prepare("INSERT INTO boost_quote_cache(key,created,body) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET created=excluded.created,body=excluded.body").bind(key,now,JSON.stringify(data)).run();
     if(Math.random()<.02)await db.prepare("DELETE FROM boost_quote_cache WHERE created<?").bind(now-2*86400).run();
     return data;
    })().finally(()=>inflight.delete(key));inflight.set(key,task)
   }
   return json(200,await inflight.get(key),TTL);
- }catch(e){const status=e.status===429?429:502;return json(status,{message:status===429?"공식 도우미 요청이 많습니다. 잠시 뒤 다시 시도해 주세요.":"공식 강화 도우미 시세를 확인하지 못했습니다. 수동 입력 또는 다시 시도해 주세요."})}
+ }catch(e){const status=e.status===429?429:503;const code=e.code||stage;console.warn("boost unavailable",code);return json(status,{code,message:status===429?"공식 도우미 요청이 제한되었습니다. 잠시 뒤 다시 시도해 주세요.":"공식 강화 도우미 시세를 확인하지 못했습니다. 수동 입력 또는 다시 시도해 주세요."})}
 }

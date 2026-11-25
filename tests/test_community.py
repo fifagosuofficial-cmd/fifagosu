@@ -60,7 +60,7 @@ def test_simplified_navigation_and_retired_calculator(tmp_path):
     out.mkdir()
     (out / "calc.html").write_text("old", encoding="utf-8")
     build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
-    expected = ["홈", "소식", "전적 진단", "선수 거래소", "AI 스쿼드", "게시판", "카드 검색", "강화·현질 효율"]
+    expected = ["홈", "소식", "전적 진단", "선수 거래소", "AI 스쿼드", "게시판", "카드 검색", "강화·현질 효율", "킥킥"]
     for file in ("index.html", "board/index.html", "news/index.html", "press/index.html", "patch/index.html", "sim/index.html"):
         doc = BeautifulSoup((out / file).read_text("utf-8"), "html.parser")
         assert [a.get_text(strip=True) for a in doc.select("nav.menu > a")] == expected
@@ -184,7 +184,7 @@ def test_search_engine_verification_in_static_head(tmp_path):
     assert "https://fifagosu.com/" in (out / "sitemap.xml").read_text("utf-8")
 
 
-def test_kickkick_visible_with_and_without_news(tmp_path, monkeypatch):
+def test_kickkick_menu_visible_with_and_without_news(tmp_path, monkeypatch):
     from bs4 import BeautifulSoup
     data = tmp_path / "missing"
     out = tmp_path / "site"
@@ -197,5 +197,7 @@ def test_kickkick_visible_with_and_without_news(tmp_path, monkeypatch):
         build.main(["--data", str(data), "--out", str(out)])
         doc = BeautifulSoup((out / "index.html").read_text("utf-8"), "html.parser")
         assert bool(doc.select_one("#v-home .mk-news")) == has_news
-        links = doc.select("#v-home a.funlink")
-        assert len(links) == 1 and links[0]["href"] == "https://fifagosu.com/fun/"
+        links = doc.select("nav.menu a[href=\"fun/\"]")
+        assert len(links) == 1 and links[0].get_text(strip=True) == "킥킥"
+        assert not doc.select("#v-home a.funlink")
+        assert doc.select_one("#smEMatAuto").has_attr("checked")

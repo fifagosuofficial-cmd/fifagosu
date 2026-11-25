@@ -52,7 +52,19 @@ function create(data,rules){
   }
   cache.set(key,best);return best;
  }
- return {ready,solve,coverage:table.size,date:data?.date||null};
+ // Cost proxy only: five copies of the cheapest priced card at the target's
+ // current enhanced OVR, or the nearest higher observed OVR (max +5).
+ // Never claim this is a verified full-gauge combination.
+ function estimate(base,grade,bonus,excluded=0){
+  if(!safe(base)||!safe(grade)||grade>12||!Number.isInteger(bonus)||bonus<0)return null;
+  const target=base+bonus;
+  for(let o=target;o<=target+5;o++){
+   const card=index.get(o)?.find(c=>c.pid!==excluded);
+   if(card&&safe(card.price*5))return {cost:card.price*5,cards:Array(5).fill(card),ovr:target,grade,estimated:true,materialOvr:o,gauge:null};
+  }
+  return null;
+ }
+ return {ready,solve,estimate,coverage:table.size,date:data?.date||null};
 }
 return {create};
 });

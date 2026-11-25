@@ -104,7 +104,6 @@
     </div>
   </section>
 {% endif %}
-  <a class="funlink" href="{{ SITE_URL }}/fun/" target="_self"><b>킥킥 · 내가 선수라면?</b><span>닮은 선수 찾기·내 몸값·감독 유형 등 12종, 1분이면 끝나요</span><em>해보기 →</em></a>
 
 </main>
 
@@ -258,7 +257,7 @@
           <label>시작 강화<select id="smEFrom"></select></label>
           <label>목표 강화<select id="smETo"></select></label>
           <label>실패하면<select id="smEFail"><option value="keep">단계 유지</option><option value="down">1단계 하락 (5강 이상)</option></select></label>
-          <label class="mat-in">재료 카드 1장 가격 (BP)<input type="text" id="smEMat" placeholder="예: 2500000" inputmode="numeric" autocomplete="off"><span class="mat-v" id="smEMatV">재료비 0 (계산에서 빼요)</span></label><label class="mat-in"><span><input type="checkbox" id="smEMatAuto"> 단계별 풀게이지 최저가 조합</span><span id="smEMatCombo" class="mat-v" aria-live="polite"></span><a href="https://fconline.nexon.com/DataCenter/PlayerGrow" target="_blank" rel="noopener">공식 강화 부스트 도우미</a></label>
+          <label class="mat-in">재료 카드 1장 가격 (BP)<input type="text" id="smEMat" placeholder="예: 2500000" inputmode="numeric" autocomplete="off"><span class="mat-v" id="smEMatV">재료비 불러오는 중</span></label><label class="mat-in"><span><input type="checkbox" id="smEMatAuto" checked> 자동 재료비 (검증 조합 우선 · 없으면 5장 추정)</span><span id="smEMatCombo" class="mat-v" aria-live="polite"></span><a href="https://fconline.nexon.com/DataCenter/PlayerGrow" target="_blank" rel="noopener">공식 강화 부스트 도우미</a><small>추정 모드는 현재 강화 OVR 이상 재료 5장 시세와 풀게이지 성공률을 가정합니다. 실제 게이지·거래 수량은 확인해 주세요.</small></label>
         </div>
         <div id="smEStatsBox"><p class="sim-note">선수를 고르면 34개 세부 능력치가 여기 표시돼요.</p></div>
         <ol class="sim-log" id="smELog"></ol>

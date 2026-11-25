@@ -14,3 +14,10 @@ test("does not invent missing rules or round near-full up",()=>{
  assert.equal(create(data,rules).solve(110,2,1,1),null);
  assert.equal(create(data,{...rules,rows:[{grade:1,targetOvr:110,materials:[[110,1999]]}]}).solve(110,1,0,1),null);
 });
+test("five-card price proxy is explicitly unverified, grade-aware and excludes target",()=>{
+ const x=create(data,null),p=x.estimate(110,1,0,1);
+ assert.equal(p.cost,40);assert.equal(p.cards.length,5);assert.equal(p.gauge,null);assert.equal(p.estimated,true);
+ assert.equal(x.estimate(110,5,2,1).cost,60);
+ assert.equal(x.estimate(130,1,0,1),null);
+ assert.equal(x.solve(110,1,0,1),null);
+});

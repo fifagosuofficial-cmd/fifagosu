@@ -1290,7 +1290,7 @@ nav.menu a.core{display:inline-flex;align-items:center;gap:5px}.fg-diag-icon{fle
 
 /* 2026-11-25: 모바일 메뉴와 전적 리포트를 한 화면에 컴팩트하게 정리 */
 @media(max-width:760px){
-  .fg-nav-shell nav.menu{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;margin-top:7px;padding:0 0 8px!important;overflow:visible}
+  .fg-nav-shell nav.menu{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;margin-top:7px;padding:0 0 8px!important;overflow:visible}
   .fg-nav-shell nav.menu>a{display:flex!important;align-items:center;justify-content:center;gap:3px;min-height:34px;padding:4px 3px!important;border-radius:8px!important;white-space:nowrap!important;text-align:center;font-size:12px!important;line-height:1.2}
   .fg-nav-shell nav.menu .fg-diag-icon{width:15px;height:15px}
   .nav-sim-label{font-size:0;white-space:nowrap}

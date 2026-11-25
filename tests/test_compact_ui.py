@@ -11,7 +11,7 @@ def test_mobile_navigation_is_balanced_and_trade_is_promoted():
     for html in (base, index):
         assert html.index("전적 진단") < html.index("선수 거래소") < html.index("AI 스쿼드")
         assert 'data-mobile-label="강화·현질"' in html
-    assert "grid-template-columns:repeat(4,minmax(0,1fr))" in css
+    assert ".fg-nav-shell nav.menu{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))" in css
     assert ".nav-sim-label::after" in css
 
 

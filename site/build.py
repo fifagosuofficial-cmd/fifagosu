@@ -27,6 +27,7 @@ ROOT = SITE.parent
 KST = dt.timezone(dt.timedelta(hours=9))
 sys.path.insert(0, str(ROOT / "crawler"))
 from market_rank import MAX_SAFE_INTEGER, merge_market_moves, rank_market_moves  # noqa: E402
+from news_classify import clean_news_items  # noqa: E402
 
 # 고정 페이지: (출력 파일, 템플릿, 경로, 제목, 설명, sitemap 포함 여부, 추가 값)
 MAIN_T = "index.html"
@@ -90,14 +91,10 @@ def load_news(data_dir, today):
     if not feed or not feed.get("items"):
         return None
     ev = (_load(data_dir / "news" / "events.json") or {}).get("items", [])
-    items = feed["items"]
-    # RSS에 남아 있는 과거 언론사 요약도 게시 페이지·공개 데이터에서 지워요.
-    cleaned = False
-    for item in items:
-        if (item.get("kind") == "press" or item.get("cat") in PRESS) and item.get("summary"):
-            item["summary"] = []
-            cleaned = True
-    if cleaned:
+    items = clean_news_items(feed["items"])
+    if items != feed["items"]:
+        print(f"news cleanup: {len(feed['items'])} -> {len(items)}")
+        feed["items"] = items
         feed_path = data_dir / "news" / "feed.json"
         tmp = feed_path.with_suffix(".tmp")
         tmp.write_text(json.dumps(feed, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -124,7 +121,7 @@ def load_news(data_dir, today):
         events.append({**e, "pct": pct})
     events.sort(key=lambda e: e["end"])
     timeline = sorted(official + updates[:1], key=lambda x: x.get("date") or "", reverse=True)
-    world = [x for x in press if x["cat"] == "world"] or press
+    world = [x for x in press if x["cat"] == "world"]
     patches = sorted([x for x in items if x["cat"] == "update" or (x["cat"] in ("notice", "check") and PATCH_RE.search(x["title"]))],
                      key=lambda x: x.get("date") or "", reverse=True)
     return {"updated": feed.get("updated", ""), "official": timeline[:8], "press": press[:7], "world": world[:8], "patches": patches, "events": events, "patch": patch,

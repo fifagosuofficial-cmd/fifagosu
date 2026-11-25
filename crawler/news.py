@@ -29,6 +29,7 @@ from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
+from news_classify import GAME_PATTERN, VERSION, classify_article, classify_league, clean_news_items
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("FG_DATA", ROOT / "data"))
@@ -42,18 +43,8 @@ DELAY = float(os.environ.get("FG_NEWS_DELAY", 1.5))
 FEEDS = [
     ("인터풋볼", "https://www.interfootball.co.kr/rss/allArticle.xml", "football", None),
     ("풋볼리스트", "https://www.footballist.co.kr/rss/allArticle.xml", "football", None),
-    ("경향게임스", "https://www.khgames.co.kr/rss/allArticle.xml", "fcgame", r"FC\s?온라인|피파\s?온라인|EA\s?SPORTS\s?FC|FC\s?모바일|피파"),
-    ("게임톡", "https://www.gametoc.co.kr/rss/allArticle.xml", "fcgame", r"FC\s?온라인|피파\s?온라인|EA\s?SPORTS\s?FC|FC\s?모바일|피파"),
-]
-DOMESTIC = re.compile(r"K리그|K1|K2|한국 대표팀|대한민국 대표팀|대표팀 소집|A매치|홍명보|코리아컵|WK리그|울산|전북|포항|FC서울|수원|대구FC|광주FC|강원FC|제주|인천|대전|김천|경남FC|부천|안양")
-KFA_NEWS = re.compile(r"KFA|대한축구협회|축구협회|국가대표|대표팀|A매치|월드컵 예선|아시안컵|올림픽 대표|U-1[789]|여자 대표팀")
-KLEAGUE_NEWS = re.compile(r"K리그|K League|K1|K2|K3|K4|코리아컵|WK리그|울산|전북|포항|FC서울|수원(?:삼성|FC)?|대구FC|광주FC|강원FC|제주(?:SK)?|인천유나이티드|대전하나|김천상무|경남FC|부천FC|안양FC|충남아산|성남FC|부산아이파크|서울이랜드")
-LEAGUES = [
-    ("EPL", re.compile(r"\bEPL\b|프리미어리그|Premier League|맨체스터 시티|맨시티|맨체스터 유나이티드|맨유|토트넘|리버풀|첼시|아스널|아스날|뉴캐슬|애스턴 빌라|브라이턴|웨스트햄", re.I)),
-    ("라리가", re.compile(r"라리가|La Liga|바르셀로나|레알 마드리드|아틀레티코 마드리드|세비야|비야레알|레알 소시에다드", re.I)),
-    ("분데스리가", re.compile(r"분데스리가|Bundesliga|바이에른 뮌헨|도르트문트|레버쿠젠|라이프치히|프랑크푸르트", re.I)),
-    ("세리에A", re.compile(r"세리에 ?A|Serie A|유벤투스|인터 밀란|인테르|AC 밀란|나폴리|AS 로마|아탈란타", re.I)),
-    ("리그앙", re.compile(r"리그앙|Ligue 1|파리 생제르맹|PSG|마르세유|모나코|릴 OSC", re.I)),
+    ("경향게임스", "https://www.khgames.co.kr/rss/allArticle.xml", "fcgame", GAME_PATTERN),
+    ("게임톡", "https://www.gametoc.co.kr/rss/allArticle.xml", "fcgame", GAME_PATTERN),
 ]
 CAT_LABEL = {"notice": "공지", "check": "점검", "update": "업데이트", "event": "이벤트",
              "fcgame": "FC온라인 기사", "world": "해외축구", "korea": "국내축구"}
@@ -169,22 +160,6 @@ def parse_update_list(text):
     return out
 
 
-def classify_league(title, category):
-    """축구 기사 제목으로만 세부 분류해요. 판단이 어려우면 기타예요."""
-    text = clean(title)
-    if category == "korea":
-        if KFA_NEWS.search(text):
-            return "KFA"
-        if KLEAGUE_NEWS.search(text):
-            return "K리그"
-        return "기타"
-    if category == "world":
-        for label, pattern in LEAGUES:
-            if pattern.search(text):
-                return label
-    return "기타"
-
-
 def parse_update_summary(text, limit=5):
     """패치 페이지의 소제목·목록 머리말을 짧게 발췌해요. 원문 링크로 전체 내용을 안내해요."""
     soup = BeautifulSoup(text, "html.parser")
@@ -233,7 +208,7 @@ def parse_date(s):
 
 def parse_rss(text, source, base_cat, keyword=None):
     root = ET.fromstring(text.encode("utf-8") if isinstance(text, str) else text)
-    kw = re.compile(keyword) if keyword else None
+    kw = re.compile(keyword, re.I) if keyword else None
     out = []
     for it in root.iter("item"):
         title = clean(it.findtext("title"))
@@ -242,11 +217,13 @@ def parse_rss(text, source, base_cat, keyword=None):
             continue
         if title.startswith("[포토]") or title.startswith("[영상]"):
             continue
-        cat = base_cat
-        if base_cat == "football":
-            cat = "korea" if DOMESTIC.search(title) else "world"
+        categories = [node.text or "" for node in it.findall("category")]
+        classified = classify_article(title, categories, it.findtext("description") or "", base_cat)
+        if not classified:
+            continue
+        cat, league = classified
         out.append({"id": uid(link), "cat": cat, "kind": "press", "title": title, "summary": [],
-                    "league": classify_league(title, cat),
+                    "league": league, "topicVersion": VERSION,
                     "source": source, "url": link, "date": parse_date(it.findtext("pubDate"))})
     return out
 
@@ -272,12 +249,12 @@ class Http:
         return r.text
 
 
-def merge(old, new):
+def merge(old, new, limit=KEEP):
     by = {x["id"]: x for x in old}
     for x in new:
         by[x["id"]] = {**by.get(x["id"], {}), **x}
     items = sorted(by.values(), key=lambda x: x.get("date") or "", reverse=True)
-    return items[:KEEP]
+    return items[:limit] if limit is not None else items
 
 
 def run(data=DATA, http=None):
@@ -356,7 +333,9 @@ def run(data=DATA, http=None):
         except Exception as e:  # noqa: BLE001
             errors.append(f"{name}: {e.__class__.__name__}")
 
-    items = merge(feed["items"], new)
+    # Clean before truncating so unrelated records cannot crowd out relevant news.
+    items = clean_news_items(merge(feed["items"], new, limit=None))[:KEEP]
+    log(f"뉴스 분류 정리: 기존 {len(feed['items'])}건 → 최종 {len(items)}건 (신규 포함)")
     for x in items:
         if x.get("kind") == "press" or x.get("cat") in ("world", "korea", "fcgame"):
             x["summary"] = []  # 기존 RSS 요약도 저장 데이터에서 함께 제거해요.

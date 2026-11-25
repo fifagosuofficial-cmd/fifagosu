@@ -31,7 +31,7 @@
     <div class="nw-body">
       {% for l in x.summary %}<p>{{ l }}</p>{% endfor %}
       <p class="cl-src"><a href="{{ root }}news/{{ x.id }}">게시글로 보기</a> · <a href="{{ x.url }}" target="_blank" rel="noopener nofollow">{{ x.source }}에서 기사 전문 읽기 ↗</a>
-        <span class="cl-note">요약은 {{ x.source }} RSS 제공 문구예요. 기사 저작권은 {{ x.source }}에 있어요.</span></p>
+        <span class="cl-note">기사 제목과 원문 링크만 제공해요. 기사 저작권은 {{ x.source }}에 있어요.</span></p>
     </div>
   </details>
 </li>
@@ -45,8 +45,8 @@
   <button type="button" role="tab" aria-selected="false" data-f="korea">국내축구</button>
 </div>
 <div class="nw-subtabs" data-subtabs="{{ prefix }}" hidden>
-  <div data-subgroup="world" hidden>{% for l in ['전체','EPL','라리가','분데스리가','세리에A','리그앙','기타'] %}<button type="button" data-league="{{ l }}" aria-pressed="{{ 'true' if l=='전체' else 'false' }}">{{ l }}</button>{% endfor %}</div>
-  <div data-subgroup="korea" hidden>{% for l in ['전체','KFA','K리그','기타'] %}<button type="button" data-league="{{ l }}" aria-pressed="{{ 'true' if l=='전체' else 'false' }}">{{ l }}</button>{% endfor %}</div>
+  <div data-subgroup="world" hidden>{% for l in ['전체','EPL','라리가','분데스리가','세리에A','리그앙','UCL·UEL','MLS','J리그','해외 국가대표','기타'] %}<button type="button" data-league="{{ l }}" aria-pressed="{{ 'true' if l=='전체' else 'false' }}">{{ l }}</button>{% endfor %}</div>
+  <div data-subgroup="korea" hidden>{% for l in ['전체','K리그1','K리그2','K리그','국가대표','ACLE·ACL2','코리아컵','기타'] %}<button type="button" data-league="{{ l }}" aria-pressed="{{ 'true' if l=='전체' else 'false' }}">{{ l }}</button>{% endfor %}</div>
 </div>
 {%- endmacro %}
 

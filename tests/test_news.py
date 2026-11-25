@@ -79,3 +79,48 @@ def test_run_merge_and_incremental(tmp_path):
 def test_rss_header_variants():
     xml = """<rss><channel><item><title>아스널 희소식</title><link>http://a/1</link><description>[풋볼리스트] 김진혁 기자= 아스널에 희소식이 전해졌다.</description><pubDate>2026-11-21 13:30:00</pubDate></item></channel></rss>"""
     assert news.parse_rss(xml, "풋볼리스트", "football")[0]["summary"] == []
+
+
+def test_football_only_classification_and_cleanup():
+    from news_classify import classify_article, clean_news_items
+    cases = [
+        ("야닉 시너, 윔블던 이후 무릎 수술", None),
+        ("NBA 피펜보다 낫다, 그린의 수비", None),
+        ("김하성, MLB 디트로이트 계약", None),
+        ("[Y현장] 신병 더 무비 스크린 데뷔", None),
+        ("블랙야크, 겨울용 다운 출시", None),
+        ("대구, 홈경기 득점으로 모은 쌀 기부", ("korea", "K리그")),
+        ("충북청주, 골키퍼 조성빈 재계약", ("korea", "K리그")),
+        ("천안, 제3대 단장 선임", ("korea", "K리그")),
+        ("강원, ACL2 사활 걸린 마지막 홈경기", ("korea", "ACLE·ACL2")),
+        ("K리그2 수원 우승", ("korea", "K리그2")),
+        ("대한민국 대표팀 A매치 명단", ("korea", "국가대표")),
+        ("대한민국 국가대표 황희찬, 샬케 감독 신뢰", ("world", "분데스리가")),
+        ("손흥민 LAFC MLS컵 출전", ("world", "MLS")),
+        ("아스널 UCL 승리", ("world", "UCL·UEL")),
+        ("넥슨 FC 온라인 신규 시즌", ("fcgame", "기타")),
+        ("FC 모바일 신규 시즌", None),
+        ("'이게 야구야, 축구야?' 스페인 U-17 월드컵 대승", ("world", "해외 국가대표")),
+    ]
+    for title, expected in cases:
+        assert classify_article(title) == expected, title
+    official = {"id": "notice", "cat": "notice", "kind": "official", "title": "공지", "summary": ["원문"]}
+    legacy = [{"id": str(i), "cat": "world", "kind": "press", "title": title, "summary": ["old"]}
+              for i, (title, _) in enumerate(cases)]
+    clean = clean_news_items([official] + legacy + legacy)
+    assert clean[0] == official
+    assert len(clean) == 1 + sum(expected is not None for _, expected in cases)
+    assert all(not x["summary"] for x in clean[1:])
+    assert clean_news_items(clean) == clean
+
+
+def test_rss_categories_and_description_are_evidence_not_content():
+    xml = """<rss><channel>
+    <item><title>새로운 도전</title><link>https://example.com/1</link><category>국내축구</category><description>충북청주 FC 구단의 새 시즌</description></item>
+    <item><title>선수들의 도전</title><link>https://example.com/2</link><category>야구</category><description>MLB 새 시즌</description></item>
+    <item><title>새 소식</title><link>https://example.com/3</link><category>연예</category></item>
+    </channel></rss>"""
+    rows = news.parse_rss(xml, "테스트", "football")
+    assert len(rows) == 1 and rows[0]["cat"] == "korea"
+    assert rows[0]["summary"] == [] and rows[0]["topicVersion"] == 2
+    assert "description" not in rows[0]

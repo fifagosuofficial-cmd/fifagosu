@@ -209,17 +209,13 @@
   <!-- ===== 강화 효율 ===== -->
   <section class="sim-panel" id="simEff">
     <div class="eff-mode" role="tablist" aria-label="강화 효율 보기">
-      <button type="button" data-em="top" aria-selected="true">회수율 TOP</button>
-      <button type="button" data-em="budget" aria-selected="false">예산으로 찾기</button>
+      <button type="button" data-em="win" aria-selected="true">한방강화 TOP</button>
+      <button type="button" data-em="top" aria-selected="false">회수율 TOP</button>
     </div>
     <div class="eff-opts">
       <div class="eff-steps" id="effSteps" role="group" aria-label="강화 단계"></div>
-      <label class="eff-chk"><input type="checkbox" id="effMat"> 재료비 포함 <small>(공식 풀게이지 재료비 자동 조회)</small></label>
+      <label class="eff-chk"><input type="checkbox" id="effMat" checked> 재료비 포함 <small>(공식 풀게이지 재료비 자동 조회)</small></label>
       <label class="eff-chk">실패하면<select id="effFail"><option value="keep">단계 유지</option><option value="down">1단계 하락 (5강 이상)</option></select></label>
-    </div>
-    <div class="eff-budget" id="effBudget" hidden>
-      <label>내 예산<input type="number" id="effMoney" min="0" step="0.1" value="2" inputmode="decimal"><span>억 BP</span></label>
-      <div class="eff-quick" id="effQuick"><button type="button" data-b="0.5">5천만</button><button type="button" data-b="1">1억</button><button type="button" data-b="5">5억</button><button type="button" data-b="10">10억</button><button type="button" data-b="50">50억</button><button type="button" data-b="200">200억</button></div>
     </div>
     <p class="sim-note" id="effInfo">시세를 불러오는 중…</p>
     <div class="eff-actions" id="effActions" hidden><span id="effProgress" role="status" aria-live="polite"></span><div><button type="button" class="ghost" id="effMore">후보 6건 추가 조회</button><button type="button" class="ghost" id="effRetry" hidden>다시 조회</button></div></div>

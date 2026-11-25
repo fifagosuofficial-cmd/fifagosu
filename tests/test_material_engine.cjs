@@ -53,8 +53,20 @@ test("efficiency ranking subtracts verified cost and recomputes return, profit a
  assert.equal(ctx.effWithMaterial(r,{...cost,gauge:99}),null);
  assert.equal(ctx.effWithMaterial(r,{...cost,official:false}),null);
  const other={...r,id:2,buy:90,rr:1.4,win:200},expensive={...r,id:3,buy:1000,rr:5,win:1000};
- assert.deepEqual(Array.from(ctx.effCandidateOrder([r,other,expensive],"budget",120),x=>x.id),[r.id,2]);
- assert.equal(ctx.effCandidateOrder([r,other,expensive],"top",0)[0].id,3);
+ assert.deepEqual(Array.from(ctx.effCandidateOrder([r,other,expensive],"win"),x=>x.id),[3,2,r.id]);
+ assert.equal(ctx.effCandidateOrder([r,other,expensive],"top")[0].id,3);
  assert.ok(s.includes("await loadOfficial(r.g,r.id)"));
  assert.ok(!s.includes("if($('effMat').checked&&!MATERIALS?.ready)"));
+});
+
+test("efficiency defaults to verified costs with two rankings and bounded concurrent lookups",()=>{
+ const fs=require("node:fs"),path=require("node:path"),s=fs.readFileSync(path.join(__dirname,"../site/assets/js/sim.js"),"utf8"),h=fs.readFileSync(path.join(__dirname,"../site/templates/index.html"),"utf8");
+ assert.match(h,/id="effMat" checked/);assert.match(h,/data-em="win" aria-selected="true"/);assert.match(h,/data-em="top" aria-selected="false"/);assert.ok(!h.includes('data-em="budget"'));
+ assert.ok(s.includes('EFF_PARALLEL=2'));assert.ok(s.includes('/api/boost?cached=1'));assert.ok(s.includes('ctx.byKey.get(key)'));
+});
+test("cached boost endpoint returns only verified recent plans and never calls upstream",async()=>{
+ const {onRequestGet}=await boost();let min=0;const good={spid:100004000,grade:1,plan:{official:true,gauge:100,cost:5}},bad={...good,plan:{official:true,gauge:99}};
+ const db={batch:async()=>[],prepare(sql){return {bind(v){min=v;return {all:async()=>({results:[{body:JSON.stringify(good)},{body:JSON.stringify(bad)},{body:"bad json"}]})}}}}};
+ const r=await onRequestGet({request:new Request("https://example.test/api/boost?cached=1"),env:{COMMUNITY_DB:db}});
+ assert.equal(r.status,200);assert.deepEqual((await r.json()).items,[good]);assert.ok(min>0);
 });

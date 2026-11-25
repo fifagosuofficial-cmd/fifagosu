@@ -1456,3 +1456,23 @@ nav.menu a.nav-diag-feature:hover,nav.menu a.nav-diag-feature:focus-visible{anim
   .sim-fee-bar .sfb-out b{margin:0;font-size:13px}
 }
 @media(max-width:360px){.sim-fee-bar .sfb-top-label{font-size:0}.sim-fee-bar .sfb-top-label::after{content:"TOP";font-size:10px}.sim-fee-bar{gap:2px;padding-inline:3px}}
+
+/* Ranking cards: independently sized player identity, primary result, and BP metrics. */
+.eff-row{grid-template-columns:24px 46px minmax(0,1fr) minmax(0,auto);grid-template-areas:"r i w m" "d d d d";gap:8px 10px;padding:10px 12px 12px;box-sizing:border-box;min-width:0}
+.eff-row .er-who{display:grid;gap:4px;min-width:0}
+.eff-row .er-name{min-width:0;align-items:center}.eff-row .er-name .sbig,.eff-row .er-name .ssn{flex:none}.eff-row .er-name b{white-space:normal;overflow:visible;text-overflow:clip;word-break:keep-all;overflow-wrap:anywhere;line-height:1.25}
+.eff-row .er-step{flex-wrap:wrap;gap:3px}.eff-row .er-step em{white-space:nowrap}
+.eff-row .er-main{min-width:0;gap:2px;text-align:right}.eff-row .er-main b{line-height:1.3;word-break:keep-all;overflow-wrap:anywhere}.eff-row .er-main b.up{color:var(--good)}.eff-row .er-main b.dn{color:var(--crit)}
+.eff-row .er-money{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;min-width:0}
+.er-metric{display:flex;flex-direction:column;gap:2px;min-width:0;padding:6px 7px;background:var(--sunk);border-radius:6px;text-align:left}
+.er-metric small{font:500 10px/1.2 var(--f-body);color:var(--muted)}.er-metric b{font:700 12px/1.35 var(--f-data);word-break:keep-all;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;min-width:0}
+@media(max-width:760px){
+  .sim-head .sim-intro{font-size:11px;letter-spacing:-.025em;word-break:keep-all}
+  .eff-mode{display:flex;width:100%;box-sizing:border-box}.eff-mode button{flex:1;min-width:0;font-size:13px;white-space:nowrap}
+  .eff-row{grid-template-columns:18px 38px minmax(0,1fr);grid-template-areas:"r i w" "m m m" "d d d";gap:7px;padding:9px 9px 11px}
+  .eff-row .er-img{width:38px;height:38px}.eff-row .er-img img{max-height:38px}.eff-row .er-rank{font-size:13px}.eff-row .er-name b{font-size:13px}
+  .eff-row .er-main{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--surface);text-align:right}
+  .eff-row .er-main small{flex:none;font-size:11px}.eff-row .er-main b{font-size:clamp(13px,4.2vw,17px);min-width:0}
+  .eff-row .er-money{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}.eff-row .er-metric{padding:5px 6px}.eff-row .er-metric b{font-size:11px}.eff-row .er-metric:last-child{grid-column:1/-1;flex-direction:row;justify-content:space-between;align-items:center}
+}
+@media(max-width:350px){.sim-head .sim-intro{font-size:10px}.eff-row .er-main{gap:4px;padding-inline:5px}.eff-row .er-main b{font-size:12px}.eff-row .er-metric b{font-size:10px}}

@@ -522,6 +522,11 @@ def main(argv=None):
     if (out / "fun" / "index.html").exists():
         sitemap.append(site_url + "/fun/")
 
+    ads_client = cfg.get("ads", {}).get("adsense_client", "")
+    if ads_client.startswith("ca-pub-") and ads_client[7:].isdigit():
+        (out / "ads.txt").write_text(f"google.com, {ads_client[3:]}, DIRECT, f08c47fec0942fa0\n", encoding="utf-8")
+    else:
+        (out / "ads.txt").unlink(missing_ok=True)
     (out / "robots.txt").write_text(
         "User-agent: *\nDisallow: /api/\nDisallow: /user/\nDisallow: /preview/\nDisallow: /mypage/\nDisallow: /admin/\n\n"
         f"Sitemap: {site_url}/sitemap.xml\n", encoding="utf-8")

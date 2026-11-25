@@ -21,6 +21,13 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <link rel="stylesheet" href="{{ root }}assets/css/main.css?v={{ ver }}">
 <script>window.FG_SITE_URL={{ SITE_URL|tojson }};window.FG_LIVE=/^https?:$/.test(location.protocol)&&!/(^|\.)(claude\.ai|claudeusercontent\.com|claude\.site)$/.test(location.hostname);window.FG_AD_CONFIG={{ cfg.get('ads', {})|tojson }};</script>
+{% set ad_cfg = cfg.get('ads', {}) %}
+{% if ad_cfg.get('adsense_client') %}
+<meta name="google-adsense-account" content="{{ ad_cfg.adsense_client }}">
+{% if view == 'home' and not ad_cfg.get('slots', {}).values()|select|list %}
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ ad_cfg.adsense_client }}" crossorigin="anonymous"></script>
+{% endif %}
+{% endif %}
 {% block head %}{% endblock %}
 </head><body data-view="{{ view or '' }}"{% if (view or '') in ('home','sim','trade','diag','cards','calc','guide','squad','board','mypage','admin') or (active is defined and active in ('news','press','patch','sim')) %} class="page-wide"{% endif %}>
 <header class="top">

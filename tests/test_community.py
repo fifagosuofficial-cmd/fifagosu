@@ -93,8 +93,11 @@ def test_ad_slots_are_ready_but_do_not_load_network_without_ids(tmp_path):
         assert doc.select_one(f'aside[data-ad-slot="{slot}"][aria-label="광고"]')
         assert doc.select_one('script[src*="assets/js/ads.js"]')
     home = (out / "index.html").read_text("utf-8")
-    assert '"enabled": false' in home
-    assert "ca-pub-" not in home
+    assert '"enabled": true' in home
+    assert 'name="google-adsense-account" content="ca-pub-2025317658537963"' in home
+    assert "adsbygoogle.js?client=ca-pub-2025317658537963" in home
+    assert (out / "ads.txt").read_text("utf-8") == "google.com, pub-2025317658537963, DIRECT, f08c47fec0942fa0\n"
+    assert "adsbygoogle.js?client=" not in (out / "admin/index.html").read_text("utf-8")
     loader = (out / "assets/js/ads.js").read_text("utf-8")
     assert "pagead2.googlesyndication.com" in loader
     assert "cfg.enabled===true" in loader
@@ -107,7 +110,7 @@ def test_member_policies_match_active_login_and_ad_placeholders(tmp_path):
     assert "Google 로그인" in privacy
     assert "회원가입·로그인 기능이 없고" not in privacy
     assert "현재 미시행" not in privacy + terms
-    assert "외부 광고·방문자 분석 스크립트는 실행하지 않습니다" in privacy
+    assert "Google AdSense 사이트 연결 및 검토" in privacy
     assert "fifagosu@gmail.com" in privacy
 
 def test_forum_detail_list_and_rank_assets(tmp_path):

@@ -6,7 +6,7 @@ if(!layout)return;
 const slots=[...layout.querySelectorAll("[data-ad-slot]")],ids=cfg.slots&&typeof cfg.slots==="object"?cfg.slots:{};
 const client=String(cfg.adsense_client||"").trim(),valid=v=>/^\d+$/.test(String(v||""));
 const enabled=cfg.enabled===true&&cfg.provider==="adsense"&&/^ca-pub-\d{6,}$/.test(client);
-const preview=!cfg.enabled&&new URLSearchParams(location.search).get("ad-preview")==="1";
+const preview=(!cfg.enabled||!Object.values(ids).some(valid))&&new URLSearchParams(location.search).get("ad-preview")==="1";
 const activeView=()=>document.body.dataset.view||"";
 const rail=el=>el.classList.contains("fg-ad-rail");
 const slotID=el=>String(ids[el.dataset.adSlot]||(el.dataset.adSlot.startsWith("sim-")?ids["sim-1"]:"")||(rail(el)?"":ids.center)||"");

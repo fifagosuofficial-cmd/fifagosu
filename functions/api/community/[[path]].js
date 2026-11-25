@@ -81,7 +81,7 @@ export async function onRequest({request,env}){
  const audit=async(action,target,reason)=>run("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",member.id,action,String(target),reason,now());
  try{
  if(request.method==="GET"){
-   if(p==="me"){if(!member)return json({enabled:true,member:null});await ensureBoard(db);const ranks=await authorRanks(db,[member.id]);return json({enabled:true,member:{nickname:member.nickname,game_name:member.game_name,suspended:!!member.suspended,admin,rank:ranks.get(member.id)||rankFor(0),needsPolicy:member.policy!==POLICY}})}
+   if(p==="me"){if(!member)return json({enabled:true,member:null});await ensureBoard(db);const ranks=await authorRanks(db,[member.id]);if(member.game_name!==null&&member.game_name!==undefined)await run("UPDATE members SET game_name=NULL WHERE id=?",member.id);return json({enabled:true,member:{nickname:member.nickname,suspended:!!member.suspended,admin,rank:ranks.get(member.id)||rankFor(0),needsPolicy:member.policy!==POLICY}})}
    if(p==="callback"){
      const state=u.searchParams.get("state"),code=u.searchParams.get("code");
      check(state&&state===getCookie(request,"fg_oauth")&&/^[a-f0-9]{64}$/.test(state)&&code,"인증 요청이 만료되었습니다.");
@@ -179,9 +179,8 @@ export async function onRequest({request,env}){
  if(p==="logout"){if(reqToken)await run("DELETE FROM sessions WHERE hash=?",await sha(reqToken));return json({ok:true},200,{"set-cookie":cookie("fg_session","",0)})}
  if(p==="profile"){
    const m=me(),nick=str(b.nickname,20,2);check(/^[\p{L}\p{N}_ -]+$/u.test(nick)&&!/(운영자|관리자|admin|moderator)/i.test(nick),"사용할 수 없는 닉네임입니다.");
-   const game=b.game_name?str(b.game_name,30):null;check(!game||game===m.game_name||b.game_name_consent==="yes","선택 FC온라인 닉네임 수집에 동의해 주세요.");
    const dup=await first("SELECT id FROM members WHERE nickname=? COLLATE NOCASE AND id<>?",nick,m.id);check(!dup,"이미 사용 중인 닉네임입니다.",409);
-   await run("UPDATE members SET nickname=?,game_name=? WHERE id=?",nick,game,m.id);return json({ok:true});
+   await run("UPDATE members SET nickname=?,game_name=NULL WHERE id=?",nick,m.id);return json({ok:true});
  }
  if(p==="withdraw"){
    check(member&&b.confirm==="탈퇴","회원 탈퇴 확인이 필요합니다.");

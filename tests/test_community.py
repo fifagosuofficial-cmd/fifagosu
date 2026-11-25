@@ -210,7 +210,9 @@ def test_member_consent_disclosures(tmp_path):
     doc=BeautifulSoup((out / "mypage/index.html").read_text("utf-8"),"html.parser")
     notice=doc.select_one("#fcConsentNotice").get_text()
     assert all(k in notice for k in ("목적","항목","보유기간","거부권","2026-11-v2"))
-    assert doc.select_one('input[name="game_name_consent"]')
+    assert not doc.select_one('input[name="game_name_consent"]')
+    assert not doc.select_one('input[name="game_name"]')
+    assert doc.select_one('input[name="nickname"]')
     privacy=(out / "privacy.html").read_text("utf-8")
     assert "Time Travel" in privacy and "2026-11-v2" in privacy
 
@@ -245,3 +247,16 @@ def test_admin_traffic_integration():
     assert "data-fg-traffic-toggle" in (root / "site/templates/pages/privacy.html").read_text("utf-8")
     assert "fc-admin-link" in (root / "site/templates/community.html").read_text("utf-8")
     assert "admin/traffic?range=" in (root / "site/assets/js/community.js").read_text("utf-8")
+
+def test_member_welcome_in_main_and_kickkick(tmp_path):
+    from bs4 import BeautifulSoup
+    out=tmp_path / "site"
+    build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
+    for name in ("index.html", "board/index.html", "mypage/index.html", "admin/index.html", "fun/index.html"):
+        doc=BeautifulSoup((out / name).read_text("utf-8"), "html.parser")
+        assert doc.select_one(".fg-account-group .fg-welcome[hidden] .fg-welcome-rank")
+        assert doc.select_one(".fg-welcome-name")
+        assert doc.select_one(".fg-welcome-xp")
+        assert doc.select_one(".fg-account-group .fg-account-icon")
+        assert doc.select_one('script[src*="welcome.js"]')
+        assert doc.select_one('link[href*="welcome.css"]')

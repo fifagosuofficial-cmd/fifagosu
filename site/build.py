@@ -463,10 +463,13 @@ function renderAds(opt={}){
 ''' + html[end:]
     replace_once("function failView(err){", "function failView(err){\n  $('adBot').hidden=true;document.querySelector('.wrap').dataset.adScreen='error';document.dispatchEvent(new Event('fg:ad-layout'));")
     config = json.dumps(cfg.get("ads", {}), ensure_ascii=True).replace("<", "\\u003c")
+    replace_once('  <header class="top">', '  <div class="fg-account-group fg-fun-account" hidden><span class="fg-welcome" hidden><img class="fg-welcome-rank" width="32" height="32" alt=""><span class="fg-welcome-copy"><span class="fg-welcome-message"><b class="fg-welcome-name"></b>님 환영합니다.</span> <span class="fg-welcome-xp"></span></span></span><a class="fg-account-icon" href="/mypage/" aria-label="마이페이지" title="마이페이지"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 21v-2.2a7.5 7.5 0 0 1 15 0V21z"/></svg></a></div>\n  <header class="top">')
     replace_once("</head>", f'<link rel="stylesheet" href="/assets/css/fun-ads.css?v={ver}">\n'
                  f'<script>window.FG_AD_CONFIG={config};</script>\n'
                  f'<script defer src="/assets/js/ads.js?v={ver}"></script>\n'
-                 f'<script defer src="/assets/js/traffic.js?v={ver}"></script>\n</head>')
+                 f'<script defer src="/assets/js/traffic.js?v={ver}"></script>\n'
+                 f'<link rel="stylesheet" href="/assets/css/welcome.css?v={ver}">\n'
+                 f'<script defer src="/assets/js/welcome.js?v={ver}"></script>\n</head>')
     path.write_text(html, encoding="utf-8")
 
 

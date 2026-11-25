@@ -22,6 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <link rel="stylesheet" href="{{ root }}assets/css/main.css?v={{ ver }}">
+<link rel="stylesheet" href="{{ root }}assets/css/welcome.css?v={{ ver }}">
 <script>window.FG_SITE_URL={{ SITE_URL|tojson }};window.FG_LIVE=/^https?:$/.test(location.protocol)&&!/(^|\.)(claude\.ai|claudeusercontent\.com|claude\.site)$/.test(location.hostname);window.FG_AD_CONFIG={{ cfg.get('ads', {})|tojson }};</script>
 {% set ad_cfg = cfg.get('ads', {}) %}
 {% if ad_cfg.get('adsense_client') %}
@@ -49,7 +50,7 @@
 
   </nav>
 {% endblock %}
-<a class="fg-account-icon" href="{{ root }}mypage/" aria-label="마이페이지" title="마이페이지"{% if view=='mypage' %} aria-current="page"{% endif %}><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 21v-2.2a7.5 7.5 0 0 1 15 0V21z"/></svg></a>
+<div class="fg-account-group"><span class="fg-welcome" hidden><img class="fg-welcome-rank" width="32" height="32" alt=""><span class="fg-welcome-copy"><span class="fg-welcome-message"><b class="fg-welcome-name"></b>님 환영합니다.</span> <span class="fg-welcome-xp"></span></span></span><a class="fg-account-icon" href="{{ root }}mypage/" aria-label="마이페이지" title="마이페이지"{% if view=='mypage' %} aria-current="page"{% endif %}><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 21v-2.2a7.5 7.5 0 0 1 15 0V21z"/></svg></a></div>
 </div>
 </header>
 <div class="wrap"{% if view in ('home','market','diag','cards','sim','trade','guide','squad','board') or active in ('news','press','patch') %} data-ad-layout="public"{% endif %}>
@@ -62,5 +63,6 @@
 </div>
 <script defer src="{{ root }}assets/js/ads.js?v={{ ver }}"></script>
 <script defer src="{{ root }}assets/js/traffic.js?v={{ ver }}"></script>
+<script defer src="{{ root }}assets/js/welcome.js?v={{ ver }}"></script>
 {% block scripts %}{% endblock %}
 </body></html>

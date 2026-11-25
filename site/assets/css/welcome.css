@@ -1,0 +1,22 @@
+/* Keep the logged-in greeting adjacent to the existing account icon. */
+.fg-account-group{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex:none;min-width:0;max-width:100%}
+.fg-account-group[hidden],.fg-welcome[hidden]{display:none!important}
+.fg-account-group .fg-account-icon{flex:none;margin:7px 0 10px}
+.fg-welcome{display:flex;align-items:center;gap:7px;min-width:0;max-width:360px;padding:6px 11px;border:1px solid var(--line,#dce9e1);border-radius:11px;background:color-mix(in srgb,var(--bg,#fff) 94%,#14866a 6%);color:var(--fg,#244438);font-size:13px;line-height:1.4;white-space:nowrap}
+.fg-welcome-rank{width:32px;height:32px;object-fit:contain;flex:none;image-rendering:pixelated}
+.fg-welcome-copy{display:flex;align-items:baseline;gap:6px;min-width:0}
+.fg-welcome-message{display:flex;align-items:baseline;min-width:0}
+.fg-welcome-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent,#14866a);font-weight:700}
+.fg-welcome-xp{color:var(--muted,#537464);font-size:12px;font-weight:700;flex:none;font-variant-numeric:tabular-nums}
+.fg-fun-account{margin-top:-6px;justify-content:flex-end}
+.fg-fun-account .fg-welcome{color:var(--ink,#f3f7f2);background:rgba(127,127,127,.08)}
+.fg-fun-account .fg-welcome-name{color:var(--acc,#62d6a0)}
+.fg-fun-account .fg-welcome-xp{color:var(--dim,#a8b9af)}
+.fg-fun-account .fg-account-icon{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--line,#668175);border-radius:50%;color:inherit;text-decoration:none}
+@media(max-width:1199px){.fg-nav-shell.fg-has-member{display:grid;grid-template-columns:minmax(0,1fr);gap:2px}.fg-has-member .fg-account-group{grid-row:1;justify-self:end}.fg-has-member nav.menu{grid-row:2;margin-top:3px}.fg-has-member .fg-account-group .fg-account-icon{margin:2px 0 3px}}
+body:not(.page-wide) .fg-nav-shell.fg-has-member{display:grid;grid-template-columns:minmax(0,1fr);gap:2px}
+body:not(.page-wide) .fg-has-member .fg-account-group{grid-row:1;justify-self:end}
+body:not(.page-wide) .fg-has-member nav.menu{grid-row:2;margin-top:3px}
+@media(max-width:760px){.fg-account-group{gap:6px}.fg-account-group .fg-account-icon{margin-top:7px}.fg-has-member .fg-account-group{width:100%;justify-content:flex-end}.fg-welcome{max-width:calc(100% - 42px);font-size:12px;gap:5px;padding:5px 8px;border-radius:9px}.fg-welcome-rank{width:26px;height:26px}.fg-welcome-copy{gap:4px}.fg-welcome-xp{font-size:11px}.fg-fun-account .fg-account-icon{width:34px;height:34px;margin:0}.fg-fun-account{margin-top:-8px}}
+@media(max-width:360px){.fg-welcome{padding:4px 5px;font-size:11px}.fg-welcome-rank{width:24px;height:24px}.fg-welcome-copy{gap:3px}.fg-welcome-xp{font-size:10px}}
+@media(prefers-reduced-motion:no-preference){.fg-welcome:not([hidden]){animation:fg-welcome-in .18s ease-out}@keyframes fg-welcome-in{from{opacity:0}to{opacity:1}}}

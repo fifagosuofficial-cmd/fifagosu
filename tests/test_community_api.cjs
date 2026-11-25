@@ -189,3 +189,17 @@ test("traffic daily estimates deduplicate and restrict admin access",async()=>{
  assert.equal(sql.prepare("SELECT count(*) n FROM traffic_events WHERE day<?").get(row.day-29).n,0);
  sql.close();
 });
+
+test("profile no longer returns or stores optional FC online nickname",async()=>{
+ const {sql,env}=fixture();
+ sql.prepare("UPDATE members SET game_name=? WHERE id=?").run("legacy-name","b");
+ let r=await callFixture(env,"me",null,"b");
+ assert.equal(r.status,200,JSON.stringify(r.data));
+ assert.equal(Object.hasOwn(r.data.member,"game_name"),false);
+ assert.equal(sql.prepare("SELECT game_name FROM members WHERE id='b'").get().game_name,null);
+ r=await callFixture(env,"profile",{nickname:"새닉네임",game_name:"ignored",game_name_consent:"yes"},"b");
+ assert.equal(r.status,200,JSON.stringify(r.data));
+ const m=sql.prepare("SELECT nickname,game_name FROM members WHERE id='b'").get();
+ assert.equal(m.nickname,"새닉네임");assert.equal(m.game_name,null);
+ sql.close();
+});

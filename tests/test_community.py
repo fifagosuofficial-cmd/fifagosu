@@ -234,3 +234,14 @@ def test_kickkick_ad_layout_and_nav_icon(tmp_path):
     assert "const ADS=" not in html and "adsbygoogle.js?client=" not in html
     assert "center.hidden=!show" in html
     assert "fun-center" in html and "FG_AD_CONFIG" in html
+
+def test_admin_traffic_integration():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    src = (root / "site/assets/js/traffic.js").read_text("utf-8")
+    assert "fg-traffic-off" in src and "globalPrivacyControl" in src
+    assert "traffic.js" in (root / "site/templates/base.html").read_text("utf-8")
+    assert "traffic.js" in (root / "site/build.py").read_text("utf-8")
+    assert "data-fg-traffic-toggle" in (root / "site/templates/pages/privacy.html").read_text("utf-8")
+    assert "fc-admin-link" in (root / "site/templates/community.html").read_text("utf-8")
+    assert "admin/traffic?range=" in (root / "site/assets/js/community.js").read_text("utf-8")

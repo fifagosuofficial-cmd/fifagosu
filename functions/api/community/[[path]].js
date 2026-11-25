@@ -39,6 +39,30 @@ function squadPayload(v){
  check(opts.grades.length>0&&opts.grades.length<=13,"강화 범위를 확인해 주세요.");
  return {schema:1,opts,mode:["performance","balanced","value"].includes(v.mode)?v.mode:"balanced",players};
 }
+
+const trafficPages=new Set(["home","diag","market","trade","squad","cards","sim","news","board","fun","guide"]);
+const trafficSources=new Set(["direct","fmkorea","inven","naver","google","dcinside","youtube","daum","instagram","other"]);
+const trafficDevices=new Set(["desktop","mobile","tablet","other"]);
+const trafficDay=t=>Math.floor((t+32400)/86400);
+const trafficDDL="CREATE TABLE IF NOT EXISTS traffic_events(day INTEGER NOT NULL, visitor TEXT NOT NULL, minute INTEGER NOT NULL, page TEXT NOT NULL, source TEXT NOT NULL, device TEXT NOT NULL, kind INTEGER NOT NULL CHECK(kind IN (0,1)), PRIMARY KEY(day,visitor,minute,page,kind)) WITHOUT ROWID";
+const trafficReady=new WeakMap();
+async function ensureTraffic(db){if(!trafficReady.has(db)){const job=(async()=>{const row=await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='traffic_events'").first();if(!row)await db.prepare(trafficDDL).run()})().catch(e=>{trafficReady.delete(db);throw e});trafficReady.set(db,job)}await trafficReady.get(db)}
+async function trafficSummary(db,u){
+ await ensureTraffic(db);
+ const t=now(),day=trafficDay(t),start=day-29,minute=Math.floor(t/60);
+ const q=(s,...a)=>db.prepare(s).bind(...a),all=async(s,...a)=>(await q(s,...a).all()).results;
+ await q("DELETE FROM traffic_events WHERE day<?",start).run();
+ const rows=await all("SELECT day,count(DISTINCT visitor) visitors,sum(kind) views FROM traffic_events WHERE day>=? AND day<=? GROUP BY day",start,day);
+ const days=Array.from({length:30},(_,i)=>({day:new Date((start+i)*86400000).toISOString().slice(0,10),visitors:0,views:0}));
+ for(const r of rows){const d=days[r.day-start];if(d){d.visitors=r.visitors;d.views=r.views}}
+ const range=u.searchParams.get("range")==="30"?30:u.searchParams.get("range")==="1"?1:7,from=day-range+1;
+ const group=async key=>all("SELECT "+key+" label,count(*) n FROM traffic_events WHERE day>=? AND day<=? AND kind=1 GROUP BY "+key+" ORDER BY n DESC",from,day);
+ const live=await q("SELECT count(DISTINCT visitor) n FROM traffic_events WHERE day>=? AND minute>? AND minute<=?",day-1,minute-5,minute).first();
+ const hours=await all("SELECT ((minute+540)%1440)/60 label,count(*) n FROM traffic_events WHERE day>=? AND day<=? AND kind=1 GROUP BY label ORDER BY label",from,day);
+ const signups=await q("SELECT count(*) n FROM members WHERE created>=? AND created<=?",from*86400-32400,t).first();
+ return {generated:t,range,days,live:live.n,pages:await group("page"),sources:await group("source"),devices:await group("device"),hours,signups:signups.n};
+}
+
 export async function onRequest({request,env}){
  const u=new URL(request.url),p=u.pathname.replace(/^\/api\/community\/?/,"").replace(/\/$/,""),db=env.COMMUNITY_DB;
  const enabled=env.COMMUNITY_ENABLED==="1"&&[POLICY,LEGACY_POLICY].includes(env.COMMUNITY_POLICY_VERSION)&&!!db&&!!env.GOOGLE_CLIENT_ID&&!!env.GOOGLE_CLIENT_SECRET&&env.COMMUNITY_ORIGIN===u.origin&&u.protocol==="https:";
@@ -111,6 +135,7 @@ export async function onRequest({request,env}){
      bookmarks:await all("SELECT p.id,p.title FROM bookmarks b JOIN posts p ON p.id=b.post_id WHERE b.member_id=? AND p.hidden=0 LIMIT 100",m.id),
      history:await all("SELECT h.squad_id,h.bp,h.observed FROM value_history h JOIN squads s ON s.id=h.squad_id WHERE s.member_id=? ORDER BY h.observed DESC LIMIT 300",m.id)
    })}
+   if(p==="admin/traffic"){requireAdmin();return json(await trafficSummary(db,u))}
    if(p==="admin"){requireAdmin();await cleanup();
      const kstDay=Math.floor((now()+32400)/86400),start=(kstDay-6)*86400-32400,today=kstDay*86400-32400;
      const stats=await first("SELECT (SELECT count(*) FROM members) members,(SELECT count(*) FROM members WHERE created>=?) new_members,(SELECT count(*) FROM members WHERE suspended=1) suspended,(SELECT count(*) FROM posts WHERE hidden=0) posts,(SELECT count(*) FROM posts WHERE created>=? AND hidden=0) new_posts,(SELECT count(*) FROM comments WHERE hidden=0 AND post_id IN (SELECT id FROM posts WHERE hidden=0)) comments,(SELECT count(*) FROM comments WHERE created>=? AND hidden=0 AND post_id IN (SELECT id FROM posts WHERE hidden=0)) new_comments,(SELECT count(*) FROM reports WHERE status='open') open_reports,(SELECT count(*) FROM feedback WHERE status='open') open_feedback,(SELECT COALESCE(sum(views),0) FROM posts WHERE hidden=0) views",today,today,today);
@@ -130,6 +155,14 @@ export async function onRequest({request,env}){
  check(request.headers.get("Origin")===u.origin,"요청 출처가 올바르지 않습니다.",403);
  check(request.headers.get("content-type")?.includes("application/json"),"잘못된 요청입니다.",415);
  const raw=await request.text();check(raw.length<=40000,"요청이 너무 큽니다.",413);let b;try{b=JSON.parse(raw)}catch{throw new Err("잘못된 요청입니다.")}
+ if(p==="traffic"){
+   if(admin||request.headers.get("Sec-GPC")==="1"||request.headers.get("DNT")==="1"||/bot|crawl|spider|headless|preview|curl|wget/i.test(request.headers.get("User-Agent")||"")||/prefetch|prerender/i.test((request.headers.get("Purpose")||"")+" "+(request.headers.get("Sec-Purpose")||"")))return json({ok:true});
+   check(raw.length<=600&&b&&typeof b.token==="string"&&/^[a-f0-9]{32}$/.test(b.token)&&trafficPages.has(b.page)&&trafficSources.has(b.source)&&trafficDevices.has(b.device)&&(b.kind===0||b.kind===1),"잘못된 통계 요청입니다.");
+   await ensureTraffic(db);const t=now(),day=trafficDay(t),visitor=await sha(day+":"+b.token);
+   await run("INSERT OR IGNORE INTO traffic_events(day,visitor,minute,page,source,device,kind) VALUES(?,?,?,?,?,?,?)",day,visitor,Math.floor(t/60),b.page,b.source,b.device,b.kind);
+   if(Math.random()<0.01)await run("DELETE FROM traffic_events WHERE day<?",day-29);
+   return json({ok:true});
+ }
  if(p==="login"){
    check(b.age===true&&b.terms===true&&b.privacy===true&&b.policy===POLICY,"가입 조건과 약관을 확인하세요.");
    const state=random(),verifier=random();await run("DELETE FROM oauth_states WHERE expires<=?",now());

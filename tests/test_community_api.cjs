@@ -168,3 +168,24 @@ test("legacy consent is not invented; explicit reconsent records v2 and purges e
  assert.equal(sql.prepare("SELECT count(*) n FROM sessions WHERE hash='expired'").get().n,0);
  r=await callFixture(env,"withdraw",{confirm:"탈퇴"},"b");assert.equal(r.status,200);assert.equal(sql.prepare("SELECT count(*) n FROM member_consents").get().n,0);sql.close();
 });
+
+test("traffic daily estimates deduplicate and restrict admin access",async()=>{
+ const {sql,env}=fixture(),b={token:"a".repeat(32),page:"diag",source:"fmkorea",device:"mobile",kind:1};
+ assert.equal((await callFixture(env,"admin/traffic")).status,401);
+ assert.equal((await callFixture(env,"admin/traffic",null,"b")).status,403);
+ assert.equal((await callFixture(env,"traffic",{...b,page:"admin"})).status,400);
+ assert.equal((await callFixture(env,"traffic",b,"a")).status,200);
+ assert.equal((await callFixture(env,"traffic",b)).status,200);
+ assert.equal((await callFixture(env,"traffic",b)).status,200);
+ assert.equal((await callFixture(env,"traffic",{...b,page:"cards"})).status,200);
+ assert.equal((await callFixture(env,"traffic",{...b,kind:0})).status,200);
+ const r=await callFixture(env,"admin/traffic?range=7",null,"a");
+ assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.days.length,30);
+ assert.equal(r.data.days.at(-1).visitors,1);assert.equal(r.data.days.at(-1).views,2);assert.equal(r.data.live,1);assert.equal(r.data.sources[0].label,"fmkorea");assert.equal(r.data.sources[0].n,2);assert.equal(r.data.devices[0].label,"mobile");
+ assert.ok(!JSON.stringify(r.data).includes(b.token));
+ const row=sql.prepare("SELECT * FROM traffic_events LIMIT 1").get();assert.notEqual(row.visitor,b.token);
+ sql.prepare("INSERT INTO traffic_events VALUES(?,?,?,?,?,?,?)").run(row.day-31,row.visitor,row.minute-31*1440,"home","direct","desktop",1);
+ await callFixture(env,"admin/traffic?range=30",null,"a");
+ assert.equal(sql.prepare("SELECT count(*) n FROM traffic_events WHERE day<?").get(row.day-29).n,0);
+ sql.close();
+});

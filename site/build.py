@@ -465,7 +465,8 @@ function renderAds(opt={}){
     config = json.dumps(cfg.get("ads", {}), ensure_ascii=True).replace("<", "\\u003c")
     replace_once("</head>", f'<link rel="stylesheet" href="/assets/css/fun-ads.css?v={ver}">\n'
                  f'<script>window.FG_AD_CONFIG={config};</script>\n'
-                 f'<script defer src="/assets/js/ads.js?v={ver}"></script>\n</head>')
+                 f'<script defer src="/assets/js/ads.js?v={ver}"></script>\n'
+                 f'<script defer src="/assets/js/traffic.js?v={ver}"></script>\n</head>')
     path.write_text(html, encoding="utf-8")
 
 

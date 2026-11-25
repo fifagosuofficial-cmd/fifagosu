@@ -63,6 +63,10 @@ def test_simplified_navigation_and_retired_calculator(tmp_path):
     expected = ["홈", "소식", "전적 진단", "선수 거래소", "AI 스쿼드", "게시판", "카드 검색", "강화·현질 효율", "킥킥"]
     for file in ("index.html", "board/index.html", "news/index.html", "press/index.html", "patch/index.html", "sim/index.html"):
         doc = BeautifulSoup((out / file).read_text("utf-8"), "html.parser")
+        bubble = doc.select_one("nav.menu > a.nav-diag-feature .fg-diag-bubble")
+        assert bubble and bubble.get_text(strip=True) == "내 약점 찾기!"
+        assert bubble.get("aria-hidden") == "true"
+        bubble.decompose()  # Decorative callout is not part of the navigation label.
         assert [a.get_text(strip=True) for a in doc.select("nav.menu > a")] == expected
         assert doc.select_one("a.fg-account-icon")["aria-label"] == "마이페이지"
         assert doc.select_one(".fg-diag-icon")

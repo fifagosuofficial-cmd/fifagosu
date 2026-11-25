@@ -192,3 +192,20 @@ test("player record explanation is hidden in a single accessible help disclosure
  assert.match(view,/<div class="dps-help-popup">[\s\S]*?최근 \$\{a.n\}경기 합계예요\.[\s\S]*?\$\{rkNote\}\$\{rtNote\(a\)\}<\/p><\/div><\/details>/);
  assert.ok(!view.includes('dPStatsMobile(records,columns)}<p class="note">'));
 });
+
+ test('mobile defence keeps compact success/attempt counts, accessible labels and every player',()=>{
+  const start=src.indexOf('function dPStatsMobile('),end=src.indexOf('function dpsToggleFull(',start);
+  vm.runInContext(src.slice(start,end),ctx);
+  const columns=Array.from({length:24},(_,i)=>'label'+i),cells=Array.from({length:24},()=>'-');
+  cells[9]=ctx.dDuelCell(241,378);cells[10]=ctx.dDuelCell(7,130);
+  const mobileCells={9:ctx.dDuelCell(241,378,true),10:ctx.dDuelCell(7,130,true)};
+  assert.match(cells[9],/성공 241 \/ 시도 378/);
+  assert.match(mobileCells[9],/64%/);assert.match(mobileCells[9],/aria-label="성공 241 \/ 시도 378">241\/378<\/small>/);
+  assert.match(ctx.dDuelCell(0,0,true),/>-</);
+  const html=ctx.dPStatsMobile(Array.from({length:11},(_,i)=>({state:'',cells,mobileCells,mobileName:'Player'+i+'!'})),columns);
+  assert.equal((html.match(/>241\/378<\/small>/g)||[]).length,11);
+  assert.equal((html.match(/>7\/130<\/small>/g)||[]).length,11);
+  assert.ok(!html.includes('>성공 241 / 시도 378<'));
+  const css=fs.readFileSync(path.join(__dirname,'../site/assets/css/main.css'),'utf8');
+  assert.match(css,/\.dps-table-2 \.duel-count\{[^}]*white-space:normal;overflow-wrap:anywhere/);
+ });

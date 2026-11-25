@@ -1419,3 +1419,14 @@ nav.menu a.nav-fun{display:inline-flex;align-items:center;gap:5px}.fg-fun-icon{f
 .dps-help-popup{position:absolute;top:100%;right:0;z-index:9;width:min(440px,100%);max-height:min(65vh,420px);overflow:auto;box-sizing:border-box;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--fg);box-shadow:0 8px 24px rgba(0,0,0,.16);font-size:13px;line-height:1.65}
 .dps-help-popup .note{margin:5px 0 0;font-size:12px;line-height:1.7}
 @media(max-width:760px){.pstats-filters .d-recent-filter{grid-column:1/4;grid-row:1}.dps-help{grid-column:4;grid-row:1;justify-self:end}.dps-help>summary{width:28px;height:28px}.dps-help-popup{padding:12px;max-height:60vh}}
+
+/* Mobile defence: preserve all players and metrics without spilling across cells. */
+@media(max-width:760px){
+  .dps-table-2 .dps-player-col{width:30%}
+  .dps-table-2 .dps-col-9,.dps-table-2 .dps-col-10{width:18%}
+  .dps-table-2 .dps-col-11{width:14%}
+  .dps-table-2 .dps-col-12,.dps-table-2 .dps-col-13{width:10%}
+  .dps-table-2 td{overflow-wrap:anywhere;white-space:normal}
+  .dps-table-2 .duel-count{display:block;max-width:100%;font-size:9px;line-height:1.15;white-space:normal;overflow-wrap:anywhere}
+  .dps-table-2 .duel-rate{line-height:1.2}
+}

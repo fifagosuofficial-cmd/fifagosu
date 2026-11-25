@@ -22,11 +22,12 @@
 </section>
 <section id="sqOutput" hidden>
 <div class="sq-modes" id="sqModes" role="group" aria-label="추천 유형"></div>
-<div class="sq-card sq-bonus-panel">
-<div class="sq-section-head"><h2>능력치 보너스</h2><div class="sq-bonus-options"><label><input type="checkbox" id="sqAdapt" checked>적응도 최대 (5단계)</label><label><input type="checkbox" id="sqTC" checked>팀컬러 포함</label></div></div>
+<details class="sq-card sq-bonus-panel sq-mobile-details" open>
+<summary>능력치 보너스</summary>
+<div class="sq-mobile-details-body"><div class="sq-section-head"><div></div><div class="sq-bonus-options"><label><input type="checkbox" id="sqAdapt" checked>적응도 최대 (5단계)</label><label><input type="checkbox" id="sqTC" checked>팀컬러 포함</label></div></div>
 <div id="sqColorList" class="sq-color-list" aria-live="polite"></div>
 <p id="sqBonusNote" class="sq-note"></p><button type="button" id="sqBonusRetry" hidden>관계·특성 팀컬러 다시 조회</button>
-</div>
+</div></details>
 <div id="sqSummary" class="sq-summary"></div>
 <div id="sqPitch" class="sq-pitch" aria-label="선발 11명 배치"></div>
 <div class="sq-roster-actions"><p class="sq-note">선수별 강화 버튼으로 1~13강 변경 · 교체로 직접 검색 · 고정 시 재추천에서 유지</p><div class="sq-actions"><button type="button" id="sqSave">저장</button><button type="button" id="sqShare">공유 링크 복사</button><button type="button" id="sqBoardShare">게시판에 공유</button><button type="button" id="sqCloudSave">내 스쿼드에 저장</button></div></div>
@@ -37,7 +38,7 @@
 <section class="sq-picker-search"><h3><label for="sqPlayerQuery">선수 직접 검색</label></h3><input id="sqPlayerQuery" type="search" placeholder="선수명 또는 시즌 입력 (예: 손흥민)" autocomplete="off"><p class="sq-note" id="sqPickerNote" role="status"></p><div id="sqPlayerResults" class="sq-manual-list"></div></section>
 </div></dialog>
 <p class="sq-note">OVR은 수집 포지션 OVR에 강화·적응도·팀컬러 전체 능력치 효과를 더한 표시값입니다. 공식 게임 OVR과 차이가 있을 수 있습니다. 실제 시세·보유 여부는 게임에서 확인하세요.</p>
-<section class="sq-card"><h2>선수별 전체 능력치 비교</h2><p class="sq-note">강화 및 선택한 보너스 반영 · 미수집 값은 —로 표시</p><div class="tablewrap"><table class="sq-table sq-stat-matrix" id="sqStatMatrix"></table></div></section>
+<details class="sq-card sq-mobile-details sq-stat-details" open><summary>선수별 전체 능력치 비교</summary><div class="sq-mobile-details-body"><p class="sq-note">강화 및 선택한 보너스 반영 · 미수집 값은 —로 표시</p><div class="tablewrap"><table class="sq-table sq-stat-matrix" id="sqStatMatrix"></table></div></div></details>
 </section>
   <aside class="slot" data-ad-slot="squad-1" aria-label="광고"></aside>
 </main>

@@ -786,7 +786,7 @@ a.mk-tile:hover{border-color:var(--accent)}
 .mk-box h2{margin:0 0 6px;font-size:15px;display:flex;align-items:center;gap:6px}
 .mk-up h2::before{content:"▲";color:var(--up);font-size:12px}.mk-down h2::before{content:"▼";color:var(--down);font-size:12px}
 .mk-list{list-style:none;margin:0;padding:0}
-.mk-row{display:grid;grid-template-columns:18px auto minmax(0,1fr) auto 62px;align-items:center;gap:7px;width:100%;padding:7px 2px;border:0;border-top:1px solid var(--line);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.mk-row{display:grid;grid-template-columns:18px auto minmax(0,1fr) auto minmax(82px,100px);align-items:center;gap:7px;width:100%;padding:7px 2px;border:0;border-top:1px solid var(--line);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .mk-list li:first-child .mk-row{border-top:0}
 .mk-row:hover{background:var(--raise)}
 .mk-n{font:700 12px var(--f-data);color:var(--muted);text-align:center}
@@ -795,6 +795,7 @@ a.mk-tile:hover{border-color:var(--accent)}
 .mk-pr{font:600 13px var(--f-data);white-space:nowrap}
 .mk-c{font:800 13px var(--f-data);text-align:right;color:var(--muted)}
 .mk-c.up{color:var(--up)}.mk-c.down{color:var(--down)}
+.mk-c b,.mk-c small{display:block}.mk-c small{margin-top:1px;font:500 9px/1.2 var(--f-body);white-space:normal;overflow-wrap:anywhere;color:var(--muted)}
 .mk-empty{color:var(--muted);font-size:13px;padding:14px 2px;margin:0}
 .mk-pop-note{padding:0 2px 8px}
 .mk-new h2,.mk-news .h2-sec{font-size:16px;display:flex;align-items:center;gap:8px}
@@ -1096,6 +1097,7 @@ a.mk-tile:hover{border-color:var(--accent)}
 .tip-ic{font-size:18px}
 .dtip ul{margin:8px 0 0;padding-left:18px;display:grid;gap:6px;font-size:14px;line-height:1.55}
 .dtip li b{color:var(--fg)}
+.dtip p{margin:6px 0 0;font-size:13px;line-height:1.45}
 .dcards{display:grid;gap:10px;grid-template-columns:minmax(0,1fr)}
 @media (min-width:760px){.dcards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (min-width:1080px){.dcards{grid-template-columns:repeat(4,minmax(0,1fr))}}
@@ -1243,23 +1245,25 @@ nav.menu a.core{display:inline-flex;align-items:center;gap:5px}.fg-diag-icon{fle
 /* 2026-11-25: 모바일 메뉴와 전적 리포트를 한 화면에 컴팩트하게 정리 */
 @media(max-width:760px){
   .fg-nav-shell nav.menu{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;margin-top:7px;padding:0 0 8px!important;overflow:visible}
-  .fg-nav-shell nav.menu>a{display:flex!important;align-items:center;justify-content:center;gap:3px;min-height:34px;padding:4px 3px!important;border-radius:8px!important;white-space:normal!important;text-align:center;font-size:12px!important;line-height:1.2}
+  .fg-nav-shell nav.menu>a{display:flex!important;align-items:center;justify-content:center;gap:3px;min-height:34px;padding:4px 3px!important;border-radius:8px!important;white-space:nowrap!important;text-align:center;font-size:12px!important;line-height:1.2}
   .fg-nav-shell nav.menu .fg-diag-icon{width:15px;height:15px}
+  .nav-sim-label{font-size:0;white-space:nowrap}
+  .nav-sim-label::after{content:attr(data-mobile-label);font-size:12px}
   .fg-account-icon{margin-top:7px}
 }
-@media(max-width:390px){.fg-nav-shell nav.menu>a{font-size:11px!important}.fg-nav-shell{padding-inline:2px}}
+@media(max-width:390px){.fg-nav-shell nav.menu>a{font-size:11px!important}.nav-sim-label::after{font-size:11px}.fg-nav-shell{padding-inline:2px}}
 
 .diag-report-shell{margin:12px 0;border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:12px 14px;display:grid;gap:9px}
 .diag-report-shell[hidden]{display:none}
 .diag-report-shell>.dr-head{margin:0;padding-bottom:8px;border-bottom:1px solid var(--line)}
 .diag-report-shell .dreport{margin:0;border:0;border-radius:0;background:transparent;padding:0}
-.diag-report-shell .dsum{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(330px,1fr);gap:8px}
+.diag-report-shell .dsum{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
 .diag-report-shell .ds-flow,.diag-report-shell .ds-kpi{border:0;border-radius:9px;background:var(--sunk);padding:9px 10px}
 .diag-report-shell .ds-chart{height:56px;margin-top:3px}
 .diag-report-shell .ds-kpi{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
 .diag-report-shell .ds-kpi div,.diag-report-shell .dr-grid>div{padding:6px 7px;background:color-mix(in srgb,var(--surface) 72%,var(--sunk));border:1px solid color-mix(in srgb,var(--line) 75%,transparent)}
 .diag-report-shell .ds-kpi b{font-size:16px}
-.diag-report-shell .dr-insights{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.diag-report-shell .dr-insights{grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:6px}
 .dr-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:7px}
 .dr-action{display:inline-flex;align-items:center;gap:5px!important;width:auto!important;margin:0!important;padding:5px 8px!important;border-radius:7px!important;font-size:11px!important;line-height:1.2}
 .dr-action svg{width:14px;height:14px;fill:currentColor;flex:none}
@@ -1267,12 +1271,12 @@ nav.menu a.core{display:inline-flex;align-items:center;gap:5px}.fg-diag-icon{fle
   .diag-report-shell{padding:10px;gap:7px}
   .diag-report-shell .dsum{grid-template-columns:1fr}
   .diag-report-shell .ds-kpi{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .diag-report-shell .dr-insights{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .diag-report-shell .dr-insights>div:last-child{grid-column:1/-1}
+  .diag-report-shell .dr-insights{grid-template-columns:minmax(0,1fr) minmax(0,1.35fr)}
   .diag-report-shell .ds-h small{width:100%;margin-left:0}
 }
 @media(max-width:430px){
-  .diag-report-shell .ds-kpi{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .diag-report-shell .ds-flow{padding:8px}
-  .diag-report-shell .ds-chart{height:48px}
+  .diag-report-shell .ds-kpi{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+  .diag-report-shell .ds-kpi div,.diag-report-shell .dr-grid>div{padding:6px 5px}
+  .diag-report-shell .ds-kpi b{font-size:14px;line-height:1.2;white-space:normal}
+  .diag-report-shell .dr-insights{grid-template-columns:minmax(0,.9fr) minmax(0,1.25fr)}
 }

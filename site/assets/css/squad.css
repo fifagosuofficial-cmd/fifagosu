@@ -29,3 +29,36 @@
   .sq-pitch{border-width:3px;padding:4px 2px}.sq-line{margin:4px auto;gap:2px}.sq-player{width:64px;padding:2px}.sq-face img{width:29px;height:33px}.sq-player b{font-size:9px}.sq-player small{font-size:8px}.sq-player .sq-player-grade{font-size:9px;padding:2px 1px}.sq-card-tools button{width:18px;height:19px}.sq-card-tools svg{width:11px;height:11px}.sq-player .sq-card-lock{margin-top:2px;font-size:8px}
 }
 @media(max-width:430px){.sq-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.sq-card h2{font-size:16px}.sq-budget{grid-template-columns:minmax(0,1fr) 62px}.sq-roster-actions .sq-actions{width:100%}.sq-roster-actions .sq-actions button{flex:1 1 auto;padding-inline:6px}}
+
+/* 2026-11-25 round 2: 실제 휴대폰 폭에 맞춘 1열 조건 폼과 컴팩트 결과 */
+.sq{max-width:820px}
+#sqOutput{max-width:760px}
+.sq-pitch{max-width:760px;min-width:0}
+.sq-mobile-details>summary{cursor:pointer;font-size:16px;font-weight:800;list-style-position:inside}
+.sq-mobile-details[open]>summary{margin-bottom:8px}
+.sq-mobile-details-body{min-width:0}
+@media(max-width:600px){
+  .sq{width:100%;max-width:100%;padding:4px 0 26px;overflow-x:clip}
+  .sq-title{padding-inline:2px}.sq-title h1{font-size:clamp(21px,7vw,27px)}
+  .sq-fields{grid-template-columns:minmax(0,1fr);gap:9px}
+  .sq-card{padding:10px 9px;margin:7px 0}
+  .sq input,.sq select{min-height:44px;font-size:16px;padding:8px 9px}
+  .sq-budget{grid-template-columns:minmax(0,1fr) 68px}
+  .sq-grade-field .sq-grade-range{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sq-modes{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .sq-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .sq-summary span,.sq-summary small{font-size:10px}.sq-summary b{font-size:13px;line-height:1.25}
+  .sq-pitch{width:100%;max-width:100%;min-width:0;padding:4px 1px}
+  .sq-line{width:100%;max-width:100%;gap:1px;justify-content:space-evenly}
+  .sq-player{width:clamp(54px,15vw,68px);max-width:calc(20% - 2px);flex:0 1 clamp(54px,15vw,68px)}
+  .sq-player b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sq-roster-actions .sq-note{width:100%}
+  .sq-mobile-details{padding:9px}
+  .sq-mobile-details>summary{font-size:14px}
+  .sq-stat-details .tablewrap{max-width:100%}
+}
+@media(max-width:380px){
+  .sq-player{width:clamp(50px,14.5vw,60px);flex-basis:clamp(50px,14.5vw,60px)}
+  .sq-card-tools button{width:17px;height:18px}
+  .sq-player .sq-card-lock{font-size:0}.sq-player .sq-card-lock svg{width:12px;height:12px}
+}

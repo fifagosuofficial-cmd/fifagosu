@@ -14,6 +14,8 @@ const STORE="fg-squad-v1", RECENT="fg-squad-recent-v1";
 let worker=null,requestId=0,task=null,manifest=null,results={},active="balanced",locks={},currentOpts=null,pickerSlot=null,pickerCandidates=[],recoCandidates=[],pickerSeq=0,slotBusy=false;
 const catalogCache=new Map();
 let bonusRules=null,bonusState="loading",relationBusy=false;
+const compactDetails=()=>document.querySelectorAll(".sq-mobile-details").forEach(node=>{node.open=!matchMedia("(max-width:600px)").matches});
+compactDetails();
 const relationCache=Object.create(null),relationFailed=new Set();
 const flags=()=>({adapt:$("sqAdapt").checked,team:$("sqTC").checked});
 function refreshBonusView(){if(!task&&!slotBusy&&!$("sqOutput").hidden&&results[active]?.ok)render()}

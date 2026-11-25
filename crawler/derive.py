@@ -34,6 +34,11 @@ from pathlib import Path
 
 import requests
 
+try:
+    from .market_rank import MAX_SAFE_INTEGER, rank_market_moves
+except ImportError:  # python crawler/derive.py 실행 경로
+    from market_rank import MAX_SAFE_INTEGER, rank_market_moves
+
 ROOT = Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("FG_DATA", ROOT / "data"))
 RULES_SRC = Path(__file__).resolve().parent / "rules"
@@ -499,6 +504,14 @@ def step_ranker_market(data, date):
     ranked.sort(key=lambda item: (-item["uses"], item["id"]))
     popular_label = "전체 카드 사용 경기 수 TOP 10 기준"
 
+    newp = data / "market" / "new_cards.json"
+    keep = load(newp, {"items": []}).get("items") or []
+    today_new = load(data / "meta" / "new_today.json", {})
+    new_dates = {int(item["id"]): item.get("d") for item in keep if item.get("id") is not None}
+    if today_new.get("date"):
+        for spid in today_new.get("ids", []):
+            new_dates[int(spid)] = today_new["date"]
+
     history_meta = load(data / "market" / "all_card_history_dates.json", {"dates": []})
     history_dates = history_meta.get("dates") or []
     latest_history_date = min(dt.date.fromisoformat(date), dt.date.fromisoformat(history_dates[-1])) if history_dates else dt.date.fromisoformat(date)
@@ -530,26 +543,35 @@ def step_ranker_market(data, date):
             first, last = prices.get(start), prices.get(end)
             if not first or not last:
                 return None
-            if first < MARKET_WEEK_PRICE_MIN or last < MARKET_WEEK_PRICE_MIN:
-                return None
-            return start, first, end, last, round((last - first) / first * 100, 1)
+            observations = sum(
+                type(value) is int and 0 < value <= MAX_SAFE_INTEGER
+                for _, value in rows.get(str(grade), [])
+            )
+            return start, first, end, last, round((last - first) / first * 100, 1), observations
 
         for grade in MARKET_GRADES:
-            moves = []
+            display_moves = []
+            candidates = []
             for key, rec in listed.items():
                 change = daily(key, grade)
                 if not change:
                     continue
-                start, first, end, last, pct = change
+                start, first, end, last, pct, observations = change
                 item = _item(key, rec, last, first)
-                item.update(c=pct, fromDate=start.isoformat(), toDate=end.isoformat())
-                moves.append(item)
-                index_pcts_by_grade[grade].append(pct)
+                item.update(c=pct, d=last - first, u=int(rec.get("games") or 0),
+                            fromDate=start.isoformat(), toDate=end.isoformat())
+                display_moves.append(item)
+                candidates.append({"id": int(key), "first": first, "last": last,
+                                   "games": int(rec.get("games") or 0),
+                                   "observations": observations,
+                                   "new_date": new_dates.get(int(key)), "item": item})
+                if first >= MARKET_WEEK_PRICE_MIN and last >= MARKET_WEEK_PRICE_MIN:
+                    index_pcts_by_grade[grade].append(pct)
 
-            risers = sorted((x for x in moves if x["c"] > 0), key=lambda x: -x["c"])[:MARKET_TOP]
-            fallers = sorted((x for x in moves if x["c"] < 0), key=lambda x: x["c"])[:MARKET_TOP]
-            moves_by_grade[str(grade)] = {"risers": risers, "fallers": fallers, "moved": len(moves),
-                                           "_moves": {x["id"]: x for x in moves}}
+            ranked_moves = rank_market_moves(candidates, end.isoformat(), MARKET_TOP)
+            moves_by_grade[str(grade)] = {
+                **ranked_moves, "_moves": {x["id"]: x for x in display_moves}
+            }
 
         return moves_by_grade, index_pcts_by_grade, start, end
 
@@ -583,9 +605,6 @@ def step_ranker_market(data, date):
                  "up": sum(x > 0 for x in values), "down": sum(x < 0 for x in values),
                  "flat": sum(x == 0 for x in values)}
 
-    newp = data / "market" / "new_cards.json"
-    keep = load(newp, {"items": []}).get("items") or []
-    today_new = load(data / "meta" / "new_today.json", {})
     if today_new.get("date") == date:
         names = {int(x["id"]): x.get("name", "") for x in load(data / "meta" / "spid.json", [])}
         have = {x["id"] for x in keep}
@@ -608,7 +627,7 @@ def step_ranker_market(data, date):
            "historyRequiredDays": 2, "byGrade": by_grade,
            "newCards": keep[:24], "newCount": len(keep),
            "rankLabel": "\uC804\uCCB4 \uC218\uC9D1 \uC120\uC218\uCE74\uB4DC \uAE30\uC900", "popularLabel": popular_label,
-           "rule": f"\uC804\uCCB4 \uC218\uC9D1 \uC120\uC218\uCE74\uB4DC \u00B7 3\uB9CC BP \uC774\uC0C1 \u00B7 \uC9C1\uC804 \uAE30\uB85D\uC77C \uB300\uBE44 \u00B7 \uC9C0\uC218 \uCD5C\uC18C \uD45C\uBCF8 {MARKET_INDEX_MIN}\uC7A5"}
+           "rule": f"\uB7AD\uD0B9: 500\uB9CC BP\u00B7\uAC00\uACA9\uB300 \uD558\uD55C\u00B7\uC0AC\uC6A9 10\uACBD\uAE30\u00B7\uAD00\uCE21 3\uD68C \uC774\uC0C1 \uC2DC\uC7A5 \uC601\uD5A5\uB3C4 \u00B7 \uC9C0\uC218: \uAE30\uC874 3\uB9CC BP \uC720\uD6A8\uD45C\uBCF8 {MARKET_INDEX_MIN}\uC7A5"}
     save(data / "market" / "summary.json", out)
 
     priced = [(k, r) for k, r in listed.items() if r.get("price")]

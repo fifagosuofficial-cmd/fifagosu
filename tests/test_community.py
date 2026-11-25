@@ -213,3 +213,24 @@ def test_member_consent_disclosures(tmp_path):
     assert doc.select_one('input[name="game_name_consent"]')
     privacy=(out / "privacy.html").read_text("utf-8")
     assert "Time Travel" in privacy and "2026-11-v2" in privacy
+
+
+def test_kickkick_ad_layout_and_nav_icon(tmp_path):
+    from bs4 import BeautifulSoup
+    out=tmp_path / "site"
+    build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
+    for name in ("index.html","board/index.html","news/index.html"):
+        doc=BeautifulSoup((out / name).read_text("utf-8"),"html.parser")
+        assert doc.select_one("nav.menu > a:last-child .fg-fun-icon")
+        assert doc.select_one("nav.menu > a:last-child").get_text(strip=True)=="킥킥"
+    html=(out / "fun/index.html").read_text("utf-8")
+    doc=BeautifulSoup(html,"html.parser")
+    assert doc.body["data-view"]=="fun"
+    assert doc.select_one('body>.wrap[data-ad-layout="public"]')
+    for slot in ("fun-left","fun-right","fun-center"):
+        assert doc.select_one(f'[data-ad-slot="{slot}"][hidden]')
+    assert doc.select_one('script[src*="/assets/js/ads.js"]')
+    assert doc.select_one('link[href*="fun-ads.css"]')
+    assert "const ADS=" not in html and "adsbygoogle.js?client=" not in html
+    assert "center.hidden=!show" in html
+    assert "fun-center" in html and "FG_AD_CONFIG" in html

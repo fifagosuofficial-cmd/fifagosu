@@ -8,17 +8,19 @@ const client=String(cfg.adsense_client||"").trim(),valid=v=>/^\d+$/.test(String(
 const enabled=cfg.enabled===true&&cfg.provider==="adsense"&&/^ca-pub-\d{6,}$/.test(client);
 const preview=(!cfg.enabled||!Object.values(ids).some(valid))&&new URLSearchParams(location.search).get("ad-preview")==="1";
 const activeView=()=>document.body.dataset.view||"";
+const fun=activeView()==="fun";
 const rail=el=>el.classList.contains("fg-ad-rail");
-const slotID=el=>String(ids[el.dataset.adSlot]||(el.dataset.adSlot.startsWith("sim-")?ids["sim-1"]:"")||(rail(el)?"":ids.center)||"");
+const slotID=el=>String(ids[el.dataset.adSlot]||(el.dataset.adSlot.startsWith("sim-")?ids["sim-1"]:"")||(el.dataset.adSlot==="fun-left"?ids["side-left"]:el.dataset.adSlot==="fun-right"?ids["side-right"]:"")||(rail(el)?"":ids.center)||"");
 const allowed=()=>{const path=location.pathname,view=activeView();
+ if(fun&&layout.dataset.adScreen==="error")return false;
  if(view==="board"&&(cfg.allow_community!==true||new URLSearchParams(location.search).has("write")||new URLSearchParams(location.search).has("edit")||new URLSearchParams(location.search).has("compose")))return false;
  if((path.startsWith("/press")||path.startsWith("/news/")&&path!=="/news/")&&cfg.allow_syndicated_news!==true)return false;
  return true};
 // The outer wrapper may be much wider than its actual visible content.
 function fits(){const main=[...layout.querySelectorAll(":scope > main")].find(el=>!el.hidden&&el.getClientRects().length);const outer=layout.getBoundingClientRect(),r=(main||layout).getBoundingClientRect(),w=document.documentElement.clientWidth;
- const left=r.left-outer.left-172,right=r.right-outer.left+12;
+ const gap=fun?24:12,left=r.left-outer.left-160-gap,right=r.right-outer.left+gap;
  layout.style.setProperty("--ad-left",left+"px");layout.style.setProperty("--ad-right",right+"px");
- return w>=1200&&r.left>=180&&w-r.right>=180}
+ return fun?w>=960&&r.left>=192&&w-r.right>=192:w>=1200&&r.left>=180&&w-r.right>=180}
 function visible(el){return !el.parentElement.closest("[hidden]")&&(!rail(el)||fits())&&!(activeView()==="board"&&new URLSearchParams(location.search).has("write"))&&!(activeView()==="board"&&new URLSearchParams(location.search).has("edit"))}
 let scriptPromise;
 function load(){if(!scriptPromise)scriptPromise=new Promise((resolve,reject)=>{const script=document.createElement("script");script.async=true;script.crossOrigin="anonymous";script.src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client="+encodeURIComponent(client);script.onload=resolve;script.onerror=reject;document.head.appendChild(script)});return scriptPromise}

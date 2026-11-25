@@ -435,6 +435,40 @@ def material_catalog(data_dir, out):
     (target / "rules.json").write_text(json.dumps(rules, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
+def configure_fun_ads(out, cfg, ver):
+    """Adapt the standalone KickKick HTML at build time, preserving its game source."""
+    path = out / "fun" / "index.html"
+    if not path.is_file():
+        return
+    html = path.read_text("utf-8")
+    def replace_once(old, new):
+        nonlocal html
+        if html.count(old) != 1:
+            raise ValueError("KickKick ad integration marker missing or duplicated: " + old[:80])
+        html = html.replace(old, new, 1)
+    replace_once('<body>\n<div class="wrap">', '<body data-view="fun">\n<div class="wrap" data-ad-layout="public">\n'
+                 '<aside class="fg-ad-rail fg-ad-left" data-ad-slot="fun-left" aria-label="광고" hidden></aside>\n'
+                 '<aside class="fg-ad-rail fg-ad-right" data-ad-slot="fun-right" aria-label="광고" hidden></aside>')
+    replace_once('<div class="ad" id="adBot" hidden></div>', '<div class="ad" id="adBot" hidden><aside id="funAdCenter" data-ad-slot="fun-center" aria-label="광고" hidden></aside></div>')
+    start = html.index("/* =================== 광고 (구글 애드센스)")
+    end = html.index("/* =================== 테마", start)
+    html = html[:start] + '''/* Shared manual ad loader: no refresh on each quiz question. */
+function renderAds(opt={}){
+  const center=$('adBot');
+  document.querySelector('.wrap').dataset.adScreen='content';
+  const show=!!opt.result||!!$('app').querySelector('.hub-hero');
+  center.hidden=!show;
+  document.dispatchEvent(new Event('fg:ad-layout'));
+}
+''' + html[end:]
+    replace_once("function failView(err){", "function failView(err){\n  $('adBot').hidden=true;document.querySelector('.wrap').dataset.adScreen='error';document.dispatchEvent(new Event('fg:ad-layout'));")
+    config = json.dumps(cfg.get("ads", {}), ensure_ascii=True).replace("<", "\\u003c")
+    replace_once("</head>", f'<link rel="stylesheet" href="/assets/css/fun-ads.css?v={ver}">\n'
+                 f'<script>window.FG_AD_CONFIG={config};</script>\n'
+                 f'<script defer src="/assets/js/ads.js?v={ver}"></script>\n</head>')
+    path.write_text(html, encoding="utf-8")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data")
@@ -458,6 +492,7 @@ def main(argv=None):
         if p.is_file():
             h.update(p.read_bytes())
     ver = h.hexdigest()[:8]
+    configure_fun_ads(out, cfg, ver)
 
     env = Environment(loader=FileSystemLoader(SITE / "templates"), undefined=StrictUndefined,
                       autoescape=False, keep_trailing_newline=True)

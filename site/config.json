@@ -26,7 +26,10 @@
       "press-1": "",
       "sim-enh-1": "",
       "sim-pack-1": "",
-      "sim-cash-1": ""
+      "sim-cash-1": "",
+      "fun-left": "",
+      "fun-right": "",
+      "fun-center": ""
     },
     "allow_community": false,
     "allow_syndicated_news": false

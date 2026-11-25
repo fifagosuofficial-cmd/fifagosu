@@ -1347,3 +1347,6 @@ body>.wrap[data-ad-layout="public"]{position:relative}
 
 /* Keep ad inventory distinct from interactive controls and discussion. */
 #fcPost #fcBoardAd{margin:24px 0 28px}.sim-panel .slot[data-ad-slot],#v-cards .slot[data-ad-slot],#v-trade .slot[data-ad-slot]{margin-block:24px;clear:both}
+
+/* KickKick nav uses the same compact icon treatment as diagnosis. */
+nav.menu a.nav-fun{display:inline-flex;align-items:center;gap:5px}.fg-fun-icon{flex:none;color:currentColor}@media(max-width:760px){.fg-nav-shell nav.menu .fg-fun-icon{width:15px;height:15px}}

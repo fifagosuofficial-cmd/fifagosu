@@ -1,0 +1,15 @@
+/* Standalone KickKick ad layout, without changing the original game theme. */
+body[data-view="fun"]>.wrap{position:relative}
+.fg-ad-rail{position:absolute;top:124px;width:160px;height:600px;box-sizing:border-box;overflow:hidden;text-align:center}
+.fg-ad-left{left:var(--ad-left,-184px)}.fg-ad-right{left:var(--ad-right,calc(100% + 24px))}
+.fg-ad-rail .adsbygoogle{width:160px;height:600px;display:inline-block}
+#funAdCenter{box-sizing:border-box;width:100%;min-width:0;overflow:visible}
+#adBot{margin:32px 0 24px}
+#funAdCenter .adsbygoogle{display:block;width:100%}
+.fg-ad-rail.is-preview,#funAdCenter.is-preview{display:grid;place-content:center;border:1px dashed var(--line);border-radius:10px;color:var(--dim);background:rgba(0,0,0,.12);font:12px/1.6 var(--f-body);text-align:center}
+#funAdCenter.is-preview{min-height:110px}
+.fg-ad-rail.is-preview::before,#funAdCenter.is-preview::before{content:"광고 배치 미리보기";font-weight:700}
+.fg-ad-rail.is-preview::after{content:"160 × 600 · 송출 안 함"}
+#funAdCenter.is-preview::after{content:"반응형 배너 · 송출 안 함"}
+@media(max-width:959px){.fg-ad-rail{display:none!important}}
+body[data-view="fun"]>.wrap[data-ad-screen="error"] .fg-ad-rail{display:none!important}

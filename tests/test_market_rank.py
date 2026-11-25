@@ -47,6 +47,20 @@ def test_new_cards_wait_two_full_days_before_ranking():
     assert [item["id"] for item in result["risers"]] == [2]
 
 
+def test_independent_pct_and_delta_ranks_use_full_valid_pool():
+    rows = [
+        card(1, 100, 102, observations=2),
+        card(2, 100, 150, observations=2),
+        card(3, 1_000_000, 1_000_100, observations=2),
+    ]
+    result = rank_market_moves(rows, "2026-11-25", top=None)
+    assert result["risers"] == []  # composite still needs three observations
+    by_id = {item["id"]: item for item in result["items"]}
+    assert by_id[2]["rp"] == 1 and by_id[1]["rp"] == 2
+    assert by_id[3]["rd"] == 1
+    assert all(item["impact"] is None for item in result["items"])
+
+
 def test_usage_is_not_a_filter_weight_or_mover_output_field():
     rows = [
         card(1, 100_000_000, 110_000_000, games=0),

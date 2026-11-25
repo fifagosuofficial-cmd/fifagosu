@@ -9,12 +9,27 @@
 
 {% macro pct(c) -%}{% if c is none %}-{% elif c > 0 %}+{{ '%.1f'|format(c) }}%{% else %}{{ '%.1f'|format(c) }}%{% endif %}{%- endmacro %}
 
-{% macro row(x, n, show_grade=false, show_usage=false) -%}
-<li><button type="button" class="mk-row" data-card="{{ x.id }}" data-grade="{{ x.g|default(1) }}">
-  <span class="mk-n">{{ n }}</span>
-  <span class="mk-ssn" data-sid="{{ x.s }}"></span>
-  <span class="mk-nm"><b>{{ x.n }}</b><small>{% if show_grade %}<em class="mk-grade-badge">{{ x.g|default(1) }}강</em>{% endif %}{% if x.p %}{{ x.p }} {{ x.o or '' }}{% endif %}</small></span>
-  <span class="mk-pr">{{ bp(x.v) }}</span>
-  {% if show_usage and x.u is defined %}<span class="mk-c"><b>사용 {{ x.u }}회</b><small>랭커 사용 기준</small></span>{% elif x.c is defined %}<span class="mk-c {{ 'up' if x.c > 0 else ('down' if x.c < 0 else '') }}"><b>{{ pct(x.c) }}</b><small>{% if x.d is defined %}{{ '+' if x.d > 0 else ('-' if x.d < 0 else '') }}{{ bp(x.d|abs) }}{% endif %}{% if x.trend is defined and x.trend %}<i>{{ x.trend }}</i>{% elif x.persistence is defined %}<i>{% if x.persistence >= 100 %}3일 {{ '상승세' if x.c > 0 else '하락세' }}{% elif x.persistence >= 50 %}{{ '상승' if x.c > 0 else '하락' }} 흐름{% else %}단기 변동{% endif %}</i>{% endif %}</small></span>{% else %}<span class="mk-c">-</span>{% endif %}
-</button></li>
+{% macro season(sid) -%}
+{%- set meta = market_seasons.get(sid|int, {}) -%}
+{%- set label = (meta.className.split(' (')[0] if meta.className is defined else '시즌 '~sid) -%}
+<span class="mk-ssn" data-sid="{{ sid }}">{% if meta.seasonImg is defined and meta.seasonImg %}<img class="ssnimg" src="{{ meta.seasonImg|e }}" alt="{{ label|e }}" loading="lazy" onerror="this.nextElementSibling.hidden=false;this.remove()"><span class="ssn ssn-special" hidden>{{ label|e }}</span>{% else %}<span class="ssn ssn-special">{{ label|e }}</span>{% endif %}</span>
+{%- endmacro %}
+
+{% macro row(x, n) -%}
+<tr class="mk-stock-row" data-card="{{ x.id }}" data-grade="{{ x.g|default(1) }}">
+  <td class="mk-rank">{{ n }}</td>
+  <td class="mk-player"><button type="button" data-card="{{ x.id }}" data-grade="{{ x.g|default(1) }}">
+    <span class="mk-face"><img src="https://fco.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p{{ x.id }}.png" alt="" loading="lazy" onerror="this.remove()"></span>
+    {{ season(x.s) }}
+    <span class="mk-nm"><b>{{ x.n|e }}</b><small><em class="mk-grade-badge">{{ x.g|default(1) }}강</em>{% if x.p %}{{ x.p }} {{ x.o or '' }}{% endif %}</small></span>
+  </button></td>
+  <td class="mk-num mk-pr">{{ bp(x.v) }}</td>
+  <td class="mk-num mk-pct {{ 'up' if x.c > 0 else ('down' if x.c < 0 else '') }}">{{ pct(x.c) }}</td>
+  <td class="mk-num mk-delta {{ 'up' if x.d > 0 else ('down' if x.d < 0 else '') }}">{{ '+' if x.d > 0 else ('-' if x.d < 0 else '') }}{{ bp(x.d|abs) }}</td>
+  <td class="mk-spark"><svg viewBox="0 0 72 24" role="img" aria-label="실제 가격 추세" data-spark="{% if x.prices is defined %}{{ x.prices|join(',') }}{% elif x.h is defined %}{{ x.h|map(attribute=1)|join(',') }}{% endif %}"><polyline></polyline></svg></td>
+</tr>
+{%- endmacro %}
+
+{% macro table_head() -%}
+<thead><tr><th class="mk-rank">순위</th><th>선수</th><th class="mk-num mk-pr">현재가</th><th class="mk-num mk-pct">등락률</th><th class="mk-num mk-delta">변동액</th><th class="mk-spark">추세</th></tr></thead>
 {%- endmacro %}

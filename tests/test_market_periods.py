@@ -49,3 +49,26 @@ def test_market_periods_merge_all_grades_but_cap_same_card_at_two(tmp_path):
     rows = build.market_period_views(tmp_path, market)["periods"]["1"]["risers"]
     assert len([row for row in rows if row["id"] == 100000001]) == 2
     assert all(1 <= row["g"] <= 13 for row in rows)
+
+
+def test_market_payload_keeps_full_candidates_and_real_history(tmp_path):
+    dates = ["2026-11-24", "2026-11-25"]
+    put(tmp_path, "market/all_card_history_dates.json", {
+        "basis": "full-list-snapshots", "dates": dates, "counts": [2, 2]})
+    put(tmp_path, "list/1.json", {
+        "100000001": {"name": "A", "games": 0, "price": [200]},
+        "101000001": {"name": "B", "games": 0, "price": [100]},
+    })
+    put(tmp_path, "market/all_card_history/1.json", {
+        "100000001": {"1": list(zip(dates, [100, 200]))},
+        "101000001": {"1": list(zip(dates, [200, 100]))},
+    })
+    market = {"date": dates[-1], "indexMinimum": 1,
+              "byGrade": {"1": {"popular": []}}}
+    result = build.market_period_views(tmp_path, market)
+    period = result["periods"]["1"]
+    payload = result["_rankPayloads"]["1"]
+    assert period["ready"] and period["fallback"] and period["defaultSort"] == "pct"
+    assert payload["totalCards"] == 2 and len(payload["items"]) == 2
+    assert payload["items"][0]["h"] == [["2026-11-24", 100], ["2026-11-25", 200]]
+    assert payload["items"][0]["impact"] is None

@@ -29,55 +29,54 @@
     </form>
   </header>
 {% if market %}
-  <div class="mk-grade mk-period" role="tablist" aria-label="비교 기간"><span>비교 기간</span>{% for d in [1,3,7] %}<button type="button" role="tab" data-md="{{ d }}" aria-selected="{{ 'true' if loop.first else 'false' }}">{{ d }}일</button>{% endfor %}</div>
+  <section class="market-dashboard" data-market-dashboard data-limit="10" aria-label="이적시장 시세 동향">
+  <div class="mk-dashboard-head"><div><h2>이적시장 시세 동향</h2><p>전체 카드 실제 수집 시세 · 종합 순위 40% 등락률 + 40% BP 변동액 + 20% 추세 지속성</p></div><time>{{ market.collectedAt[:16]|replace("T", " ") if market.collectedAt else market.date }} 수집</time></div>
+  <div class="mk-controls">
+    <div class="mk-period" role="tablist" aria-label="비교 기간">{% for d in [1,3,7] %}<button type="button" role="tab" data-md="{{ d }}" aria-selected="{{ 'true' if loop.first else 'false' }}">{{ d }}일</button>{% endfor %}</div>
+    <div class="mk-selects"><label>강화<select data-market-grade><option value="">전체 강화</option>{% for g in range(1,14) %}<option value="{{ g }}">{{ g }}강</option>{% endfor %}</select></label><label>시즌<select data-market-season><option value="">전체 시즌</option></select></label></div>
+    <div class="mk-sort" role="group" aria-label="정렬"><button type="button" data-market-sort="impact" aria-pressed="true">종합 순위</button><button type="button" data-market-sort="pct" aria-pressed="false">등락률</button><button type="button" data-market-sort="delta" aria-pressed="false">BP 변동액</button></div>
+  </div>
   {% for d in [1,3,7] %}{% set P = market.periods[d|string] %}{% set ix = P.index %}
-  <div class="mk-period-panel" data-mdp="{{ d }}"{% if not loop.first %} hidden{% endif %}>
+  <div class="mk-period-panel" data-mdp="{{ d }}" data-default-sort="{{ P.defaultSort }}" data-fallback="{{ 'true' if P.fallback else 'false' }}"{% if not loop.first %} hidden{% endif %}>
   <section class="mk-strip" aria-label="시장 요약">
     <div class="mk-tile">
-      <span class="mk-k">1강 시장 흐름 <small>{{ d }}일 전 대비{% if ix %} · 표본 {{ ix.n }}장{% endif %}</small></span>
+      <span class="mk-k">시장 종합 지수 <small>{{ d }}일 전 대비{% if ix %} · 1강 표본 {{ ix.n }}장{% endif %}</small></span>
       {% if ix %}<span class="mk-v {{ 'up' if ix.median > 0 else ('down' if ix.median < 0 else '') }}">{{ M.pct(ix.median) }}</span>
       {% else %}<span class="mk-v mk-wait">{% if not P.ready %}전체 카드 이력 {{ P.historyDays }}/{{ P.required }}일 누적{% else %}표본 {{ P.sample }}/{{ market.indexMinimum|default(30) }}장{% endif %}</span>{% endif %}
     </div>
     <div class="mk-tile">
-      <span class="mk-k">{{ d }}일 전 대비 오른 카드 · 내린 카드</span>
-      {% if ix %}<span class="mk-v mk-ud"><b class="up">▲ {{ ix.up }}</b> <b class="down">▼ {{ ix.down }}</b></span>
-      <span class="mk-bar" aria-hidden="true"><i style="width:{{ (ix.up / ix.n * 100)|round(1) if ix.n else 50 }}%"></i></span>
-      {% else %}<span class="mk-v mk-wait">비교 가능한 표본을 모으고 있어요</span>{% endif %}
+      <span class="mk-k">상승 카드·강화 수</span>
+      {% if ix %}<span class="mk-v up">{{ '{:,}'.format((P.up|default(ix.up))|int) }}</span>{% else %}<span class="mk-v mk-wait">집계 중</span>{% endif %}
     </div>
     <div class="mk-tile">
-      <span class="mk-k">최근 14일 신규 카드</span>
-      <span class="mk-v"><b>{{ market.newCount }}</b><small>장</small></span>
+      <span class="mk-k">하락 카드·강화 수</span>
+      {% if ix %}<span class="mk-v down">{{ '{:,}'.format((P.down|default(ix.down))|int) }}</span>{% else %}<span class="mk-v mk-wait">집계 중</span>{% endif %}
     </div>
-    {% if news and news.check %}<a class="mk-tile" href="{{ news.check.url }}" target="_blank" rel="noopener nofollow">
-      <span class="mk-k">최근 점검</span>
-      <span class="mk-v mk-sm"><b class="bd-st st-{{ news.check.state }}">{{ news.check.state_label }}</b> {{ news.check.short }}</span></a>{% endif %}
+    <div class="mk-tile"><span class="mk-k">수집 카드 수</span><span class="mk-v" data-market-total>{{ '{:,}'.format((P.totalCards|default(P.sample))|int) }}</span></div>
   </section>
 
-  <div class="mk-bar2"><small class="mk-rule"><b>전체 시즌·전체 강화 카드의 실제 시세 변동 기준</b> · 변동률 3% 이상 · 절대 변동액 상위 20% · 관측 3회 이상 · {{ d }}일 전 대비{% if P.ready %} ({{ P.prev[5:7]|int }}.{{ P.prev[8:10]|int }} → {{ P.date[5:7]|int }}.{{ P.date[8:10]|int }}){% else %} · 비교 이력 부족{% endif %}</small></div>
+  <div class="mk-bar2"><small class="mk-rule"><b>전체 시즌·전체 강화 카드의 실제 시세 변동 기준</b> · 종합 순위만 변동률 3% 이상·절대 변동액 상위 20%·관측 3회 이상 · {{ d }}일 전 대비{% if P.ready %} ({{ P.prev[5:7]|int }}.{{ P.prev[8:10]|int }} → {{ P.date[5:7]|int }}.{{ P.date[8:10]|int }}){% else %} · 비교 이력 부족{% endif %}</small><span class="mk-load-state" data-market-status>{% if P.fallback %}종합 순위 관측 부족 · 등락률 순위 표시{% endif %}</span></div>
   <div class="mk-panel">
     <section class="mk-box mk-up">
-      <h2>{{ d }}일 전 대비 급등 TOP {{ P.risers|length or 10 }}</h2>
-      {% if P.risers %}<ol class="mk-list">{% for x in P.risers %}{{ M.row(x, loop.index, true) }}{% endfor %}</ol>
-      {% else %}<p class="mk-empty">{% if not P.ready %}{{ d }}일 전 시세 이력이 아직 없어요.{% else %}해당 기간 등락 카드가 없어요.{% endif %}</p>{% endif %}
+      <h3>급등 TOP 10</h3>
+      <div class="mk-table-scroll"><table class="mk-stock-table">{{ M.table_head() }}<tbody data-market-list="up">{% if P.risers %}{% for x in P.risers %}{{ M.row(x, loop.index) }}{% endfor %}{% endif %}</tbody></table></div>
+      {% if not P.risers %}<p class="mk-empty" data-market-empty="up">{% if not P.ready %}{{ d }}일 전 시세 이력이 아직 없어요.{% else %}해당 기간 등락 카드가 없어요.{% endif %}</p>{% endif %}
+      <a class="mk-more" data-market-more="up" href="{{ root }}market/?period={{ d }}&amp;direction=up&amp;sort=impact">급등 TOP 100 더보기 →</a>
     </section>
     <section class="mk-box mk-down">
-      <h2>{{ d }}일 전 대비 급락 TOP {{ P.fallers|length or 10 }}</h2>
-      {% if P.fallers %}<ol class="mk-list">{% for x in P.fallers %}{{ M.row(x, loop.index, true) }}{% endfor %}</ol>
-      {% else %}<p class="mk-empty">{% if not P.ready %}{{ d }}일 전 시세 이력이 아직 없어요.{% else %}해당 기간 등락 카드가 없어요.{% endif %}</p>{% endif %}
-    </section>
-    <section class="mk-box">
-      <h2>인기 카드 1강 시세</h2>
-      <p class="mk-empty mk-pop-note">{{ market.popularLabel|default('상위 랭커 사용 경기 수 TOP 10') }}</p>
-      {% if P.popular %}<ol class="mk-list">{% for x in P.popular %}{{ M.row(x, loop.index, false, true) }}{% endfor %}</ol>
-      {% else %}<p class="mk-empty">상위 랭커 사용 표본을 모으고 있어요.</p>{% endif %}
+      <h3>급락 TOP 10</h3>
+      <div class="mk-table-scroll"><table class="mk-stock-table">{{ M.table_head() }}<tbody data-market-list="down">{% if P.fallers %}{% for x in P.fallers %}{{ M.row(x, loop.index) }}{% endfor %}{% endif %}</tbody></table></div>
+      {% if not P.fallers %}<p class="mk-empty" data-market-empty="down">{% if not P.ready %}{{ d }}일 전 시세 이력이 아직 없어요.{% else %}해당 기간 등락 카드가 없어요.{% endif %}</p>{% endif %}
+      <a class="mk-more" data-market-more="down" href="{{ root }}market/?period={{ d }}&amp;direction=down&amp;sort=impact">급락 TOP 100 더보기 →</a>
     </section>
   </div>
   </div>
   {% endfor %}
+  </section>
   {% if market.newCards %}
   <section class="mk-new" aria-labelledby="mkNewH">
     <h2 id="mkNewH">새로 나온 카드 <small>최근 14일</small><a class="h2-more" href="{{ root }}cards">카드 검색 →</a></h2>
-    <div class="mk-chips">{% for x in market.newCards %}<button type="button" data-card="{{ x.id }}"><span class="mk-ssn" data-sid="{{ x.s }}"></span><b>{{ x.n }}</b>{% if x.o %}<em>{{ x.o }}</em>{% endif %}</button>{% endfor %}</div>
+    <div class="mk-chips">{% for x in market.newCards %}<button type="button" data-card="{{ x.id }}">{{ M.season(x.s) }}<b>{{ x.n }}</b>{% if x.o %}<em>{{ x.o }}</em>{% endif %}</button>{% endfor %}</div>
   </section>
   {% endif %}
 {% endif %}
@@ -106,6 +105,28 @@
   <a class="funlink" href="{{ SITE_URL }}/fun/" target="_self"><b>킥킥 · 내가 선수라면?</b><span>닮은 선수 찾기·내 몸값·감독 유형 등 12종, 1분이면 끝나요</span><em>해보기 →</em></a>
 {% endif %}
   <aside class="slot" data-ad-slot="home-1" aria-label="광고"></aside>
+</main>
+
+<!-- ================= 이적시장 TOP 100 ================= -->
+<main id="v-market" class="wrap market-page"{% if view!='market' %} hidden{% endif %}>
+{% if market %}
+  <header class="market-page-head"><div><a href="/">← 홈 시세 동향</a><h1>이적시장 급등락 TOP 100</h1><p>실제 수집 가격 이력으로 전체 유효 후보군을 계산합니다.</p></div><time>{{ market.collectedAt[:16]|replace("T", " ") if market.collectedAt else market.date }} 수집</time></header>
+  <section class="market-dashboard" data-market-dashboard data-detail="true" data-limit="100" aria-label="이적시장 급등락 상세">
+    <div class="mk-controls">
+      <div class="mk-period" role="tablist" aria-label="비교 기간">{% for d in [1,3,7] %}<button type="button" role="tab" data-md="{{ d }}" aria-selected="{{ 'true' if loop.first else 'false' }}">{{ d }}일</button>{% endfor %}</div>
+      <div class="mk-selects"><label>강화<select data-market-grade><option value="">전체 강화</option>{% for g in range(1,14) %}<option value="{{ g }}">{{ g }}강</option>{% endfor %}</select></label><label>시즌<select data-market-season><option value="">전체 시즌</option></select></label></div>
+      <div class="mk-sort" role="group" aria-label="정렬"><button type="button" data-market-sort="impact" aria-pressed="true">종합 순위</button><button type="button" data-market-sort="pct" aria-pressed="false">등락률</button><button type="button" data-market-sort="delta" aria-pressed="false">BP 변동액</button></div>
+    </div>
+    <div class="mk-sort mk-direction" role="group" aria-label="상승 하락 선택"><button type="button" data-market-dir="up" aria-pressed="true">▲ 급등</button><button type="button" data-market-dir="down" aria-pressed="false">▼ 급락</button></div>
+    <div class="mk-detail-meta"><b data-market-title>1일 급등 TOP 100</b><span data-market-status>실제 이력을 불러오는 중</span></div>
+    <div class="mk-panel">
+      <section class="mk-box mk-up" data-market-direction="up"><h2>급등 TOP 100</h2><div class="mk-table-scroll"><table class="mk-stock-table">{{ M.table_head() }}<tbody data-market-list="up"></tbody></table></div><p class="mk-empty" data-market-empty="up">실제 시세 순위를 불러오는 중이에요.</p></section>
+      <section class="mk-box mk-down" data-market-direction="down"><h2>급락 TOP 100</h2><div class="mk-table-scroll"><table class="mk-stock-table">{{ M.table_head() }}<tbody data-market-list="down"></tbody></table></div><p class="mk-empty" data-market-empty="down">실제 시세 순위를 불러오는 중이에요.</p></section>
+    </div>
+    <p class="mk-rule"><b>종합 순위</b>는 등락률 백분위 40% + BP 변동액 백분위 40% + 추세 지속성 20%입니다. 등락률·BP 변동액 정렬은 종합 순위의 변동액 필터를 적용하지 않습니다.</p>
+  </section>
+{% else %}<p class="empty">시세 집계를 준비하고 있어요.</p>{% endif %}
+  <aside class="slot" data-ad-slot="market-1" aria-label="광고"></aside>
 </main>
 
 <!-- ================= 전적 진단 ================= -->
@@ -447,7 +468,7 @@
 {% block scripts %}
 <script>if(!window.FG_LIVE)document.write('<script src="{{ root }}preview/data.js?v={{ ver }}"><\/script>')</script>
 <script src="{{ root }}assets/js/news.js?v={{ ver }}" defer></script>
-<script>window.FG_ROUTES={"home":"/","diag":"/diag","cards":"/cards","guide":"/guide/","sim":"/sim/","trade":"/trade/"};window.FG_TITLES={{ titles }};</script>
+<script>window.FG_ROUTES={"home":"/","market":"/market/","diag":"/diag","cards":"/cards","guide":"/guide/","sim":"/sim/","trade":"/trade/"};window.FG_TITLES={{ titles }};</script>
 <script src="{{ root }}assets/js/app.js?v={{ ver }}"></script>
 <script src="{{ root }}assets/js/material-engine.js?v={{ ver }}"></script>
 <script src="{{ root }}assets/js/sim.js?v={{ ver }}"></script>

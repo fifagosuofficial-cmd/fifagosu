@@ -375,7 +375,7 @@ async function realData(nick,mode,count,fetchJSON,names,BATCH=8){
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
-const VIEWS=['home','diag','cards','guide','sim','trade'];
+const VIEWS=['home','market','diag','cards','guide','sim','trade'];
 
 /* 등급 계열 색 */
 const TIER_FAM=n=>/슈퍼 ?챔피언스/.test(n)?'--t-sc':/챔피언스/.test(n)?'--t-ch':/챌린/.test(n)?'--t-cl':/마스터/.test(n)?'--t-ma':/월드클래스/.test(n)?'--t-wc':/^프로/.test(n)?'--t-pr':'--t-lo';
@@ -385,7 +385,7 @@ const DIV_NAMES=Object.values(DIVISION);
 const divImg=(n,cls)=>{const i=DIV_NAMES.indexOf(n);return i<0?'':`<img class="${cls||'divimg'}" src="https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank${i}.png" alt="${esc(n)}" title="역대 최고 등급 · ${esc(n)}" onerror="this.remove()">`};
 function show(v,nopush){
   // SPA 탭 이동 뒤에도 넓은 화면용 컨테이너 상태를 뷰와 동기화한다.
-  document.body.classList.toggle('page-wide',['home','diag','cards','sim','trade','guide'].includes(v));
+  document.body.classList.toggle('page-wide',['home','market','diag','cards','sim','trade','guide'].includes(v));
   VIEWS.forEach(x=>$('v-'+x).hidden=x!==v);
   document.querySelectorAll('#menu [data-view]').forEach(b=>{if(b.dataset.view===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   const R=window.FG_ROUTES;
@@ -411,7 +411,7 @@ document.querySelectorAll('a.logo').forEach(link=>link.addEventListener('click',
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.go)));
 
 const gch=g=>`<span class="grade g-${GRADE_CLS(g)}" title="${GRADE_TIER(g)}">${g}강</span>`;
-const sname=id=>(SEASONS[id]||['?'])[0];
+const sname=id=>(SEASONS[id]||[`시즌 ${id}`])[0];
 
 /* 가이드 */
 if($('gLadder'))$('gLadder').innerHTML=['유망주','세미프로','프로','월드클래스','마스터','챌린저','슈퍼 챌린지','챔피언스','슈퍼 챔피언스'].map(n=>`<span style="--tc:var(${TIER_FAM(n)})">${n}</span>`).join('<span style="border:0;background:none;color:var(--muted);padding:4px 0">›</span>');
@@ -901,7 +901,7 @@ async function fetchJSON(path,signal){
   }
   throw {code:'rate',message:'요청이 많아 잠시 막혔어요. 1분 뒤 다시 시도해 주세요.'};
 }
-let spidMap=null, seasonsLoaded=false;
+let spidMap=null, seasonsLoaded=false, seasonsPromise=null;
 /* 카드·시즌 목록: 매일 수집 때 저장한 정적 사본(data/meta)을 먼저 읽어 Functions 요청을 아낌 */
 async function metaJSON(name){
   try{const r=await fetch((window.FG_DATA||'/data')+'/meta/'+name+'.json');if(r.ok)return await r.json()}catch(e){}
@@ -910,13 +910,6 @@ async function metaJSON(name){
 async function names(ids){
   if(!spidMap)spidMap=metaJSON('spid').then(a=>Object.fromEntries(a.map(x=>[x.id,x.name])));
   const m=await spidMap;return Object.fromEntries(ids.map(id=>[id,m[id]]));
-}
-async function loadSeasons(){
-  if(seasonsLoaded)return;
-  const list=await metaJSON('seasonid');
-  const fam=n=>/ICON/.test(n)?'icon':/TOTY/.test(n)?'toty':/TOTS/.test(n)?'tots':/UCL/.test(n)?'ucl':/HR\b|Heroes/.test(n)?'hr':/NG\b/.test(n)?'ng':/\bPL/.test(n)?'pl':/LIVE|KLeague|KFA|KB\b/.test(n)?'live':'special';
-  list.forEach(s=>{if(!SEASONS[s.seasonId]){const short=s.className.split(' (')[0];SEASONS[s.seasonId]=[short,fam(short)]}});
-  seasonsLoaded=true;
 }
 let diagSeq=0;
 async function runDiag(nick){
@@ -968,9 +961,11 @@ function seasonImg(id){const s=SEASONS[id];if(!s)return '';return s[3]||(s[2]?SE
 const sch=id=>{const n=sname(id),fam=(SEASONS[id]||['','special'])[1],u=seasonImg(id),t=`<span class="ssn ssn-${fam}" title="${esc(n)}"${u?' hidden':''}>${esc(n)}</span>`;return u?`<img class="ssnimg" src="${esc(u)}" alt="${esc(n)}" title="${esc(n)}" loading="lazy" onerror="this.nextElementSibling.hidden=false;this.remove()">${t}`:t};
 async function loadSeasons(){
   if(seasonsLoaded)return;
-  const list=await metaJSON('seasonid');
-  list.forEach(s=>{const short=String(s.className||s.seasonId).split(' (')[0],cur=SEASONS[s.seasonId];SEASONS[s.seasonId]=[short,SEASON_FAM(short),cur?cur[2]:'',s.seasonImg||'']});
-  seasonsLoaded=true;
+  if(!seasonsPromise)seasonsPromise=metaJSON('seasonid').then(list=>{
+    list.forEach(s=>{const short=String(s.className||s.seasonId).split(' (')[0],cur=SEASONS[s.seasonId];SEASONS[s.seasonId]=[short,SEASON_FAM(short),cur?cur[2]:'',s.seasonImg||'']});
+    seasonsLoaded=true;hydrateSeasonBadges();
+  }).catch(e=>{seasonsPromise=null;throw e});
+  return seasonsPromise;
 }
 /* 선수 이미지: 넥슨 Open API 이미지 정보(액션 이미지 → 기본 이미지 → 실루엣) */
 const IMG_BASE='https://fco.dn.nexoncdn.co.kr/live/externalAssets/common/';
@@ -1337,23 +1332,75 @@ if(LIVE){
 initCards();
 {const h=location.hash.replace('#',''),bv=document.body.dataset.view;
  if(VIEWS.includes(h))show(h);else if(bv&&bv!=='home'&&VIEWS.includes(bv))show(bv,true);}
-window.addEventListener('popstate',()=>{const R=window.FG_ROUTES||{};const p=location.pathname.replace(/\.html$/,'').replace(/(.)\/$/,'$1');const v=Object.keys(R).find(k=>R[k]===p)||(p.startsWith('/guide')?'guide':p.startsWith('/sim')?'sim':p.startsWith('/trade')?'trade':'home');show(v,true);if(window.FG_TITLES&&FG_TITLES[v])document.title=FG_TITLES[v]});
+window.addEventListener('popstate',()=>{const R=window.FG_ROUTES||{};const p=location.pathname.replace(/\.html$/,'').replace(/(.)\/$/,'$1');const v=Object.keys(R).find(k=>R[k]===p)||(p.startsWith('/guide')?'guide':p.startsWith('/market')?'market':p.startsWith('/sim')?'sim':p.startsWith('/trade')?'trade':'home');show(v,true);if(window.FG_TITLES&&FG_TITLES[v])document.title=FG_TITLES[v]});
 
-/* 홈 '오늘의 시장': 기간 탭 · 시즌 배지 · 누르면 해당 강화 선수 정보창 */
-(function(){
-  const home=document.getElementById('v-home'); if(!home)return;
-  home.querySelectorAll('.mk-ssn[data-sid]').forEach(el=>{el.innerHTML=sch(+el.dataset.sid)});
-  let day='1';
-  const sync=()=>{
-    home.querySelectorAll('[data-md]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.md===day)));
-    home.querySelectorAll('[data-mdp]').forEach(p=>p.hidden=p.dataset.mdp!==day);
+/* 이적시장: 기본 TOP10은 HTML로 즉시 표시하고, 필터 조작·상세 화면에서만 전체 후보 JSON을 지연 로딩 */
+function hydrateSeasonBadges(scope){
+  (scope||document).querySelectorAll('.mk-ssn[data-sid]').forEach(el=>{if(SEASONS[+el.dataset.sid]&&seasonsLoaded)el.innerHTML=sch(+el.dataset.sid)});
+  (scope||document).querySelectorAll('select[data-market-season]').forEach(sel=>{
+    const value=sel.value,seen=new Set([...sel.options].map(o=>o.value));
+    Object.keys(SEASONS).map(Number).sort((a,b)=>sname(a).localeCompare(sname(b),'ko')).forEach(id=>{
+      if(seen.has(String(id)))return;const o=document.createElement('option');o.value=id;o.textContent=sname(id);sel.appendChild(o)
+    });sel.value=value
+  });
+}
+function marketSpark(values,down){
+  const nums=(values||[]).map(x=>Array.isArray(x)?+x[1]:+x).filter(Number.isFinite);
+  if(nums.length<2)return '<span aria-label="추세 데이터 부족">-</span>';
+  const lo=Math.min(...nums),hi=Math.max(...nums),range=hi-lo||1;
+  const points=nums.map((v,i)=>`${(i/(nums.length-1)*70+1).toFixed(1)},${(22-(v-lo)/range*20).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 72 24" role="img" aria-label="실제 가격 추세" class="${down?'down':'up'}"><polyline points="${points}"></polyline></svg>`
+}
+function drawMarketSparks(scope){
+  (scope||document).querySelectorAll('svg[data-spark]').forEach(svg=>{
+    const nums=(svg.dataset.spark||'').split(',').filter(Boolean).map(Number).filter(n=>Number.isFinite(n)&&n>0);if(nums.length<2)return;
+    const lo=Math.min(...nums),hi=Math.max(...nums),range=hi-lo||1;
+    svg.querySelector('polyline').setAttribute('points',nums.map((v,i)=>`${(i/(nums.length-1)*70+1).toFixed(1)},${(22-(v-lo)/range*20).toFixed(1)}`).join(' '));
+    svg.classList.add(nums.at(-1)<nums[0]?'down':'up')
+  })
+}
+const marketDataCache={};
+function loadMarketPeriod(day){
+  if(!marketDataCache[day])marketDataCache[day]=fetch(`/market-data/${day}.json`).then(r=>{if(!r.ok)throw Error(r.status);return r.json()}).catch(e=>{delete marketDataCache[day];throw e});
+  return marketDataCache[day]
+}
+function marketRow(x,n){
+  const up=+x.d>0,grade=+(x.g||1),sid=+(x.s||Math.floor(+x.id/1e6));
+  const pct=`${+x.c>0?'+':''}${(+x.c||0).toFixed(1)}%`,delta=`${up?'+':'-'}${fmtBP(Math.abs(+x.d||0))}`;
+  return `<tr class="mk-stock-row" data-card="${+x.id}" data-grade="${grade}"><td class="mk-rank">${n}</td><td class="mk-player"><button type="button" data-card="${+x.id}" data-grade="${grade}"><span class="mk-face"><img src="${IMG_BASE}playersAction/p${+x.id}.png" alt="" loading="lazy" onerror="this.remove()"></span><span class="mk-ssn" data-sid="${sid}">${sch(sid)}</span><span class="mk-nm"><b>${esc(x.n||'')}</b><small>${gch(grade)}${x.p?' '+esc(x.p)+' '+esc(x.o||''):''}</small></span></button></td><td class="mk-num mk-pr">${fmtBP(+x.v)}</td><td class="mk-num mk-pct ${up?'up':'down'}">${pct}</td><td class="mk-num mk-delta ${up?'up':'down'}">${delta}</td><td class="mk-spark">${marketSpark(x.h, !up)}</td></tr>`
+}
+function marketRank(items,state,direction,limit){
+  let rows=(items||[]).filter(x=>(direction==='up'?+x.d>0:+x.d<0)&&(!state.grade||+x.g===+state.grade)&&(!state.season||+x.s===+state.season));
+  if(state.sort==='impact')rows=rows.filter(x=>x.impact!=null&&Number.isFinite(+x.impact));
+  const metric=state.sort==='pct'?'c':state.sort==='delta'?'d':'impact',rank=state.sort==='pct'?'rp':state.sort==='delta'?'rd':'ri';
+  rows.sort((a,b)=>(Number.isFinite(+a[rank])&&Number.isFinite(+b[rank])?+a[rank]-+b[rank]:Math.abs(+b[metric]||0)-Math.abs(+a[metric]||0))||Math.abs(+b.d||0)-Math.abs(+a.d||0)||(+b.g||0)-(+a.g||0)||+a.id-+b.id);
+  const count={},out=[];for(const x of rows){if(state.sort==='impact'&&!state.grade&&(count[x.id]||0)>=2)continue;count[x.id]=(count[x.id]||0)+1;out.push(x);if(out.length>=limit)break}return out
+}
+function initMarketDashboard(root){
+  const detail=root.dataset.detail==='true',q=new URLSearchParams(location.search),state={day:detail&&['1','3','7'].includes(q.get('period'))?q.get('period'):'1',grade:detail&&/^(?:[1-9]|1[0-3])$/.test(q.get('grade')||'')?q.get('grade'):'',season:detail&&/^\d+$/.test(q.get('season')||'')?q.get('season'):'',sort:detail&&['impact','pct','delta'].includes(q.get('sort'))?q.get('sort'):'impact',direction:detail&&q.get('direction')==='down'?'down':'up'};
+  const grade=root.querySelector('[data-market-grade]'),season=root.querySelector('[data-market-season]');grade.value=state.grade;season.value=state.season;
+  let seq=0,started=false;
+  const currentPanel=()=>root.querySelector(`[data-mdp="${state.day}"]`)||root;
+  const syncControls=()=>{root.querySelectorAll('[data-md]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.md===state.day)));root.querySelectorAll('[data-market-sort]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.marketSort===state.sort)));root.querySelectorAll('[data-mdp]').forEach(p=>p.hidden=p.dataset.mdp!==state.day);if(detail){root.querySelectorAll('[data-market-direction]').forEach(s=>s.hidden=s.dataset.marketDirection!==state.direction);root.querySelectorAll('[data-market-dir]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.marketDir===state.direction)));root.querySelector('[data-market-title]').textContent=`${state.day}일 ${state.direction==='up'?'급등':'급락'} TOP 100`}};
+  const updateLinks=()=>{root.querySelectorAll('[data-market-more]').forEach(a=>{const u=new URL(a.href,location.href);u.searchParams.set('period',state.day);u.searchParams.set('direction',a.dataset.marketMore);u.searchParams.set('sort',state.sort);state.grade?u.searchParams.set('grade',state.grade):u.searchParams.delete('grade');state.season?u.searchParams.set('season',state.season):u.searchParams.delete('season');a.href=u.pathname+u.search});if(detail&&!root.closest('main').hidden){const u=new URL(location.href);u.searchParams.set('period',state.day);u.searchParams.set('direction',state.direction);u.searchParams.set('sort',state.sort);state.grade?u.searchParams.set('grade',state.grade):u.searchParams.delete('grade');state.season?u.searchParams.set('season',state.season):u.searchParams.delete('season');history.replaceState(null,'',u)}};
+  const setEmpty=(panel,dir,msg,empty)=>{let p=panel.querySelector(`[data-market-empty="${dir}"]`);if(!p){p=document.createElement('p');p.className='mk-empty';p.dataset.marketEmpty=dir;panel.querySelector(`[data-market-direction="${dir}"],.mk-${dir==='up'?'up':'down'}`).appendChild(p)}p.textContent=msg;p.hidden=!empty};
+  const render=async()=>{
+    const version=++seq,day=state.day;syncControls();updateLinks();const panel=currentPanel(),status=panel.querySelector('[data-market-status]');if(status)status.textContent='순위 계산 데이터를 불러오는 중…';
+    try{const data=await loadMarketPeriod(day);if(version!==seq)return;if(!data.ready){['up','down'].forEach(dir=>{panel.querySelector(`[data-market-list="${dir}"]`).innerHTML='';setEmpty(panel,dir,`${day}일 비교 이력 ${data.historyDays||0}/${data.required||(+day+1)}일 · 데이터 수집 중`,true)});if(status)status.textContent='비교 이력을 수집 중입니다.';return}
+      const pool=data.items.filter(x=>(!state.grade||+x.g===+state.grade)&&(!state.season||+x.s===+state.season));let fallback=false;if(state.sort==='impact'&&pool.length&&!pool.some(x=>x.impact!=null)){state.sort='pct';fallback=true;syncControls();updateLinks()}
+      ['up','down'].forEach(dir=>{const rows=marketRank(data.items,state,dir,+(root.dataset.limit||10)),body=panel.querySelector(`[data-market-list="${dir}"]`);body.innerHTML=rows.map((x,i)=>marketRow(x,i+1)).join('');setEmpty(panel,dir,'선택한 조건의 등락 카드가 없어요.',!rows.length)});
+      if(status)status.textContent=`${data.prev} → ${data.date} · 전체 유효 변동 후보 ${data.items.length.toLocaleString()}건${fallback?' · 종합 관측 부족: 등락률 표시':''}`;
+    }catch(e){if(version!==seq)return;if(status)status.textContent='순위 데이터를 불러오지 못했어요.';['up','down'].forEach(dir=>{panel.querySelector(`[data-market-list="${dir}"]`).innerHTML='';setEmpty(panel,dir,'잠시 후 다시 시도해 주세요.',true)})}
   };
-  home.addEventListener('click',e=>{
-    const d=e.target.closest('[data-md]');if(d){day=d.dataset.md;sync();return}
-    const b=e.target.closest('[data-card]');if(!b)return;
-    openCard(+b.dataset.card);const grade=+(b.dataset.grade||1);if(grade>1){pmGrade=grade;renderCard()}
-  });sync();
-})();
+  root.addEventListener('click',e=>{const d=e.target.closest('[data-md]');if(d){state.day=d.dataset.md;render();return}const s=e.target.closest('[data-market-sort]');if(s){state.sort=s.dataset.marketSort;render();return}const dir=e.target.closest('[data-market-dir]');if(dir){state.direction=dir.dataset.marketDir;syncControls();updateLinks();return}const row=e.target.closest('[data-card]');if(row){openCard(+row.dataset.card);const g=+(row.dataset.grade||1);if(g>1){pmGrade=g;renderCard()}}});
+  root.addEventListener('change',e=>{if(e.target===grade){state.grade=grade.value;render()}else if(e.target===season){state.season=season.value;render()}});
+  loadSeasons().then(()=>{hydrateSeasonBadges(root);season.value=state.season;if(state.season&&!season.value){state.season='';if(started)render()}}).catch(()=>{});
+  if(!detail&&currentPanel().dataset.defaultSort==='pct')state.sort='pct';
+  syncControls();drawMarketSparks(root);if(!detail)updateLinks();
+  const activate=()=>{if(detail&&!root.closest('main').hidden&&!started){started=true;render()}};
+  activate();document.addEventListener('fg:view',activate);
+}
+document.querySelectorAll('[data-market-dashboard]').forEach(initMarketDashboard);
 
 // Community integration: explicit member action, no background account data upload.
 document.addEventListener("click",async e=>{if(!e.target.closest("#fgFavoriteMember")||!pmCard)return;const id=pmCard.id,grade=pmGrade,name=document.getElementById("pmTitle")?.textContent||String(id);try{const r=await fetch("/api/community/favorite",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({card_id:id,grade,name})});const j=await r.json();if(!r.ok)throw Error(j.message);alert("관심 선수에 저장했습니다.")}catch(err){alert("관심 선수 저장 실패: "+err.message)}});

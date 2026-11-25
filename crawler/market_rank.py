@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime as dt
 import math
+from bisect import bisect_right
 
 
 MAX_SAFE_INTEGER = 9_007_199_254_740_991
@@ -29,7 +30,7 @@ def _top_fraction_threshold(values, fraction):
 
 
 def _percentile_rank(values, value):
-    return sum(item <= value for item in values) / len(values) * 100
+    return bisect_right(values, value) / len(values) * 100
 
 
 def _persistence(prices, direction):
@@ -65,7 +66,10 @@ def rank_market_moves(candidates, as_of, top=10):
         observations = candidate.get("observations")
         if not (_positive_safe_integer(first) and _positive_safe_integer(last)):
             continue
-        if not isinstance(observations, int) or observations < MIN_OBSERVATIONS:
+        # Two endpoints are enough for the independent percentage/BP views.
+        # The composite 40/40/20 score still requires MIN_OBSERVATIONS below
+        # because persistence cannot be assessed from a single movement.
+        if not isinstance(observations, int) or observations < 2:
             continue
         age = _days_since(as_of, candidate.get("new_date"))
         if age is not None and 0 <= age <= NEW_CARD_COOLDOWN_DAYS:
@@ -77,29 +81,38 @@ def rank_market_moves(candidates, as_of, top=10):
         base.append({**candidate, "id": card_id})
 
     if not base:
-        return {"risers": [], "fallers": [], "moved": 0,
+        return {"risers": [], "fallers": [], "items": [], "moved": 0,
+                "analyzed": 0,
                 "deltaThreshold": None, "pctThreshold": MIN_CHANGE_PCT}
 
-    absolute_deltas = [abs(candidate["last"] - candidate["first"]) for candidate in base]
-    absolute_pcts = [abs((candidate["last"] - candidate["first"]) / candidate["first"] * 100)
-                     for candidate in base]
-    delta_threshold = _top_fraction_threshold(absolute_deltas, TOP_DELTA_FRACTION)
+    composite_base = [candidate for candidate in base
+                      if candidate["observations"] >= MIN_OBSERVATIONS]
+    absolute_deltas = sorted(abs(candidate["last"] - candidate["first"])
+                             for candidate in composite_base)
+    absolute_pcts = sorted(abs((candidate["last"] - candidate["first"]) / candidate["first"] * 100)
+                           for candidate in composite_base)
+    delta_threshold = (_top_fraction_threshold(absolute_deltas, TOP_DELTA_FRACTION)
+                       if absolute_deltas else None)
 
-    qualified = []
+    items = []
     for candidate in base:
         first, last = candidate["first"], candidate["last"]
         delta = last - first
-        pct = delta / first * 100
-        if abs(pct) < MIN_CHANGE_PCT or abs(delta) < delta_threshold:
+        if not delta:
             continue
+        pct = delta / first * 100
         persistence = _persistence(candidate.get("prices"), 1 if delta > 0 else -1)
-        impact = (_percentile_rank(absolute_pcts, abs(pct)) * .4
-                  + _percentile_rank(absolute_deltas, abs(delta)) * .4
-                  + persistence * .2)
+        qualified = (delta_threshold is not None
+                     and candidate["observations"] >= MIN_OBSERVATIONS
+                     and abs(pct) >= MIN_CHANGE_PCT and abs(delta) >= delta_threshold)
+        impact = ((_percentile_rank(absolute_pcts, abs(pct)) * .4
+                   + _percentile_rank(absolute_deltas, abs(delta)) * .4
+                   + persistence * .2) if qualified else None)
         item = dict(candidate.get("item") or {})
         item.pop("u", None)
         item.update(id=candidate["id"], v=last, pv=first, c=round(pct, 1), d=delta,
-                    impact=round(impact, 4), persistence=persistence)
+                    impact=round(impact, 4) if impact is not None else None,
+                    persistence=persistence)
         if isinstance(candidate.get("grade"), int):
             item["g"] = candidate["grade"]
         if persistence == 100:
@@ -108,15 +121,36 @@ def rank_market_moves(candidates, as_of, top=10):
             item["trend"] = "상승 흐름" if delta > 0 else "하락 흐름"
         else:
             item["trend"] = "등락 혼조"
-        qualified.append(item)
+        items.append(item)
 
     key = lambda item: (-item["impact"], -abs(item["d"]), -abs(item["c"]),
                         -int(item.get("g") or 0), item["id"])
-    risers = sorted((item for item in qualified if item["d"] > 0), key=key)
-    fallers = sorted((item for item in qualified if item["d"] < 0), key=key)
+    risers = sorted((item for item in items if item["d"] > 0 and item["impact"] is not None), key=key)
+    fallers = sorted((item for item in items if item["d"] < 0 and item["impact"] is not None), key=key)
+
+    # Store global ranks for each independent sort before any UI filter is
+    # applied.  Pure percentage and BP-delta rankings intentionally use the
+    # entire valid candidate pool, not the composite ranking's top-20% delta
+    # filter.  The compact build payload can therefore support arbitrary
+    # season/grade filters without re-sorting an already truncated TOP 100.
+    for direction in (1, -1):
+        directed = [item for item in items if item["d"] * direction > 0]
+        pct_order = sorted(directed, key=lambda item: (-abs(item["d"]/item["pv"]), -abs(item["d"]),
+                                                       -int(item.get("g") or 0), item["id"]))
+        delta_order = sorted(directed, key=lambda item: (-abs(item["d"]), -abs(item["d"]/item["pv"]),
+                                                         -int(item.get("g") or 0), item["id"]))
+        impact_order = sorted((item for item in directed if item["impact"] is not None), key=key)
+        for rank, item in enumerate(pct_order, 1):
+            item["rp"] = rank
+        for rank, item in enumerate(delta_order, 1):
+            item["rd"] = rank
+        for rank, item in enumerate(impact_order, 1):
+            item["ri"] = rank
     if top is not None:
         risers, fallers = risers[:top], fallers[:top]
-    return {"risers": risers, "fallers": fallers, "moved": len(qualified),
+    return {"risers": risers, "fallers": fallers, "items": items,
+            "moved": sum(item["impact"] is not None for item in items),
+            "analyzed": len(items),
             "deltaThreshold": delta_threshold, "pctThreshold": MIN_CHANGE_PCT}
 
 

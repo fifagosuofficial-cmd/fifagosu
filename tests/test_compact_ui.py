@@ -36,3 +36,9 @@ def test_diagnosis_report_is_one_responsive_container():
     assert shell < summary < report
     assert ".diag-report-shell .dsum" in css
     assert ".diag-report-shell .dr-insights" in css
+
+
+def test_home_market_explains_impact_ranking_not_old_price_only_rule():
+    html = (ROOT / "site/templates/index.html").read_text("utf-8")
+    assert "시장 영향도 · 가격대 하한 · 사용 10경기 · 관측 3회 이상" in html
+    assert "전체 수집 선수카드 · 3만 BP 이상" not in html

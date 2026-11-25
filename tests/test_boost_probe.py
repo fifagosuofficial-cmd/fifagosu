@@ -1,22 +1,15 @@
-import re,time,requests
-from urllib.parse import urljoin
+import time,requests
 def test_probe():
-    base="https://ssl.nexon.com/s1/fc/online/obt/buildUpSimulator/"
-    r=requests.get(base+"app.js",timeout=20);r.raise_for_status();print("LOADER",r.text)
-    names=set(re.findall(r'["\']([\w./-]+\.js)(?:\?[^"\']*)?["\']',r.text))
-    for name in sorted(names)[:4]:
-        if name.endswith("app.js"):continue
-        u=urljoin(base,name);time.sleep(1.5)
-        a=requests.get(u,timeout=20);print("BUNDLE",u,a.status_code,len(a.content))
-        if not a.ok:continue
-        t=a.text
-        for pat in [r'(?i)(?:/api/|/datacenter/)[\w/.-]+',r'(?i)boost(?:point|rate|gauge)|growpoint|materialovr|n1Strong|n4Ovr|buildup',r'(?i)gauge|percentage|Math\.pow|Math\.round|Math\.ceil|소모 선수|강화 확률']:
-            hits=list(re.finditer(pat,t));print("PAT",pat,len(hits))
-            seen=set()
-            for m in hits:
-                chunk=t[max(0,m.start()-180):m.end()+250].replace("\n"," ")
-                if chunk in seen:continue
-                seen.add(chunk)
-                if len(seen)>30:break
-                print("MATCH",chunk)
+    s=requests.Session();base="https://fconline.nexon.com"
+    s.headers.update({"User-Agent":"Mozilla/5.0 (compatible; FIFAGOSU-DataBot/1.0)","X-Requested-With":"XMLHttpRequest","Referer":base+"/DataCenter/PlayerGrow","Accept-Language":"ko-KR,ko;q=0.9"})
+    r=s.get(base+"/DataCenter/PlayerGrow",timeout=20);print("PAGE",r.status_code);r.raise_for_status()
+    for endpoint,data in [
+        ("PlayerGrowInit",{"spid":100004000,"n1Strong":1}),
+        ("PlayerGrowCalApi",{"idx":1,"n8SpId":"100004000","n1Strong":"1","strCalinfo":",124,","n4BoostPer":0}),
+        ("PlayerGrowCalApi",{"idx":1,"n8SpId":"100004000","n1Strong":"1","strCalinfo":",124,124,124,124,124,","n4BoostPer":0}),
+        ("RecommendOVRList",{"n8SpId":100004000,"n1Strong":1,"n4BoostPer":0}),
+        ("RecommendGrowUnionList",{"n8SpId":100004000,"n1Strong":1,"n4BoostPer":0}),
+        ("PlayerGrowCalApi",{"idx":1,"n8SpId":"100004000","n1Strong":"4","strCalinfo":",128,","n4BoostPer":0})]:
+        time.sleep(1.5);r=s.post(base+"/datacenter/"+endpoint,data=data,timeout=20);print("RESPONSE",endpoint,data,r.status_code,r.text[:12000])
+        if r.status_code in (403,429):break
     assert False,"research output only"

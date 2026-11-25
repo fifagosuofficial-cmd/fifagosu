@@ -116,9 +116,9 @@ function render(){
  showBonuses(r,projection);showStatMatrix(r,projection);
  $("sqSave").disabled=$("sqShare").disabled=$("sqBoardShare").disabled=$("sqCloudSave").disabled=!complete;
  $("sqSummary").innerHTML="<div><span>선수 구매가 합계</span><b>"+money(r.price)+"</b><small>잔여 "+money(o.budget-r.price)+"</small></div><div><span>급여 합계</span><b>"+r.pay+" / "+o.salary+"</b><small>"+(r.pay===o.salary?"급여 상한 달성":"잔여 "+(o.salary-r.pay))+"</small></div><div><span>평균 포지션 OVR</span><b>"+(filled.length?avg.toFixed(1):"—")+"</b><small>"+filled.length+" / 11명 · 선택 보너스 반영</small></div>";
- const swapIcon='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h15l-4-4m4 4-4 4M20 17H5l4-4m-4 4 4 4"/></svg>';
+ const swapIcon='<span class="sq-tool-icon" aria-hidden="true">↔</span>';
  const lockIcon='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></svg>';
- const trashIcon='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/></svg>';
+ const trashIcon='<span class="sq-tool-icon" aria-hidden="true">×</span>';
  $("sqPitch").innerHTML=LINES[o.formation].map(line=>'<div class="sq-line">'+line.map(i=>{
    const p=r.players[i],pos=FORM[o.formation][i];
    if(!p)return '<div class="sq-player sq-empty"><small class="sq-pos">'+pos+'</small><button type="button" data-add="'+i+'" aria-label="'+pos+' 선수 검색">＋<small>선수 검색</small></button></div>';

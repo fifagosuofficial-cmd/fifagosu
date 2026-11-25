@@ -18,17 +18,21 @@ def card(card_id, first, last, games=100, observations=4, new_date=None):
     }
 
 
-def test_cheap_percent_spike_and_thin_cards_are_excluded():
-    rows = [
-        card(1, 1_000_000, 3_000_000, games=500),
-        card(2, 10_000_000, 12_000_000, games=9),
-        card(3, 10_000_000, 12_000_000, observations=2),
-        card(4, 20_000_000, 24_000_000),
-    ]
+def test_requires_three_percent_and_top_twenty_percent_absolute_delta():
+    rows = [card(i, 100_000_000, 100_000_000 + i * 1_000_000) for i in range(1, 11)]
+    rows.append(card(99, 100_000_000, 500_000_000, observations=2))
     result = rank_market_moves(rows, "2026-11-25")
-    assert [item["id"] for item in result["risers"]] == [4]
-    assert result["risers"][0]["d"] == 4_000_000
-    assert result["risers"][0]["u"] == 100
+    assert result["pctThreshold"] == 3.0
+    assert result["deltaThreshold"] == 9_000_000
+    assert [item["id"] for item in result["risers"]] == [10, 9]
+
+
+def test_no_fixed_current_price_floor_when_absolute_change_is_significant():
+    rows = [card(i, 100_000_000, 100_000_000 + i * 1_000_000) for i in range(1, 6)]
+    rows.append(card(6, 1_000_000, 6_000_000))
+    result = rank_market_moves(rows, "2026-11-25")
+    assert result["deltaThreshold"] == 5_000_000
+    assert {item["id"] for item in result["risers"]} == {5, 6}
 
 
 def test_new_cards_wait_two_full_days_before_ranking():
@@ -40,12 +44,11 @@ def test_new_cards_wait_two_full_days_before_ranking():
     assert [item["id"] for item in result["risers"]] == [2]
 
 
-def test_market_impact_uses_value_and_usage_not_percent_alone():
+def test_usage_is_not_a_filter_weight_or_mover_output_field():
     rows = [
-        card(1, 10_000_000, 15_000_000, games=10),
-        card(2, 100_000_000, 140_000_000, games=500),
-        card(3, 80_000_000, 60_000_000, games=300),
+        card(1, 100_000_000, 110_000_000, games=0),
+        card(2, 100_000_000, 110_000_000, games=100_000),
     ]
     result = rank_market_moves(rows, "2026-11-25")
-    assert [item["id"] for item in result["risers"]][:2] == [2, 1]
-    assert [item["id"] for item in result["fallers"]] == [3]
+    assert [item["id"] for item in result["risers"]] == [1, 2]
+    assert all("u" not in item for item in result["risers"])

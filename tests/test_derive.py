@@ -114,20 +114,25 @@ def test_run_no_meta(tmp_path):
 def test_market_summary_movers_popular_and_new(tmp_path):
         if True:
             d = tmp_path
-            (d / "hist").mkdir(); (d / "list").mkdir(); (d / "meta").mkdir()
-            derive.save(d / "hist" / "dates.json", {"dates": ["2026-11-21", "2026-11-22"], "counts": [3, 3], "grades": derive.GRADES})
+            (d / "list").mkdir(); (d / "meta").mkdir(); (d / "market" / "all_card_history").mkdir(parents=True)
+            dates = ["2026-11-20", "2026-11-21", "2026-11-22"]
+            derive.save(d / "market" / "all_card_history_dates.json", {
+                "basis": "full-list-snapshots", "dates": dates, "counts": [3, 3, 3]
+            })
             def lst(k, name, games, p1):
                 return {"spid": k, "name": name, "ovr": 120, "pos": [["ST", 120]], "games": games,
                         "price": [p1 * (i + 1) for i in range(13)]}
             listed = {"100000001": lst(100000001, "올라", 300, 120_000_000),
                       "100000002": lst(100000002, "내려", 200, 80_000_000),
                       "100000003": lst(100000003, "싸구려", 500, 1_000_000)}
-            hist = {"100000001": [[100_000_000, 120_000_000], None, None, None, None],
-                    "100000002": [[100_000_000, 80_000_000], None, None, None, None],
-                    "100000003": [[900_000, 1_000_000], None, None, None, None]}
+            hist = {
+                "100000001": {"1": list(zip(dates, [90_000_000, 100_000_000, 120_000_000]))},
+                "100000002": {"1": list(zip(dates, [110_000_000, 100_000_000, 80_000_000]))},
+                "100000003": {"1": list(zip(dates, [800_000, 900_000, 1_000_000]))},
+            }
             for k, v in listed.items():
                 derive.save(d / "list" / f"{int(k) % 200}.json", {k: v})
-                derive.save(d / "hist" / f"{int(k) % 200}.json", {k: hist[k]})
+                derive.save(d / "market" / "all_card_history" / f"{int(k) % 200}.json", {k: hist[k]})
             derive.save(d / "meta" / "new_today.json", {"date": "2026-11-22", "ids": [300000009]})
             derive.save(d / "meta" / "spid.json", [{"id": 300000009, "name": "신입"}])
             res = derive.step_market(d, "2026-11-22")
@@ -139,7 +144,7 @@ def test_market_summary_movers_popular_and_new(tmp_path):
             assert [x["n"] for x in g1["fallers"]] == ["내려"]
             assert g1["popular"][0]["n"] == "싸구려"          # 인기 순위는 가격 필터 없이 사용량 기준
             assert out["newCards"][0]["n"] == "신입"
-            assert out["index"]["up"] == 1
+            assert out["index"] is None and out["indexSample"] == 3
             pool = json.loads((d / "market" / "pool.json").read_text("utf-8"))["items"]
             assert len(pool) == 3 and len(pool[0][3]) == 13
 

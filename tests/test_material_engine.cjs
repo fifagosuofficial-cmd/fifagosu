@@ -122,3 +122,19 @@ test("life ranking sort respects budget before selecting the top thirty",()=>{
  assert.ok(s.includes("effCandidateOrder(effRows(),effMode,effSort)"));assert.ok(s.includes("effCandidateOrder(rows,effMode,effSort).slice(0,30)"));
  assert.ok(h.includes('data-order="score" aria-pressed="true"'));assert.ok(h.includes('data-order="profit" aria-pressed="false"'));
 });
+
+test("official quote absence is a candidate-local result, malformed responses stay errors",async()=>{
+ const {fetchOfficialPlan}=await boost();
+ const empty=await fetchOfficialPlan(100004000,1,async()=>[],async()=>{});
+ assert.equal(empty.reason,"no_quotes");assert.equal(empty.plan,null);
+ const zero=await fetchOfficialPlan(100004000,1,async()=>[{ovr:121,stretc:"20",monthly_average_price:0}],async()=>{});
+ assert.equal(zero.reason,"no_quotes");
+ await assert.rejects(fetchOfficialPlan(100004000,1,async()=>({error:"blocked"}),async()=>{}),e=>e.code==="quotes_format");
+ await assert.rejects(fetchOfficialPlan(100004000,1,async()=>[{error:"blocked"}],async()=>{}),e=>e.code==="quotes_format");
+});
+test("ranking skips missing quotes and keeps lookup details below results",()=>{
+ const fs=require("node:fs"),path=require("node:path"),vm=require("node:vm"),s=fs.readFileSync(path.join(__dirname,"../site/assets/js/sim.js"),"utf8"),h=fs.readFileSync(path.join(__dirname,"../site/templates/index.html"),"utf8");
+ const ctx={};vm.createContext(ctx);vm.runInContext(s.slice(s.indexOf("const effMissingQuote="),s.indexOf("function effActive(")),ctx);
+ assert.equal(vm.runInContext('effMissingQuote("no_quotes")',ctx),true);assert.equal(vm.runInContext('effLookupBlocked("quotes_http_403")',ctx),true);assert.equal(vm.runInContext('effLookupBlocked("request_limit")',ctx),true);assert.equal(vm.runInContext('effLookupBlocked("quotes_http_400")',ctx),false);
+ assert.ok(s.includes("||knownUnavailable(k)"));assert.ok(h.indexOf('id="effOut"')<h.indexOf('id="effActions"'));assert.ok(h.includes('class="eff-lookup-details"'));
+});

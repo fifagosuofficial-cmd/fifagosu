@@ -100,6 +100,8 @@ function effCandidateOrder(rows,mode,order='score'){
 }
 let effCtx=null,effTimer=null,effWork=Promise.resolve(),effLastHTML='';
 const EFF_BATCH=6,EFF_PARALLEL=2;
+const effMissingQuote=code=>["no_quotes","no_full_combo","not_verified"].includes(code);
+const effLookupBlocked=code=>code==="request_limit"||/(?:_http_(?:403|429|5\d\d)|_timeout|_network)$/.test(code||"")||["network","cache_init","cache_read","cache_write","request_budget"].includes(code);
 function effActive(ctx){return effCtx===ctx&&$('effMat').checked&&!$('simEff').hidden&&!$('v-sim').hidden}
 function effMaterialRows(ctx){
   const rows=[];for(const [key,plan] of officialPlans){const r=ctx.byKey.get(key);if(r){const v=effWithMaterial(r,plan);if(v&&v.inv<=ctx.budget)rows.push(v)}}return rows;
@@ -112,7 +114,7 @@ function effStart(ctx,retry=false){
     await loadCachedPlans();
     if(!effActive(ctx))return;
     const next=[];
-    for(const r of ctx.candidates){const k=planKey(r.id,r.g);if(officialPlans.has(k)||ctx.attempted.has(k))continue;next.push(r);if(next.length>=EFF_BATCH)break}
+    for(const r of ctx.candidates){const k=planKey(r.id,r.g);if(officialPlans.has(k)||ctx.attempted.has(k)||knownUnavailable(k))continue;next.push(r);if(next.length>=EFF_BATCH)break}
     for(let i=0;i<next.length&&effActive(ctx);i+=EFF_PARALLEL){
       if(ctx.issue)break;
       await Promise.all(next.slice(i,i+EFF_PARALLEL).map(async r=>{
@@ -120,7 +122,7 @@ function effStart(ctx,retry=false){
         ctx.attempted.add(k);
         const plan=await loadOfficial(r.g,r.id);
         ctx.done++;
-        if(!plan){const code=officialErrorCodes.get(k);if(code!=='no_full_combo'&&code!=='not_verified'){ctx.retry.add(k);ctx.issue=officialErrors.get(k)||'공식 조회 오류'}}
+        if(!plan){const code=officialErrorCodes.get(k);if(!effMissingQuote(code)){ctx.retry.add(k);if(effLookupBlocked(code))ctx.issue=officialErrors.get(k)||"공식 조회 일시 제한";}}
         if(effActive(ctx))effPaint(ctx);
       }));
     }
@@ -168,9 +170,9 @@ function effPaint(ctx,baseRows){
   if(html!==effLastHTML){$('effOut').className='eff-cols';$('effOut').innerHTML=html;effLastHTML=html}
   $('effActions').hidden=!ctx;
   if(ctx){
-    const remaining=ctx.candidates.some(r=>!officialPlans.has(planKey(r.id,r.g))&&!ctx.attempted.has(planKey(r.id,r.g)));
+    const remaining=ctx.candidates.some(r=>{const k=planKey(r.id,r.g);return !officialPlans.has(k)&&!ctx.attempted.has(k)&&!knownUnavailable(k)});
     $('effInfo').textContent='재료비 포함 · 공식 월평균 거래가 · 확인 '+rows.length.toLocaleString()+' / 후보 '+ctx.candidates.length.toLocaleString()+'건 · 수수료 '+fee+'% · 전체 시장 순위 아님'+(Number.isFinite(effBudget)?' · 예산 '+won(effBudget)+' 이하':'');
-    $('effProgress').textContent=ctx.running?'공식 재료비 확인 중 '+ctx.done+'/'+EFF_BATCH:ctx.issue?ctx.issue:'조회된 카드만 순위에 반영됩니다. 추가 조회 시 순위가 달라질 수 있습니다.';
+    $('effProgress').textContent=ctx.running?"재료비 확인 중…":ctx.issue?"일부 후보 조회 일시 제한":ctx.retry.size?"일부 후보 미확인":"";
     $('effMore').disabled=ctx.running||!remaining;
     $('effRetry').hidden=!ctx.retry.size;$('effRetry').disabled=ctx.running;
   }else $('effInfo').textContent='시세 풀 '+POOL.length.toLocaleString()+'장 · 판매 수수료 '+fee+'% · 재료비 제외 · 줄을 누르면 강화 시뮬로 이어서 해 볼 수 있어요.';
@@ -190,7 +192,8 @@ const baseOvr=()=>{if(!SEL)return 0;const x=typeof ix==='function'&&ix(SEL.c.id)
 const korBP=v=>{v=Math.round(+v||0);if(!v)return '0';const eok=Math.floor(v/1e8),man=Math.floor(v%1e8/1e4),rest=v%1e4,p=[];
   if(eok)p.push(eok.toLocaleString()+'억');if(man)p.push(man.toLocaleString()+'만');if(rest)p.push(rest%1000===0?(rest/1000)+'천':rest.toLocaleString());return p.join(' ')};
 const matPer=()=>Math.max(0,+String($('smEMat').value).replace(/[^\d]/g,'')||0);
-const officialPlans=new Map(),officialPending=new Map(),officialErrors=new Map(),officialErrorCodes=new Map();
+const officialPlans=new Map(),officialPending=new Map(),officialErrors=new Map(),officialErrorCodes=new Map(),officialUnavailable=new Map();
+const knownUnavailable=k=>(officialUnavailable.get(k)||0)>Date.now();
 const planKey=(id,g)=>id+":"+g;
 const validOfficialPlan=plan=>plan?.official&&plan.gauge===100&&Number.isSafeInteger(plan.cost)&&plan.cost>0&&Array.isArray(plan.cards)&&plan.cards.length>0&&plan.cards.length<=5&&plan.cards.every(c=>Number.isSafeInteger(c.ovr)&&Number.isSafeInteger(c.price)&&c.price>0)&&plan.cards.reduce((sum,c)=>sum+c.price,0)===plan.cost;
 let cachedPlansP=null;
@@ -214,8 +217,8 @@ async function loadOfficial(g,id=SEL?.c.id){
    const d=await r.json().catch(()=>null);
    if(!r.ok||!d){const e=Error(d?.message||"공식 도우미 연결 오류 ("+r.status+")");e.code=d?.code||"http_"+r.status;throw e}
    const plan=d.plan;
-   if(!plan&&["no_full_combo","not_verified"].includes(d.reason)){const e=Error("공식 데이터에서 풀게이지 조합을 찾지 못했습니다.");e.code=d.reason;throw e}
-   if(d.spid!==id||d.grade!==g||!validOfficialPlan(plan))throw Error("공식 데이터에서 풀게이지 조합을 찾지 못했습니다.");
+   if(!plan&&effMissingQuote(d.reason)){officialUnavailable.set(key,Date.now()+30*60*1000);const e=Error(d.reason==="no_quotes"?"이 선수의 공식 재료 시세가 없습니다.":"공식 데이터에서 풀게이지 조합을 찾지 못했습니다.");e.code=d.reason;throw e}
+   if(d.spid!==id||d.grade!==g||!validOfficialPlan(plan)){const e=Error("공식 재료비 응답을 검증하지 못했습니다.");e.code="invalid_plan";throw e}
    officialPlans.set(key,plan);return plan;
  }catch(e){officialErrors.set(key,e.message||"공식 시세 조회 실패");officialErrorCodes.set(key,e.code||"network");return null}finally{
    officialPending.delete(key);

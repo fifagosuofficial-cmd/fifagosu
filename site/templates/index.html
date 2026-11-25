@@ -225,9 +225,11 @@
     </div>
     <div class="eff-sortbar" id="effSort"><span>정렬 기준</span><div role="group" aria-label="인생강화 정렬 기준"><button type="button" data-order="score" aria-pressed="true">종합지수 높은 순</button><button type="button" data-order="profit" aria-pressed="false">순이익 높은 순</button></div></div>
     <details class="eff-score-help" id="effScoreHelp"><summary>종합지수 산정 기준 <span>ⓘ</span></summary><p>피파고수 자체 지표(100점): 성공 수익률 50점 + 성공 확률 30점 + 성공 순이익 20점. 수익률과 순이익은 로그 방식으로 환산하며 각각 1,000%와 1,000억 BP에서 만점입니다. 성공 순이익이 양수인 카드만 평가합니다. 높은 점수가 실제 이익을 보장하지 않으며, 성공 확률과 회수율도 확인하세요.</p></details>
-    <p class="sim-note" id="effInfo">시세를 불러오는 중…</p>
-    <div class="eff-actions" id="effActions" hidden><span id="effProgress" role="status" aria-live="polite"></span><div><button type="button" class="ghost" id="effMore">후보 6건 추가 조회</button><button type="button" class="ghost" id="effRetry" hidden>다시 조회</button></div></div>
     <div class="eff-cols" id="effOut"></div>
+    <div class="eff-lookup-footer">
+      <details class="eff-lookup-details"><summary>공식 시세 조회 안내</summary><p class="sim-note" id="effInfo">시세를 불러오는 중…</p></details>
+      <div class="eff-actions" id="effActions" hidden><span id="effProgress" role="status" aria-live="polite"></span><div><button type="button" class="ghost" id="effMore">추가 조회</button><button type="button" class="ghost" id="effRetry" hidden>다시 조회</button></div></div>
+    </div>
     <aside class="slot" data-ad-slot="sim-1" aria-label="광고"></aside>
     <p class="sim-note">회수율 = (성공 확률 × 한 단계 위 시세 × (1 − 수수료) + 실패 확률 × 실패 후 시세 × (1 − 수수료)) ÷ (지금 시세 + 재료비). 사서 강화하고 바로 판다고 가정했어요. 1.00이 넘으면 평균적으로 남는 강화예요. 성공 확률은 넥슨 공지 풀 게이지(5칸) 기준이고, 시세는 하루 1번 수집한 값이라 실제와 다를 수 있어요.</p>
   </section>

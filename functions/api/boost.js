@@ -1,7 +1,7 @@
 /* Public FC Online boost helper: read-only OVR quotes and verified full-gauge plans.
  * Request only on selected player/stage, not the full market. 6-hour shared cache.
  * No credentials or user identifiers sent upstream. No retries on rejection. */
-const BASE="https://fconline.nexon.com",SOURCE=BASE+"/DataCenter/PlayerGrow",TTL=6*3600;
+const BASE="https://fconline.nexon.com",SOURCE=BASE+"/DataCenter/PlayerGrow",TTL=6*3600,NEGATIVE_TTL=30*60;
 const safe=v=>Number.isSafeInteger(v)&&v>0;
 const json=(status,body,ttl=0)=>new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":ttl?"public, max-age="+ttl:"no-store","x-content-type-options":"nosniff"}});
 const rowsOf=j=>Array.isArray(j)?j:Array.isArray(j?.ResultData)?j.ResultData:Array.isArray(j?.ResultData?.PlayerList)?j.ResultData.PlayerList:null;
@@ -46,8 +46,13 @@ async function upstream(endpoint,fields,spid,grade){
 const pause=()=>new Promise(r=>setTimeout(r,1500));
 export async function fetchOfficialPlan(spid,grade,call=upstream,delay=pause){
  const args={n8SpId:String(spid),n1Strong:String(grade),n4BoostPer:"0"};
- const rows=quoteRows(await call("RecommendOVRList",args,spid,grade));
- if(!rows.length)throw fault("quotes_empty");
+ const raw=await call("RecommendOVRList",args,spid,grade),sourceRows=rowsOf(raw);
+ if(!sourceRows||sourceRows.length>200)throw fault("quotes_format");
+ const rows=quoteRows(raw);
+ if(!rows.length){
+  if(sourceRows.length&&!sourceRows.every(r=>r&&"ovr" in r&&"monthly_average_price" in r&&"stretc" in r))throw fault("quotes_format");
+  return {source:SOURCE,spid,grade,rows:[],plan:null,reason:"no_quotes"};
+ }
  const plan=cheapestFull(rows);
  if(!plan)return {source:SOURCE,spid,grade,rows,plan:null,reason:"no_full_combo"};
  async function verify(candidate){await delay();const raw=await call("PlayerGrowCalApi",{...args,idx:"1",strCalinfo:","+candidate.cards.map(c=>c.ovr).join(",")+","},spid,grade);
@@ -77,7 +82,7 @@ export async function onRequestGet({request,env,waitUntil}){
  try{
   await ensure(db);const now=Math.floor(Date.now()/1000);stage="cache_read";
   const hit=await db.prepare("SELECT body,created FROM boost_quote_cache WHERE key=? AND created>?").bind(key,now-TTL).first();
-  if(hit){return json(200,JSON.parse(hit.body),Math.max(1,TTL-now+hit.created))}
+  if(hit){const data=JSON.parse(hit.body),ttl=data.plan?TTL:NEGATIVE_TTL;if(hit.created+ttl>now)return json(200,data,Math.max(1,ttl-now+hit.created))}
   if(!inflight.has(key)){
    const task=(async()=>{
     // Global aggregate request budget. No IP or account data in this table.
@@ -90,6 +95,6 @@ export async function onRequestGet({request,env,waitUntil}){
     return data;
    })().finally(()=>inflight.delete(key));inflight.set(key,task)
   }
-  return json(200,await inflight.get(key),TTL);
- }catch(e){const status=e.status===429?429:503;const code=e.code||stage;console.warn("boost unavailable",code);return json(status,{code,message:status===429?"공식 도우미 요청이 제한되었습니다. 잠시 뒤 다시 시도해 주세요.":"공식 강화 도우미 시세를 확인하지 못했습니다. 수동 입력 또는 다시 시도해 주세요."})}
+  const data=await inflight.get(key);return json(200,data,data.plan?TTL:NEGATIVE_TTL);
+ }catch(e){const status=e.status===429?429:503;const code=e.code||stage;console.warn("boost unavailable",JSON.stringify({code,spid,grade}));return json(status,{code,message:status===429?"공식 도우미 조회 제한 · 잠시 후 다시 시도해 주세요.":code.endsWith("_timeout")?"공식 도우미 응답 시간이 초과되었습니다.":code.endsWith("_format")?"공식 도우미 응답 형식을 확인하지 못했습니다.":"공식 강화 도우미 연결을 확인하지 못했습니다."})}
 }

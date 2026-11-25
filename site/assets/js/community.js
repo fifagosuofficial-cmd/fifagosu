@@ -2,6 +2,8 @@
 const $=id=>document.getElementById(id),root=document.querySelector(".fg-community");if(!root)return;
 const screen=root.dataset.screen,api="/api/community/",policy="2026-11-v1",labels={all:"전체",popular:"인기글",free:"자유게시판",squad:"스쿼드 평가",review:"선수 후기",tips:"공략·팁",pack:"강화·득템"},prefixes={normal:"일반",question:"질문",answer:"답변",notice:"공지"};
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const authorCheck=ok=>ok===true?'<span class="fc-verified" role="img" aria-label="인증된 운영 계정" title="인증된 운영 계정">✓</span>':"";
+const authorName=x=>esc(x.nickname)+authorCheck(x.verified);
 const date=n=>new Date(n*1000).toLocaleString("ko-KR"),status=(s,bad=false)=>{$("fcStatus").textContent=s;$("fcStatus").classList.toggle("fc-error",bad)};
 async function get(path){const r=await fetch(api+path,{cache:"no-store"}),j=await r.json();if(!r.ok){const err=Error(j.message||"회원 서비스 준비 중입니다.");err.unavailable=j.enabled===false;throw err}return j}
 async function post(path,b){const r=await fetch(api+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}),j=await r.json();if(!r.ok)throw Error(j.message||"요청 실패");return j}
@@ -13,7 +15,7 @@ const query=new URLSearchParams(location.search);if(Object.hasOwn(labels,query.g
 function tabs(el,items,key){el.innerHTML=Object.entries(items).map(([k,v])=>'<button type="button" data-tab="'+k+'" aria-pressed="'+(key===k)+'">'+esc(v)+'</button>').join("")}
 function recentSquad(){try{return JSON.parse(localStorage.getItem("fg-squad-v1")||"null")}catch{return null}}
 function squadLink(s){try{return "/squad/?s="+encodeURIComponent(typeof s==="string"?s:JSON.stringify(s))}catch{return "/squad/"}}
-function profile(){const active=member&&!member.suspended;$("fcLogin").hidden=!!member||screen==="board";$("fcProfile").hidden=!member||screen==="board";if(screen==="board")$("fcAccountLink").textContent=member?.nickname?member.nickname+" · 마이페이지":"로그인";if(member){$("fcProfileForm").nickname.value=member.nickname||"";$("fcProfileForm").game_name.value=member.game_name||"";$("fcAdminLink").hidden=!member.admin}
+function profile(){const active=member&&!member.suspended;$("fcLogin").hidden=!!member||screen==="board";$("fcProfile").hidden=!member||screen==="board";if(screen==="board")$("fcAccountLink").innerHTML=member?.nickname?esc(member.nickname)+authorCheck(member.admin)+" · 마이페이지":"로그인";if(member){$("fcProfileCheck").hidden=member.admin!==true;$("fcProfileForm").nickname.value=member.nickname||"";$("fcProfileForm").game_name.value=member.game_name||"";$("fcAdminLink").hidden=!member.admin}
  if($("fcWrite"))$("fcWrite").disabled=!active||!member.nickname;
  if($("fcMine"))$("fcMine").hidden=!active||!member.nickname;
  if($("fcAdmin"))$("fcAdmin").hidden=!active||!member.admin||!member.nickname;
@@ -31,7 +33,7 @@ function boardRows(posts,preview=false){
  $("fcPosts").innerHTML=posts.length?posts.map(x=>{
  const type=x.prefix!=="normal"?prefixes[x.prefix]:labels[x.category],notice=x.prefix==="notice",title=esc(x.title);
  const text=preview?'<span class="fc-post-title">'+title+'</span>':'<a class="fc-post-title" href="?id='+x.id+'" data-post="'+x.id+'">'+title+'</a>';
- return '<tr class="'+(notice?"fc-notice ":"")+(x.likes>=30?"fc-hot":"")+'"><td class="fc-type" data-kind="'+esc(x.prefix==="normal"?x.category:x.prefix)+'">'+esc(type)+'</td><td class="fc-title-cell">'+text+(x.replies?'<span class="fc-replies" aria-label="댓글 '+x.replies+'">['+count(x.replies)+']</span>':"")+(x.squad?'<small class="fc-attach">스쿼드</small>':"")+'</td><td class="fc-author" title="'+esc(x.nickname)+'">'+esc(x.nickname)+'</td><td class="fc-date">'+esc(boardTime(x.created))+'</td><td class="fc-count">'+count(x.views)+'</td><td class="fc-count fc-likes">'+count(x.likes)+'</td></tr>';
+ return '<tr class="'+(notice?"fc-notice ":"")+(x.likes>=30?"fc-hot":"")+'"><td class="fc-type" data-kind="'+esc(x.prefix==="normal"?x.category:x.prefix)+'">'+esc(type)+'</td><td class="fc-title-cell">'+text+(x.replies?'<span class="fc-replies" aria-label="댓글 '+x.replies+'">['+count(x.replies)+']</span>':"")+(x.squad?'<small class="fc-attach">스쿼드</small>':"")+'</td><td class="fc-author" title="'+esc(x.nickname)+'">'+authorName(x)+'</td><td class="fc-date">'+esc(boardTime(x.created))+'</td><td class="fc-count">'+count(x.views)+'</td><td class="fc-count fc-likes">'+count(x.likes)+'</td></tr>';
  }).join(""):'<tr><td colspan="6" class="fc-empty">'+(category==="popular"?"추천 30개 이상인 게시글이 아직 없습니다.":"등록된 게시글이 없습니다.")+'</td></tr>';
 }
 let listSeq=0;
@@ -70,7 +72,7 @@ function previewBoard(){
 const recordView=async id=>{try{await post("view",{post_id:id})}catch{}};
 async function readPost(id,record=false){
  if(record)await recordView(id);
- const j=await get("post?id="+id),p=j.post;selected=id;$("fcPost").hidden=false;$("fcPost").innerHTML='<h2>'+esc(p.title)+'</h2><p class="fc-note">'+esc(p.nickname)+' · '+date(p.created)+' · 조회 '+count(p.views)+'</p><p class="fc-text">'+esc(p.body)+'</p>'+(p.squad?'<p><a href="'+esc(squadLink(p.squad))+'">이 스쿼드 불러오기</a></p>':"")+(p.card_id?'<p><a href="/cards?card='+p.card_id+'">선수 카드 검색</a></p>':"")+(member?.nickname&&!member.suspended?'<div class="fc-row">'+btn("추천","data-action","vote")+btn("스크랩","data-action","bookmark")+btn("신고","data-action","report")+(p.own?btn("내 글 삭제","data-action","delete-post"):"")+'</div>':"")+'<h3>댓글</h3>'+j.comments.map(c=>'<div class="fc-entry"><div><small>'+esc(c.nickname)+' · '+date(c.created)+'</small><p class="fc-text">'+esc(c.body)+'</p></div>'+(c.own?btn("삭제","data-delete-comment",c.id):"")+'</div>').join("")+(member?.nickname&&!member.suspended?'<form id="fcComment"><textarea name="body" maxlength="2000" required placeholder="댓글"></textarea><button>등록</button></form>':"");
+ const j=await get("post?id="+id),p=j.post;selected=id;$("fcPost").hidden=false;$("fcPost").innerHTML='<h2>'+esc(p.title)+'</h2><p class="fc-note">'+authorName(p)+' · '+date(p.created)+' · 조회 '+count(p.views)+'</p><p class="fc-text">'+esc(p.body)+'</p>'+(p.squad?'<p><a href="'+esc(squadLink(p.squad))+'">이 스쿼드 불러오기</a></p>':"")+(p.card_id?'<p><a href="/cards?card='+p.card_id+'">선수 카드 검색</a></p>':"")+(member?.nickname&&!member.suspended?'<div class="fc-row">'+btn("추천","data-action","vote")+btn("스크랩","data-action","bookmark")+btn("신고","data-action","report")+(p.own?btn("내 글 삭제","data-action","delete-post"):"")+'</div>':"")+'<h3>댓글</h3>'+j.comments.map(c=>'<div class="fc-entry"><div><small>'+authorName(c)+' · '+date(c.created)+'</small><p class="fc-text">'+esc(c.body)+'</p></div>'+(c.own?btn("삭제","data-delete-comment",c.id):"")+'</div>').join("")+(member?.nickname&&!member.suspended?'<form id="fcComment"><textarea name="body" maxlength="2000" required placeholder="댓글"></textarea><button>등록</button></form>':"");
  if($("fcComment"))$("fcComment").onsubmit=act(async e=>{await post("comment",{post_id:id,...form(e.target)});await readPost(id)});
 }
 function composer(){

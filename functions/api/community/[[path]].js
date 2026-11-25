@@ -15,6 +15,8 @@ function check(v,msg,status=400){if(!v)throw new Err(msg,status)}
 const str=(v,max,min=1)=>{check(typeof v==="string"&&v.trim().length>=min&&v.trim().length<=max,"입력 내용을 확인해 주세요.");return v.trim()};
 const integer=(v,min=1,max=Number.MAX_SAFE_INTEGER)=>{check(Number.isSafeInteger(v)&&v>=min&&v<=max,"잘못된 번호입니다.");return v};
 const adminFor=(env,m)=>Boolean(m&&String(env.COMMUNITY_ADMIN_SUBS||"").split(",").map(x=>x.trim()).includes(m.subject));
+// Author verification is calculated on the server. Never return the Google subject.
+const publicAuthor=(env,{author_subject,...row})=>({...row,verified:!!author_subject&&adminFor(env,{subject:author_subject})});
 function squadPayload(v){
  check(v?.schema===1&&Array.isArray(v.players)&&v.players.length===11&&v.opts&&typeof v.opts==="object","스쿼드 형식이 올바르지 않습니다.");
  const players=v.players.map(p=>({id:integer(p.id),grade:integer(p.grade,1,13),name:str(p.name,80),pos:str(p.pos,4)}));
@@ -73,12 +75,12 @@ export async function onRequest({request,env}){
      if(search){where.push("(instr(p.title,?)>0 OR instr(p.body,?)>0)");args.push(search,search)}
      if(card&&Number.isSafeInteger(card)){where.push("p.card_id=?");args.push(card)}
      const order=cat==="popular"?"likes DESC, replies DESC, p.created DESC":"CASE WHEN p.prefix='notice' THEN 0 ELSE 1 END,p.created DESC";
-     return json({posts:await all("SELECT p.id,p.category,p.prefix,p.title,p.created,p.card_id,p.views,COALESCE(m.nickname,'탈퇴 회원') nickname,(SELECT count(*) FROM votes v WHERE v.post_id=p.id) likes,(SELECT count(*) FROM comments c WHERE c.post_id=p.id AND c.hidden=0) replies FROM posts p LEFT JOIN members m ON p.author=m.id WHERE "+where.join(" AND ")+" ORDER BY "+order+" LIMIT 30 OFFSET ?",...args,(page-1)*30)});
+     return json({posts:(await all("SELECT p.id,p.category,p.prefix,p.title,p.created,p.card_id,p.views,COALESCE(m.nickname,'탈퇴 회원') nickname,m.subject author_subject,(SELECT count(*) FROM votes v WHERE v.post_id=p.id) likes,(SELECT count(*) FROM comments c WHERE c.post_id=p.id AND c.hidden=0) replies FROM posts p LEFT JOIN members m ON p.author=m.id WHERE "+where.join(" AND ")+" ORDER BY "+order+" LIMIT 30 OFFSET ?",...args,(page-1)*30)).map(row=>publicAuthor(env,row))});
    }
    if(p==="post"){
-     const id=integer(Number(u.searchParams.get("id"))),post=await first("SELECT p.id,p.category,p.prefix,p.title,p.body,p.squad,p.card_id,p.created,p.views,COALESCE(m.nickname,'탈퇴 회원') nickname,p.author=? own FROM posts p LEFT JOIN members m ON p.author=m.id WHERE p.id=? AND p.hidden=0",member?.id||"",id);
+     const id=integer(Number(u.searchParams.get("id"))),post=await first("SELECT p.id,p.category,p.prefix,p.title,p.body,p.squad,p.card_id,p.created,p.views,COALESCE(m.nickname,'탈퇴 회원') nickname,m.subject author_subject,p.author=? own FROM posts p LEFT JOIN members m ON p.author=m.id WHERE p.id=? AND p.hidden=0",member?.id||"",id);
      check(post,"게시물을 찾을 수 없습니다.",404);
-     return json({post,comments:await all("SELECT c.id,c.body,c.created,COALESCE(m.nickname,'탈퇴 회원') nickname,c.author=? own FROM comments c LEFT JOIN members m ON c.author=m.id WHERE c.post_id=? AND c.hidden=0 ORDER BY c.created LIMIT 200",member?.id||"",id)});
+     return json({post:publicAuthor(env,post),comments:(await all("SELECT c.id,c.body,c.created,COALESCE(m.nickname,'탈퇴 회원') nickname,m.subject author_subject,c.author=? own FROM comments c LEFT JOIN members m ON c.author=m.id WHERE c.post_id=? AND c.hidden=0 ORDER BY c.created LIMIT 200",member?.id||"",id)).map(row=>publicAuthor(env,row))});
    }
    if(p==="mine"){const m=active();return json({
      squads:await all("SELECT id,name,payload,created FROM squads WHERE member_id=? ORDER BY created DESC LIMIT 100",m.id),

@@ -61,3 +61,19 @@ test("login state queue is cleaned and capped before inserting more OAuth state"
  assert.ok(seen.some(sql=>sql.startsWith("SELECT count(*)")));
  assert.ok(!seen.some(sql=>sql.startsWith("INSERT INTO oauth_states")));
 });
+
+
+test("public verification uses the allowlisted subject, never a nickname, and never leaks subject",async()=>{
+ const {onRequest}=await load();
+ const rows=[{id:1,nickname:"피파고수",author_subject:"ordinary"},{id:2,nickname:"different",author_subject:"owner-sub"}];
+ const env={...enabled,COMMUNITY_ADMIN_SUBS:"owner-sub",COMMUNITY_DB:{prepare(sql){return {bind(){return {all:async()=>({results:rows}),first:async()=>rows[1]}}}}}};
+ let r=await onRequest({request:new Request(origin+"/api/community/posts"),env});
+ assert.equal(r.status,200);let j=await r.json();
+ assert.deepEqual(j.posts.map(x=>x.verified),[false,true]);
+ assert.ok(j.posts.every(x=>!("author_subject" in x)));
+ r=await onRequest({request:new Request(origin+"/api/community/post?id=2"),env});
+ assert.equal(r.status,200);j=await r.json();
+ assert.equal(j.post.verified,true);assert.ok(!("author_subject" in j.post));
+ assert.deepEqual(j.comments.map(x=>x.verified),[false,true]);
+ assert.ok(j.comments.every(x=>!("author_subject" in x)));
+});

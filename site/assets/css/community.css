@@ -26,3 +26,6 @@ body[data-view="board"] #fcTabs button:hover{background:#edf7f1}
 #fcPreviewHint,#fcPopularHint{margin:8px 0;padding:6px 10px}
 @media(max-width:700px){body[data-view="board"] #fcTabs button{font-size:12px;padding:9px 10px}.fc-board-table{font-size:12px}.fc-board-table .fc-col-type{width:64px}.fc-board-table .fc-col-author{width:76px}.fc-board-table .fc-col-date{width:54px}.fc-board-table .fc-col-views{width:39px}.fc-board-table .fc-col-likes{width:39px}.fc-board-table td,.fc-board-table th{padding:6px 4px}.fc-board-table .fc-type,.fc-board-table .fc-date,.fc-board-table .fc-count{font-size:11px}.fc-board-bottom{justify-content:center}.fc-search-form{order:3;width:100%;justify-content:center}.fc-search-form input{max-width:none;flex:1}.fc-board-table .fc-author{font-size:11px}}
 @media(max-width:420px){.fc-board-table .fc-col-author{width:58px}.fc-board-table .fc-col-type{width:53px}.fc-board-table .fc-col-date{width:44px}.fc-board-table .fc-col-views,.fc-board-table .fc-col-likes{width:31px}}
+
+/* Server-verified account check, no visible role text. */
+.fc-verified{display:inline-grid;place-items:center;width:14px;height:14px;vertical-align:1px;margin-left:4px;background:#1877d2;color:#fff;border-radius:50%;font:800 10px/1 system-ui,sans-serif;flex:none}.fc-verified[hidden]{display:none!important}

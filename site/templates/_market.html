@@ -9,12 +9,12 @@
 
 {% macro pct(c) -%}{% if c is none %}-{% elif c > 0 %}+{{ '%.1f'|format(c) }}%{% else %}{{ '%.1f'|format(c) }}%{% endif %}{%- endmacro %}
 
-{% macro row(x, n) -%}
-<li><button type="button" class="mk-row" data-card="{{ x.id }}">
+{% macro row(x, n, show_grade=false, show_usage=false) -%}
+<li><button type="button" class="mk-row" data-card="{{ x.id }}" data-grade="{{ x.g|default(1) }}">
   <span class="mk-n">{{ n }}</span>
   <span class="mk-ssn" data-sid="{{ x.s }}"></span>
-  <span class="mk-nm"><b>{{ x.n }}</b>{% if x.p %}<small>{{ x.p }} {{ x.o or '' }}</small>{% endif %}</span>
+  <span class="mk-nm"><b>{{ x.n }}</b><small>{% if show_grade %}<em class="mk-grade-badge">{{ x.g|default(1) }}강</em>{% endif %}{% if x.p %}{{ x.p }} {{ x.o or '' }}{% endif %}</small></span>
   <span class="mk-pr">{{ bp(x.v) }}</span>
-  {% if x.c is defined %}<span class="mk-c {{ 'up' if x.c > 0 else ('down' if x.c < 0 else '') }}"><b>{{ pct(x.c) }}</b>{% if x.d is defined or x.u is defined %}<small>{% if x.d is defined %}{{ '+' if x.d > 0 else ('-' if x.d < 0 else '') }}{{ bp(x.d|abs) }}{% endif %}{% if x.d is defined and x.u is defined %} · {% endif %}{% if x.u is defined %}사용 {{ x.u }}회{% endif %}</small>{% endif %}</span>{% else %}<span class="mk-c">-</span>{% endif %}
+  {% if show_usage and x.u is defined %}<span class="mk-c"><b>사용 {{ x.u }}회</b><small>랭커 사용 기준</small></span>{% elif x.c is defined %}<span class="mk-c {{ 'up' if x.c > 0 else ('down' if x.c < 0 else '') }}"><b>{{ pct(x.c) }}</b><small>{% if x.d is defined %}{{ '+' if x.d > 0 else ('-' if x.d < 0 else '') }}{{ bp(x.d|abs) }}{% endif %}{% if x.trend is defined and x.trend %}<i>{{ x.trend }}</i>{% elif x.persistence is defined %}<i>{% if x.persistence >= 100 %}3일 {{ '상승세' if x.c > 0 else '하락세' }}{% elif x.persistence >= 50 %}{{ '상승' if x.c > 0 else '하락' }} 흐름{% else %}단기 변동{% endif %}</i>{% endif %}</small></span>{% else %}<span class="mk-c">-</span>{% endif %}
 </button></li>
 {%- endmacro %}

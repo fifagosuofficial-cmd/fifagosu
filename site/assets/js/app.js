@@ -452,11 +452,10 @@ function dSnapshot(d,a){
   return {day,at:new Date().toISOString(),n:a.n,w:a.W,d:a.D,l:a.L,wr:a.W/a.n,gf:a.gf/a.n,ga:a.ga/a.n,tier:d.current||d.maxdivision.division,ids,value:a.squadValue||null,known:a.valueKnown||0};
 }
 function dSaveVisit(d,a){dStore(s=>{
-  s.recent=(s.recent||[]).filter(x=>x.nick.toLowerCase()!==d.basic.nickname.toLowerCase());s.recent.unshift({nick:d.basic.nickname,at:new Date().toISOString()});s.recent=s.recent.slice(0,6);
   s.history=s.history||{};const key=dHistoryKey(d.basic.nickname,dMode),snap=dSnapshot(d,a),list=s.history[key]||[],same=list.findIndex(x=>x.day===snap.day);if(same>=0)list[same]=snap;else list.push(snap);s.history[key]=list.slice(-90);
   });dRenderQuick(d.basic.nickname)
 }
-/* 통합 즐겨찾기: 운영판 저장 목록을 최초 1회 가져오고 빠른 조회와 별표를 공유 */
+/* 통합 즐겨찾기: 운영판 저장 목록을 최초 1회 가져오고 별표와 공유 */
 function dMergeFavorites(current,legacy){const out=[],seen=new Set();for(const item of [...(Array.isArray(current)?current:[]),...(Array.isArray(legacy)?legacy:[])]){const raw=typeof item==='string'?item:item?.nick;if(typeof raw!=='string'||!raw.trim())continue;const nick=raw.trim(),key=nick.toLocaleLowerCase();if(seen.has(key))continue;seen.add(key);out.push({nick,at:typeof item?.at==='string'?item.at:''});if(out.length===10)break}return out}
 function dMigrateFavorites(){const s=dRead();if(s.favoritesMigrated)return;let old=[];try{old=JSON.parse(ls('fifagosu.diag-favorites.v1')||'[]')}catch(e){}s.favs=dMergeFavorites(s.favs,old);s.favoritesMigrated=true;dWrite(s)}
 function dIsFavorite(nick){const key=String(nick||'').trim().toLocaleLowerCase();return (dRead().favs||[]).some(x=>x.nick.toLocaleLowerCase()===key)}
@@ -464,7 +463,6 @@ function dChangeFavorite(nick,removeOnly=false){nick=String(nick||'').trim();if(
 function dFavoriteButton(nick){const on=dIsFavorite(nick);return `<button type="button" class="d-favorite" data-dfavorite-toggle="${esc(nick)}" aria-pressed="${on}" aria-label="${on?'즐겨찾기 해제':'즐겨찾기에 추가'}" title="${on?'즐겨찾기 해제':'즐겨찾기에 추가'}">${on?'★':'☆'}</button>`}
 dMigrateFavorites();
 function dRenderQuick(active){const s=dRead(),mk=(x,k)=>`<button type="button" data-dnick="${esc(x.nick)}" class="dquick-chip${active&&x.nick.toLowerCase()===active.toLowerCase()?' on':''}">${k==='fav'?'★ ':''}${esc(x.nick)}<small>${x.at?new Date(x.at).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'}):''}</small></button>`;
-  $('dRecent').innerHTML=(s.recent||[]).map(x=>mk(x,'recent')).join('')||'<span class="muted">최근 검색이 없어요.</span>';
   $('dFavs').innerHTML=(s.favs||[]).map(x=>`<span class="df-pair">${mk(x,'fav')}<button type="button" class="df-remove" data-dfavorite-remove="${esc(x.nick)}" aria-label="${esc(x.nick)} 즐겨찾기 삭제" title="즐겨찾기 삭제">×</button></span>`).join('')||'<span class="muted">즐겨찾기가 없어요.</span>';
   const fav=active&&(s.favs||[]).some(x=>x.nick.toLowerCase()===active.toLowerCase());$('dFav').textContent=fav?'★ 즐겨찾기 해제':'☆ 즐겨찾기';$('dFav').disabled=!active;$('dMine').disabled=!active;$('dShare').disabled=!active;
   if(active&&s.mine)$('dMine').textContent=s.mine.toLowerCase()===active.toLowerCase()?'내 구단 ✓':'내 구단 등록';
@@ -1341,22 +1339,19 @@ initCards();
  if(VIEWS.includes(h))show(h);else if(bv&&bv!=='home'&&VIEWS.includes(bv))show(bv,true);}
 window.addEventListener('popstate',()=>{const R=window.FG_ROUTES||{};const p=location.pathname.replace(/\.html$/,'').replace(/(.)\/$/,'$1');const v=Object.keys(R).find(k=>R[k]===p)||(p.startsWith('/guide')?'guide':p.startsWith('/sim')?'sim':p.startsWith('/trade')?'trade':'home');show(v,true);if(window.FG_TITLES&&FG_TITLES[v])document.title=FG_TITLES[v]});
 
-/* 홈 '오늘의 시장': 강화 기준 탭 · 시즌 배지 · 누르면 선수 정보창 */
+/* 홈 '오늘의 시장': 기간 탭 · 시즌 배지 · 누르면 해당 강화 선수 정보창 */
 (function(){
   const home=document.getElementById('v-home'); if(!home)return;
   home.querySelectorAll('.mk-ssn[data-sid]').forEach(el=>{el.innerHTML=sch(+el.dataset.sid)});
-  let day='1',grade='1';
+  let day='1';
   const sync=()=>{
     home.querySelectorAll('[data-md]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.md===day)));
     home.querySelectorAll('[data-mdp]').forEach(p=>p.hidden=p.dataset.mdp!==day);
-    home.querySelectorAll('[data-mg]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mg===grade)));
-    home.querySelectorAll('.mk-panel').forEach(p=>p.hidden=p.dataset.mp!==grade);
   };
   home.addEventListener('click',e=>{
     const d=e.target.closest('[data-md]');if(d){day=d.dataset.md;sync();return}
-    const g=e.target.closest('[data-mg]');if(g){grade=g.dataset.mg;sync();return}
     const b=e.target.closest('[data-card]');if(!b)return;
-    openCard(+b.dataset.card);if(+grade>1){pmGrade=+grade;renderCard()}
+    openCard(+b.dataset.card);const grade=+(b.dataset.grade||1);if(grade>1){pmGrade=grade;renderCard()}
   });sync();
 })();
 

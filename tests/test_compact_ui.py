@@ -44,5 +44,10 @@ def test_diagnosis_report_is_one_responsive_container():
 
 def test_home_market_explains_percent_and_absolute_delta_rule():
     html = (ROOT / "site/templates/index.html").read_text("utf-8")
+    js = (ROOT / "site/assets/js/app.js").read_text("utf-8")
     assert "변동률 3% 이상 · 절대 변동액 상위 20% · 관측 3회 이상" in html
+    assert "전체 시즌·전체 강화 카드의 실제 시세 변동 기준" in html
+    assert "인기 카드 1강 시세" in html and "1강 시장 흐름" in html
+    assert "data-mg" not in html and 'id="dRecent"' not in html
+    assert "b.dataset.grade||1" in js
     assert "사용 10경기" not in html

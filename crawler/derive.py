@@ -35,9 +35,9 @@ from pathlib import Path
 import requests
 
 try:
-    from .market_rank import MAX_SAFE_INTEGER, rank_market_moves
+    from .market_rank import MAX_SAFE_INTEGER, merge_market_moves, rank_market_moves
 except ImportError:  # python crawler/derive.py 실행 경로
-    from market_rank import MAX_SAFE_INTEGER, rank_market_moves
+    from market_rank import MAX_SAFE_INTEGER, merge_market_moves, rank_market_moves
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("FG_DATA", ROOT / "data"))
@@ -214,7 +214,8 @@ def step_history(data, date):
 
 # ---------------------------------------------------------------- 시장 요약 (홈 '오늘의 시장 브리핑')
 
-MARKET_GRADES = [1, 5, 8]            # 홈에서 고를 수 있는 강화 기준 (GRADES 안의 값)
+MARKET_GRADES = list(range(1, 14))    # 시장 이력·급등락은 전체 강화 단계
+DIAG_MARKET_GRADES = [1, 5, 8]       # 전적 진단의 기존 압축 스키마는 유지
 MARKET_TOP = 10
 NEW_KEEP_DAYS = 14
 MARKET_RANKER_CAP = 100              # 챔피언스 이상 공식경기 사용량 상위 카드만 가격 그래프 조회
@@ -253,7 +254,16 @@ def step_market_history(data, date):
 
     dates = meta.get("dates") or []
     counts = meta.get("counts") or []
-    today = updated_today(data, date)
+    # 일반 hist/는 대표 강화 단계만 압축하지만 시장 순위용 이력은 list/에
+    # 이미 저장된 1~13강 가격을 모두 보관합니다. 외부 요청은 추가하지 않아요.
+    today = {}
+    for shard_no in range(SHARDS):
+        for key, record in load(data / "list" / f"{shard_no}.json", {}).items():
+            if (record.get("at") or "")[:10] != date:
+                continue
+            prices = record.get("price") or []
+            today[key] = [sig3(prices[index]) if len(prices) > index else None
+                          for index in range(13)]
     if not today:
         return {"market_history_days": len(dates), "market_history_cards": 0}
     if date not in dates:
@@ -269,7 +279,7 @@ def step_market_history(data, date):
         for key, values in rows.items():
             grades = shard.setdefault(key, {})
             for grade in MARKET_GRADES:
-                gi = GRADES.index(grade)
+                gi = grade - 1
                 value = values[gi] if len(values) > gi else None
                 if value is None:
                     continue
@@ -284,6 +294,7 @@ def step_market_history(data, date):
         save(path, shard)
     counts[idx] = len(today)
     meta["basis"] = "full-list-snapshots"
+    meta["grades"] = MARKET_GRADES
     meta["dates"] = dates[-KEEP_DAYS:]
     meta["counts"] = counts[-KEEP_DAYS:]
     save(meta_path, meta)
@@ -313,7 +324,7 @@ def step_diag_market(data, date):
     old_manifest = load(manifest_path, {})
     if (old_manifest.get("date") == as_of
             and old_manifest.get("requestedDays") == DIAG_TREND_DAYS
-            and old_manifest.get("grades") == MARKET_GRADES):
+            and old_manifest.get("grades") == DIAG_MARKET_GRADES):
         return {"diag_market": "skip", "diag_market_cards": old_manifest.get("cards", 0),
                 "diag_market_date": as_of}
 
@@ -325,7 +336,7 @@ def step_diag_market(data, date):
         for card_id, grade_rows in source.items():
             grade_out = []
             has_row = False
-            for grade in MARKET_GRADES:
+            for grade in DIAG_MARKET_GRADES:
                 prices = {}
                 for point in (grade_rows or {}).get(str(grade), []):
                     if not isinstance(point, list) or len(point) < 2 or not point[0] or point[1] is None:
@@ -377,7 +388,7 @@ def step_diag_market(data, date):
         "date": as_of,
         "basis": "full-list-snapshots",
         "requestedDays": DIAG_TREND_DAYS,
-        "grades": MARKET_GRADES,
+        "grades": DIAG_MARKET_GRADES,
         "historyDays": len(dates),
         "historyFrom": dates[0],
         "historyTo": as_of,
@@ -458,7 +469,9 @@ def step_ranker_market(data, date):
                 type(value) is int and 0 < value <= MAX_SAFE_INTEGER
                 for _, value in rows.get(str(grade), [])
             )
-            return start, first, end, last, round((last - first) / first * 100, 1), observations
+            recent_prices = [prices[day] for day in sorted(prices) if day <= end][-3:]
+            return (start, first, end, last, round((last - first) / first * 100, 1),
+                    observations, recent_prices)
 
         for grade in MARKET_GRADES:
             display_moves = []
@@ -467,19 +480,20 @@ def step_ranker_market(data, date):
                 change = daily(key, grade)
                 if not change:
                     continue
-                start, first, end, last, pct, observations = change
+                start, first, end, last, pct, observations, recent_prices = change
                 item = _item(key, rec, last, first)
                 item.update(c=pct, d=last - first, u=int(rec.get("games") or 0),
                             fromDate=start.isoformat(), toDate=end.isoformat())
                 display_moves.append(item)
                 candidates.append({"id": int(key), "first": first, "last": last,
+                                   "grade": grade, "prices": recent_prices,
                                    "games": int(rec.get("games") or 0),
                                    "observations": observations,
                                    "new_date": new_dates.get(int(key)), "item": item})
                 if first >= MARKET_WEEK_PRICE_MIN and last >= MARKET_WEEK_PRICE_MIN:
                     index_pcts_by_grade[grade].append(pct)
 
-            ranked_moves = rank_market_moves(candidates, end.isoformat(), MARKET_TOP)
+            ranked_moves = rank_market_moves(candidates, end.isoformat(), top=None)
             moves_by_grade[str(grade)] = {
                 **ranked_moves, "_moves": {x["id"]: x for x in display_moves}
             }
@@ -487,6 +501,7 @@ def step_ranker_market(data, date):
         return moves_by_grade, index_pcts_by_grade, start, end
 
     by_grade, index_pcts_by_grade, start_date, as_of_date = compute_moves()
+    integrated = merge_market_moves(by_grade, MARKET_TOP, max_per_card=2)
     index_pcts = index_pcts_by_grade[1]
 
     # 인기 목록은 공식 1:1 상위 랭커 사용량 기준을 유지해요.
@@ -536,18 +551,25 @@ def step_ranker_market(data, date):
            "grades": MARKET_GRADES, "index": index, "indexSample": sample_size,
            "indexMinimum": MARKET_INDEX_MIN, "historyDays": len(history_dates),
            "historyRequiredDays": 2, "byGrade": by_grade,
+           "risers": integrated["risers"], "fallers": integrated["fallers"],
+           "moved": integrated["moved"],
+           "popular": by_grade.get("1", {}).get("popular", []),
            "newCards": keep[:24], "newCount": len(keep),
-           "rankLabel": "\uC804\uCCB4 \uC218\uC9D1 \uC120\uC218\uCE74\uB4DC \uAE30\uC900", "popularLabel": popular_label,
-           "rule": f"\uB7AD\uD0B9: \uBCC0\uB3D9\uB960 3% \uC774\uC0C1\u00B7\uC808\uB300 \uBCC0\uB3D9\uC561 \uC0C1\uC704 20%\u00B7\uAD00\uCE21 3\uD68C \uC774\uC0C1 \u00B7 \uC9C0\uC218: \uAE30\uC874 3\uB9CC BP \uC720\uD6A8\uD45C\uBCF8 {MARKET_INDEX_MIN}\uC7A5"}
+           "rankLabel": "전체 시즌·전체 강화 카드의 실제 시세 변동 기준",
+           "popularLabel": "인기 카드 1강 시세",
+           "indexLabel": "1강 시장 흐름",
+           "rule": ("강화별 변동률 3% 이상·절대 변동액 상위 20%·관측 3회 이상 · "
+                    "점수: 변동률 40%·변동액 40%·최근 흐름 20%")}
     save(data / "market" / "summary.json", out)
 
     priced = [(k, r) for k, r in listed.items() if r.get("price")]
     pool = [[int(k), listed[k].get("name") or "", listed[k].get("ovr") or 0,
              [sig3(x) if x else 0 for x in (listed[k].get("price") or [])[:13]]] for k, _ in priced]
     save(data / "market" / "pool.json", {"date": date, "items": pool})
-    res = {"market": "ok", "market_moved": by_grade.get("1", {}).get("moved", 0),
+    res = {"market": "ok", "market_moved": integrated["moved"],
            "market_new": len(keep), "market_index_sample": sample_size}
-    log(f"\uC77C\uAC04 \uC2DC\uC7A5 \uC694\uC57D: \uC804\uCCB4 \uC120\uC218\uCE74\uB4DC 1\uAC15 \uC720\uD6A8 \uD45C\uBCF8 {sample_size}\uC7A5 \u00B7 \uCD94\uC138 \uCE74\uB4DC {by_grade.get('1', {}).get('moved', 0)}\uC7A5 \u00B7 \uC778\uAE30 \uCE74\uB4DC \uD45C\uBCF8 {len(ranked)}\uC7A5")
+    log(f"일간 시장 요약: 전체 강화 추세 카드 {integrated['moved']}장 · "
+        f"1강 시장지수 표본 {sample_size}장 · 인기 카드 표본 {len(ranked)}장")
     return res
 
 

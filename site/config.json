@@ -3,7 +3,7 @@
   "MAX_FILES": 18000,
   "CONTACT_EMAIL": "fifagosu@gmail.com",
   "ads": {
-    "_설명": "승인·수익화 허용 및 광고 개인정보 고지 확인 후 enabled=true, provider=adsense, 공개 게시자 ID와 슬롯 ID를 입력. 좌우는 실제 여백 172px 이상인 PC에서만. 페이지별 중앙 ID가 없으면 center 사용. 미승인 상태에서는 ?ad-preview=1로 배치만 확인.",
+    "_설명": "승인·수익화 허용 및 광고 개인정보 고지 확인 후 enabled=true, provider=adsense, 공개 게시자 ID와 슬롯 ID를 입력. 좌우는 실제 본문 좌우 여백 180px 이상인 PC에서만. 페이지별 중앙 ID가 없으면 center 사용. 미승인 상태에서는 ?ad-preview=1로 배치만 확인.",
     "enabled": false,
     "provider": "none",
     "adsense_client": "",

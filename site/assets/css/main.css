@@ -1334,7 +1334,7 @@ nav.menu a.core{display:inline-flex;align-items:center;gap:5px}.fg-diag-icon{fle
 /* Public-content ad layout: side rails never reserve or shrink main content. */
 body>.wrap[data-ad-layout="public"]{position:relative}
 .fg-ad-rail{position:absolute;top:12px;width:160px;height:600px;max-width:none!important;box-sizing:border-box;text-align:center;overflow:hidden;z-index:1}
-.fg-ad-left{right:calc(100% + 12px)}.fg-ad-right{left:calc(100% + 12px)}
+.fg-ad-left{left:var(--ad-left,-172px);right:auto}.fg-ad-right{left:var(--ad-right,calc(100% + 12px))}
 .fg-ad-rail[hidden],.slot[data-ad-slot]:not(.is-live):not(.is-preview){display:none!important}
 .fg-ad-rail .adsbygoogle{width:160px;height:600px;display:inline-block}
 .slot[data-ad-slot].is-live{width:100%;min-height:0;box-sizing:border-box;margin:24px auto;overflow:visible}
@@ -1343,4 +1343,4 @@ body>.wrap[data-ad-layout="public"]{position:relative}
 .fg-ad-rail.is-preview::before,.slot[data-ad-slot].is-preview::before{content:"광고 배치 미리보기";font-weight:700}
 .fg-ad-rail.is-preview::after{content:"160 × 600 · 송출 안 함"}
 .slot[data-ad-slot].is-preview::after{content:"반응형 배너 · 송출 안 함"}
-@media(max-width:1599px){.fg-ad-rail{display:none!important}}
+@media(max-width:1199px){.fg-ad-rail{display:none!important}}

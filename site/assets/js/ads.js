@@ -14,7 +14,11 @@ const allowed=()=>{const path=location.pathname,view=activeView();
  if(view==="board"&&(cfg.allow_community!==true||new URLSearchParams(location.search).has("write")||new URLSearchParams(location.search).has("edit")||new URLSearchParams(location.search).has("compose")))return false;
  if((path.startsWith("/press")||path.startsWith("/news/")&&path!=="/news/")&&cfg.allow_syndicated_news!==true)return false;
  return true};
-function fits(){const r=layout.getBoundingClientRect(),w=document.documentElement.clientWidth;return w>=1600&&r.left>=172&&w-r.right>=172}
+// The outer wrapper may be much wider than its actual visible content.
+function fits(){const main=[...layout.querySelectorAll(":scope > main")].find(el=>!el.hidden&&el.getClientRects().length);const outer=layout.getBoundingClientRect(),r=(main||layout).getBoundingClientRect(),w=document.documentElement.clientWidth;
+ const left=r.left-outer.left-172,right=r.right-outer.left+12;
+ layout.style.setProperty("--ad-left",left+"px");layout.style.setProperty("--ad-right",right+"px");
+ return w>=1200&&r.left>=180&&w-r.right>=180}
 function visible(el){return !el.parentElement.closest("[hidden]")&&(!rail(el)||fits())}
 let scriptPromise;
 function load(){if(!scriptPromise)scriptPromise=new Promise((resolve,reject)=>{const script=document.createElement("script");script.async=true;script.crossOrigin="anonymous";script.src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client="+encodeURIComponent(client);script.onload=resolve;script.onerror=reject;document.head.appendChild(script)});return scriptPromise}

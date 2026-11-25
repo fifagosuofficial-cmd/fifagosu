@@ -859,16 +859,27 @@ function dStatsView(a){
 function dRecentCheckbox(a){return `<label class="d-recent-filter"><input type="checkbox" data-dfilter="recent"${dFilter.recent?' checked':''}>최근 스쿼드 기준 <small>(${(a.recentLineup||[]).length}명)</small></label>`}
 
 function dPStatsMobile(records,columns){
-  const cell=(r,i)=>'<div class="dps-metric"><span>'+columns[i]+'</span><div>'+r.cells[i]+'</div></div>';
-  const group=(r,title,indices)=>'<section class="dps-section"><h4>'+title+'</h4><div class="dps-metrics">'+indices.map(i=>cell(r,i)).join('')+'</div></section>';
-  return '<div class="dps-mobile" aria-label="모바일 선수별 기록">'+(records.length?records.map(r=>'<article class="dps-card '+r.state+'"><div class="dps-head"><div class="dps-name">'+r.cells[0]+'</div><div class="dps-verdict">'+r.cells[21]+'</div></div><div class="dps-metrics dps-summary">'+[1,2,3,4,5,20].map(i=>cell(r,i)).join('')+'</div><div class="dps-market"><span>현재 시세</span><b>'+r.cells[14]+'</b></div><details class="dps-details"><summary>세부 기록 · 시세 변동 · 교체 후보</summary>'+group(r,'공격 · 패스',[6,7,8,17,18])+group(r,'수비 · 경합',[9,10,11,12,13])+group(r,'시세 · 평가',[15,16,19])+group(r,'교체 후보',[22,23])+'</details></article>').join(''):'<p class="empty">조건에 맞는 선수 기록이 없어요.</p>')+'</div>';
+  if(!records.length)return '<div class="dps-mobile"><p class="empty">조건에 맞는 선수 기록이 없어요.</p></div>';
+  const groups=[
+    ['기본',[[1,'출전'],[2,'승률'],[3,'평점'],[4,'골'],[5,'도움'],[20,'기여']]],
+    ['공격',[[6,'슛(유효)'],[7,'패스%'],[8,'드리블%'],[17,'골/경기'],[18,'도움/경기']]],
+    ['수비',[[9,'볼 경합'],[10,'공중볼'],[11,'태클'],[12,'차단'],[13,'블락']]],
+    ['시세',[[14,'현재 시세'],[15,'24시간'],[16,'7일']]],
+    ['평가',[[19,'순위'],[21,'평가'],[22,'교체 후보'],[23,'필요 BP']]]
+  ];
+  const tabs=groups.map(([label],i)=>'<input class="dps-mode" type="radio" name="dps-mode" id="dps-mode-'+i+'"'+(i===0?' checked':'')+'><label for="dps-mode-'+i+'">'+label+'</label>').join('');
+  const tables=groups.map(([label,indices],i)=>'<div class="dps-table-panel dps-panel-'+i+'"><table class="dps-table dps-table-'+i+'" aria-label="'+label+' 선수별 기록"><colgroup><col class="dps-player-col">'+indices.map(([j])=>'<col class="dps-col-'+j+'">').join('')+'</colgroup><thead><tr><th scope="col">선수</th>'+indices.map(([j,short])=>'<th scope="col" title="'+columns[j]+'">'+short+'</th>').join('')+'</tr></thead><tbody>'+records.map(r=>'<tr class="'+r.state+'"><th scope="row" class="dps-player">'+(r.mobileName||r.cells[0])+'</th>'+indices.map(([j])=>'<td class="dps-value dps-value-'+j+'">'+r.cells[j]+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>').join('');
+  return '<div class="dps-mobile" aria-label="모바일 선수별 기록"><div class="dps-bar"><b>선수별 기록</b><small>'+records.length+'명 · 지표별 비교</small><button type="button" class="dps-expand" aria-expanded="false">전체화면</button></div><div class="dps-switch">'+tabs+tables+'</div></div>';
 }
+function dpsToggleFull(el,open){if(!el)return;el.classList.toggle('dps-full',open);const btn=el.querySelector('.dps-expand');if(btn){btn.textContent=open?'닫기':'전체화면';btn.setAttribute('aria-expanded',String(open))}}
+$('dPanel').addEventListener('click',e=>{const b=e.target.closest('.dps-expand');if(b){const el=b.closest('.dps-mobile');dpsToggleFull(el,!el.classList.contains('dps-full'))}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')dpsToggleFull(document.querySelector('.dps-mobile.dps-full'),false)});
 function dPStatsView(a){
   const pc=(s,t)=>t?Math.round(s/t*100)+'%':'-', st=x=>x.t||{};
   const wrc=v=>v>=0.6?'wr-hi':v<0.4?'wr-lo':'';
   const rkNote=!LIVE?'':a.rkN==null?' 상위 랭커 비교 데이터를 불러오는 중이에요…':a.rkN?` <span class="rk-ic">!</span> 빨간 느낌표는 동일 선수·포지션의 상위 랭커(TOP 10,000) 비교에서 경기당 횟수가 평균의 70% 미만이거나, 패스·드리블 성공률이 10%p 이상 낮고 랭커 성공률의 85% 미만인 기록이에요. 성공률 비교 표본이 없으면 경고하지 않아요. 공격수·미드필더는 공격 지표, 수비수·미드필더는 수비 지표를 비교해요.`:' 이 스쿼드 선수들은 상위 랭커 비교 데이터가 없어요.';
   let rows=dRecentRows(a.players,a.recentLineup,dFilter.recent).filter(x=>(!dFilter.pos||dLineGroup(x.pos)===dFilter.pos)&&x.apps>=dFilter.apps&&(!dFilter.action||x.action===dFilter.action));const sorts={apps:(x,y)=>y.apps-x.apps,rating:(x,y)=>y.avg-x.avg,win:(x,y)=>y.wr-x.wr,eval:(x,y)=>(y.eval??-1)-(x.eval??-1),price:(x,y)=>(y.price||0)-(x.price||0),pitch:dComparePosition};rows.sort(sorts[dFilter.sort]||sorts.pitch);
-  const columns=["선수","출전","승률","평점","골","도움","슈팅(유효)","패스 성공률","드리블 성공률","볼 경합 성공률","공중볼 성공률","태클","가로채기","블락","현재 시세","24시간","7일","경기당 골","경기당 도움","포지션 순위","실전 기여","종합 평가","교체 후보","필요 BP"], records=rows.map(x=>{const t=st(x);return {state:`${x.low||x.action==='교체 검토'?'low':x.action==='기용 추천'?'hi':''}`,cells:[`<span class="pos">${x.pos}</span>${sch(x.seasonId)}${esc(x.name)}${recoFlag(x)}${a.dm||x.grade>1?`${gch(x.grade)}`:''}`,
+  const columns=["선수","출전","승률","평점","골","도움","슈팅(유효)","패스 성공률","드리블 성공률","볼 경합 성공률","공중볼 성공률","태클","가로채기","블락","현재 시세","24시간","7일","경기당 골","경기당 도움","포지션 순위","실전 기여","종합 평가","교체 후보","필요 BP"], records=rows.map(x=>{const t=st(x);return {state:`${x.low||x.action==='교체 검토'?'low':x.action==='기용 추천'?'hi':''}`,mobileName:`<span class="dps-player-meta"><span class="pos">${esc(x.pos)}</span>${sch(x.seasonId)}${a.dm||x.grade>1?gch(x.grade):""}${recoFlag(x)}</span><span class="dps-player-name" title="${esc(x.name)}">${esc(x.name)}</span>`,cells:[`<span class="pos">${x.pos}</span>${sch(x.seasonId)}${esc(x.name)}${recoFlag(x)}${a.dm||x.grade>1?`${gch(x.grade)}`:''}`,
     `${x.apps}`,
     `<span class="${wrc(x.wr)}">${Math.round(x.wr*100)}%</span><span class="why">${x.w}승</span>`,
     `${rtCell(x)}`,

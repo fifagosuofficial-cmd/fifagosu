@@ -170,14 +170,17 @@ test('diagnosis uses one compact report without duplicated recent win rate and c
   assert.ok(src.includes('<span>진단 저장</span>'));
 });
 
-test('mobile player cards preserve all 24 columns, recommendations and empty state',()=>{
- const a=src.indexOf('function dPStatsMobile('),b=src.indexOf('function dPStatsView(',a);
+test('mobile comparison tables show every player in each group and retain every metric',()=>{
+ const a=src.indexOf('function dPStatsMobile('),b=src.indexOf('function dpsToggleFull(',a);
  vm.runInContext(src.slice(a,b),ctx);
  const columns=Array.from({length:24},(_,i)=>'label'+i);
  const cells=Array.from({length:24},(_,i)=>'<b>value'+i+'</b>');
  cells[22]='<button data-reco="123">candidate</button>';
- const html=ctx.dPStatsMobile([{state:'low',cells}],columns);
- for(let i=0;i<24;i++)if(i!==22)assert.ok(html.includes('value'+i+'</b>'),String(i));
- assert.match(html,/<details/);assert.match(html,/data-reco="123"/);assert.match(html,/dps-card low/);
- assert.match(ctx.dPStatsMobile([],columns),/조건에 맞는 선수 기록이 없어요/);
+ const rows=Array.from({length:11},(_,i)=>({state:'low',cells,mobileName:'Player'+i+'!'}));
+ const html=ctx.dPStatsMobile(rows,columns);
+ for(let i=1;i<24;i++)if(i!==22)assert.ok(html.includes('value'+i+'</b>'),String(i));
+ assert.equal((html.match(/<table class="dps-table/g)||[]).length,5);
+ for(let i=0;i<11;i++)assert.equal(html.split('Player'+i+'!').length-1,5);
+ assert.match(html,/data-reco="123"/);assert.match(html,/전체화면/);
+ assert.ok(!html.includes('<details'));assert.match(ctx.dPStatsMobile([],columns),/조건에 맞는 선수 기록이 없어요/);
 });

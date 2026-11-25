@@ -1351,31 +1351,56 @@ body>.wrap[data-ad-layout="public"]{position:relative}
 /* KickKick nav uses the same compact icon treatment as diagnosis. */
 nav.menu a.nav-fun{display:inline-flex;align-items:center;gap:5px}.fg-fun-icon{flex:none;color:currentColor}@media(max-width:760px){.fg-nav-shell nav.menu .fg-fun-icon{width:15px;height:15px}}
 
-/* Mobile player statistics: compact player cards; desktop retains complete table. */
+
+/* Compact mobile comparison table: all players, same row order in each metric group. */
 .dps-mobile{display:none}
 @media(max-width:760px){
   .pstwrap{display:none}
-  .pstats-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:9px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
-  .pstats-filters label{display:flex;min-width:0;gap:4px;flex-direction:column;align-items:stretch;font-size:12px}
-  .pstats-filters select{width:100%;min-height:40px;font-size:13px}
-  .pstats-filters .d-recent-filter{grid-column:1/-1;flex-direction:row;align-items:center;min-height:38px;white-space:normal}
-  .dps-mobile{display:grid;gap:10px;min-width:0}
-  .dps-card{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:12px;min-width:0}
-  .dps-card.low{border-left:3px solid var(--crit)}.dps-card.hi{border-left:3px solid var(--good)}
-  .dps-head{display:flex;align-items:flex-start;justify-content:space-between;gap:7px;margin-bottom:10px}
-  .dps-name{font-size:15px;font-weight:700;line-height:1.5;min-width:0;overflow-wrap:anywhere}
-  .dps-name .pos{margin-right:4px}.dps-name .ssnimg{max-width:26px;vertical-align:middle}
-  .dps-verdict{flex:none;padding:3px 6px;background:var(--sunk);border-radius:6px;font-size:12px}
-  .dps-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;min-width:0}
-  .dps-metric{padding:7px 6px;background:var(--sunk);border-radius:7px;min-width:0;overflow-wrap:anywhere}
-  .dps-metric>span{display:block;color:var(--muted);font-size:11px;line-height:1.35;margin-bottom:4px}
-  .dps-metric>div{font-size:14px;font-weight:700;line-height:1.45;min-width:0}
-  .dps-metric .why,.dps-metric .duel-count{display:block;font-size:10px;color:var(--muted);font-weight:400;white-space:normal}
-  .dps-metric .linkbtn{white-space:normal;overflow-wrap:anywhere;text-align:left;min-height:36px}
-  .dps-market{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 2px;font-size:13px}
-  .dps-market>span{color:var(--muted)}.dps-market>b{min-width:0;overflow-wrap:anywhere;text-align:right}
-  .dps-details{border-top:1px solid var(--line)}.dps-details summary{cursor:pointer;min-height:40px;padding:10px 0;font-size:12px;font-weight:700;color:var(--accent)}
-  .dps-section{margin:8px 0}.dps-section h4{font-size:12px;margin:0 0 6px;color:var(--muted)}
-  .dps-section:last-child .dps-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .dps-metric .rk-ic,.dps-name .rk-ic{vertical-align:middle}
+  .pstats-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin-bottom:8px}
+  .pstats-filters label{display:flex;min-width:0;gap:2px;flex-direction:column;align-items:stretch;font-size:10px}
+  .pstats-filters select{width:100%;min-width:0;min-height:32px;font-size:11px;padding:3px 12px 3px 4px}
+  .pstats-filters .d-recent-filter{grid-column:1/-1;flex-direction:row;align-items:center;min-height:28px;padding:3px 6px;font-size:11px}
+  .dps-mobile{display:block;min-width:0;max-width:100%}
+  .dps-bar{display:flex;align-items:center;gap:7px;margin-bottom:5px;font-size:13px}
+  .dps-bar small{font-size:11px;color:var(--muted);margin-right:auto}
+  .dps-expand{min-height:30px;border:1px solid var(--line);background:var(--surface);color:var(--accent);border-radius:6px;padding:3px 8px;font:700 11px var(--f-body);white-space:nowrap}
+  .dps-switch{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;min-width:0}
+  .dps-mode{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+  .dps-switch>label{display:grid;place-items:center;min-height:30px;background:var(--sunk);border:1px solid var(--line);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}
+  .dps-mode:checked+label{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+  .dps-mode:focus-visible+label{outline:2px solid var(--accent);outline-offset:1px}
+  .dps-table-panel{display:none;grid-column:1/-1;min-width:0;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  #dps-mode-0:checked~.dps-panel-0,#dps-mode-1:checked~.dps-panel-1,#dps-mode-2:checked~.dps-panel-2,#dps-mode-3:checked~.dps-panel-3,#dps-mode-4:checked~.dps-panel-4{display:block}
+  .dps-table{width:100%;min-width:0!important;table-layout:fixed;border-collapse:collapse;margin:0;font-size:11px;font-variant-numeric:tabular-nums}
+  .dps-table .dps-player-col{width:32%}
+  .dps-table-0 .dps-player-col{width:30%}
+  .dps-table-3 .dps-player-col{width:32%}.dps-table-3 .dps-col-14{width:32%}
+  .dps-table-4 .dps-player-col{width:28%}.dps-table-4 .dps-col-19{width:10%}.dps-table-4 .dps-col-21{width:17%}.dps-table-4 .dps-col-22{width:25%}
+  .dps-table th,.dps-table td{padding:3px 2px;min-width:0!important;text-align:center;vertical-align:middle;border-bottom:1px solid var(--line);white-space:normal;line-height:1.2;overflow-wrap:anywhere}
+  .dps-table thead th{height:26px;background:var(--sunk);color:var(--muted);font-size:10px;font-weight:700}
+  .dps-table thead th:first-child{text-align:left;padding-left:6px}
+  .dps-table tbody tr{height:34px}
+  .dps-table tbody tr:last-child>*{border-bottom:0}
+  .dps-table tbody th.dps-player{text-align:left;padding:2px 4px 2px 5px;background:var(--surface);font-size:11px;color:var(--fg);font-weight:600}
+  .dps-table tbody tr.low th.dps-player{box-shadow:inset 2px 0 var(--crit);background:var(--crit-soft)}
+  .dps-table tbody tr.hi th.dps-player{box-shadow:inset 2px 0 var(--good);background:var(--good-soft)}
+  .dps-player-meta{display:flex;align-items:center;gap:2px;height:13px;white-space:nowrap;min-width:0}
+  .dps-player-meta .pos{font-size:9px;margin:0}.dps-player-meta .ssnimg{height:10px;margin:0;max-width:22px;object-fit:contain}
+  .dps-player-meta .ssn{font-size:9px;max-width:24px;overflow:hidden;text-overflow:ellipsis}
+  .dps-player-meta .grade{font-size:8px;padding:1px 3px;margin:0;vertical-align:0}
+  .dps-player-meta .rc-flag{width:13px;height:13px;min-width:13px;padding:0;margin:0;font-size:9px}
+  .dps-player-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;line-height:14px}
+  .dps-table .dps-value{font-weight:600;color:var(--fg);font-size:11px}
+  .dps-table .why{display:none}
+  .dps-table .rk-ic{width:9px;height:9px;font-size:7px;margin:0 0 0 1px}
+  .dps-table .ev{min-width:0;font-size:10px;padding:2px 3px}
+  .dps-table .duel-rate{display:block}.dps-table .duel-count{display:block;font-size:9px;font-weight:400;color:var(--muted);white-space:nowrap}
+  .dps-table .act{font-size:10px;white-space:normal;word-break:keep-all}
+  .dps-table .linkbtn{white-space:normal;overflow-wrap:anywhere;font-size:10px;line-height:1.25;text-align:center;padding:2px 0}
+  .dps-table .linkbtn .ssnimg{height:10px;margin:0 2px 0 0}
+  .dps-table-3 .dps-value-14,.dps-table-4 .dps-value-23{font-size:10px}
+  .dps-full{position:fixed;inset:0;z-index:10000;background:var(--surface);padding:max(10px,env(safe-area-inset-top)) 8px max(10px,env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
+  .dps-full .dps-bar{position:sticky;top:0;z-index:2;background:var(--surface);padding:3px 0}
+  .dps-full .dps-table tbody tr{height:36px}
 }
+@media(max-width:360px){.dps-table th,.dps-table td{padding-left:1px;padding-right:1px}.dps-table .dps-value{font-size:10px}.dps-player-name{font-size:10px}.dps-table .dps-player-col{width:29%}}

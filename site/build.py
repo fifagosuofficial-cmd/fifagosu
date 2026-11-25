@@ -25,6 +25,8 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 SITE = Path(__file__).resolve().parent
 ROOT = SITE.parent
 KST = dt.timezone(dt.timedelta(hours=9))
+sys.path.insert(0, str(ROOT / "crawler"))
+from market_rank import MAX_SAFE_INTEGER, rank_market_moves  # noqa: E402
 
 # 고정 페이지: (출력 파일, 템플릿, 경로, 제목, 설명, sitemap 포함 여부, 추가 값)
 MAIN_T = "index.html"
@@ -194,42 +196,59 @@ def market_period_views(data_dir, market):
     for shard in range(200):
         listed.update(_load(data_dir / "list" / f"{shard}.json") or {})
         history.update(_load(data_dir / "market" / "all_card_history" / f"{shard}.json") or {})
+    new_dates = {}
+    for item in ((_load(data_dir / "market" / "new_cards.json") or {}).get("items") or []):
+        if item.get("id") is not None:
+            new_dates[int(item["id"])] = item.get("d")
+    today_new = _load(data_dir / "meta" / "new_today.json") or {}
+    if today_new.get("date"):
+        for card_id in today_new.get("ids", []):
+            new_dates[int(card_id)] = today_new["date"]
     periods = {}
     for days in (1, 3, 7):
         start = (end_day - dt.timedelta(days=days)).isoformat()
         ready = end in dates and start in dates
-        buckets, index = {}, None
+        buckets, index, index_sample = {}, None, 0
         for grade in grades:
-            changes = []
+            changes, candidates, index_changes = [], [], []
             if ready:
                 for card_id, rec in listed.items():
-                    prices = dict(history.get(str(card_id), {}).get(str(grade), []))
+                    rows = history.get(str(card_id), {}).get(str(grade), [])
+                    prices = dict(rows)
                     first, last = prices.get(start), prices.get(end)
-                    if not isinstance(first, (int, float)) or not isinstance(last, (int, float)) or min(first, last) < 30000:
+                    if type(first) is not int or type(last) is not int or not (0 < first <= MAX_SAFE_INTEGER and 0 < last <= MAX_SAFE_INTEGER):
                         continue
                     pos = (rec.get("pos") or [[None, None]])[0]
-                    changes.append({"id": int(card_id), "n": rec.get("name") or "", "s": int(card_id)//1000000,
-                                    "o": rec.get("ovr") or (pos[1] if len(pos)>1 else None), "p": pos[0],
-                                    "v": last, "pv": first, "c": round((last-first)/first*100,1),
-                                    "fromDate": start, "toDate": end})
+                    item = {"id": int(card_id), "n": rec.get("name") or "", "s": int(card_id)//1000000,
+                            "o": rec.get("ovr") or (pos[1] if len(pos)>1 else None), "p": pos[0],
+                            "v": last, "pv": first, "c": round((last-first)/first*100,1),
+                            "d": last-first, "u": int(rec.get("games") or 0),
+                            "fromDate": start, "toDate": end}
+                    changes.append(item)
+                    candidates.append({"id": int(card_id), "first": first, "last": last,
+                                       "games": int(rec.get("games") or 0),
+                                       "observations": sum(type(value) is int and 0 < value <= MAX_SAFE_INTEGER for _, value in rows),
+                                       "new_date": new_dates.get(int(card_id)), "item": item})
+                    if min(first, last) >= 30000:
+                        index_changes.append(item)
+            ranked_moves = rank_market_moves(candidates, end, 10)
             by_id = {x["id"]: x for x in changes}
             popular = []
             for p in market["byGrade"].get(str(grade), {}).get("popular", []):
                 item = {k: v for k, v in p.items() if k not in ("pv","c","fromDate","toDate")}
                 if p["id"] in by_id:
-                    item.update({k: v for k, v in by_id[p["id"]].items() if k in ("v","pv","c","fromDate","toDate")})
+                    item.update({k: v for k, v in by_id[p["id"]].items() if k in ("v","pv","c","d","u","fromDate","toDate")})
                 popular.append(item)
-            buckets[str(grade)] = {"risers": sorted((x for x in changes if x["c"]>0),key=lambda x:-x["c"])[:10],
-                                   "fallers": sorted((x for x in changes if x["c"]<0),key=lambda x:x["c"])[:10],
-                                   "popular": popular, "moved": len(changes)}
+            buckets[str(grade)] = {**ranked_moves, "popular": popular}
             if grade == 1:
-                vals = sorted(x["c"] for x in changes)
+                vals = sorted(x["c"] for x in index_changes)
                 sample = len(vals)
+                index_sample = sample
                 if sample >= minimum:
                     index = {"median": round((vals[(sample-1)//2]+vals[sample//2])/2,1),
                              "n": sample, "up": sum(v>0 for v in vals), "down": sum(v<0 for v in vals)}
         periods[str(days)] = {"index": index, "byGrade": buckets, "prev": start, "date": end,
-                              "ready": ready, "sample": buckets.get("1",{}).get("moved",0),
+                              "ready": ready, "sample": index_sample,
                               "historyDays": len([d for d in dates if start<=d<=end]),
                               "required": days+1}
     market["periods"] = periods

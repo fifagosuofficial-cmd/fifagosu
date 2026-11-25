@@ -484,25 +484,17 @@ function dRenderCards(a){
   $('dCards').innerHTML=a.weak.map((x,i)=>`<article class="wcard ${i?'mid':''}"><div class="wtop"><span class="pill no">약점 ${i+1}</span><h3>${esc(x.weak)}</h3></div><p class="wdesc">${esc(x.desc)}</p>${cmpRows(x)}<p class="wfix">${x.fix}</p></article>`).join('')+
     (a.strong?`<article class="wcard strength"><div class="wtop"><span class="pill ok">강점</span><h3>${esc(a.strong.strong)}</h3></div><p class="wdesc">${esc(a.strong.desc)}</p>${cmpRows(a.strong)}<p class="wfix">${esc(a.strong.sfix)}</p></article>`:'');
 }
-/* ---------- 상단 요약: 최근 흐름 · 경기별 득실 그래프 · 핵심 수치 ---------- */
+/* ---------- 종합 구단 리포트 핵심 수치 ---------- */
 const RCLS={승:'W',무:'D',패:'L'};
 function dRenderSummary(d,a){
   $('dReportShell').hidden=false;
-  const seq=a.seq,n=seq.length,last=seq[n-1];let st=1;for(let i=n-2;i>=0&&seq[i].r===last.r;i--)st++;
-  const md=s=>{const t=new Date(s);return `${t.getMonth()+1}/${t.getDate()}`};
-  const W=Math.max(320,n*14),H=86,mid=46,mx=Math.max(3,...seq.map(x=>Math.abs(x.gf-x.ga))),bw=W/n,sc=v=>v/mx*34;
-  let svg=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="ds-chart" role="img" aria-label="경기별 득실 차"><line x1="0" x2="${W}" y1="${mid}" y2="${mid}" stroke="var(--line)"/>`;
-  seq.forEach((x,i)=>{const df=x.gf-x.ga,h=Math.max(3,sc(Math.abs(df))),cx=i*bw+bw*0.15,w=bw*0.7,c=x.r==='승'?'var(--good)':x.r==='패'?'var(--crit)':'var(--muted)';
-    svg+=`<rect x="${cx}" y="${df>=0?mid-h:mid}" width="${w}" height="${h}" rx="2" fill="${c}"/><rect class="ds-hit" data-i="${i}" x="${i*bw}" y="0" width="${bw}" height="${H}" fill="transparent"/>`});
-  svg+='</svg>';
-  const f=Object.fromEntries(a.flow.map(x=>[x[0],x])),pct=v=>v==null?'-':Math.round(v*100)+'%';
-  const w5=seq.slice(-5).filter(x=>x.r==='승').length,w10=seq.slice(-10).filter(x=>x.r==='승').length;
-  const kpi=[['승률',pct(a.W/a.n),`${a.W}승 ${a.D}무 ${a.L}패`],['경기당 득점',(a.gf/a.n).toFixed(2),`총 ${a.gf}골`],['경기당 실점',(a.ga/a.n).toFixed(2),`총 ${a.ga}골`],
-    ['최근 10경기',`${w10}승`,`최근 5경기 ${w5}승`],['선제골 시 승률',pct(f['선제골 넣은 경기 승률'][1]),`${f['선제골 넣은 경기 승률'][2]}경기`],['역전승 · 역전패',`${f['역전승'][1]} · ${f['역전패'][1]}`,`무실점 ${f['무실점 경기'][1]}경기`]];
-  const stTxt=last.r==='승'?`${st}연승 중`:last.r==='패'?`${st}연패 중`:st>1?`${st}경기 연속 무승부`:'최근 경기 무승부';
-  $('dSum').innerHTML=`<div class="ds-flow"><div class="ds-h"><b>최근 ${n}경기 흐름</b><span class="ds-streak ${RCLS[last.r]}">${stTxt}</span><small>왼쪽이 오래된 경기 · 막대에 마우스를 올리면 상대·스코어</small></div>
-    ${svg}<div class="ds-dots">${seq.map((x,i)=>`<i class="${RCLS[x.r]}" data-i="${i}">${x.r}</i>`).join('')}</div><div class="ds-tip" id="dsTip" hidden></div></div>
-    <div class="ds-kpi">${kpi.map(([k,v,s2])=>`<div><span>${k}</span><b>${v}</b><small>${s2}</small></div>`).join('')}</div>`;
+  const recent=a.seq.slice(-5),count=r=>recent.filter(x=>x.r===r).length;
+  const kpi=[
+    ['승률',`${Math.round(a.W/a.n*100)}%`,`${a.W}승 ${a.D}무 ${a.L}패`],
+    ['최근 5경기',`${count('승')}승 ${count('무')}무 ${count('패')}패`,'가장 최근 경기 기준'],
+    ['경기당 득실',`${(a.gf/a.n).toFixed(2)} · ${(a.ga/a.n).toFixed(2)}`,'득점 · 실점']
+  ];
+  $('dSum').innerHTML=`<div class="ds-kpi">${kpi.map(([k,v,s2])=>`<div><span>${k}</span><b>${v}</b><small>${s2}</small></div>`).join('')}</div>`;
 }
 /* 막대·칸에 마우스를 올리면 그 경기의 날짜·상대·스코어 */
 $('dSum').addEventListener('mouseover',e=>{const t=e.target.closest('[data-i]'),tip=$('dsTip');if(!tip||!dCur)return;if(!t){tip.hidden=true;return}
@@ -512,26 +504,14 @@ $('dSum').addEventListener('mouseover',e=>{const t=e.target.closest('[data-i]'),
 $('dSum').addEventListener('mouseleave',()=>{const tip=$('dsTip');if(tip)tip.hidden=true});
 /* ---------- 피파고수의 한마디: 약점·흐름·랭커 비교를 종합한 조언 ---------- */
 function dAdvice(a){
-  const pct=v=>Math.round(v*100),seq=a.seq,n=seq.length,last=seq[n-1];let st=1;for(let i=n-2;i>=0&&seq[i].r===last.r;i--)st++;
-  const w5=seq.slice(-5).filter(x=>x.r==='승').length,out=[];
-  if(last.r==='승'&&st>=3)out.push(`지금 <b>${st}연승</b> 중이에요! 이길 때의 전술·스쿼드는 그대로 유지하는 게 좋아요.`);
-  else if(last.r==='패'&&st>=3)out.push(`<b>${st}연패</b> 중이에요. 연패 땐 바로 다시 돌리기보다 잠깐 쉬고, 아래 숙제 하나만 고쳐서 도전해 보세요.`);
-  else out.push(`최근 5경기 <b>${w5}승</b>, 전체 승률 <b>${pct(a.W/a.n)}%</b>예요.${w5>=4?' 상승세를 타고 있어요.':w5<=1?' 요즘 흐름이 좋지 않아요.':''}`);
-  const w=a.weak[0];if(w)out.push(`가장 먼저 고칠 점 — <b>${esc(w.weak)}</b>. ${w.fix}`);
-  const f=Object.fromEntries(a.flow.map(x=>[x[0],x])),fl=f['먼저 실점한 경기 승률'],fw=f['선제골 넣은 경기 승률'],one=f['1골 차 승부 승률'];
-  const ins=[];
-  if(fl[2]>=3&&fl[1]!=null&&fl[1]<0.25)ins.push(`먼저 실점한 ${fl[2]}경기에서 승률이 ${pct(fl[1])}%뿐이에요. <b>선제 실점만 줄여도</b> 승률이 크게 올라가요.`);
-  if(fw[2]>=3&&fw[1]!=null&&fw[1]<0.6)ins.push(`선제골을 넣고도 ${pct(fw[1])}%만 이겼어요. 앞서고 있을 땐 <b>라인을 내리고 지키는 운영</b>을 해 보세요.`);
-  if(one[2]>=4&&one[1]!=null&&one[1]<0.4)ins.push(`1골 차 접전 승률이 ${pct(one[1])}%로 낮아요. 막판 10분 집중력이 승부를 갈라요.`);
-  const lateA=a.bins[5].a;if(a.ga>=5&&lateA/a.ga>=0.3&&!(w&&/후반/.test(w.weak)))ins.push(`실점의 ${pct(lateA/a.ga)}%가 75분 이후에 나와요. 후반 체력 관리가 필요해요.`);
-  if(ins.length)out.push(ins[0]);
-  const rtU=(a.players||[]).filter(x=>x.rtLow), recoHint=' 이름 옆 <span class="rk-ic">!</span>를 누르면 같은 가격대 대체 추천을 볼 수 있어요.';
-  if(a.under&&a.under.length)out.push(`상위 랭커가 같은 선수를 같은 자리에 썼을 때보다 기록이 낮은 선수가 <b>${a.under.length}명</b>이에요(${a.under.slice(0,3).map(x=>esc(dCardLabel(x))).join(', ')}${a.under.length>3?' 등':''}).${rtU.length?` 평점이 챔피언스 같은 포지션 평균보다 낮은 선수는 <b>${rtU.length}명</b>이에요.`:''} 선수별 기록의 <span class="rk-ic">!</span> 표시를 확인해 보세요.${recoHint}`);
-  else if(rtU.length)out.push(`챔피언스 같은 포지션 평균보다 평점이 낮은 선수가 <b>${rtU.length}명</b>이에요(${rtU.slice(0,3).map(x=>esc(dCardLabel(x))).join(', ')}${rtU.length>3?' 등':''}).${recoHint}`);
-  else if(a.strong)out.push(`잘하고 있는 점 — <b>${esc(a.strong.strong)}</b>. 이 부분은 계속 살리세요.`);
-  return out.slice(0,4);
+  const seq=a.seq,n=seq.length,last=seq[n-1];let st=1;for(let i=n-2;i>=0&&seq[i].r===last.r;i--)st++;
+  const w5=seq.slice(-5).filter(x=>x.r==='승').length;
+  const flow=last.r==='승'&&st>=3?`지금 <b>${st}연승</b> 중이라 현재 전술의 큰 틀은 유지해도 좋아요.`:last.r==='패'&&st>=3?`최근 <b>${st}연패</b>라 한 번에 여러 설정을 바꾸기보다 한 가지씩 점검해야 해요.`:`최근 5경기 <b>${w5}승</b>, 전체 승률은 <b>${Math.round(a.W/a.n*100)}%</b>예요.`;
+  const one=s=>{const t=String(s||'').trim(),m=t.match(/^.*?[.!?](?:\s|$)/);return (m?m[0]:t).trim()};
+  const w=a.weak[0],action=w?`<b>${esc(w.weak)}</b>: ${one(w.fix)}`:a.strong?`뚜렷한 약점은 적으니 <b>${esc(a.strong.strong)}</b>을 계속 살리세요.`:'지금은 뚜렷한 약점보다 경기 표본을 더 쌓는 것이 먼저예요.';
+  return `${flow} ${action}`;
 }
-function dRenderTip(a){const L=dAdvice(a);$('dTip').hidden=!L.length;$('dTip').innerHTML=`<div class="tip-h"><span class="tip-ic" aria-hidden="true">💬</span><b>피파고수의 한마디</b><small>최근 ${a.n}경기 자동 분석</small></div><ul>${L.map(x=>`<li>${x}</li>`).join('')}</ul>`}
+function dRenderTip(a){const advice=dAdvice(a);$('dTip').hidden=!advice;$('dTip').innerHTML=`<div class="tip-h"><span class="tip-ic" aria-hidden="true">💬</span><b>피파고수의 한마디</b><small>최근 ${a.n}경기</small></div><p>${advice}</p>`}
 /* ---------- 상위 랭커 비교 (넥슨 Open API ranker-stats: TOP 10,000 랭커가 같은 선수·같은 포지션으로 뛴 20경기 평균) ---------- */
 const RK_ATT=[['goal','골'],['assist','도움'],['shoot','슈팅'],['effectiveShoot','유효슈팅'],['dribbleSuccess','드리블 성공률'],['passSuccess','패스 성공률']],RK_DEF=[['tackle','태클'],['block','블락']];
 const RK_TIP='같은 선수·포지션의 상위 랭커 비교 기준보다 낮은 기록입니다.';
@@ -739,7 +719,7 @@ function dAssessPlayer(x,peers){
   if(x.apps<3)return {eval:null,action:'평가 보류',reason:'3경기 미만',risk:0};
   const reasons=[], signals=[], scores=[], add=(label,risk,score)=>{reasons.push(label);signals.push(risk);scores.push(score)};
   const clamp=v=>Math.max(0,Math.min(100,v));
-  let ratingGap=0,repeatLow=0,repeatN=0,severeRanker=0,strongPeer=false;
+  let ratingGap=0,repeatLow=0,repeatN=0,rankerLowCount=0,strongPeer=false;
   const ref=x.rtRef;
   if(ref&&ref.avg>0&&ref.n>=30){
     const gap=ref.avg-x.avg;ratingGap=gap;
@@ -750,21 +730,20 @@ function dAssessPlayer(x,peers){
   }
   if(x.rk){const low=Object.values(x.rkLow||{});const keys=[...(LINE(x.pos)==='공격'||LINE(x.pos)==='미드'?RK_ATT:[]),...(LINE(x.pos)==='수비'||LINE(x.pos)==='미드'?RK_DEF:[])];
     const comparable=keys.filter(([k,lb])=>dRankerCompare(x,k,lb,x.rk));
-    if(comparable.length){severeRanker=low.filter(v=>v.avg>0&&v.mine/v.avg<.60).length;add(low.length?low.map(v=>`${v.lb} ${dRankerValue(v,v.mine)}/${dRankerValue(v,v.avg)}`).join(' · '):'랭커 비교 지표 기준 미달 없음',low.length>=2?2:low.length?1:0,clamp(75-50*low.length/comparable.length))}
+    if(comparable.length){rankerLowCount=low.length;add(low.length?low.map(v=>`${v.lb} ${dRankerValue(v,v.mine)}/${dRankerValue(v,v.avg)}`).join(' · '):'랭커 비교 지표 기준 미달 없음',low.length>=2?2:low.length?1:0,clamp(75-50*low.length/comparable.length))}
   }
-  const peer=peers.filter(p=>p!==x&&p.apps>=5&&p.pos===x.pos&&p.spId!==x.spId).sort((a,b)=>b.avg-a.avg||b.apps-a.apps)[0];
+  const peer=peers.filter(p=>p!==x&&p.apps>=10&&p.pos===x.pos&&p.spId!==x.spId).sort((a,b)=>b.avg-a.avg||b.apps-a.apps)[0];
   if(peer&&x.apps>=5){const gap=peer.avg-x.avg,wr=peer.wr-x.wr;
-    strongPeer=peer.apps>=10&&gap>=.30-1e-9&&wr>=.15-1e-9;
+    strongPeer=peer.apps>=10&&gap>=.25-1e-9&&wr>=.10-1e-9;
     add(`동일 포지션 ${dCardLabel(peer)} 대비 평점 ${gap>=0?'-':'+'}${Math.abs(gap).toFixed(2)} · 승률 ${Math.round(-wr*100)}%p`,gap>=.2&&wr>=.10?2:0,clamp(60-gap*70-wr*30));
     if(x.price>0&&peer.price>0&&x.price>=peer.price*1.2&&gap>=.1&&wr>=0)reasons.push(`동일 포지션 대비 고가(${(x.price/peer.price).toFixed(1)}배)·낮은 성적: 가격 효율 검토`);
   }
   if(!scores.length)return {eval:null,action:'평가 보류',reason:'비교 가능한 상위등급·랭커·동일 포지션 표본 부족',risk:0};
   const risk=signals.reduce((a,b)=>a+b,0),score=Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
-  // One low metric is a coaching signal, not proof that the card needs replacing.
-  // Require sustained low ratings plus independent ranker evidence, severe persistent
-  // rating deficit, or a well-sampled same-position alternative.
+  // 한 지표의 경고만으로는 교체하지 않는다. 10경기 이상에서 반복 평점과
+  // 랭커 비교가 함께 낮거나, 격차가 큰 반복 부진, 충분한 동포지션 대안이 필요하다.
   const persistent=repeatN>=10&&repeatLow>=.60;
-  const review=x.apps>=10&&(strongPeer||(persistent&&ratingGap>=.25-1e-9&&severeRanker>=2)||(repeatN>=10&&repeatLow>=.75&&ratingGap>=.40-1e-9));
+  const review=x.apps>=10&&(strongPeer||(persistent&&ratingGap>=.20-1e-9&&rankerLowCount>=2)||(repeatN>=10&&repeatLow>=.70-1e-9&&ratingGap>=.35-1e-9&&rankerLowCount>=1));
   const action=x.apps<5?'평가 보류':review?'교체 검토':risk===0&&score>=67?'기용 추천':'유지';
   return {eval:score,action,reason:`${x.apps}경기 · ${reasons.join(' / ')}${x.apps<10?' · 10경기 미만 교체 판단 보류':''}`,risk};
 }
@@ -791,8 +770,7 @@ function dRenderReport(d,a){
   $('dReportHead').innerHTML=`<div><b>종합 구단 리포트</b><small>최근 ${a.n}경기 · 실제 경기와 수집 시세 기반</small></div><span>${a.enriched?'분석 완료':'선수 시세·팀컬러 분석 중…'}</span>`;
   $('dReport').innerHTML=`<div class="dr-grid dr-insights">
     <div><span>최근 스쿼드 가치</span><b>${a.squadValue?fmtBP(a.squadValue):'계산 중'}</b><small>${a.valueMissing?`${a.valueMissing}명 시세 제외`:`${a.valueKnown||0}명 확인`}</small></div>
-    <div><span>우수 선수</span><b>${best?esc(dCardLabel(best)):'평가 보류'}</b><small>${best?'실전 기여 '+best.eval+'점 · '+dRecentStatus(best,a.recentLineup):'표본 부족'}</small></div>
-    <div><span>우선 보강</span><b>${!a.enriched?'분석 중':worst?esc(dCardLabel(worst)):dRecentRows(a.players,a.recentLineup,true).some(x=>x.action&&x.action!=='평가 보류')?'뚜렷한 보강 후보 없음':'판단 보류'}</b><small>${worst?'최근 경기 출전 · '+esc(worst.reason):a.enriched?'최근 출전 선수 기준':'랭커·평점 비교 중'}</small></div></div><div class="dr-actions" aria-label="구단 리포트 작업"></div>`
+    <div class="dr-priority"><span>우선 보강</span><b>${!a.enriched?'분석 중':worst?esc(dCardLabel(worst)):dRecentRows(a.players,a.recentLineup,true).some(x=>x.action&&x.action!=='평가 보류')?'뚜렷한 보강 후보 없음':'판단 보류'}</b><small>${worst?'반복 평점·랭커 또는 동포지션 비교 기준 충족':a.enriched?'최근 출전 선수 기준':'랭커·평점 비교 중'}</small></div></div><div class="dr-actions" aria-label="구단 리포트 작업"></div>`
   const actions=$('dReport').querySelector('.dr-actions');
   if(a.enriched&&a.recentPlayers?.length&&!d.sample){const b=document.createElement('button');b.type='button';b.className='ghost dr-action';b.title='최근 스쿼드를 AI 스쿼드에서 개선 추천';b.setAttribute('aria-label',b.title);b.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2 1.2 4.1L15 8l-3.8 1.9L10 14l-1.2-4.1L5 8l3.8-1.9L10 2Zm5 10 .7 2.3L18 15.5l-2.3 1.2L15 19l-.7-2.3-2.3-1.2 2.3-1.2L15 12Z"/></svg><span>AI 개선</span>';b.addEventListener('click',()=>{try{sessionStorage.setItem('fg-squad-recent-v1',JSON.stringify({players:a.recentPlayers.map(p=>({id:+p.spId,grade:+p.grade,pos:p.pos,name:p.name,review:p.action==='교체 검토'}))}));location.assign('/squad/?import=1')}catch(e){location.assign('/squad/')}});actions.appendChild(b)}
 

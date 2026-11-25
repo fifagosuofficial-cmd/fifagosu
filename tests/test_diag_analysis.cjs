@@ -53,12 +53,16 @@ test('replacement requires at least ten appearances and sustained weakness',()=>
   const occasional={...p,r:[6,6,6,6,6,6.6,6.6,6.6,6.6,6.6]};
   assert.equal(ctx.dAssessPlayer(occasional,[occasional]).action,'유지');
   const persistent={...p,avg:6.05,r:Array(10).fill(6.05),rk:null,rkLow:null};
-  assert.equal(ctx.dAssessPlayer(persistent,[persistent]).action,'교체 검토');
+  assert.equal(ctx.dAssessPlayer(persistent,[persistent]).action,'유지');
+  const confirmed={...persistent,rk:p.rk,rkLow:{tackle:p.rkLow.tackle}};
+  assert.equal(ctx.dAssessPlayer(confirmed,[confirmed]).action,'교체 검토');
 });
 test('peer replacement comparison requires ten appearances on both cards',()=>{
   const x={...p,rtRef:null,rk:null,price:200};
   const peer={...p,apps:9,spId:2,name:'대체 선수',avg:6.7,wr:.7,price:100};
-  assert.equal(ctx.dAssessPlayer(x,[x,peer]).action,'유지');
+  assert.equal(ctx.dAssessPlayer(x,[x,peer]).action,'평가 보류');
+  const valid={...p,apps:10,spId:3,name:'유효 대체 선수',avg:6.55,wr:.55,price:120};
+  assert.equal(ctx.dAssessPlayer(x,[x,peer,valid]).action,'교체 검토');
 });
 
 test('player records start at GK then RB and proceed right to left; unknown positions last',()=>{
@@ -157,6 +161,9 @@ test('diagnosis layout keeps owner and advice together and report before details
 
 test('diagnosis uses one compact report without duplicated recent win rate and compact actions',()=>{
   assert.ok(!src.includes('<span>최근 승률</span>'));
+  assert.ok(!src.includes('<span>우수 선수</span>'));
+  assert.ok(src.includes("['경기당 득실'"));
+  assert.ok(src.includes('<p>${advice}</p>'));
   assert.ok(src.includes("$('dReportHead').innerHTML"));
   assert.ok(src.includes("className='ghost dr-action'"));
   assert.ok(src.includes('<span>AI 개선</span>'));

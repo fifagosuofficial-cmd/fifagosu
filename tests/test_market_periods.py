@@ -16,9 +16,9 @@ def put(root, name, obj):
 def test_market_periods_exact_dates_and_missing_history(tmp_path):
     dates = ["2026-11-17", "2026-11-21", "2026-11-23", "2026-11-24"]
     put(tmp_path, "market/all_card_history_dates.json", {"basis": "full-list-snapshots", "dates": dates})
-    put(tmp_path, "list/1.json", {"100000001": {"name": "A", "price": [200000]}})
-    put(tmp_path, "market/all_card_history/1.json", {"100000001": {"1": list(zip(dates, [100000, 125000, 160000, 200000]))}})
-    market = {"date": dates[-1], "grades": [1], "indexMinimum": 1, "byGrade": {"1": {"popular": [{"id": 100000001, "v": 200000, "c": 999}]}}}
+    put(tmp_path, "list/1.json", {"100000001": {"name": "A", "games": 100, "price": [20000000]}})
+    put(tmp_path, "market/all_card_history/1.json", {"100000001": {"1": list(zip(dates, [10000000, 12500000, 16000000, 20000000]))}})
+    market = {"date": dates[-1], "grades": [1], "indexMinimum": 1, "byGrade": {"1": {"popular": [{"id": 100000001, "v": 20000000, "c": 999}]}}}
     views = build.market_period_views(tmp_path, market)["periods"]
     for day, pct in [("1", 25), ("3", 60), ("7", 100)]:
         v = views[day]

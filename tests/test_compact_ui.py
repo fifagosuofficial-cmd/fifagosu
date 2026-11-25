@@ -10,15 +10,21 @@ def test_mobile_navigation_is_balanced_and_trade_is_promoted():
     css = (ROOT / "site/assets/css/main.css").read_text("utf-8")
     for html in (base, index):
         assert html.index("전적 진단") < html.index("선수 거래소") < html.index("AI 스쿼드")
+        assert 'data-mobile-label="강화·현질"' in html
     assert "grid-template-columns:repeat(4,minmax(0,1fr))" in css
+    assert ".nav-sim-label::after" in css
 
 
 def test_ai_squad_keeps_help_accessible_and_caps_result_width():
     html = (ROOT / "site/templates/squad.html").read_text("utf-8")
     css = (ROOT / "site/assets/css/squad.css").read_text("utf-8")
     assert '<details class="sq-help"><summary>추천 기준 안내</summary>' in html
-    assert "#sqOutput{max-width:960px" in css
-    assert ".sq-pitch{width:100%;max-width:900px" in css
+    assert "#sqOutput{max-width:760px" in css
+    assert ".sq-pitch{max-width:760px;min-width:0}" in css
+    assert "@media(max-width:600px)" in css
+    assert ".sq-fields{grid-template-columns:minmax(0,1fr)" in css
+    assert "width:clamp(54px,15vw,68px)" in css
+    assert html.count("sq-mobile-details") >= 2
 
 
 def test_diagnosis_report_is_one_responsive_container():

@@ -13,8 +13,8 @@
 <li><button type="button" class="mk-row" data-card="{{ x.id }}">
   <span class="mk-n">{{ n }}</span>
   <span class="mk-ssn" data-sid="{{ x.s }}"></span>
-  <span class="mk-nm"><b>{{ x.n }}</b>{% if x.p %}<small>{{ x.p }} {{ x.o or '' }}{% if x.u is defined %} · 표본 사용 {{ x.u }}회{% endif %}</small>{% endif %}</span>
+  <span class="mk-nm"><b>{{ x.n }}</b>{% if x.p %}<small>{{ x.p }} {{ x.o or '' }}</small>{% endif %}</span>
   <span class="mk-pr">{{ bp(x.v) }}</span>
-  {% if x.c is defined %}<span class="mk-c {{ 'up' if x.c > 0 else ('down' if x.c < 0 else '') }}">{{ pct(x.c) }}</span>{% else %}<span class="mk-c">-</span>{% endif %}
+  {% if x.c is defined %}<span class="mk-c {{ 'up' if x.c > 0 else ('down' if x.c < 0 else '') }}"><b>{{ pct(x.c) }}</b>{% if x.d is defined or x.u is defined %}<small>{% if x.d is defined %}{{ '+' if x.d > 0 else ('-' if x.d < 0 else '') }}{{ bp(x.d|abs) }}{% endif %}{% if x.d is defined and x.u is defined %} · {% endif %}{% if x.u is defined %}사용 {{ x.u }}회{% endif %}</small>{% endif %}</span>{% else %}<span class="mk-c">-</span>{% endif %}
 </button></li>
 {%- endmacro %}

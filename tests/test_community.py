@@ -139,3 +139,20 @@ def test_three_ad_positions_public_only(tmp_path):
         doc = BeautifulSoup((out / file).read_text("utf-8"),"html.parser")
         assert not doc.select('[data-ad-layout="public"]')
         assert not doc.select('[data-ad-slot]')
+
+def test_page_specific_middle_ad_positions(tmp_path):
+    from bs4 import BeautifulSoup
+    out = tmp_path / "site"
+    build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
+    soup = lambda file: BeautifulSoup((out / file).read_text("utf-8"),"html.parser")
+    doc = soup("index.html")
+    for slot, after in (("diag-1","dSecs"),("cards-1","cRes"),("trade-1","trList")):
+        assert doc.select_one(f'[data-ad-slot="{slot}"]').find_next_sibling()["id"] == after
+    for panel, slot in (("simEff","sim-1"),("simEnh","sim-enh-1"),("simPack","sim-pack-1"),("simCash","sim-cash-1")):
+        assert len(doc.select(f'#{panel} [data-ad-slot="{slot}"]')) == 1
+    assert len(doc.select('#v-sim > [data-ad-slot]')) == 0
+    board = soup("board/index.html")
+    assert len(board.select('#fcBoardList > #fcBoardAd')) == 1
+    assert len(board.select('[data-ad-slot="board-1"]')) == 1
+    sq = soup("squad/index.html")
+    assert sq.select_one('[data-ad-slot="squad-1"]').find_next_sibling()["id"] == "sqOutput"

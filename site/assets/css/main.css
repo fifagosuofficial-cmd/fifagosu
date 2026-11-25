@@ -1344,3 +1344,6 @@ body>.wrap[data-ad-layout="public"]{position:relative}
 .fg-ad-rail.is-preview::after{content:"160 × 600 · 송출 안 함"}
 .slot[data-ad-slot].is-preview::after{content:"반응형 배너 · 송출 안 함"}
 @media(max-width:1199px){.fg-ad-rail{display:none!important}}
+
+/* Keep ad inventory distinct from interactive controls and discussion. */
+#fcPost #fcBoardAd{margin:24px 0 28px}.sim-panel .slot[data-ad-slot],#v-cards .slot[data-ad-slot],#v-trade .slot[data-ad-slot]{margin-block:24px;clear:both}

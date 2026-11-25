@@ -11,6 +11,7 @@
 <h2 id="fcListTitle" class="fc-list-title" hidden>게시글 목록</h2>
 <nav id="fcTabs" class="fc-tabs" aria-label="게시판 분류"></nav>
 <section id="fcBoardList" class="fc-board-list" aria-label="게시글 목록">
+<aside id="fcBoardAd" class="slot" data-ad-slot="board-1" aria-label="광고"></aside>
 <p id="fcPopularHint" hidden>순추천(추천 − 비추천) 30개 이상인 게시글이 자동으로 표시됩니다.</p>
 <p id="fcPreviewHint" class="fc-note" hidden>화면 미리보기 · 아래 게시글은 디자인 확인용 예시이며 실제 회원 게시물이 아닙니다.</p>
 <table class="fc-board-table"><colgroup><col class="fc-col-type"><col class="fc-col-title"><col class="fc-col-author"><col class="fc-col-date"><col class="fc-col-views"><col class="fc-col-likes"></colgroup><thead><tr><th scope="col">분류</th><th scope="col">제목</th><th scope="col">글쓴이</th><th scope="col">날짜</th><th scope="col">조회</th><th scope="col">순추천</th></tr></thead><tbody id="fcPosts"><tr><td colspan="6" class="fc-empty">게시글을 불러오는 중입니다.</td></tr></tbody></table>
@@ -22,7 +23,7 @@
 {% else %}
 <section id="fcAdmin" hidden><div class="fc-admin-toolbar"><div><small>FIFAGOSU MANAGEMENT</small><h2>운영 대시보드</h2></div><span id="fcAdminUpdated"></span><button type="button" id="fcAdminRefresh">새로고침</button></div><div class="fc-admin-layout"><nav id="fcAdminTabs" class="fc-tabs" aria-label="관리 메뉴"></nav><section class="fc-panel" id="fcAdminBody"></section></div></section>
 {% endif %}
-{% if view=='board' %}<aside class="slot" data-ad-slot="board-1" aria-label="광고"></aside>{% endif %}
+
 </main>
 {% endblock %}
 {% block scripts %}<script defer src="{{ root }}assets/js/community.js?v={{ ver }}"></script>{% endblock %}

@@ -31,6 +31,7 @@ const PANELS={eff:'simEff',enh:'simEnh',pack:'simPack',cash:'simCash'};
 function setTab(t){
   tabs.querySelectorAll('[data-sim]').forEach(x=>x.setAttribute('aria-selected',x.dataset.sim===t));
   Object.entries(PANELS).forEach(([k,id])=>$(id).hidden=k!==t);
+  document.dispatchEvent(new CustomEvent("fg:ad-layout"));
   if(t==='eff')effInit();if(t==='pack')loadShelf();if(t==='cash')cashRun();
   try{history.replaceState(history.state,'',location.pathname+location.search+(t==='eff'?'':'#'+t))}catch(e){}
 }

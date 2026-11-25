@@ -112,6 +112,7 @@
 <main id="v-market" class="wrap market-page"{% if view!='market' %} hidden{% endif %}>
 {% if market %}
   <header class="market-page-head"><div><a href="/">← 홈 시세 동향</a><h1>이적시장 급등락 TOP 100</h1><p>실제 수집 가격 이력으로 전체 유효 후보군을 계산합니다.</p></div><time>{{ market.collectedAt[:16]|replace("T", " ") if market.collectedAt else market.date }} 수집</time></header>
+  <aside class="slot" data-ad-slot="market-1" aria-label="광고"></aside>
   <section class="market-dashboard" data-market-dashboard data-detail="true" data-limit="100" aria-label="이적시장 급등락 상세">
     <div class="mk-controls">
       <div class="mk-period" role="tablist" aria-label="비교 기간">{% for d in [1,3,7] %}<button type="button" role="tab" data-md="{{ d }}" aria-selected="{{ 'true' if loop.first else 'false' }}">{{ d }}일</button>{% endfor %}</div>
@@ -127,7 +128,6 @@
     <p class="mk-rule"><b>종합 순위</b>는 등락률 백분위 40% + BP 변동액 백분위 40% + 추세 지속성 20%입니다. 등락률·BP 변동액 정렬은 종합 순위의 변동액 필터를 적용하지 않습니다.</p>
   </section>
 {% else %}<p class="empty">시세 집계를 준비하고 있어요.</p>{% endif %}
-  <aside class="slot" data-ad-slot="market-1" aria-label="광고"></aside>
 </main>
 
 <!-- ================= 전적 진단 ================= -->
@@ -154,12 +154,12 @@
     <section class="dsum" id="dSum" aria-label="최근 경기 흐름과 핵심 지표"></section>
     <section class="dreport" id="dReport" aria-label="구단 관리 핵심 지표"></section>
   </section>
+  <aside class="slot" data-ad-slot="diag-1" aria-label="광고"></aside>
   <div class="dsecs" id="dSecs">
     <section id="dDetailSec"><h2>상세 분석</h2><div class="tabs" role="tablist" id="dTabs"></div><div class="panel" id="dPanel"></div></section>
     <section class="dtc" id="dTc" hidden aria-label="팀컬러 상대 승률"></section>
     <section id="dWeakSec"><h2>약점 진단 <small id="dSub"></small></h2><div class="dcards" id="dCards"></div></section>
   </div>
-  <aside class="slot" data-ad-slot="diag-1" aria-label="광고"></aside>
   <section><details class="dall"><summary>전체 경기 기록 <small id="dAllN"></small></summary><div id="dMatches"></div></details></section>
 </main>
 
@@ -172,12 +172,12 @@
       <input id="cq" type="search" placeholder="선수 이름 또는 시즌 (예: 손흥민, 26 TOTS, 앙리 ICON)" aria-label="카드 검색" autocomplete="off">
       <div class="grid"><label class="f">시즌<select id="cSeason"><option value="">전체 시즌</option></select></label><label class="f">정렬<select id="cSort"><option value="rel">관련도</option><option value="ovr">OVR 높은 순</option><option value="pdesc">1강 시세 높은 순</option><option value="pasc">1강 시세 낮은 순</option></select></label><label class="f" style="grid-auto-flow:column;align-items:center;justify-content:start;gap:8px;align-self:end"><input id="cTrade" type="checkbox" style="width:auto"> 거래 가능한 카드만</label></div>
       <div class="sub" id="cCount"></div>
+  <aside class="slot" data-ad-slot="cards-1" aria-label="광고"></aside>
       <div class="cgrid" id="cRes"></div>
       <div class="actions" style="justify-content:center"><button type="button" class="ghost" id="cMore" hidden>더 보기</button></div>
       <p class="sub">카드 목록·시즌 배지·선수 이미지는 넥슨 Open API, OVR·능력치·시세는 FC온라인 데이터센터 기준이에요. 시세는 매일 갱신돼요.</p>
     </div>
   </section>
-  <aside class="slot" data-ad-slot="cards-1" aria-label="광고"></aside>
 </main>
 
 <!-- ================= 강화/현질 효율 (강화 효율 · 강화 · 팩 오픈 · 현질 효율) ================= -->
@@ -206,7 +206,6 @@
     <button type="button" role="tab" aria-selected="false" data-sim="cash"><b>현질 효율</b><small>1,000 FC당 BP</small></button>
   </nav>
 
-  <aside class="slot" data-ad-slot="sim-1" aria-label="광고"></aside>
   <!-- ===== 강화 효율 ===== -->
   <section class="sim-panel" id="simEff">
     <div class="eff-mode" role="tablist" aria-label="강화 효율 보기">
@@ -224,6 +223,7 @@
     </div>
     <p class="sim-note" id="effInfo">시세를 불러오는 중…</p>
     <div class="eff-cols" id="effOut"></div>
+    <aside class="slot" data-ad-slot="sim-1" aria-label="광고"></aside>
     <p class="sim-note">회수율 = (성공 확률 × 한 단계 위 시세 × (1 − 수수료) + 실패 확률 × 실패 후 시세 × (1 − 수수료)) ÷ (지금 시세 + 재료비). 사서 강화하고 바로 판다고 가정했어요. 1.00이 넘으면 평균적으로 남는 강화예요. 성공 확률은 넥슨 공지 풀 게이지(5칸) 기준이고, 시세는 하루 1번 수집한 값이라 실제와 다를 수 있어요.</p>
   </section>
 
@@ -265,6 +265,7 @@
         <p class="sim-note">성공 확률 = 풀 게이지 확률 × 게이지 비율(넥슨 공지, 1칸 = 20%). 실패 시 하락 확률은 공식 수치가 이미지로만 공개돼 '1단계 하락'은 가정이에요. 능력치는 적응도 5단계 기준.</p>
       </div>
     </div>
+    <aside class="slot" data-ad-slot="sim-enh-1" aria-label="광고"></aside>
     <div class="sim-box">
       <h2>2,000번 돌려 보기 <small>지금 설정으로 목표까지 걸리는 시도 횟수와 비용</small></h2>
       <button type="button" class="ghost sim-wide" id="smEMany">2,000번 시뮬레이션</button>
@@ -297,6 +298,7 @@
         <p class="sim-note">선수 가치는 피파고수가 매일 수집한 데이터센터 시세(해당 강화)예요. 판매 시 수수료 = 40% × (100% − PC방 30% − TOP CLASS 20% − 쿠폰). BP 카드는 수수료 없이 그대로 더해요.</p>
       </div>
     </div>
+    <aside class="slot" data-ad-slot="sim-pack-1" aria-label="광고"></aside>
     <details class="sim-box sim-adv"><summary>확률표 보기 · 다른 확률형 아이템 찾기</summary>
       <input type="search" id="smPQ" placeholder="넥슨 확률 공개 아이템 검색" autocomplete="off">
       <div class="sim-qres" id="smPQres"></div>
@@ -309,6 +311,7 @@
   <section class="sim-panel" id="simCash" hidden>
     <div class="sim-shelf-h"><h2>1,000 FC당 기대 BP</h2><small id="cashSrc">계산 준비 중…</small></div>
     <div class="cash-list" id="cashOut"></div>
+    <aside class="slot" data-ad-slot="sim-cash-1" aria-label="광고"></aside>
     <p class="sim-note">기대 BP = 확률표의 모든 결과를 '확률 × 실수령 가치'로 더한 값이에요(선수는 위 판매 조건의 수수료를 뺀 시세, BP 카드는 그대로). 상자 안 상자는 끝까지 따라가서 계산하고, 패키지는 구성품을 개수만큼 더해요. 교환권처럼 확률이 없는 구성품은 빼고 계산해서 실제보다 낮게 나올 수 있어요.</p>
   </section>
 
@@ -364,9 +367,9 @@
     <input type="search" id="trFind" placeholder="선수 이름으로 찾기" autocomplete="off" aria-label="글 검색">
     <label class="eff-chk"><input type="checkbox" id="trOpenOnly" checked> 거래 중만</label>
   </div>
+  <aside class="slot" data-ad-slot="trade-1" aria-label="광고"></aside>
   <div class="tr-list" id="trList"><p class="sim-note">불러오는 중…</p></div>
   <button type="button" class="ghost sim-wide" id="trMore" hidden>더 보기</button>
-  <aside class="slot" data-ad-slot="trade-1" aria-label="광고"></aside>
   <p class="sim-note">선수 거래소는 희망가를 공유하는 게시판이에요. FC온라인 안에서의 거래는 이적시장으로만 이뤄지고, 현금·계정 거래는 넥슨 운영정책 위반이라 피파고수도 허용하지 않아요. 글은 14일 뒤 목록에서 사라져요. '시세 대비'는 피파고수가 하루 1번 수집한 데이터센터 시세와 비교한 값이에요.</p>
 
 </main>
@@ -375,6 +378,7 @@
 <main id="v-guide" class="wrap"{% if view!='guide' %} hidden{% endif %}>
   <div class="hero" style="padding-top:0"><h1 style="font-size:clamp(24px,5vw,32px)">FC온라인 <em>게임 가이드</em></h1><p class="sub">등급·감독모드·강화·팀컬러 등 게임 규칙을 공식 출처와 함께 정리해요. 업데이트 내역은 <a href="{{ root }}patch/">패치노트</a>에서 볼 수 있어요.</p></div>
   {% if guide_only %}<p class="sub" style="margin:0 0 8px"><a href="{{ root }}guide/">← 게임 가이드 전체 보기</a></p>{% endif %}<nav class="chips" aria-label="가이드 목차"><a class="chip" href="{{ root }}guide/official"{% if guide_only=='g-official' %} aria-current="page"{% endif %}>공식경기 등급</a><a class="chip" href="{{ root }}guide/manager"{% if guide_only=='g-manager' %} aria-current="page"{% endif %}>감독모드</a><a class="chip" href="{{ root }}guide/grade"{% if guide_only=='g-grade' %} aria-current="page"{% endif %}>강화</a><a class="chip" href="{{ root }}guide/tc"{% if guide_only=='g-tc' %} aria-current="page"{% endif %}>팀컬러</a><a class="chip" href="{{ root }}guide/season"{% if guide_only=='g-season' %} aria-current="page"{% endif %}>시즌·이미지</a><a class="chip" href="{{ root }}guide/market"{% if guide_only=='g-market' %} aria-current="page"{% endif %}>급여·이적시장</a></nav>
+  <aside class="slot" data-ad-slot="guide-1" aria-label="광고"></aside>
 {% if not guide_only or guide_only=='g-official' %}
   <section id="g-official">
     <h2>공식경기 등급</h2>
@@ -462,7 +466,6 @@
     </div>
   </section>
   {% endif %}
-  <aside class="slot" data-ad-slot="guide-1" aria-label="광고"></aside>
 </main>
 
 

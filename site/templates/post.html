@@ -27,6 +27,7 @@
     {% if post.prev %}<a href="{{ root }}news/{{ post.prev.id }}"><small>이전 글</small><span>{{ post.prev.title }}</span></a>{% else %}<span></span>{% endif %}
     {% if post.next %}<a href="{{ root }}news/{{ post.next.id }}" class="nx"><small>다음 글</small><span>{{ post.next.title }}</span></a>{% endif %}
   </nav>
+  <aside class="slot" data-ad-slot="post-1" aria-label="광고"></aside>
   {% if post.related %}
   <section class="post-rel">
     <h2 class="h2-sec">{{ post.label }} 최근 글</h2>
@@ -34,6 +35,6 @@
   </section>
   {% endif %}
   <p><a href="{{ root }}{{ board_url }}">← 게시판 목록으로</a></p>
-  <aside class="slot" data-ad-slot="post-1" aria-label="광고"></aside>
+
 </main>
 {% endblock %}

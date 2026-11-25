@@ -125,3 +125,17 @@ def test_forum_detail_list_and_rank_assets(tmp_path):
         svg = (out / f"assets/ranks/cat-{grade}.svg").read_text("utf-8")
         assert f"+{grade}</text>" in svg
         assert 'shape-rendering="crispEdges"' in svg
+
+def test_three_ad_positions_public_only(tmp_path):
+    from bs4 import BeautifulSoup
+    out = tmp_path / "site"
+    build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
+    for file in ("index.html","diag.html","cards.html","market/index.html","sim/index.html","trade/index.html","guide/index.html","news/index.html","press/index.html","patch/index.html","squad/index.html","board/index.html"):
+        doc = BeautifulSoup((out / file).read_text("utf-8"),"html.parser")
+        assert doc.select_one('[data-ad-layout="public"]')
+        for side in ("side-left","side-right"):
+            assert len(doc.select(f'[data-ad-slot="{side}"][hidden]')) == 1
+    for file in ("mypage/index.html","admin/index.html","privacy.html","terms.html","contact.html","404.html"):
+        doc = BeautifulSoup((out / file).read_text("utf-8"),"html.parser")
+        assert not doc.select('[data-ad-layout="public"]')
+        assert not doc.select('[data-ad-slot]')

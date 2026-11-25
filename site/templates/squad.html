@@ -20,6 +20,7 @@
 <div id="sqLocks" class="sq-locks"></div><p id="sqStatus" role="status" aria-live="polite">선수 데이터 불러오는 중…</p>
 </form>
 </section>
+  <aside class="slot" data-ad-slot="squad-1" aria-label="광고"></aside>
 <section id="sqOutput" hidden>
 <div class="sq-modes" id="sqModes" role="group" aria-label="추천 유형"></div>
 <details class="sq-card sq-bonus-panel sq-mobile-details" open>
@@ -40,7 +41,7 @@
 <p class="sq-note">OVR은 수집 포지션 OVR에 강화·적응도·팀컬러 전체 능력치 효과를 더한 표시값입니다. 공식 게임 OVR과 차이가 있을 수 있습니다. 실제 시세·보유 여부는 게임에서 확인하세요.</p>
 <details class="sq-card sq-mobile-details sq-stat-details" open><summary>선수별 전체 능력치 비교</summary><div class="sq-mobile-details-body"><p class="sq-note">강화 및 선택한 보너스 반영 · 미수집 값은 —로 표시</p><div class="tablewrap"><table class="sq-table sq-stat-matrix" id="sqStatMatrix"></table></div></div></details>
 </section>
-  <aside class="slot" data-ad-slot="squad-1" aria-label="광고"></aside>
+
 </main>
 {% endblock %}
 {% block scripts %}<script defer src="{{ root }}assets/js/squad-engine.js?v={{ ver }}"></script><script defer src="{{ root }}assets/js/squad-bonus.js?v={{ ver }}"></script><script defer src="{{ root }}assets/js/squad.js?v={{ ver }}"></script>{% endblock %}

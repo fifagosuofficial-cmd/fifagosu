@@ -182,3 +182,20 @@ def test_search_engine_verification_in_static_head(tmp_path):
         assert len(tags) == 1 and tags[0]["content"] == value
     assert doc.select_one('head meta[name="google-adsense-account"]')
     assert "https://fifagosu.com/" in (out / "sitemap.xml").read_text("utf-8")
+
+
+def test_kickkick_visible_with_and_without_news(tmp_path, monkeypatch):
+    from bs4 import BeautifulSoup
+    data = tmp_path / "missing"
+    out = tmp_path / "site"
+    original = build.load_news
+    for has_news in (False, True):
+        if has_news:
+            monkeypatch.setattr(build, "load_news", lambda *_: {"updated": "", "official": [], "press": [], "world": [], "patches": [], "events": [], "patch": {"items": []}, "check": None, "upd": None, "all_official": [], "all_press": [], "board": [], "boards": {"official": [], "press": []}, "cats": [], "kcats": {"official": [], "press": []}, "counts": {}})
+        else:
+            monkeypatch.setattr(build, "load_news", original)
+        build.main(["--data", str(data), "--out", str(out)])
+        doc = BeautifulSoup((out / "index.html").read_text("utf-8"), "html.parser")
+        assert bool(doc.select_one("#v-home .mk-news")) == has_news
+        links = doc.select("#v-home a.funlink")
+        assert len(links) == 1 and links[0]["href"] == "https://fifagosu.com/fun/"

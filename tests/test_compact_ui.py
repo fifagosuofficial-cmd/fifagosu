@@ -65,3 +65,15 @@ def test_market_detail_is_lazy_and_new_seasons_are_rehydrated():
     assert "s.seasonImg||''" in js
     assert ".market-dashboard .mk-panel{display:grid;grid-template-columns:repeat(2" in css
     assert "@media(max-width:760px)" in css
+
+
+def test_market_table_fits_narrow_screens_without_sparkline():
+    template = (ROOT / "site/templates/_market.html").read_text("utf-8")
+    js = (ROOT / "site/assets/js/app.js").read_text("utf-8")
+    css = (ROOT / "site/assets/css/main.css").read_text("utf-8")
+    assert 'class="mk-spark"' not in template and 'class="mk-spark"' not in js
+    assert 'class="mk-mobile-delta"' in template and 'class="mk-mobile-delta"' in js
+    assert '.mk-stock-table{width:100%;min-width:0;' in css
+    assert '.mk-stock-table .mk-delta{display:none}' in css
+    assert '.mk-stock-table .mk-mobile-delta{display:block;' in css
+    assert '.mk-stock-table{min-width:480px}' not in css

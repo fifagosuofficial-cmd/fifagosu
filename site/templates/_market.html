@@ -24,12 +24,11 @@
     <span class="mk-nm"><b>{{ x.n|e }}</b><small><em class="mk-grade-badge">{{ x.g|default(1) }}강</em>{% if x.p %}{{ x.p }} {{ x.o or '' }}{% endif %}</small></span>
   </button></td>
   <td class="mk-num mk-pr">{{ bp(x.v) }}</td>
-  <td class="mk-num mk-pct {{ 'up' if x.c > 0 else ('down' if x.c < 0 else '') }}">{{ pct(x.c) }}</td>
+  <td class="mk-num mk-pct {{ 'up' if x.c > 0 else ('down' if x.c < 0 else '') }}">{{ pct(x.c) }}<span class="mk-mobile-delta">{{ '+' if x.d > 0 else ('-' if x.d < 0 else '') }}{{ bp(x.d|abs) }}</span></td>
   <td class="mk-num mk-delta {{ 'up' if x.d > 0 else ('down' if x.d < 0 else '') }}">{{ '+' if x.d > 0 else ('-' if x.d < 0 else '') }}{{ bp(x.d|abs) }}</td>
-  <td class="mk-spark"><svg viewBox="0 0 72 24" role="img" aria-label="실제 가격 추세" data-spark="{% if x.prices is defined %}{{ x.prices|join(',') }}{% elif x.h is defined %}{{ x.h|map(attribute=1)|join(',') }}{% endif %}"><polyline></polyline></svg></td>
 </tr>
 {%- endmacro %}
 
 {% macro table_head() -%}
-<thead><tr><th class="mk-rank">순위</th><th>선수</th><th class="mk-num mk-pr">현재가</th><th class="mk-num mk-pct">등락률</th><th class="mk-num mk-delta">변동액</th><th class="mk-spark">추세</th></tr></thead>
+<thead><tr><th class="mk-rank">순위</th><th>선수</th><th class="mk-num mk-pr">현재가</th><th class="mk-num mk-pct">등락률<span class="mk-mobile-delta">변동액</span></th><th class="mk-num mk-delta">변동액</th></tr></thead>
 {%- endmacro %}

@@ -1344,21 +1344,6 @@ function hydrateSeasonBadges(scope){
     });sel.value=value
   });
 }
-function marketSpark(values,down){
-  const nums=(values||[]).map(x=>Array.isArray(x)?+x[1]:+x).filter(Number.isFinite);
-  if(nums.length<2)return '<span aria-label="추세 데이터 부족">-</span>';
-  const lo=Math.min(...nums),hi=Math.max(...nums),range=hi-lo||1;
-  const points=nums.map((v,i)=>`${(i/(nums.length-1)*70+1).toFixed(1)},${(22-(v-lo)/range*20).toFixed(1)}`).join(' ');
-  return `<svg viewBox="0 0 72 24" role="img" aria-label="실제 가격 추세" class="${down?'down':'up'}"><polyline points="${points}"></polyline></svg>`
-}
-function drawMarketSparks(scope){
-  (scope||document).querySelectorAll('svg[data-spark]').forEach(svg=>{
-    const nums=(svg.dataset.spark||'').split(',').filter(Boolean).map(Number).filter(n=>Number.isFinite(n)&&n>0);if(nums.length<2)return;
-    const lo=Math.min(...nums),hi=Math.max(...nums),range=hi-lo||1;
-    svg.querySelector('polyline').setAttribute('points',nums.map((v,i)=>`${(i/(nums.length-1)*70+1).toFixed(1)},${(22-(v-lo)/range*20).toFixed(1)}`).join(' '));
-    svg.classList.add(nums.at(-1)<nums[0]?'down':'up')
-  })
-}
 const marketDataCache={};
 function loadMarketPeriod(day){
   if(!marketDataCache[day])marketDataCache[day]=fetch(`/market-data/${day}.json`).then(r=>{if(!r.ok)throw Error(r.status);return r.json()}).catch(e=>{delete marketDataCache[day];throw e});
@@ -1367,7 +1352,7 @@ function loadMarketPeriod(day){
 function marketRow(x,n){
   const up=+x.d>0,grade=+(x.g||1),sid=+(x.s||Math.floor(+x.id/1e6));
   const pct=`${+x.c>0?'+':''}${(+x.c||0).toFixed(1)}%`,delta=`${up?'+':'-'}${fmtBP(Math.abs(+x.d||0))}`;
-  return `<tr class="mk-stock-row" data-card="${+x.id}" data-grade="${grade}"><td class="mk-rank">${n}</td><td class="mk-player"><button type="button" data-card="${+x.id}" data-grade="${grade}"><span class="mk-face"><img src="${IMG_BASE}playersAction/p${+x.id}.png" alt="" loading="lazy" onerror="this.remove()"></span><span class="mk-ssn" data-sid="${sid}">${sch(sid)}</span><span class="mk-nm"><b>${esc(x.n||'')}</b><small>${gch(grade)}${x.p?' '+esc(x.p)+' '+esc(x.o||''):''}</small></span></button></td><td class="mk-num mk-pr">${fmtBP(+x.v)}</td><td class="mk-num mk-pct ${up?'up':'down'}">${pct}</td><td class="mk-num mk-delta ${up?'up':'down'}">${delta}</td><td class="mk-spark">${marketSpark(x.h, !up)}</td></tr>`
+  return `<tr class="mk-stock-row" data-card="${+x.id}" data-grade="${grade}"><td class="mk-rank">${n}</td><td class="mk-player"><button type="button" data-card="${+x.id}" data-grade="${grade}"><span class="mk-face"><img src="${IMG_BASE}playersAction/p${+x.id}.png" alt="" loading="lazy" onerror="this.remove()"></span><span class="mk-ssn" data-sid="${sid}">${sch(sid)}</span><span class="mk-nm"><b>${esc(x.n||'')}</b><small>${gch(grade)}${x.p?' '+esc(x.p)+' '+esc(x.o||''):''}</small></span></button></td><td class="mk-num mk-pr">${fmtBP(+x.v)}</td><td class="mk-num mk-pct ${up?'up':'down'}">${pct}<span class="mk-mobile-delta">${delta}</span></td><td class="mk-num mk-delta ${up?'up':'down'}">${delta}</td></tr>`
 }
 function marketRank(items,state,direction,limit){
   let rows=(items||[]).filter(x=>(direction==='up'?+x.d>0:+x.d<0)&&(!state.grade||+x.g===+state.grade)&&(!state.season||+x.s===+state.season));
@@ -1396,7 +1381,7 @@ function initMarketDashboard(root){
   root.addEventListener('change',e=>{if(e.target===grade){state.grade=grade.value;render()}else if(e.target===season){state.season=season.value;render()}});
   loadSeasons().then(()=>{hydrateSeasonBadges(root);season.value=state.season;if(state.season&&!season.value){state.season='';if(started)render()}}).catch(()=>{});
   if(!detail&&currentPanel().dataset.defaultSort==='pct')state.sort='pct';
-  syncControls();drawMarketSparks(root);if(!detail)updateLinks();
+  syncControls();if(!detail)updateLinks();
   const activate=()=>{if(detail&&!root.closest('main').hidden&&!started){started=true;render()}};
   activate();document.addEventListener('fg:view',activate);
 }

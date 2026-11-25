@@ -76,7 +76,7 @@ test("ranking cards preserve full names, odds and all monetary metrics",()=>{
  const s=fs.readFileSync(path.join(__dirname,"../site/assets/js/sim.js"),"utf8"),h=fs.readFileSync(path.join(__dirname,"../site/templates/index.html"),"utf8"),css=fs.readFileSync(path.join(__dirname,"../site/assets/css/main.css"),"utf8");
  assert.match(h,/인생강화 TOP 30/);assert.match(h,/class="sim-note sim-intro">실제 시세로 강화 손익·팩 기댓값을 계산해요/);
  const ctx={bigImg:()=>"",bigBadge:()=>"",H:s=>s,gchip:g=>String(g)};vm.createContext(ctx);vm.runInContext(s.slice(s.indexOf("function effRow("),s.indexOf("function effRender()")),ctx);
- const r={id:100004000,name:"크리스티아누 호날두",g:12,p:.01,inv:613905129000,mat:7951290325,up:1950000000000,ev:-242208729000,win:556004870000,rr:.61};
+ const r={id:100004000,name:"크리스티아누 호날두",g:12,p:.01,inv:613905129000,mat:7951290325,up:1950000000000,ev:-242208729000,win:556048700000,rr:.61};
  const win=ctx.effRow(r,0,"win"),rr=ctx.effRow(r,0);
  for(const out of [win,rr])for(const label of ["크리스티아누 호날두","성공 확률 1%","총 투자금","재료비","7,951,290,325 BP","성공 시 시세","기대 손익","회수율","성공 시 순이익"])assert.ok(out.includes(label),label);
  assert.ok(win.includes("+5,560억 4,870만"));assert.ok(win.includes("1조 9,500억"));

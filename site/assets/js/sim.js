@@ -138,7 +138,7 @@ function effRow(r,i,kind){
     '<span class="er-who"><span class="er-name">'+bigBadge(Math.floor(r.id/1e6))+'<b>'+H(r.name)+'</b></span>'+
     '<span class="er-step">'+gchip(r.g)+'<i>→</i>'+gchip(r.g+1)+'<em>성공 확률 '+(r.p*100).toFixed(1).replace(/\.0$/,"")+'%</em></span></span>'+
     '<span class="er-main"><small>'+(win?"종합지수":"회수율")+'</small>'+main+'</span>'+
-    '<span class="er-money">'+metric("총 투자금",money(r.inv),"",r.inv)+metric("재료비",r.mat?exact(r.mat):"미포함","",r.mat||null)+metric("성공 시 시세",money(r.up),"",r.up)+metric("기대 손익",signed(r.ev),r.ev>=0?"up":"dn",r.ev)+metric("성공 시 순이익",signed(r.win),r.win>=0?"up":"dn",r.win)+metric(win?"회수율":"성공 수익률",win?r.rr.toFixed(2):(r.win/r.inv*100).toFixed(1)+"%",win?(r.rr>=1?"up":"dn"):(r.win>=0?"up":"dn"))+(win?metric("성공 수익률",(r.win/r.inv*100).toFixed(1)+"%","up"):"")+'</span>'+
+    '<span class="er-money">'+metric("총 투자금",money(r.inv),"",r.inv)+metric("재료비",r.mat?money(r.mat):"미포함","",r.mat||null)+metric("성공 시 시세",money(r.up),"",r.up)+metric("기대 손익",signed(r.ev),r.ev>=0?"up":"dn",r.ev)+metric("성공 시 순이익",signed(r.win),r.win>=0?"up":"dn",r.win)+metric(win?"회수율":"성공 수익률",win?r.rr.toFixed(2):(r.win/r.inv*100).toFixed(1)+"%",win?(r.rr>=1?"up":"dn"):(r.win>=0?"up":"dn"))+(win?metric("성공 수익률",(r.win/r.inv*100).toFixed(1)+"%","up"):"")+'</span>'+
     '<span class="er-meter'+(win?' er-score-meter':'')+'" aria-hidden="true"><i style="width:'+w+'%"></i><u></u></span></button>';
 }
 function effRender(){

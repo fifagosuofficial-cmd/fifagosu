@@ -57,7 +57,7 @@
     <div class="mk-grade" role="tablist" aria-label="강화 기준">
       <span>강화 기준</span>{% for g in market.grades %}<button type="button" role="tab" data-mg="{{ g }}" aria-selected="{{ 'true' if loop.first else 'false' }}" class="g-{{ 'bronze' if g < 5 else ('silver' if g < 8 else 'gold') }}">{{ g }}강</button>{% endfor %}
     </div>
-    <small class="mk-rule">전체 수집 선수카드 · 3만 BP 이상 · {{ d }}일 전 대비{% if P.ready %} ({{ P.prev[5:7]|int }}.{{ P.prev[8:10]|int }} → {{ P.date[5:7]|int }}.{{ P.date[8:10]|int }}){% else %} · 비교 이력 부족{% endif %}</small>
+    <small class="mk-rule">시장 영향도 · 가격대 하한 · 사용 10경기 · 관측 3회 이상 · {{ d }}일 전 대비{% if P.ready %} ({{ P.prev[5:7]|int }}.{{ P.prev[8:10]|int }} → {{ P.date[5:7]|int }}.{{ P.date[8:10]|int }}){% else %} · 비교 이력 부족{% endif %}</small>
   </div>
   {% for g in market.grades %}{% set B = P.byGrade[g|string] %}
   <div class="mk-panel" data-mp="{{ g }}"{% if not loop.first %} hidden{% endif %}>

@@ -85,8 +85,12 @@ def test_diagnosis_nav_has_compact_callout_and_respects_motion_preference():
         html = (ROOT / "site/templates" / name).read_text("utf-8")
         assert 'class="core nav-diag-feature"' in html
         assert '<span class="fg-diag-bubble" aria-hidden="true">내 약점 찾기!</span>' in html
-    assert "@keyframes fg-diag-float" in css
-    assert "translateY(-2px)" in css
+    assert "@keyframes fg-diag-glow" in css
+    assert "animation:fg-diag-glow 2.6s ease-in-out infinite" in css
+    assert "fg-diag-float" not in css
+    glow = css.split("@keyframes fg-diag-glow", 1)[1].split("@media", 1)[0]
+    assert "box-shadow:" in glow and "transform:" not in glow
+    assert "13px 2px" in glow
     assert "@media(prefers-reduced-motion:reduce)" in css
     assert ".fg-nav-shell nav.menu{padding-top:20px!important}" in css
 

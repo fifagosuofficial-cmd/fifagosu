@@ -1,8 +1,8 @@
 import requests
 def test_probe():
-    for host,path in [("fifagosu.com","/"),("fifagosu.com","/api/community/me"),("fifagosu.com","/api/boost?spid=100004000&grade=1"),("fifagosu.pages.dev","/api/boost?spid=100004000&grade=1")]:
+    for host in ["fifagosu.pages.dev","fifagosu.com"]:
         try:
-            r=requests.get("https://"+host+path,timeout=25)
-            print("LIVE",host,path,r.status_code,r.headers.get("content-type"),r.text[:450] if "json" in r.headers.get("content-type","") else r.text[:250])
-        except Exception as e:print("ERROR",type(e).__name__,str(e)[:180])
-    assert False,"research output only"
+            r=requests.get("https://"+host+"/api/boost",params={"spid":100004000,"grade":1},timeout=40)
+            print("LIVE",host,r.status_code,r.headers.get("content-type"),r.text[:1200])
+        except Exception as e: print("ERROR",type(e).__name__,str(e)[:180])
+    assert False,"diagnostic output only"

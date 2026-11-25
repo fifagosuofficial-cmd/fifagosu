@@ -212,6 +212,12 @@
       <button type="button" data-em="win" aria-selected="true">인생강화 TOP 30</button>
       <button type="button" data-em="top" aria-selected="false">회수율 TOP</button>
     </div>
+    <form class="eff-budget-search" id="effBudgetForm" aria-label="강화 예산 검색">
+      <div class="eb-heading"><label for="effMoney">내 강화 예산</label><small>총 투자금 상한 · 두 순위 공통</small></div>
+      <div class="eb-input"><input id="effMoney" type="text" inputmode="decimal" autocomplete="off" placeholder="예: 1000" maxlength="20" aria-describedby="effBudgetHint"><span>억 BP</span><button type="submit" class="go">검색</button></div>
+      <div class="eb-quick" id="effQuick" role="group" aria-label="빠른 예산 선택"><button type="button" data-b="100">100억</button><button type="button" data-b="1000">1천억</button><button type="button" data-b="10000">1조</button><button type="button" data-b="100000">10조</button><button type="button" data-b="" aria-pressed="true">전체</button></div>
+      <p class="eb-hint" id="effBudgetHint" aria-live="polite">예산 제한 없음</p>
+    </form>
     <div class="eff-opts">
       <div class="eff-steps" id="effSteps" role="group" aria-label="강화 단계"></div>
       <label class="eff-chk"><input type="checkbox" id="effMat" checked> 재료비 포함 <small>(공식 풀게이지 재료비 자동 조회)</small></label>

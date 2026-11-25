@@ -32,11 +32,22 @@ function setTab(t){
 tabs.addEventListener('click',e=>{const b=e.target.closest('[data-sim]');if(b)setTab(b.dataset.sim)});
 
 /* ================= 강화 효율 ================= */
-let effMode='win', effStep=0, effReady=false,effInitP=null;
+let effMode='win', effStep=0, effReady=false,effInitP=null,effBudget=Infinity;
 $('effSteps').innerHTML=`<button type="button" data-s="0" aria-pressed="true">전체</button>`+Array.from({length:12},(_,i)=>`<button type="button" data-s="${i+1}" aria-pressed="false">${i+1}→${i+2}</button>`).join('');
 $('effSteps').addEventListener('click',e=>{const b=e.target.closest('[data-s]');if(!b)return;effStep=+b.dataset.s;$('effSteps').querySelectorAll('[data-s]').forEach(x=>x.setAttribute('aria-pressed',x===b));effRender()});
 document.querySelector('.eff-mode').addEventListener('click',e=>{const b=e.target.closest('[data-em]');if(!b)return;effMode=b.dataset.em;document.querySelectorAll('.eff-mode [data-em]').forEach(x=>x.setAttribute('aria-selected',x===b));effRender()});
 ['effMat','effFail'].forEach(id=>$(id).addEventListener('change',effRender));
+function applyEffBudget(){
+  const input=$('effMoney'),budget=parseEffBudget(input.value);
+  if(budget===null){input.setAttribute('aria-invalid','true');$('effBudgetHint').textContent='0보다 큰 예산을 억 BP 단위로 입력해 주세요.';return}
+  input.removeAttribute('aria-invalid');effBudget=budget;
+  $('effQuick').querySelectorAll('[data-b]').forEach(b=>b.setAttribute('aria-pressed',parseEffBudget(b.dataset.b)===budget));
+  updateEffBudgetHint();effRender();
+}
+function updateEffBudgetHint(){$('effBudgetHint').textContent=Number.isFinite(effBudget)?won(effBudget)+' BP 이하 · '+($('effMat').checked?'선수 구매비 + 재료비':'선수 구매비')+' 기준':'예산 제한 없음'}
+$('effBudgetForm').addEventListener('submit',e=>{e.preventDefault();applyEffBudget()});
+$('effQuick').addEventListener('click',e=>{const b=e.target.closest('[data-b]');if(!b)return;$('effMoney').value=b.dataset.b;applyEffBudget()});
+$('effMat').addEventListener('change',updateEffBudgetHint);
 onFee.push(()=>{if(effReady)effRender()});
 function effInit(){
   if(effReady){effRender();return}
@@ -51,7 +62,7 @@ function effRows(){
   for(const [id,name,ovr,pr] of POOL){
     for(let g=1;g<MAX;g++){
       if(effStep&&g!==effStep)continue;
-      const buy=pr[g-1],up=pr[g];if(!buy||!up||buy<1e6)continue;
+      const buy=pr[g-1],up=pr[g];if(!buy||!up||buy<1e6||buy>effBudget)continue;
       const p=SUCC[g]/100,fg=down&&g>=5?g-1:g,failV=pr[fg-1];
       if(!Number.isFinite(p)||!failV)continue;
       const ret=(p*up+(1-p)*failV)*(1-fee),netUp=up*(1-fee);
@@ -66,6 +77,14 @@ function effWithMaterial(row,plan){
   const inv=row.buy+plan.cost;if(!Number.isFinite(inv)||inv<=0)return null;
   return {...row,mat:plan.cost,plan,inv,rr:row.ret/inv,ev:row.ret-inv,win:row.netUp-inv};
 }
+function parseEffBudget(raw){
+  const s=String(raw??"").trim().replace(/,/g,"");
+  if(!s)return Infinity;
+  if(!/^\d+(?:\.\d{1,8})?$/.test(s))return null;
+  const v=Math.round(Number(s)*1e8);
+  return Number.isSafeInteger(v)&&v>0?v:null;
+}
+function effWithinBudget(rows,budget){return rows.filter(r=>r.inv<=budget)}
 function effCandidateOrder(rows,mode){
   return [...rows].sort((a,b)=>mode==='win'?b.win-a.win:b.rr-a.rr);
 }
@@ -73,7 +92,7 @@ let effCtx=null,effTimer=null,effWork=Promise.resolve(),effLastHTML='';
 const EFF_BATCH=6,EFF_PARALLEL=2;
 function effActive(ctx){return effCtx===ctx&&$('effMat').checked&&!$('simEff').hidden&&!$('v-sim').hidden}
 function effMaterialRows(ctx){
-  const rows=[];for(const [key,plan] of officialPlans){const r=ctx.byKey.get(key);if(r){const v=effWithMaterial(r,plan);if(v)rows.push(v)}}return rows;
+  const rows=[];for(const [key,plan] of officialPlans){const r=ctx.byKey.get(key);if(r){const v=effWithMaterial(r,plan);if(v&&v.inv<=ctx.budget)rows.push(v)}}return rows;
 }
 function effStart(ctx,retry=false){
   if(!effActive(ctx)||ctx.running)return;
@@ -119,10 +138,10 @@ function effRender(){
   if(!POOL){$('effInfo').textContent='강화별 시세 풀이 아직 없어요.';$('effOut').innerHTML='';effLastHTML='';$('effActions').hidden=true;return}
   const mat=$('effMat').checked;
   if(!mat){effCtx=null;effPaint(null,effRows());return}
-  const key=[effMode,effStep,$('effFail').value,feeRate()].join(':');
+  const key=[effMode,effStep,$('effFail').value,feeRate(),effBudget].join(':');
   if(!effCtx||effCtx.key!==key){
     const candidates=effCandidateOrder(effRows(),effMode);
-    effCtx={key,candidates,byKey:new Map(candidates.map(r=>[planKey(r.id,r.g),r])),attempted:new Set(),retry:new Set(),running:false,done:0,issue:'',started:false};
+    effCtx={key,budget:effBudget,candidates,byKey:new Map(candidates.map(r=>[planKey(r.id,r.g),r])),attempted:new Set(),retry:new Set(),running:false,done:0,issue:'',started:false};
   }
   const ctx=effCtx;effPaint(ctx);
   if(effActive(ctx)&&!ctx.started&&ctx.candidates.length){
@@ -130,16 +149,16 @@ function effRender(){
   }
 }
 function effPaint(ctx,baseRows){
-  const rows=ctx?effMaterialRows(ctx):baseRows;
+  const rows=ctx?effMaterialRows(ctx):effWithinBudget(baseRows,effBudget);
   const fee=(feeRate()*100).toFixed(1).replace(/\.0$/,'');
-  const empty=ctx?(ctx.running?'공식 재료비를 조회하고 있어요…':ctx.issue?'조회 실패: 다시 조회해 주세요.':'확인된 풀게이지 조합이 아직 없어요. 추가 조회를 눌러 주세요.'):'조건에 맞는 카드가 없어요.';
+  const empty=ctx?(ctx.candidates.length===0?'예산과 강화 단계에 맞는 후보가 없어요.':ctx.running?'공식 재료비를 조회하고 있어요…':ctx.issue?'조회 실패: 다시 조회해 주세요.':'예산·조건에 맞는 확인된 재료비 조합이 아직 없어요. 추가 조회를 눌러 주세요.'):'조건에 맞는 카드가 없어요.';
   const win=effMode==='win',top=effCandidateOrder(rows,effMode).slice(0,30),title=win?'인생강화 TOP':'회수율 TOP';
   const html='<div class="eff-col"><h3>'+title+' 30'+' <small>'+(ctx?'공식 조회 완료 후보 기준':win?'성공 시 순이익 높은 순':'투자금 대비 회수 비율 순')+'</small></h3>'+(top.map((r,i)=>effRow(r,i,win?'win':undefined)).join('')||'<p class="sim-note">'+empty+'</p>')+'</div>';
   if(html!==effLastHTML){$('effOut').className='eff-cols';$('effOut').innerHTML=html;effLastHTML=html}
   $('effActions').hidden=!ctx;
   if(ctx){
     const remaining=ctx.candidates.some(r=>!officialPlans.has(planKey(r.id,r.g))&&!ctx.attempted.has(planKey(r.id,r.g)));
-    $('effInfo').textContent='재료비 포함 · 공식 월평균 거래가 · 확인 '+rows.length.toLocaleString()+' / 후보 '+ctx.candidates.length.toLocaleString()+'건 · 수수료 '+fee+'% · 전체 시장 순위 아님';
+    $('effInfo').textContent='재료비 포함 · 공식 월평균 거래가 · 확인 '+rows.length.toLocaleString()+' / 후보 '+ctx.candidates.length.toLocaleString()+'건 · 수수료 '+fee+'% · 전체 시장 순위 아님'+(Number.isFinite(effBudget)?' · 예산 '+won(effBudget)+' 이하':'');
     $('effProgress').textContent=ctx.running?'공식 재료비 확인 중 '+ctx.done+'/'+EFF_BATCH:ctx.issue?ctx.issue:'조회된 카드만 순위에 반영됩니다. 추가 조회 시 순위가 달라질 수 있습니다.';
     $('effMore').disabled=ctx.running||!remaining;
     $('effRetry').hidden=!ctx.retry.size;$('effRetry').disabled=ctx.running;

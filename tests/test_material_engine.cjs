@@ -82,3 +82,13 @@ test("ranking cards preserve full names, odds and all monetary metrics",()=>{
  assert.ok(win.includes("+5,560억 4,870만"));assert.ok(win.includes("1조 9,500억"));
  assert.ok(css.includes('grid-template-areas:"r i w" "m m m" "d d d"'));assert.ok(css.includes("text-overflow:clip"));
 });
+
+test("shared budget uses total investment and supports both rankings",()=>{
+ const fs=require("node:fs"),path=require("node:path"),vm=require("node:vm"),s=fs.readFileSync(path.join(__dirname,"../site/assets/js/sim.js"),"utf8"),h=fs.readFileSync(path.join(__dirname,"../site/templates/index.html"),"utf8");
+ const ctx={};vm.createContext(ctx);vm.runInContext(s.slice(s.indexOf("function effWithMaterial("),s.indexOf("let effCtx=")),ctx);
+ assert.equal(ctx.parseEffBudget(""),Infinity);assert.equal(ctx.parseEffBudget("1,000"),1e11);assert.equal(ctx.parseEffBudget("0.5"),5e7);assert.equal(ctx.parseEffBudget("-1"),null);assert.equal(ctx.parseEffBudget("0"),null);assert.equal(ctx.parseEffBudget("abc"),null);
+ const r={id:1,g:1,buy:80,inv:80,ret:170,netUp:240,rr:2.125,win:160};
+ const a=ctx.effWithMaterial(r,{official:true,gauge:100,cost:30}),b=ctx.effWithMaterial({...r,id:2},{official:true,gauge:100,cost:20});
+ for(const mode of ["win","top"])assert.deepEqual(Array.from(ctx.effCandidateOrder(ctx.effWithinBudget([a,b],100),mode),x=>x.id),[2]);
+ assert.ok(s.includes("buy>effBudget"));assert.ok(s.includes("v.inv<=ctx.budget"));assert.ok(s.includes("feeRate(),effBudget"));assert.match(h,/id="effBudgetForm"/);assert.match(h,/id="effMoney"/);
+});

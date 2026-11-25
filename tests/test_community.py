@@ -109,3 +109,19 @@ def test_member_policies_match_active_login_and_ad_placeholders(tmp_path):
     assert "현재 미시행" not in privacy + terms
     assert "외부 광고·방문자 분석 스크립트는 실행하지 않습니다" in privacy
     assert "fifagosu@gmail.com" in privacy
+
+def test_forum_detail_list_and_rank_assets(tmp_path):
+    from bs4 import BeautifulSoup
+    out = tmp_path / "site"
+    build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
+    board = BeautifulSoup((out / "board/index.html").read_text("utf-8"), "html.parser")
+    assert board.select_one("#fcPost").find_next_sibling("h2")["id"] == "fcListTitle"
+    assert board.select_one("#fcListTitle").find_next_sibling("nav")["id"] == "fcTabs"
+    assert board.select_one("#fcTabs").find_next_sibling("section")["id"] == "fcBoardList"
+    admin = BeautifulSoup((out / "admin/index.html").read_text("utf-8"), "html.parser")
+    assert admin.select_one("#fcAdminRefresh")
+    assert admin.select_one(".fc-admin-layout #fcAdminTabs")
+    for grade in (0,1,3,5,8,11,13):
+        svg = (out / f"assets/ranks/cat-{grade}.svg").read_text("utf-8")
+        assert f"+{grade}</text>" in svg
+        assert 'shape-rendering="crispEdges"' in svg

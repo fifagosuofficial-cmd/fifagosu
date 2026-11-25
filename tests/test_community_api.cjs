@@ -136,3 +136,18 @@ test("cat rank caps activity, excludes self votes, hides private identifiers",as
  r=await callFixture(env,"me",null,"a");assert.equal(r.data.member.rank.points,31);assert.equal(r.data.member.rank.level,2);
  assert.ok(!("subject" in r.data.member));sql.close();
 });
+
+test("seven enhancement ranks preserve XP and report grade boundaries",async()=>{
+ const {sql,env}=fixture();
+ const r=await callFixture(env,"me",null,"a");assert.equal(r.status,200);assert.equal(r.data.member.rank.grade,0);assert.equal(r.data.member.rank.name,"0강냥");
+ await callFixture(env,"comment-vote",{id:1,value:1},"b");
+ assert.equal((await callFixture(env,"me",null,"a")).data.member.rank.points,11);
+ const src=source.match(/const LEVELS=(\[.*?\]);/);assert.ok(src);
+ const levels=JSON.parse(src[1]);assert.deepEqual(levels.map(x=>x[2]),[0,1,3,5,8,11,13]);assert.deepEqual(levels.map(x=>x[0]),[0,30,100,500,2000,8000,16000]);
+ sql.close();
+});
+test("admin overview counts full database, has seven KST buckets and denies ordinary member",async()=>{
+ const {sql,env}=fixture();
+ let r=await callFixture(env,"admin",null,"b");assert.equal(r.status,403);
+ r=await callFixture(env,"admin",null,"a");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.stats.members,2);assert.equal(r.data.stats.posts,1);assert.equal(r.data.stats.comments,1);assert.equal(r.data.stats.open_reports,0);assert.equal(r.data.days.length,7);assert.ok(r.data.days.every(d=>Number.isInteger(d.posts)&&Number.isInteger(d.comments)&&Number.isInteger(d.members)));assert.equal(r.data.days.reduce((n,d)=>n+d.posts,0),1);assert.equal(r.data.posts[0].category,"free");sql.close();
+});

@@ -16,8 +16,8 @@ const str=(v,max,min=1)=>{check(typeof v==="string"&&v.trim().length>=min&&v.tri
 const integer=(v,min=1,max=Number.MAX_SAFE_INTEGER)=>{check(Number.isSafeInteger(v)&&v>=min&&v<=max,"잘못된 번호입니다.");return v};
 const adminFor=(env,m)=>Boolean(m&&String(env.COMMUNITY_ADMIN_SUBS||"").split(",").map(x=>x.trim()).includes(m.subject));
 // Author verification is calculated on the server. Never return the Google subject.
-const LEVELS=[[0,"아기냥"],[30,"꼬마냥"],[100,"장난꾸러기냥"],[250,"탐험냥"],[500,"기사냥"],[1000,"마법냥"],[2000,"왕관냥"],[4000,"전설냥"],[8000,"신화냥"],[16000,"우주냥"]];
-function rankFor(points){points=Math.max(0,Number(points)||0);let i=LEVELS.length-1;while(i>0&&points<LEVELS[i][0])i--;return {level:i+1,name:LEVELS[i][1],points,next:LEVELS[i+1]?.[0]??null,floor:LEVELS[i][0]}}
+const LEVELS=[[0,"0강냥",0],[30,"1강냥",1],[100,"3강냥",3],[500,"5강냥",5],[2000,"8강냥",8],[8000,"11강냥",11],[16000,"13강냥",13]];
+function rankFor(points){points=Math.max(0,Number(points)||0);let i=LEVELS.length-1;while(i>0&&points<LEVELS[i][0])i--;return {level:i+1,grade:LEVELS[i][2],name:LEVELS[i][1],points,next:LEVELS[i+1]?.[0]??null,floor:LEVELS[i][0]}}
 const publicAuthor=(env,{author_subject,author_id,...row},ranks=new Map())=>({...row,verified:!!author_subject&&adminFor(env,{subject:author_subject}),rank:author_id?ranks.get(author_id)||rankFor(0):null});
 // Daily activity is capped per UTC day; positive votes from other members count only on visible content.
 async function authorRanks(db,ids){const out=new Map(),unique=[...new Set(ids.filter(Boolean))];for(let i=0;i<unique.length;i+=40){const chunk=unique.slice(i,i+40),q=chunk.map(()=>"?").join(",");const sql="SELECT m.id, (SELECT COALESCE(sum(min(n,3)),0)*5 FROM (SELECT count(*) n FROM posts p WHERE p.author=m.id AND p.hidden=0 GROUP BY p.created/86400))+(SELECT COALESCE(sum(min(n,8)),0) FROM (SELECT count(*) n FROM comments c JOIN posts p ON p.id=c.post_id WHERE c.author=m.id AND c.hidden=0 AND p.hidden=0 GROUP BY c.created/86400))+(SELECT count(*)*3 FROM votes v JOIN posts p ON p.id=v.post_id WHERE p.author=m.id AND p.hidden=0 AND v.member_id<>m.id)+(SELECT count(*)*2 FROM comment_votes v JOIN comments c ON c.id=v.comment_id JOIN posts p ON p.id=c.post_id WHERE c.author=m.id AND c.hidden=0 AND p.hidden=0 AND v.value=1 AND v.member_id<>m.id) points FROM members m WHERE m.id IN ("+q+")";const rows=(await db.prepare(sql).bind(...chunk).all()).results;for(const r of rows)out.set(r.id,rankFor(r.points))}return out}
@@ -107,11 +107,16 @@ export async function onRequest({request,env}){
      bookmarks:await all("SELECT p.id,p.title FROM bookmarks b JOIN posts p ON p.id=b.post_id WHERE b.member_id=? AND p.hidden=0 LIMIT 100",m.id),
      history:await all("SELECT h.squad_id,h.bp,h.observed FROM value_history h JOIN squads s ON s.id=h.squad_id WHERE s.member_id=? ORDER BY h.observed DESC LIMIT 300",m.id)
    })}
-   if(p==="admin"){requireAdmin();return json({
+   if(p==="admin"){requireAdmin();
+     const kstDay=Math.floor((now()+32400)/86400),start=(kstDay-6)*86400-32400,today=kstDay*86400-32400;
+     const stats=await first("SELECT (SELECT count(*) FROM members) members,(SELECT count(*) FROM members WHERE created>=?) new_members,(SELECT count(*) FROM members WHERE suspended=1) suspended,(SELECT count(*) FROM posts WHERE hidden=0) posts,(SELECT count(*) FROM posts WHERE created>=? AND hidden=0) new_posts,(SELECT count(*) FROM comments WHERE hidden=0 AND post_id IN (SELECT id FROM posts WHERE hidden=0)) comments,(SELECT count(*) FROM comments WHERE created>=? AND hidden=0 AND post_id IN (SELECT id FROM posts WHERE hidden=0)) new_comments,(SELECT count(*) FROM reports WHERE status='open') open_reports,(SELECT count(*) FROM feedback WHERE status='open') open_feedback,(SELECT COALESCE(sum(views),0) FROM posts WHERE hidden=0) views",today,today,today);
+     const activity=await all("SELECT (created+32400)/86400 day,'members' kind,count(*) n FROM members WHERE created>=? GROUP BY day UNION ALL SELECT (created+32400)/86400 day,'posts' kind,count(*) n FROM posts WHERE created>=? AND hidden=0 GROUP BY day UNION ALL SELECT (created+32400)/86400 day,'comments' kind,count(*) n FROM comments WHERE created>=? AND hidden=0 AND post_id IN (SELECT id FROM posts WHERE hidden=0) GROUP BY day",start,start,start);
+     const days=Array.from({length:7},(_,i)=>({day:new Date((kstDay-6+i)*86400000).toISOString().slice(0,10),members:0,posts:0,comments:0}));for(const row of activity){const d=days[row.day-(kstDay-6)];if(d&&["members","posts","comments"].includes(row.kind))d[row.kind]=row.n}
+     return json({stats,days,generated:now(),
      members:await all("SELECT id,nickname,created,suspended FROM members ORDER BY created DESC LIMIT 100"),
      reports:await all("SELECT id,post_id,reason,status,created FROM reports ORDER BY status,created DESC LIMIT 100"),
      feedback:await all("SELECT f.id,f.kind,f.body,f.status,f.reply,f.created,m.nickname FROM feedback f JOIN members m ON m.id=f.member_id ORDER BY f.created DESC LIMIT 100"),
-     posts:await all("SELECT id,title,prefix,hidden,created FROM posts ORDER BY created DESC LIMIT 100"),
+     posts:await all("SELECT id,title,category,prefix,hidden,created,views FROM posts ORDER BY created DESC LIMIT 100"),
      comments:await all("SELECT id,post_id,body,hidden,created FROM comments ORDER BY created DESC LIMIT 100"),
      audit:await all("SELECT action,target,reason,created FROM audit ORDER BY created DESC LIMIT 100")
    })}

@@ -119,7 +119,7 @@ test("life ranking sort respects budget before selecting the top thirty",()=>{
  assert.deepEqual(Array.from(ctx.effCandidateOrder(eligible,"win","profit"),r=>r.id),[4,2,3]);
  assert.ok(ctx.effCandidateOrder(eligible,"win","score").every(r=>r.inv<=100e8));
  assert.equal(ctx.effCandidateOrder(rows,"top","profit")[0].id,3);
- assert.ok(s.includes("effCandidateOrder(effRows(),effMode,effSort)"));assert.ok(s.includes("effCandidateOrder(rows,effMode,effSort).slice(0,30)"));
+ assert.ok(s.includes("effCandidateOrder(effRows(),effMode,effSort)"));assert.ok(s.includes("effCandidateOrder(preview?ctx.candidates:rows,effMode,effSort).slice(0,30)"));assert.ok(s.includes("재료비 미포함 임시 목록"));
  assert.ok(h.includes('data-order="score" aria-pressed="true"'));assert.ok(h.includes('data-order="profit" aria-pressed="false"'));
 });
 

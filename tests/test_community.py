@@ -271,7 +271,10 @@ def test_arcade_and_mypage_link(tmp_path):
     from pathlib import Path
     root=Path(__file__).resolve().parents[1]
     source=(root/"fun/index.html").read_text("utf-8")
-    assert 'href="#/games">미니게임</a>' in source
+    from bs4 import BeautifulSoup
+    tab = BeautifulSoup(source, "html.parser").select_one('#arcTabs a[href="#/games"]')
+    assert tab and tab.get_text(strip=True).startswith("미니게임")
+    assert tab.select_one(".arc-xp-bubble").get_text(strip=True) == "XP 획득 기회!"
     assert 'href="#/" aria-current="page">축구테스트</a>' in source
     assert 'window.FGArcade.mount' in source
     assert 'view!="mypage"' in (root/"site/templates/community.html").read_text("utf-8")

@@ -260,3 +260,18 @@ test("obsolete timed game sessions refund entry fees rather than breaking after 
  let r=await callFixture(env,"game-start",{game:"penalty",fee:0},"a");assert.equal(r.status,200);sql.prepare("UPDATE arcade_rounds SET questions=?,fee=2 WHERE id=?").run(JSON.stringify([{phase:0}]),r.data.round.id);
  r=await callFixture(env,"game-status",null,"a");assert.equal(r.status,200);assert.equal(r.data.pending,null);assert.equal(r.data.member.rank.points,9);sql.close();
 });
+
+test("unlimited practice after five reward rounds never spends XP or awards XP or ranking",async()=>{
+ const {env,sql}=fixture(),day=Math.floor((Math.floor(Date.now()/1000)+32400)/86400);
+ const insert=sql.prepare("INSERT INTO arcade_rounds(id,member_id,game,day,created,expires,issued,questions,fee,state,reward,score) VALUES(?,?,?,?,0,0,0,'[]',0,1,2,1)");
+ for(let i=0;i<5;i++)insert.run("reward"+i,"a","player",day);
+ let r=await callFixture(env,"game-status",null,"a");assert.equal(r.status,200);assert.equal(r.data.used,5);const xp=r.data.member.rank.points;
+ assert.equal((await callFixture(env,"game-start",{game:"player",fee:2},"a")).status,409);
+ for(let n=0;n<3;n++){
+  r=await callFixture(env,"game-start",{game:"player",fee:0,practice:true},"a");assert.equal(r.status,200,JSON.stringify(r.data));const id=r.data.round.id;assert.equal(r.data.round.practice,true);assert.equal(r.data.used,5);assert.equal(r.data.member.rank.points,xp);
+  const qs=JSON.parse(sql.prepare("SELECT questions FROM arcade_rounds WHERE id=?").get(id).questions);
+  for(let i=0;i<5;i++){r=await callFixture(env,"game-answer",{id,step:i,answer:qs[i].answer,practice:false,reward:999},"a");assert.equal(r.status,200,JSON.stringify(r.data))}
+  assert.equal(r.data.round.score,5);assert.equal(r.data.round.reward,0);assert.equal(r.data.round.fee,0);assert.equal(r.data.member.rank.points,xp);assert.equal(r.data.used,5);
+ }
+ r=await callFixture(env,"game-status",null,"a");assert.equal(r.data.leaderboard[0].score,1);assert.equal(r.data.used,5);assert.equal(sql.prepare("SELECT count(*) n FROM arcade_rounds").get().n,6);sql.close();
+});

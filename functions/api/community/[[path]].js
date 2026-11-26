@@ -101,7 +101,9 @@ async function gameQuestions(game,env,u){
  check(questions.length===5,"비교할 시세가 부족합니다.",503);return questions;
 }
 const rewardFor=s=>s>=5?12:s*2;
-function gamePublic(row){let question=null;if(row.state===0){const {answer,prices,keeper,...q}=JSON.parse(row.questions)[row.step];question=q}return {id:row.id,game:row.game,step:row.step,score:row.score,fee:row.fee,reward:row.reward,state:row.state,issued:row.issued,serverNow:Date.now(),question}}
+const isPractice=row=>JSON.parse(row.questions)[0]?.practice===true;
+const rewardEligible="COALESCE(json_extract(questions,'$[0].practice'),0)=0";
+function gamePublic(row){let question=null;if(row.state===0){const {answer,prices,keeper,practice,...q}=JSON.parse(row.questions)[row.step];question=q}return {id:row.id,game:row.game,step:row.step,score:row.score,fee:row.fee,reward:row.reward,state:row.state,issued:row.issued,serverNow:Date.now(),practice:isPractice(row),question}}
 function gameCorrect(game,q,a,elapsed){
  if(elapsed<0)return false;
  if(game==="penalty")return a!==q.keeper;
@@ -112,15 +114,22 @@ async function arcadeApi({p,b,m,db,env,u}){
  await ensureBoard(db);
  const day=arcadeDay(),t=now(),q=(s,...a)=>db.prepare(s).bind(...a),first=(s,...a)=>q(s,...a).first(),all=async(s,...a)=>(await q(s,...a).all()).results;
  await q("UPDATE arcade_rounds SET state=2,reward=fee WHERE member_id=? AND state=0 AND (expires<=? OR (game IN ('penalty','lifting') AND COALESCE(json_extract(questions,'$[0].v'),0)<>2))",m.id,t).run();
- const summary=async()=>{const [r,n,pending]=await Promise.all([authorRanks(db,[m.id]),first("SELECT count(*) n FROM arcade_rounds WHERE member_id=? AND day=?",m.id,day),first("SELECT * FROM arcade_rounds WHERE member_id=? AND state=0",m.id)]);return {member:{nickname:m.nickname,rank:r.get(m.id)||rankFor(0)},used:n.n,limit:ARCADE_LIMIT,fee:n.n===0?0:2,pending:pending?gamePublic(pending):null}};
+ const summary=async()=>{const [r,n,pending]=await Promise.all([authorRanks(db,[m.id]),first("SELECT count(*) n FROM arcade_rounds WHERE member_id=? AND day=? AND "+rewardEligible,m.id,day),first("SELECT * FROM arcade_rounds WHERE member_id=? AND state=0",m.id)]);return {member:{nickname:m.nickname,rank:r.get(m.id)||rankFor(0)},used:n.n,limit:ARCADE_LIMIT,fee:n.n===0?0:2,pending:pending?gamePublic(pending):null}};
  if(p==="game-status"){
-  const leaderboard=await all("SELECT game,nickname,score FROM (SELECT r.game,m.nickname,MAX(r.score) score,ROW_NUMBER() OVER(PARTITION BY r.game ORDER BY MAX(r.score) DESC,MIN(r.created),m.nickname) rn FROM arcade_rounds r JOIN members m ON m.id=r.member_id WHERE r.state=1 AND r.day>=? AND m.suspended=0 AND m.nickname IS NOT NULL GROUP BY r.game,m.id) WHERE rn<=10 ORDER BY game,rn",arcadeWeek(day));return json({...await summary(),leaderboard});
+  const leaderboard=await all("SELECT game,nickname,score FROM (SELECT r.game,m.nickname,MAX(r.score) score,ROW_NUMBER() OVER(PARTITION BY r.game ORDER BY MAX(r.score) DESC,MIN(r.created),m.nickname) rn FROM arcade_rounds r JOIN members m ON m.id=r.member_id WHERE r.state=1 AND COALESCE(json_extract(r.questions,'$[0].practice'),0)=0 AND r.day>=? AND m.suspended=0 AND m.nickname IS NOT NULL GROUP BY r.game,m.id) WHERE rn<=10 ORDER BY game,rn",arcadeWeek(day));return json({...await summary(),leaderboard});
  }
  if(p==="game-start"){
-  check(ARCADE_GAMES.has(b.game)&&[0,2].includes(b.fee),"게임과 참가비를 확인해 주세요.");
+  check(ARCADE_GAMES.has(b.game)&&[0,2].includes(b.fee)&&(b.practice===undefined||typeof b.practice==="boolean")&&(!b.practice||b.fee===0),"게임과 참가비를 확인해 주세요.");
   const pending=await first("SELECT * FROM arcade_rounds WHERE member_id=? AND state=0",m.id);if(pending)return json({...await summary(),round:gamePublic(pending)});
   const questions=await gameQuestions(b.game,env,u),id=random(),issued=Date.now()+(b.game==="lifting"?650:0);
-  const row=await first("WITH limits AS (SELECT count(*) n FROM arcade_rounds WHERE member_id=? AND day=?) INSERT INTO arcade_rounds(id,member_id,game,day,created,expires,issued,questions,fee) SELECT ?,m.id,?,?,?,?,?,?,CASE WHEN limits.n=0 THEN 0 ELSE 2 END FROM members m,limits WHERE m.id=? AND limits.n<? AND (CASE WHEN limits.n=0 THEN 0 ELSE 2 END)=? AND (limits.n=0 OR ("+XP_SQL+")>=2) AND NOT EXISTS(SELECT 1 FROM arcade_rounds WHERE member_id=m.id AND state=0) RETURNING *",m.id,day,id,b.game,day,t,t+600,issued,JSON.stringify(questions),m.id,ARCADE_LIMIT,b.fee);
+  if(b.practice===true){
+   questions[0].practice=true;
+   await q("DELETE FROM arcade_rounds WHERE member_id=? AND state<>0 AND NOT ("+rewardEligible+")",m.id).run();
+   const row=await first("INSERT INTO arcade_rounds(id,member_id,game,day,created,expires,issued,questions,fee) SELECT ?,?,?,?,?,?,?,?,0 WHERE NOT EXISTS(SELECT 1 FROM arcade_rounds WHERE member_id=? AND state=0) RETURNING *",id,m.id,b.game,day,t,t+600,issued,JSON.stringify(questions),m.id);
+   if(!row){const current=await summary();if(current.pending)return json({...current,round:gamePublic(current.pending)});throw new Err("게임을 다시 시작해 주세요.",409)}
+   return json({...await summary(),round:gamePublic(row)});
+  }
+  const row=await first("WITH limits AS (SELECT count(*) n FROM arcade_rounds WHERE member_id=? AND day=? AND "+rewardEligible+") INSERT INTO arcade_rounds(id,member_id,game,day,created,expires,issued,questions,fee) SELECT ?,m.id,?,?,?,?,?,?,CASE WHEN limits.n=0 THEN 0 ELSE 2 END FROM members m,limits WHERE m.id=? AND limits.n<? AND (CASE WHEN limits.n=0 THEN 0 ELSE 2 END)=? AND (limits.n=0 OR ("+XP_SQL+")>=2) AND NOT EXISTS(SELECT 1 FROM arcade_rounds WHERE member_id=m.id AND state=0) RETURNING *",m.id,day,id,b.game,day,t,t+600,issued,JSON.stringify(questions),m.id,ARCADE_LIMIT,b.fee);
   if(!row){const s=await summary();if(s.pending)return json({...s,round:s.pending});throw new Err(s.used>=ARCADE_LIMIT?"오늘 참가 횟수를 모두 사용했습니다.":s.fee!==b.fee?"참가비가 변경되었습니다. 다시 확인해 주세요.":"XP가 부족합니다.",409)}return json({...await summary(),round:gamePublic(row)});
  }
  if(p==="game-answer"){
@@ -129,7 +138,7 @@ async function arcadeApi({p,b,m,db,env,u}){
   if(row.state!==0||row.step!==step)return json({...await summary(),round:gamePublic(row)});
   const questions=JSON.parse(row.questions),question=questions[step];check(question&&answer<question.choices.length,"선택지를 확인해 주세요.");
   const correct=gameCorrect(row.game,question,answer,Date.now()-row.issued),score=row.score+(correct?1:0),finished=step===questions.length-1||(row.game==="lifting"&&!correct);
-  const updated=await first("UPDATE arcade_rounds SET step=?,score=?,issued=?,state=?,reward=? WHERE id=? AND member_id=? AND state=0 AND step=? AND expires>? RETURNING *",step+1,score,Date.now()+(row.game==="lifting"&&!finished?650:0),finished?1:0,finished?rewardFor(score):0,row.id,m.id,step,t);
+  const updated=await first("UPDATE arcade_rounds SET step=?,score=?,issued=?,state=?,reward=? WHERE id=? AND member_id=? AND state=0 AND step=? AND expires>? RETURNING *",step+1,score,Date.now()+(row.game==="lifting"&&!finished?650:0),finished?1:0,finished&&!isPractice(row)?rewardFor(score):0,row.id,m.id,step,t);
   const result=updated||await first("SELECT * FROM arcade_rounds WHERE id=? AND member_id=?",row.id,m.id);
   return json({...await summary(),round:gamePublic(result),feedback:updated?{correct,answer:question.choices[question.answer]||null,prices:question.prices||null,...(row.game==="penalty"?{keeper:question.keeper,shot:answer}:{})}:null});
  }

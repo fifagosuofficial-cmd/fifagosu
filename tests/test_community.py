@@ -264,3 +264,12 @@ def test_member_welcome_in_main_and_kickkick(tmp_path):
         assert doc.select_one(".fg-account-group .fg-account-icon")
         assert doc.select_one('script[src*="welcome.js"]')
         assert doc.select_one('link[href*="welcome.css"]')
+
+def test_arcade_and_mypage_link(tmp_path):
+    from pathlib import Path
+    root=Path(__file__).resolve().parents[1]
+    source=(root/"fun/index.html").read_text("utf-8")
+    assert 'href="#/games">미니게임</a>' in source
+    assert 'href="#/" aria-current="page">축구테스트</a>' in source
+    assert 'window.FGArcade.mount' in source
+    assert 'view!="mypage"' in (root/"site/templates/community.html").read_text("utf-8")

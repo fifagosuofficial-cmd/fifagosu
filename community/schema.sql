@@ -33,3 +33,9 @@ CREATE TABLE IF NOT EXISTS comment_replies(comment_id INTEGER PRIMARY KEY REFERE
 CREATE TABLE IF NOT EXISTS member_consents(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,policy TEXT NOT NULL,agreed_at INTEGER NOT NULL,age_confirmed INTEGER NOT NULL CHECK(age_confirmed=1),terms_agreed INTEGER NOT NULL CHECK(terms_agreed=1),privacy_agreed INTEGER NOT NULL CHECK(privacy_agreed=1),PRIMARY KEY(member_id,policy));
 
 CREATE TABLE IF NOT EXISTS traffic_events(day INTEGER NOT NULL, visitor TEXT NOT NULL, minute INTEGER NOT NULL, page TEXT NOT NULL, source TEXT NOT NULL, device TEXT NOT NULL, kind INTEGER NOT NULL CHECK(kind IN (0,1)), PRIMARY KEY(day,visitor,minute,page,kind)) WITHOUT ROWID;
+
+-- Arcade activity XP
+CREATE TABLE IF NOT EXISTS arcade_rounds(id TEXT PRIMARY KEY,member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,game TEXT NOT NULL,day INTEGER NOT NULL,created INTEGER NOT NULL,expires INTEGER NOT NULL,issued INTEGER NOT NULL,questions TEXT NOT NULL,step INTEGER NOT NULL DEFAULT 0,score INTEGER NOT NULL DEFAULT 0,fee INTEGER NOT NULL CHECK(fee IN (0,2)),reward INTEGER NOT NULL DEFAULT 0,state INTEGER NOT NULL DEFAULT 0 CHECK(state IN (0,1,2)));
+CREATE INDEX IF NOT EXISTS arcade_owner_day ON arcade_rounds(member_id,day);
+CREATE INDEX IF NOT EXISTS arcade_week ON arcade_rounds(game,day,state,score);
+CREATE UNIQUE INDEX IF NOT EXISTS arcade_one_active ON arcade_rounds(member_id) WHERE state=0;

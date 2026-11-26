@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>킥킥 · 내가 선수라면? 축구 테스트 | 피파고수</title>
+<title>킥킥 · 축구테스트 &amp; 미니게임 | 피파고수</title>
 <meta name="description" content="닮은 축구선수 찾기, 친구랑 투톱 궁합, 나랑 닮은 구단, 감독·팬 유형까지. 1분이면 끝나는 축구 테스트 8종">
 <link rel="canonical" href="https://fifagosu.com/fun/">
 <meta property="og:type" content="website">
@@ -169,6 +169,11 @@ footer{font-size:11px;color:var(--dim);text-align:center;line-height:1.7;margin-
 .namecall{font-size:12px;color:var(--dim);margin:0;text-align:center}
 .nicks{width:100%;box-sizing:border-box;font-size:14px;line-height:1.6;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.06);word-break:keep-all}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.arc-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:4px;border-radius:12px;border:1px solid var(--line);background:#0002}.arc-tabs a{padding:10px;text-align:center;font-size:14px;font-weight:800;text-decoration:none;color:var(--dim);border-radius:8px}.arc-tabs a[aria-current=page]{background:var(--acc);color:var(--ai)}
+.arcade{display:grid;gap:12px;min-width:0}.arcade h1,.arcade h2,.arcade p{margin:0}.arcade h1{font:400 36px/1.15 var(--f-display)}.arcade h2{font-size:18px}.arcade small,.arc-muted{color:var(--dim);font-size:12px}.arc-summary{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:14px;background:#ffffff0d;border:1px solid var(--line);border-radius:14px}.arc-xp{font:700 25px var(--f-num);color:var(--acc)}.arc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.arc-tile{display:grid;gap:7px;text-align:left;padding:14px;border:1px solid var(--line);background:#144a36;border-radius:14px;color:#eff7f2;min-width:0}.arc-tile:disabled{opacity:.5}.arc-tile .arc-emoji{font-size:30px}.arc-tile b{font-size:16px;word-break:keep-all}.arc-tile small{color:#c3dfce;line-height:1.45;word-break:keep-all}.arc-tile em{font-size:12px;font-style:normal;color:#f5c518;font-weight:700}.arc-panel{display:grid;gap:10px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#0002}.arc-rank summary{font-weight:700;cursor:pointer}.arc-rank ol{padding-left:24px;margin:5px 0}.arc-rank li{padding:4px 0}.arc-rank li span{float:right;color:var(--acc)}.arc-game-head{display:flex;justify-content:space-between;align-items:center;gap:8px}.arc-progress{height:7px;background:#fff2;border-radius:10px;overflow:hidden}.arc-progress i{display:block;height:100%;background:var(--acc)}.arc-answers{display:grid;gap:8px}.arc-choice{min-height:56px;text-align:left;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff1;color:var(--tx);font-weight:700;word-break:keep-all}.arc-choice:disabled{opacity:.5}.arc-goal{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:repeating-linear-gradient(0deg,transparent 0 19px,#ffffff44 20px 21px),repeating-linear-gradient(90deg,#ffffff08 0 19px,#ffffff44 20px 21px),#1d513d;padding:9px;border:5px solid #e8f5ed;border-bottom:0;border-radius:6px 6px 0 0;min-height:130px}.arc-goal button{background:#163a2a88;border:1px solid #ffffff88;border-radius:8px;color:white;display:grid;place-items:center;font-size:14px;gap:3px}.arc-goal button span{font-size:34px}.arc-goal button.blocked{background:#b85b4a88}.arc-field{text-align:center;font-size:36px;padding:4px}.arc-timing{height:28px;position:relative;border-radius:8px;background:#06251a;overflow:hidden;border:1px solid var(--line)}.arc-target{height:100%;position:absolute;background:#35d38888}.arc-marker{height:100%;width:4px;position:absolute;background:#fff;border-radius:4px;left:0}.arc-feedback{font-weight:700;color:#f5c518;min-height:20px}.arc-result{font-size:50px;font-family:var(--f-num);color:var(--acc);text-align:center}.arc-notice{color:var(--dim);font-size:12px;word-break:keep-all}.arc-error{color:#ffb8ad;font-size:13px}.arcade a.cta{text-align:center;box-sizing:border-box;text-decoration:none}.arc-grid button:focus-visible{outline:3px solid var(--acc)}
+@media(max-width:350px){.arc-tile{padding:10px}.arc-tile b{font-size:14px}.arc-grid{gap:6px}.arcade h1{font-size:30px}}
+
 </style>
 <style>
 /* ---- 피파고수 산하 코너용 추가 스타일 (원본 claude.ai 래퍼의 기본값 일부 + 피파고수 머리띠) ---- */
@@ -192,6 +197,7 @@ footer a{color:inherit;font-weight:700}
     <a class="brand" href="#/"><i aria-hidden="true"></i>킥킥<small>내가 선수라면?</small></a>
     <a class="allbtn" href="#/" id="allBtn" hidden>전체 테스트</a>
   </header>
+  <nav class="arc-tabs" id="arcTabs" aria-label="킥킥 메뉴"><a href="#/" aria-current="page">축구테스트</a><a href="#/games">미니게임</a></nav>
   <div class="ad" id="adTop" hidden></div>
   <main id="app" aria-live="polite"></main>
   <div class="ad" id="adBot" hidden></div>
@@ -199,6 +205,7 @@ footer a{color:inherit;font-weight:700}
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 
+<script src="../assets/js/minigames.js?v=1"></script>
 <script>
 const T=['pace','power','pass','drib','shoot','def','aerial','stamina','lead','flair','temper','calm'];
 const TL={pace:'스피드',power:'피지컬',pass:'패스',drib:'드리블',shoot:'슈팅',def:'수비',aerial:'공중볼',stamina:'체력',lead:'리더십',flair:'창의성',temper:'투쟁심',calm:'침착함'};
@@ -2778,13 +2785,14 @@ const HUB_ORDER=['ifplayer','duo','club','fan','manager','balance','blur','price
 const HUB_SUB={name:'NEW · 1분 · 질문 10개로 만드는 너다운 별명',ifplayer:'2분 · 나랑 닮은 선수 찾기',duo:'10초 · 친구 이름 넣고 궁합 보기',club:'1분 · 나랑 닮은 구단은?',fan:'1분 · 나는 어떤 축구 팬?',manager:'1분 · 감독이 되면 내 스타일은?',balance:'2분 · 둘 중 하나만 골라',blur:'1분 · 8초 안에 맞혀 봐',price:'1분 · 내 이적료는 얼마?'};
 const ALIAS={};   // 이름 생성기·등번호는 대표 요청으로 내림(옛 링크는 허브로)
 function hubView(){
+  setArcTab('test');
   applyTheme(HUB_TH);$('allBtn').hidden=true;document.title='킥킥 · 내가 선수라면? 축구 테스트 | 피파고수';
   const list=HUB_ORDER.map(id=>APPS.find(a=>a.id===id)).filter(Boolean);
   $('app').innerHTML=`<section class="hub-hero"><h1>내가<br>축구선수라면?</h1><p>1분이면 끝나는 축구 심심풀이 ${list.length}종. 결과는 인스타 스토리 이미지와 친구에게 보낼 결과 링크로 나와요.</p></section>
    <div class="grid" style="margin-top:16px">${list.map((a,i)=>tileHTML(a,i===0||(i===list.length-1&&(list.length-1)%2===1))).join('')}</div>`;
   window.scrollTo({top:0});renderAds();
 }
-function enter(a){cur=a;applyTheme(a.th);$('allBtn').hidden=false;document.title=a.title+' · 킥킥 | 피파고수'}
+function enter(a){setArcTab('test');cur=a;applyTheme(a.th);$('allBtn').hidden=false;document.title=a.title+' · 킥킥 | 피파고수'}
 function failView(err){
   console.error('심심풀이 테스트 화면을 불러오지 못했어요.',err);
   $('app').innerHTML='<section class="intro"><h1>테스트를 불러오지 못했어요</h1><p>잠시 후 다시 시도하거나 다른 테스트를 골라주세요.</p><a class="cta" href="#/">전체 테스트 보기</a></section>';
@@ -2804,6 +2812,8 @@ function openShared(d){
     if(!a.shared||a.shared(p)===false){cur=null;hubView()}
   }catch(err){failView(err)}
 }
+function setArcTab(kind){$('arcTabs').querySelectorAll('a').forEach((a,i)=>{if((kind==='game')===(i===1))a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')})}
+function gameHub(){applyTheme(HUB_TH);setArcTab('game');$('allBtn').hidden=true;document.title='킥킥 · 미니게임 | 피파고수';const stop=window.FGArcade.mount($('app'),()=>renderAds());cur={stop};window.scrollTo({top:0});renderAds()}
 function route(){
   if(cur&&cur.stop)cur.stop();
   const qd=new URLSearchParams(location.search).get('d');
@@ -2814,6 +2824,7 @@ function route(){
   }
   let id=(location.hash.match(/^#\/([\w-]+)/)||[])[1];
   if(id&&ALIAS[id]){id=ALIAS[id];try{history.replaceState(null,'',BASE_PATH+'#/'+id)}catch{}}
+  if(id==='games'){gameHub();return}
   const a=APPS.find(x=>x.id===id);
   if(!a){cur=null;hubView();return}
   enter(a);

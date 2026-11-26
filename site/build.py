@@ -145,6 +145,34 @@ def _load(p):
         return None
 
 
+def arcade_price_pool(data_dir, out):
+    pool = _load(data_dir / "market" / "pool.json") or {}
+    seasons = {int(s["seasonId"]): str(s.get("className", "")).split(" (")[0] for s in (_load(data_dir / "meta" / "seasonid.json") or []) if "seasonId" in s}
+    groups = []
+    for grade in (1, 5, 8):
+        cards = []
+        for row in pool.get("items", []):
+            if not isinstance(row, list) or len(row) != 4:
+                continue
+            card_id, name, _, prices = row
+            try:
+                price = prices[grade-1]
+                card_id = int(card_id)
+                if not isinstance(price, int) or not 0 < price <= 9007199254740991:
+                    continue
+                cards.append([card_id, seasons.get(card_id//1000000, str(card_id//1000000))+" · "+str(name), price])
+            except (IndexError, TypeError, ValueError):
+                continue
+        cards.sort(key=lambda c: (c[2], c[0]))
+        if len(cards) > 240:
+            cards = [cards[i*(len(cards)-1)//239] for i in range(240)]
+        if len(cards) >= 10:
+            groups.append({"grade": grade, "cards": cards})
+    p = out / "fun" / "price-pool.json"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({"date": pool.get("date",""), "groups": groups}, ensure_ascii=False), encoding="utf-8")
+
+
 def refresh_popular_market_cards(data_dir, market):
     """Build-time safeguard: always show 1-grade popularity from the full card list."""
     if not market or not market.get("byGrade"):
@@ -501,6 +529,7 @@ def main(argv=None):
     env = Environment(loader=FileSystemLoader(SITE / "templates"), undefined=StrictUndefined,
                       autoescape=False, keep_trailing_newline=True)
     data_dir = (ROOT / a.data) if not Path(a.data).is_absolute() else Path(a.data)
+    arcade_price_pool(data_dir, out)
     squad_catalog(data_dir, out)
     material_catalog(data_dir, out)
     today = dt.datetime.now(KST).strftime("%Y-%m-%d")

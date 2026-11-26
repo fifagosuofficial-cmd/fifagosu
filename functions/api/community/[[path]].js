@@ -21,13 +21,14 @@ const LEVELS=[[0,"0강냥",0],[30,"1강냥",1],[100,"3강냥",3],[500,"5강냥",
 function rankFor(points){points=Math.max(0,Number(points)||0);let i=LEVELS.length-1;while(i>0&&points<LEVELS[i][0])i--;return {level:i+1,grade:LEVELS[i][2],name:LEVELS[i][1],points,next:LEVELS[i+1]?.[0]??null,floor:LEVELS[i][0]}}
 const publicAuthor=(env,{author_subject,author_id,...row},ranks=new Map())=>({...row,verified:!!author_subject&&adminFor(env,{subject:author_subject}),rank:author_id?ranks.get(author_id)||rankFor(0):null});
 // Daily activity is capped per UTC day; positive votes from other members count only on visible content.
-async function authorRanks(db,ids){const out=new Map(),unique=[...new Set(ids.filter(Boolean))];for(let i=0;i<unique.length;i+=40){const chunk=unique.slice(i,i+40),q=chunk.map(()=>"?").join(",");const sql="SELECT m.id, (SELECT COALESCE(sum(min(n,3)),0)*5 FROM (SELECT count(*) n FROM posts p WHERE p.author=m.id AND p.hidden=0 GROUP BY p.created/86400))+(SELECT COALESCE(sum(min(n,8)),0) FROM (SELECT count(*) n FROM comments c JOIN posts p ON p.id=c.post_id WHERE c.author=m.id AND c.hidden=0 AND p.hidden=0 GROUP BY c.created/86400))+(SELECT count(*)*3 FROM votes v JOIN posts p ON p.id=v.post_id WHERE p.author=m.id AND p.hidden=0 AND v.member_id<>m.id)+(SELECT count(*)*2 FROM comment_votes v JOIN comments c ON c.id=v.comment_id JOIN posts p ON p.id=c.post_id WHERE c.author=m.id AND c.hidden=0 AND p.hidden=0 AND v.value=1 AND v.member_id<>m.id) points FROM members m WHERE m.id IN ("+q+")";const rows=(await db.prepare(sql).bind(...chunk).all()).results;for(const r of rows)out.set(r.id,rankFor(r.points))}return out}
+const XP_SQL="(SELECT COALESCE(sum(min(n,3)),0)*5 FROM (SELECT count(*) n FROM posts p WHERE p.author=m.id AND p.hidden=0 GROUP BY p.created/86400))+(SELECT COALESCE(sum(min(n,8)),0) FROM (SELECT count(*) n FROM comments c JOIN posts p ON p.id=c.post_id WHERE c.author=m.id AND c.hidden=0 AND p.hidden=0 GROUP BY c.created/86400))+(SELECT count(*)*3 FROM votes v JOIN posts p ON p.id=v.post_id WHERE p.author=m.id AND p.hidden=0 AND v.member_id<>m.id)+(SELECT count(*)*2 FROM comment_votes v JOIN comments c ON c.id=v.comment_id JOIN posts p ON p.id=c.post_id WHERE c.author=m.id AND c.hidden=0 AND p.hidden=0 AND v.value=1 AND v.member_id<>m.id)+(SELECT COALESCE(sum(reward-fee),0) FROM arcade_rounds ar WHERE ar.member_id=m.id)";
+async function authorRanks(db,ids){const out=new Map(),unique=[...new Set(ids.filter(Boolean))];for(let i=0;i<unique.length;i+=40){const chunk=unique.slice(i,i+40),q=chunk.map(()=>"?").join(",");const sql="SELECT m.id, "+XP_SQL+" points FROM members m WHERE m.id IN ("+q+")";const rows=(await db.prepare(sql).bind(...chunk).all()).results;for(const r of rows)out.set(r.id,rankFor(r.points))}return out}
 async function publicRows(env,db,rows){const ranks=await authorRanks(db,rows.map(r=>r.author_id));return rows.map(r=>publicAuthor(env,r,ranks))}
 
 // Additive, idempotent migration. Existing votes and content are never rewritten.
-const boardDDL=["CREATE TABLE IF NOT EXISTS post_dislikes(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,PRIMARY KEY(member_id,post_id))","CREATE INDEX IF NOT EXISTS post_dislike_post ON post_dislikes(post_id)","CREATE TABLE IF NOT EXISTS comment_votes(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,value INTEGER NOT NULL CHECK(value IN (-1,1)),PRIMARY KEY(member_id,comment_id))","CREATE INDEX IF NOT EXISTS comment_vote_comment ON comment_votes(comment_id)","CREATE TABLE IF NOT EXISTS comment_replies(comment_id INTEGER PRIMARY KEY REFERENCES comments(id) ON DELETE CASCADE,parent_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE)"];
+const boardDDL=["CREATE TABLE IF NOT EXISTS arcade_rounds(id TEXT PRIMARY KEY,member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,game TEXT NOT NULL,day INTEGER NOT NULL,created INTEGER NOT NULL,expires INTEGER NOT NULL,issued INTEGER NOT NULL,questions TEXT NOT NULL,step INTEGER NOT NULL DEFAULT 0,score INTEGER NOT NULL DEFAULT 0,fee INTEGER NOT NULL CHECK(fee IN (0,2)),reward INTEGER NOT NULL DEFAULT 0,state INTEGER NOT NULL DEFAULT 0 CHECK(state IN (0,1,2)))","CREATE INDEX IF NOT EXISTS arcade_owner_day ON arcade_rounds(member_id,day)","CREATE INDEX IF NOT EXISTS arcade_week ON arcade_rounds(game,day,state,score)","CREATE UNIQUE INDEX IF NOT EXISTS arcade_one_active ON arcade_rounds(member_id) WHERE state=0","CREATE TABLE IF NOT EXISTS post_dislikes(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,PRIMARY KEY(member_id,post_id))","CREATE INDEX IF NOT EXISTS post_dislike_post ON post_dislikes(post_id)","CREATE TABLE IF NOT EXISTS comment_votes(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,value INTEGER NOT NULL CHECK(value IN (-1,1)),PRIMARY KEY(member_id,comment_id))","CREATE INDEX IF NOT EXISTS comment_vote_comment ON comment_votes(comment_id)","CREATE TABLE IF NOT EXISTS comment_replies(comment_id INTEGER PRIMARY KEY REFERENCES comments(id) ON DELETE CASCADE,parent_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE)"];
 const migrated=new WeakMap();
-async function ensureBoard(db){if(!migrated.has(db)){const job=(async()=>{const ready=await db.prepare("SELECT count(*) n FROM sqlite_master WHERE type='table' AND name IN ('post_dislikes','comment_votes','comment_replies')").first();if(ready?.n!==3)await db.batch(boardDDL.map(sql=>db.prepare(sql)))})().catch(e=>{migrated.delete(db);throw e});migrated.set(db,job)}await migrated.get(db)}
+async function ensureBoard(db){if(!migrated.has(db)){const job=(async()=>{const ready=await db.prepare("SELECT count(*) n FROM sqlite_master WHERE type='table' AND name IN ('post_dislikes','comment_votes','comment_replies','arcade_rounds')").first();if(ready?.n!==4)await db.batch(boardDDL.map(sql=>db.prepare(sql)))})().catch(e=>{migrated.delete(db);throw e});migrated.set(db,job)}await migrated.get(db)}
 const upCount="(SELECT count(*) FROM votes v WHERE v.post_id=p.id)";
 const downCount="(SELECT count(*) FROM post_dislikes d WHERE d.post_id=p.id)";
 const netCount=upCount+"-"+downCount;
@@ -63,6 +64,78 @@ async function trafficSummary(db,u){
  return {generated:t,range,days,live:live.n,pages:await group("page"),sources:await group("source"),devices:await group("device"),hours,signups:signups.n};
 }
 
+
+/* Non-redeemable XP, atomic fee and award, one server-judged turn at a time. */
+const ARCADE_GAMES=new Set(["penalty","player","price","lifting"]),ARCADE_LIMIT=5;
+const arcadeDay=()=>Math.floor((now()+32400)/86400),arcadeWeek=d=>d-((d+3)%7+7)%7;
+const ri=n=>crypto.getRandomValues(new Uint32Array(1))[0]%n;
+function mix(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=ri(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+const PLAYER_QUIZ=[
+["아르헨티나 · 발롱도르 8회","리오넬 메시","크리스티아누 호날두","네이마르","킬리안 음바페"],
+["포르투갈 · CR7","크리스티아누 호날두","루이스 피구","페페","브루누 페르난데스"],
+["대한민국 · 2021-22 EPL 공동 득점왕","손흥민","박지성","황희찬","김민재"],
+["브라질 · 월드컵 3회 우승","펠레","호나우두","호나우지뉴","카카"],
+["아르헨티나 · 1986 월드컵 · 신의 손","디에고 마라도나","가브리엘 바티스투타","리오넬 메시","후안 로만 리켈메"],
+["프랑스 · 1998 월드컵 결승 헤더 두 골","지네딘 지단","티에리 앙리","다비드 트레제게","파트리크 비에이라"],
+["이탈리아 · 로마의 왕자 · 등번호 10","프란체스코 토티","알레산드로 델 피에로","안드레아 피를로","파올로 말디니"],
+["잉글랜드 · 프리킥 · 맨유와 레알에서 활약","데이비드 베컴","스티븐 제라드","프랭크 램파드","웨인 루니"],
+["네덜란드 · 토털 풋볼 · 등번호 14","요한 크루이프","루드 굴리트","마르코 반바스텐","데니스 베르캄프"],
+["스페인 · 2010 월드컵 결승 결승골","안드레스 이니에스타","차비 에르난데스","다비드 비야","세르히오 라모스"],
+["독일 · 2014 월드컵 우승 · 스위퍼 키퍼","마누엘 노이어","올리버 칸","미로슬라프 클로제","필리프 람"],
+["크로아티아 · 2018 발롱도르","루카 모드리치","이반 라키티치","마리오 만주키치","다보르 슈케르"],
+["이집트 · 리버풀의 왼발 공격수","모하메드 살라","사디오 마네","디디에 드로그바","리야드 마레즈"],
+["노르웨이 · 2022-23 EPL 36골","엘링 홀란","마르틴 외데고르","해리 케인","로베르트 레반도프스키"],
+["브라질 · 2002 월드컵 결승 두 골","호나우두","히바우두","카푸","호나우지뉴"],
+["이탈리아 · 2006 월드컵 우승 골키퍼","잔루이지 부폰","이케르 카시야스","디노 조프","파비오 칸나바로"],
+["스페인 · 라 데시마 결승 동점골","세르히오 라모스","라울 곤살레스","카를레스 푸욜","페르난도 토레스"],
+["프랑스 · 아스널 무패 우승 공격수","티에리 앙리","로베르 피레스","올리비에 지루","카림 벤제마"]];
+async function gameQuestions(game,env,u){
+ if(game==="player")return mix(PLAYER_QUIZ).slice(0,5).map(([prompt,correct,...wrong])=>{const choices=mix([correct,...wrong]);return {prompt,choices,answer:choices.indexOf(correct)}});
+ if(game==="penalty")return Array.from({length:5},()=>({prompt:"움직이는 골키퍼를 피해 슛!",choices:["왼쪽","가운데","오른쪽"],phase:ri(3)}));
+ if(game==="lifting")return Array.from({length:5},()=>({prompt:"공이 초록 구간에 들어올 때 터치!",choices:["터치"],target:2500+ri(1401)}));
+ check(env.ASSETS&&typeof env.ASSETS.fetch==="function","시세 데이터 준비 중입니다.",503);
+ const res=await env.ASSETS.fetch(new Request(u.origin+"/fun/price-pool.json"));check(res.ok,"시세 데이터 준비 중입니다.",503);
+ const data=await res.json(),groups=(data.groups||[]).filter(g=>g.cards?.length>=10);check(groups.length,"시세 데이터 준비 중입니다.",503);
+ const questions=[],used=new Set();
+ for(let i=0;i<300&&questions.length<5;i++){const g=groups[ri(groups.length)],a=g.cards[ri(g.cards.length)],b=g.cards[ri(g.cards.length)];if(a[0]===b[0]||a[1]===b[1]||Math.max(a[2],b[2])/Math.min(a[2],b[2])<1.1||Math.max(a[2],b[2])/Math.min(a[2],b[2])>20)continue;const k=[a[0],b[0]].sort().join(":")+":"+g.grade;if(used.has(k))continue;used.add(k);questions.push({prompt:g.grade+"강 기준, 더 비싼 카드는?",choices:[a[1],b[1]],answer:a[2]>b[2]?0:1,prices:[a[2],b[2]],date:data.date||""})}
+ check(questions.length===5,"비교할 시세가 부족합니다.",503);return questions;
+}
+const rewardFor=s=>s===5?12:s*2;
+function gamePublic(row){let question=null;if(row.state===0){const {answer,prices,...q}=JSON.parse(row.questions)[row.step];question=q}return {id:row.id,game:row.game,step:row.step,score:row.score,fee:row.fee,reward:row.reward,state:row.state,issued:row.issued,serverNow:Date.now(),question}}
+function gameCorrect(game,q,a,elapsed){
+ if(elapsed<0)return false;
+ if(game==="penalty")return elapsed<10000&&elapsed>=600&&a!==(q.phase+Math.floor(elapsed/1400))%3;
+ if(game==="lifting")return a===0&&Math.abs(elapsed-q.target)<=700;
+ return a===q.answer;
+}
+async function arcadeApi({p,b,m,db,env,u}){
+ await ensureBoard(db);
+ const day=arcadeDay(),t=now(),q=(s,...a)=>db.prepare(s).bind(...a),first=(s,...a)=>q(s,...a).first(),all=async(s,...a)=>(await q(s,...a).all()).results;
+ await q("UPDATE arcade_rounds SET state=2,reward=fee WHERE member_id=? AND state=0 AND expires<=?",m.id,t).run();
+ const summary=async()=>{const [r,n,pending]=await Promise.all([authorRanks(db,[m.id]),first("SELECT count(*) n FROM arcade_rounds WHERE member_id=? AND day=?",m.id,day),first("SELECT * FROM arcade_rounds WHERE member_id=? AND state=0",m.id)]);return {member:{nickname:m.nickname,rank:r.get(m.id)||rankFor(0)},used:n.n,limit:ARCADE_LIMIT,fee:n.n===0?0:2,pending:pending?gamePublic(pending):null}};
+ if(p==="game-status"){
+  const leaderboard=await all("SELECT game,nickname,score FROM (SELECT r.game,m.nickname,MAX(r.score) score,ROW_NUMBER() OVER(PARTITION BY r.game ORDER BY MAX(r.score) DESC,MIN(r.created),m.nickname) rn FROM arcade_rounds r JOIN members m ON m.id=r.member_id WHERE r.state=1 AND r.day>=? AND m.suspended=0 AND m.nickname IS NOT NULL GROUP BY r.game,m.id) WHERE rn<=10 ORDER BY game,rn",arcadeWeek(day));return json({...await summary(),leaderboard});
+ }
+ if(p==="game-start"){
+  check(ARCADE_GAMES.has(b.game)&&[0,2].includes(b.fee),"게임과 참가비를 확인해 주세요.");
+  const pending=await first("SELECT * FROM arcade_rounds WHERE member_id=? AND state=0",m.id);if(pending)return json({...await summary(),round:gamePublic(pending)});
+  const questions=await gameQuestions(b.game,env,u),id=random(),issued=Date.now();
+  const row=await first("WITH limits AS (SELECT count(*) n FROM arcade_rounds WHERE member_id=? AND day=?) INSERT INTO arcade_rounds(id,member_id,game,day,created,expires,issued,questions,fee) SELECT ?,m.id,?,?,?,?,?,?,CASE WHEN limits.n=0 THEN 0 ELSE 2 END FROM members m,limits WHERE m.id=? AND limits.n<? AND (CASE WHEN limits.n=0 THEN 0 ELSE 2 END)=? AND (limits.n=0 OR ("+XP_SQL+")>=2) AND NOT EXISTS(SELECT 1 FROM arcade_rounds WHERE member_id=m.id AND state=0) RETURNING *",m.id,day,id,b.game,day,t,t+600,issued,JSON.stringify(questions),m.id,ARCADE_LIMIT,b.fee);
+  if(!row){const s=await summary();if(s.pending)return json({...s,round:s.pending});throw new Err(s.used>=ARCADE_LIMIT?"오늘 참가 횟수를 모두 사용했습니다.":s.fee!==b.fee?"참가비가 변경되었습니다. 다시 확인해 주세요.":"XP가 부족합니다.",409)}return json({...await summary(),round:gamePublic(row)});
+ }
+ if(p==="game-answer"){
+  check(typeof b.id==="string"&&/^[a-f0-9]{64}$/.test(b.id),"게임 번호 오류");const step=integer(b.step,0,4),answer=integer(b.answer,0,3);
+  const row=await first("SELECT * FROM arcade_rounds WHERE id=? AND member_id=?",b.id,m.id);check(row,"게임을 찾을 수 없습니다.",404);
+  if(row.state!==0||row.step!==step)return json({...await summary(),round:gamePublic(row)});
+  const question=JSON.parse(row.questions)[step];check(answer<question.choices.length,"선택지를 확인해 주세요.");
+  const correct=gameCorrect(row.game,question,answer,Date.now()-row.issued),score=row.score+(correct?1:0),finished=step===4;
+  const updated=await first("UPDATE arcade_rounds SET step=?,score=?,issued=?,state=?,reward=? WHERE id=? AND member_id=? AND state=0 AND step=? AND expires>? RETURNING *",step+1,score,Date.now(),finished?1:0,finished?rewardFor(score):0,row.id,m.id,step,t);
+  const result=updated||await first("SELECT * FROM arcade_rounds WHERE id=? AND member_id=?",row.id,m.id);
+  return json({...await summary(),round:gamePublic(result),feedback:updated?{correct,answer:question.choices[question.answer]||null,prices:question.prices||null}:null});
+ }
+ throw new Err("페이지를 찾을 수 없습니다.",404);
+}
+
 export async function onRequest({request,env}){
  const u=new URL(request.url),p=u.pathname.replace(/^\/api\/community\/?/,"").replace(/\/$/,""),db=env.COMMUNITY_DB;
  const enabled=env.COMMUNITY_ENABLED==="1"&&[POLICY,LEGACY_POLICY].includes(env.COMMUNITY_POLICY_VERSION)&&!!db&&!!env.GOOGLE_CLIENT_ID&&!!env.GOOGLE_CLIENT_SECRET&&env.COMMUNITY_ORIGIN===u.origin&&u.protocol==="https:";
@@ -81,6 +154,7 @@ export async function onRequest({request,env}){
  const audit=async(action,target,reason)=>run("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",member.id,action,String(target),reason,now());
  try{
  if(request.method==="GET"){
+   if(p==="game-status")return await arcadeApi({p,m:active(),db,env,u});
    if(p==="me"){if(!member)return json({enabled:true,member:null});await ensureBoard(db);const ranks=await authorRanks(db,[member.id]);if(member.game_name!==null&&member.game_name!==undefined)await run("UPDATE members SET game_name=NULL WHERE id=?",member.id);return json({enabled:true,member:{nickname:member.nickname,suspended:!!member.suspended,admin,rank:ranks.get(member.id)||rankFor(0),needsPolicy:member.policy!==POLICY}})}
    if(p==="callback"){
      const state=u.searchParams.get("state"),code=u.searchParams.get("code");
@@ -189,6 +263,7 @@ export async function onRequest({request,env}){
  }
  if(p==="view"){const id=integer(b.post_id);await run("UPDATE posts SET views=views+1 WHERE id=? AND hidden=0",id);return json({ok:true})}
  const m=active();
+ if(p==="game-start"||p==="game-answer")return await arcadeApi({p,b,m,db,env,u});
  if(p==="post"){
    check(cats.has(b.category)&&prefixes.has(b.prefix),"분류를 확인해 주세요.");
    check(b.prefix==="normal"||b.category==="free","머릿말은 자유게시판에서만 선택할 수 있습니다.");

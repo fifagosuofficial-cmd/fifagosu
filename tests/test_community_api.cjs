@@ -27,7 +27,7 @@ test("non-admin member cannot create notice",async()=>{
 test("popular feed applies inclusive 30-vote threshold before pagination",async()=>{
  const {onRequest}=await load();
  let sql="";
- const env={...enabled,COMMUNITY_DB:{prepare(s){if(s.includes("sqlite_master"))return {first:async()=>({n:3})};sql=s;return {bind(){return {all:async()=>({results:[{id:2,likes:30}]})}}}}}};
+ const env={...enabled,COMMUNITY_DB:{prepare(s){if(s.includes("sqlite_master"))return {first:async()=>({n:4})};sql=s;return {bind(){return {all:async()=>({results:[{id:2,likes:30}]})}}}}}};
  const r=await onRequest({request:new Request(origin+"/api/community/posts?category=popular"),env});
  assert.equal(r.status,200);
  assert.match(sql,/WHERE .*p\.hidden=0.*\(\(SELECT count\(\*\) FROM votes v WHERE v\.post_id=p\.id\)-\(SELECT count\(\*\) FROM post_dislikes d WHERE d\.post_id=p\.id\)\)>=30.*ORDER BY likes DESC.*LIMIT 30/);
@@ -66,7 +66,7 @@ test("login state queue is cleaned and capped before inserting more OAuth state"
 test("public verification uses the allowlisted subject, never a nickname, and never leaks subject",async()=>{
  const {onRequest}=await load();
  const rows=[{id:1,nickname:"피파고수",author_subject:"ordinary"},{id:2,nickname:"different",author_subject:"owner-sub"}];
- const env={...enabled,COMMUNITY_ADMIN_SUBS:"owner-sub",COMMUNITY_DB:{prepare(sql){if(sql.includes("sqlite_master"))return {first:async()=>({n:3})};return {bind(){return {all:async()=>({results:rows}),first:async()=>rows[1]}}}}}};
+ const env={...enabled,COMMUNITY_ADMIN_SUBS:"owner-sub",COMMUNITY_DB:{prepare(sql){if(sql.includes("sqlite_master"))return {first:async()=>({n:4})};return {bind(){return {all:async()=>({results:rows}),first:async()=>rows[1]}}}}}};
  let r=await onRequest({request:new Request(origin+"/api/community/posts"),env});
  assert.equal(r.status,200);let j=await r.json();
  assert.deepEqual(j.posts.map(x=>x.verified),[false,true]);
@@ -216,4 +216,26 @@ test("board article navigation does not block on view writes or list refresh",()
  assert.ok(js.includes('history.pushState(null,"",postURL(id))'));
  assert.ok(js.includes('window.addEventListener("popstate"'));
  assert.ok(js.includes('initialPost=initialId>0?get("post?id="+initialId)'));
+});
+
+test("arcade charges once, validates server answers and awards XP once",async()=>{
+ const {env,sql}=fixture();
+ let r=await callFixture(env,"game-status",null,"a");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.member.rank.points,9);assert.equal(r.data.fee,0);
+ r=await callFixture(env,"game-start",{game:"player",fee:0},"a");assert.equal(r.status,200,JSON.stringify(r.data));const id=r.data.round.id;assert.ok(!("answer" in r.data.round.question));
+ const qs=JSON.parse(sql.prepare("SELECT questions FROM arcade_rounds WHERE id=?").get(id).questions);
+ for(let i=0;i<5;i++){r=await callFixture(env,"game-answer",{id,step:i,answer:qs[i].answer,reward:999},"a");assert.equal(r.status,200,JSON.stringify(r.data))}
+ assert.equal(r.data.round.reward,12);assert.equal(r.data.member.rank.points,21);
+ r=await callFixture(env,"game-answer",{id,step:4,answer:qs[4].answer},"a");assert.equal(r.data.member.rank.points,21);
+ assert.equal((await callFixture(env,"game-start",{game:"penalty",fee:0},"a")).status,409);
+ r=await callFixture(env,"game-start",{game:"penalty",fee:2},"a");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.member.rank.points,19);const paid=r.data.round.id;
+ r=await callFixture(env,"game-start",{game:"lifting",fee:2},"a");assert.equal(r.data.round.id,paid);assert.equal(r.data.member.rank.points,19);
+ assert.equal((await callFixture(env,"game-answer",{id:paid,step:0,answer:0},"b")).status,404);
+ sql.prepare("UPDATE arcade_rounds SET expires=0 WHERE id=?").run(paid);
+ r=await callFixture(env,"game-status",null,"a");assert.equal(r.data.member.rank.points,21);assert.equal(r.data.pending,null);assert.equal(r.data.leaderboard[0].score,5);sql.close();
+});
+test("arcade refuses anonymous, insufficient XP and missing market data before charging",async()=>{
+ const {env,sql}=fixture();assert.equal((await callFixture(env,"game-start",{game:"player",fee:0})).status,401);
+ assert.equal((await callFixture(env,"game-start",{game:"price",fee:0},"b")).status,503);assert.equal(sql.prepare("SELECT count(*) n FROM arcade_rounds").get().n,0);
+ const r=await callFixture(env,"game-start",{game:"player",fee:0},"b");assert.equal(r.status,200);sql.prepare("UPDATE arcade_rounds SET state=1,step=5 WHERE id=?").run(r.data.round.id);
+ assert.equal((await callFixture(env,"game-start",{game:"player",fee:2},"b")).status,409);sql.close();
 });

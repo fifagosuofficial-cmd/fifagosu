@@ -282,10 +282,7 @@ function drawPlayer(kind){
   const P=$('smEPlayer');if(!SEL){return}
   const {c,l,d}=SEL,b=GRADE_BONUS[cur]||0,pos=(d&&d.pos&&d.pos.length?d.pos:l&&l.pos)||[],main=pos[0];
   const price=priceAt(cur);
-  P.className='sim-player'+(kind?' fx-'+kind:'');
-  P.innerHTML=`<div class="sp-img">${bigImg(c.id)}</div><div class="sp-info"><div class="sp-name">${bigBadge(c.sid)}<b>${H(c.name||(d&&d.name)||'')}</b></div>
-    ${main?`<div class="sp-ovr"><span>${H(main[0])}</span><b class="${fcCls((main[1]||0)+b+ADAPT)}">${(main[1]||0)+b+ADAPT}</b><small>+${b}</small></div>`:''}
-    <div class="sp-price">${cur}강 시세 <b>${price>0?fmtBP(price):'-'}</b></div></div>`;
+  P.style.display='none';
   const S=$('smEStatsBox');
   if(!d||!d.stats){S.innerHTML=`<p class="sim-note">${SEL.d===null&&!SEL.l?'능력치를 불러오는 중이에요…':'이 카드는 아직 세부 능력치를 수집하지 않았어요. 매일 채우는 중이에요.'}</p>`;return}
   const sum=(d.summary||[]).map(([k,v])=>`<div><small>${H(k)}</small><b class="${fcCls(v+b+ADAPT)}">${v+b+ADAPT}</b></div>`).join('');
@@ -332,7 +329,7 @@ function draw(msg,kind){
   $('smETry').textContent=tries;$('smEOk').textContent=ok;$('smENg').textContent=ng;
   $('smEP').textContent=cur>=MAX?'최대':autoMat()&&!selectedPlan(cur)?'미확인':(pOf(cur)*100).toFixed(pOf(cur)<.1?1:0)+'%';
   if(msg)$('smEMsg').textContent=msg;
-  if(SEL)drawPlayer(kind);
+  if(SEL){drawPlayer(kind);let priceLabel=$('smECardPrice');if(!priceLabel){priceLabel=document.createElement('div');priceLabel.id='smECardPrice';priceLabel.style.cssText='text-align:center;font-size:13px;margin:8px 0;color:inherit';card.after(priceLabel)}priceLabel.textContent=cur+'강 시세 '+(priceAt(cur)>0?fmtBP(priceAt(cur)):'-');}
   matShow();drawEv();ensureCurrent();
 }
 function reset(){clearInterval(timer);timer=null;$('smEAuto').textContent='목표까지 자동';cur=+$('smEFrom').value;tries=ok=ng=spent=0;START=priceAt(cur);matShow();$('smELog').innerHTML='';draw(SEL?'강화 버튼을 눌러 보세요.':'먼저 선수를 고르면 능력치까지 함께 바뀌어요.')}

@@ -31,16 +31,41 @@ function pitch(c){crowd(c);rect(c,0,44,256,100,"#398b61");for(let i=0;i<6;i++){c
 function goal(c){rect(c,88,20,80,35,"#1e514c");for(let x=90;x<168;x+=7)rect(c,x,21,1,33,"#60927f");for(let y=23;y<55;y+=6)rect(c,89,y,78,1,"#60927f");rect(c,83,17,90,4,"#fcf4dd");rect(c,83,20,4,38,"#e4ebda");rect(c,169,20,4,38,"#e4ebda");rect(c,86,55,84,2,"#b8d5c2")}
 function label(c,x,y,text,color="#fff6da"){c.font="bold 10px monospace";c.textAlign="center";c.fillStyle="#16312a";c.fillText(text,x+1,y+1);c.fillStyle=color;c.fillText(text,x,y)}
 function penaltyFrame(c,t=0,shot=null,keeper=null,scored=null){
- pitch(c);goal(c);
- const p=shot===null?0:clamp(t/650),fly=clamp((t-380)/530),dive=keeper===null?0:clamp((t-420)/300);
- const kx=128+(keeper===null?0:(keeper-1)*32*dive);
- person(c,kx,43-5*dive,{scale:1,shirt:"#f7b842",keeper:true,dive:keeper===1||keeper===null?0:(keeper-1)*dive});
- const run=clamp(p*1.7),px=112+run*10,py=123-run*14;
- rect(c,px-10,py+13,24,3,"#28764e");person(c,px,py,{scale:1.3,back:true,kick:t>300&&t<770});
- const end=shot===null?128:99+29*shot;let bx=128+(end-128)*fly,by=108+(45-108)*fly-15*Math.sin(Math.PI*fly);
- if(scored===false&&fly===1){bx=kx+8;by=52}
- pixelBall(c,bx,by,Math.max(2,Math.round(5-2*fly)));
- if(scored!==null&&t>920)label(c,128,74,scored?"GOAL!":"SAVE!",scored?"#fff39d":"#ffb5a8");
+ const active=shot!==null,run=active?clamp(t/420):0,fly=active?clamp((t-440)/460):0,d=keeper===null?0:clamp((t-470)/340),side=keeper===null?0:keeper-1;
+ const impact=active?Math.max(0,1-Math.abs(t-440)/65):0;
+ c.save();c.translate(Math.round(impact*Math.sin(t*.3)*2),0);
+ pitch(c);
+ // Layered stadium lighting and grass texture.
+ for(let i=0;i<90;i++){let x=(i*73)%256,y=62+(i*37)%80;rect(c,x,y,2,1,i%2?"#56a773":"#347e54")}
+ for(let i=0;i<4;i++){rect(c,8+i*79,3,12,3,"#fff5cb");rect(c,10+i*79,6,8,2,"#a9c9cf")}
+ const ripple=scored&&fly>=1?Math.sin((t-900)/45)*Math.max(0,1-(t-900)/400)*4:0;
+ poly(c,[[83,17],[173,17],[166,24],[90,24]],"#a9c9c2");goal(c);
+ if(ripple)for(let y=25;y<55;y+=6){for(let x=90;x<168;x+=7)rect(c,x+Math.round(ripple*Math.sin(y*.2)),y,2,1,"#d6e8d4")}
+ const kx=128+side*32*d,ky=43-7*Math.sin(Math.PI*d);
+ rect(c,kx-11,57,22,2,"#285c49");
+ c.save();c.translate(Math.round(kx),Math.round(ky));if(side)c.rotate(side*d*1.1);
+ person(c,0,0,{shirt:"#f7b842",keeper:true});
+ if(d>0){for(const sign of [-1,1]){pixelLimb(c,sign*7,-10,sign*(12+7*d),-10-8*d,5,"#e6a139");rect(c,sign*(12+7*d)-2,-12-8*d,5,5,"#fff5df")}}
+ c.restore();
+ const stride=active&&run<1?Math.sin(t/48)*Math.sin(Math.PI*run):0,px=104+run*19,py=126-run*17;
+ const swing=active?Math.sin(Math.PI*clamp((t-280)/330)):0;
+ rect(c,px-12,py+15,26,3,"#286a45");
+ c.save();c.translate(Math.round(px),Math.round(py));c.scale(1.25,1.25);
+ person(c,0,-Math.abs(stride)*2,{back:true});
+ for(const sign of [-1,1]){
+ const hip=sign*4,knee=hip+sign*stride*5+(sign===1?swing*6:0),foot=knee+sign*stride*3+(sign===1?swing*9:0),fy=13-(sign===1?swing*10:Math.max(0,stride*sign)*3);
+ pixelLimb(c,hip,3,knee,8,5,"#20283c");pixelLimb(c,hip,3,knee,8,3,"#f5f1e6");pixelLimb(c,knee,8,foot,fy,4,"#e6a76e");rect(c,foot-2,fy,6,3,"#20283c");
+ pixelLimb(c,sign*7,-10,sign*(10+Math.abs(stride)*3),-4+sign*stride*4,4,"#ee5364");
+ }
+ c.restore();
+ const end=shot===null?128:99+29*shot;
+ let bx=128+(end-128)*fly,by=108-63*fly-12*Math.sin(Math.PI*fly);
+ if(scored===false&&fly===1){bx=kx+side*8;by=ky-5}
+ if(fly>0&&fly<1){for(let i=3;i>=1;i--){let f=Math.max(0,fly-i*.055);c.globalAlpha=.13*(4-i);pixelBall(c,128+(end-128)*f,108-63*f-12*Math.sin(Math.PI*f),3)}c.globalAlpha=1}
+ rect(c,bx-4,108-51*fly,8,2,"#286a45");pixelBall(c,bx,by,Math.max(2,Math.round(5-2*fly)));
+ if(impact>0)for(let i=0;i<8;i++){let angle=i*Math.PI/4;rect(c,128+Math.cos(angle)*12,108+Math.sin(angle)*8,2,2,"#fff2a0")}
+ if(scored!==null&&t>920){rect(c,79,63,98,18,"#17273d");label(c,128,76,scored?"GOAL!!":"SAVE!",scored?"#fff39d":"#ffb5a8")}
+ c.restore();
 }
 
 // Articulated pixel player: moving joints, a planted supporting foot and a swinging kicking leg.

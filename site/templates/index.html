@@ -115,7 +115,7 @@
       <div class="mk-sort" role="group" aria-label="정렬"><button type="button" data-market-sort="impact" aria-pressed="true">종합 순위</button><button type="button" data-market-sort="pct" aria-pressed="false">등락률</button><button type="button" data-market-sort="delta" aria-pressed="false">BP 변동액</button></div>
     </div>
     <div class="mk-sort mk-direction" role="group" aria-label="상승 하락 선택"><button type="button" data-market-dir="up" aria-pressed="true">▲ 급등</button><button type="button" data-market-dir="down" aria-pressed="false">▼ 급락</button></div>
-    <div class="mk-detail-meta"><b data-market-title>1일 급등 TOP 100</b><span data-market-status>실제 이력을 불러오는 중</span><details class="fgix-help" style="position:relative"><summary aria-label="순위 산정 기준" style="list-style:none;cursor:pointer;border:1px solid currentColor;border-radius:50%;width:22px;height:22px;text-align:center;line-height:20px">?</summary><div style="position:absolute;right:0;top:28px;width:min(280px,75vw);z-index:10;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:12px;line-height:1.6">전체 시즌·전체 강화 실제 시세 기준. 종합 순위는 등락률 40% + BP 변동액 40% + 추세 지속성 20%이며, 종합 순위만 변동률 3% 이상·절대 변동액 상위 20%·관측 3회 이상을 적용합니다. 등락률·BP 변동액 정렬은 종합 순위의 변동액 필터를 적용하지 않습니다.</div></details></div>
+    <div class="mk-detail-meta"><b data-market-title>1일 급등 TOP 100</b><span data-market-status>실제 이력을 불러오는 중</span><details class="fgix-help" style="position:relative"><summary aria-label="순위 산정 기준" style="list-style:none;cursor:pointer;border:1px solid currentColor;border-radius:50%;width:22px;height:22px;text-align:center;line-height:20px">?</summary><div style="position:absolute;right:0;top:28px;width:min(280px,75vw);z-index:10;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:12px;line-height:1.6">전체 시즌·전체 강화 카드의 실제 시세 변동 기준. 종합 순위는 등락률 40% + BP 변동액 40% + 추세 지속성 20%이며, 종합 순위만 변동률 3% 이상·절대 변동액 상위 20%·관측 3회 이상을 적용합니다. 등락률·BP 변동액 정렬은 종합 순위의 변동액 필터를 적용하지 않습니다.</div></details></div>
     <div class="mk-panel">
       <section class="mk-box mk-up" data-market-direction="up"><h2>급등 TOP 100</h2><div class="mk-table-scroll"><table class="mk-stock-table">{{ M.table_head() }}<tbody data-market-list="up"></tbody></table></div><p class="mk-empty" data-market-empty="up">실제 시세 순위를 불러오는 중이에요.</p></section>
       <section class="mk-box mk-down" data-market-direction="down"><h2>급락 TOP 100</h2><div class="mk-table-scroll"><table class="mk-stock-table">{{ M.table_head() }}<tbody data-market-list="down"></tbody></table></div><p class="mk-empty" data-market-empty="down">실제 시세 순위를 불러오는 중이에요.</p></section>
@@ -240,6 +240,14 @@
       <div class="sim-box sim-stage">
         <div class="sim-player" id="smEPlayer"><p class="sim-note">먼저 선수를 골라 주세요. 고른 선수의 능력치가 강화 단계에 맞춰 바뀌어요.</p></div>
         <div class="sim-card" id="smECard"><span class="sim-g" id="smEGrade">1</span><small id="smETier">동카</small></div>
+        <div style="width:100%;min-width:0;text-align:left;margin:12px 0">        <h2>강화 설정</h2>
+        <div class="sim-form">
+          <label>시작 강화<select id="smEFrom"></select></label>
+          <label>목표 강화<select id="smETo"></select></label>
+          <label>실패하면<select id="smEFail"><option value="keep">단계 유지</option><option value="down">1단계 하락 (5강 이상)</option></select></label>
+          <label class="mat-in">재료 카드 1장 가격 (BP)<input type="text" id="smEMat" placeholder="예: 2500000" inputmode="numeric" autocomplete="off"><span class="mat-v" id="smEMatV">재료비 불러오는 중</span></label><div class="mat-in" style="grid-column:1 / -1;min-width:0;display:grid;gap:8px;padding:12px;border:1px solid rgba(128,128,128,.25);border-radius:12px"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><label style="display:flex;align-items:center;gap:8px;margin:0"><input type="checkbox" id="smEMatAuto" checked style="width:auto;margin:0;accent-color:#00bf70"> 자동 재료비</label><details style="text-align:right;max-width:55%"><summary style="cursor:pointer;list-style:none" aria-label="재료비 기준 안내">ⓘ</summary><small>공식 월평균 최저 거래가 기준 · 최대 5장 · 이벤트 미적용</small></details></div><div id="smEMatCombo" class="mat-v" aria-live="polite" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;min-width:0"></div><a href="https://fconline.nexon.com/DataCenter/PlayerGrow" target="_blank" rel="noopener" style="font-size:12px;color:inherit;opacity:.75;text-decoration:none">공식 도우미 ↗</a></div>
+        </div>
+        </div>
         <div class="gauge5" id="smEGaugeBox" role="group" aria-label="강화 게이지">
           <span>게이지</span>
           <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button><button type="button" data-k="4">4</button><button type="button" data-k="5" class="on">5</button>
@@ -256,13 +264,6 @@
       <div class="sim-box">
         <h2>이번 강화 손익 <small>누적 · 강화할 때마다 바뀌어요</small></h2>
         <div class="ev-box" id="smEEv"><p class="sim-note">선수를 고르면 성공·실패 시 시세와 기댓값을 계산해 드려요.</p></div>
-        <h2>강화 설정</h2>
-        <div class="sim-form">
-          <label>시작 강화<select id="smEFrom"></select></label>
-          <label>목표 강화<select id="smETo"></select></label>
-          <label>실패하면<select id="smEFail"><option value="keep">단계 유지</option><option value="down">1단계 하락 (5강 이상)</option></select></label>
-          <label class="mat-in">재료 카드 1장 가격 (BP)<input type="text" id="smEMat" placeholder="예: 2500000" inputmode="numeric" autocomplete="off"><span class="mat-v" id="smEMatV">재료비 불러오는 중</span></label><div class="mat-in" style="grid-column:1 / -1;min-width:0;display:grid;gap:8px;padding:12px;border:1px solid rgba(128,128,128,.25);border-radius:12px"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><label style="display:flex;align-items:center;gap:8px;margin:0"><input type="checkbox" id="smEMatAuto" checked style="width:auto;margin:0;accent-color:#00bf70"> 자동 재료비</label><details style="text-align:right;max-width:55%"><summary style="cursor:pointer;list-style:none" aria-label="재료비 기준 안내">ⓘ</summary><small>공식 월평균 최저 거래가 기준 · 최대 5장 · 이벤트 미적용</small></details></div><div id="smEMatCombo" class="mat-v" aria-live="polite" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;min-width:0"></div><a href="https://fconline.nexon.com/DataCenter/PlayerGrow" target="_blank" rel="noopener" style="font-size:12px;color:inherit;opacity:.75;text-decoration:none">공식 도우미 ↗</a></div>
-        </div>
         <div id="smEStatsBox"><p class="sim-note">선수를 고르면 34개 세부 능력치가 여기 표시돼요.</p></div>
         <ol class="sim-log" id="smELog"></ol>
         <p class="sim-note">성공 확률 = 풀 게이지 확률 × 게이지 비율(넥슨 공지, 1칸 = 20%). 실패 시 하락 확률은 공식 수치가 이미지로만 공개돼 '1단계 하락'은 가정이에요. 능력치는 적응도 5단계 기준.</p>

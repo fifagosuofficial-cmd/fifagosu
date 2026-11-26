@@ -117,18 +117,19 @@ function effStart(ctx,retry=false){
     for(const r of ctx.candidates){const k=planKey(r.id,r.g);if(officialPlans.has(k)||ctx.attempted.has(k)||knownUnavailable(k))continue;next.push(r);if(next.length>=EFF_BATCH)break}
     for(let i=0;i<next.length&&effActive(ctx);i+=EFF_PARALLEL){
       if(ctx.issue)break;
-      if(i>0)await new Promise(resolve=>setTimeout(resolve,8000));
+      const delay=Math.max(0,officialNext-Date.now(),officialCooldown-Date.now());if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
       if(!effActive(ctx))break;
       await Promise.all(next.slice(i,i+EFF_PARALLEL).map(async r=>{
         const k=planKey(r.id,r.g);if(officialPlans.has(k))return;
         ctx.attempted.add(k);
+        officialNext=Date.now()+8000;
         const plan=await loadOfficial(r.g,r.id);
         ctx.done++;
-        if(!plan){const code=officialErrorCodes.get(k);if(!effMissingQuote(code)){ctx.retry.add(k);if(effLookupBlocked(code))ctx.issue=officialErrors.get(k)||"공식 조회 일시 제한";}}
+        if(!plan){const code=officialErrorCodes.get(k);if(!effMissingQuote(code)){ctx.retry.add(k);if(effLookupBlocked(code)){if(officialCooldown<=Date.now())officialCooldown=Date.now()+65000;ctx.issue=officialErrors.get(k)||"공식 조회 일시 제한";}}}
         if(effActive(ctx))effPaint(ctx);
       }));
     }
-  }).finally(()=>{ctx.running=false;if(effActive(ctx)){effPaint(ctx);if(ctx.retry.size&&ctx.issue&&!ctx.resume){ctx.resume=setTimeout(()=>{ctx.resume=null;if(effActive(ctx))effStart(ctx,true)},65000)}}});
+  }).finally(()=>{ctx.running=false;if(effActive(ctx)){effPaint(ctx);if(ctx.retry.size&&ctx.issue&&!ctx.resume){ctx.resume=setTimeout(()=>{ctx.resume=null;if(effActive(ctx))effStart(ctx,true)},Math.max(1000,officialCooldown-Date.now()||65000))}}});
 }
 function effRow(r,i,kind){
   const win=kind==="win",score=win?effLifeScore(r):0,w=win?score:Math.max(4,Math.min(100,r.rr/2*100));
@@ -198,13 +199,15 @@ const officialPlans=new Map(),officialPending=new Map(),officialErrors=new Map()
 const knownUnavailable=k=>(officialUnavailable.get(k)||0)>Date.now();
 const planKey=(id,g)=>id+":"+g;
 const validOfficialPlan=plan=>plan?.official&&plan.gauge===100&&Number.isSafeInteger(plan.cost)&&plan.cost>0&&Array.isArray(plan.cards)&&plan.cards.length>0&&plan.cards.length<=5&&plan.cards.every(c=>Number.isSafeInteger(c.ovr)&&Number.isSafeInteger(c.price)&&c.price>0)&&plan.cards.reduce((sum,c)=>sum+c.price,0)===plan.cost;
-let cachedPlansP=null;
+let cachedPlansP=null,cachedPlansAt=0;
+let officialCooldown=0,officialNext=0;
 function loadCachedPlans(){
- if(!cachedPlansP)cachedPlansP=(async()=>{try{
+ if(Date.now()-cachedPlansAt>30000)cachedPlansP=null;
+ if(!cachedPlansP){cachedPlansAt=Date.now();cachedPlansP=(async()=>{try{
   const r=await fetch("/api/boost?cached=1",{signal:typeof AbortSignal.timeout==="function"?AbortSignal.timeout(5000):undefined});if(!r.ok){cachedPlansP=null;return;}
-  const d=await r.json();for(const item of d.items||[]){if(Number.isSafeInteger(item.spid)&&Number.isInteger(item.grade)&&item.grade>=1&&item.grade<MAX&&validOfficialPlan(item.plan)){const k=planKey(item.spid,item.grade);if(!officialPlans.has(k))officialPlans.set(k,item.plan)}}
+  const d=await r.json();for(const item of d.items||[]){if(Number.isSafeInteger(item.spid)&&Number.isInteger(item.grade)&&item.grade>=1&&item.grade<MAX&&validOfficialPlan(item.plan)){const k=planKey(item.spid,item.grade);officialPlans.set(k,item.plan)}}
   if(effCtx&&effActive(effCtx))effPaint(effCtx);
- }catch{cachedPlansP=null}})();return cachedPlansP;
+ }catch{cachedPlansP=null}})();}return cachedPlansP;
 }
 let preparing=false;
 const selectedPlan=g=>SEL?officialPlans.get(planKey(SEL.c.id,g))||null:null;
@@ -217,7 +220,7 @@ async function loadOfficial(g,id=SEL?.c.id){
  const task=(async()=>{try{
    const r=await fetch("/api/boost?spid="+encodeURIComponent(id)+"&grade="+g,{credentials:"same-origin"});
    const d=await r.json().catch(()=>null);
-   if(!r.ok||!d){const e=Error(d?.message||"공식 도우미 연결 오류 ("+r.status+")");e.code=d?.code||"http_"+r.status;throw e}
+   if(!r.ok||!d){const e=Error(d?.message||"공식 도우미 연결 오류 ("+r.status+")");e.code=d?.code||"http_"+r.status;if(r.status===429)officialCooldown=Math.max(officialCooldown,Date.now()+1000*Math.max(1,Number(d?.retryAfter)||120));throw e}
    const plan=d.plan;
    if(!plan&&effMissingQuote(d.reason)){officialUnavailable.set(key,Date.now()+30*60*1000);const e=Error(d.reason==="no_quotes"?"이 선수의 공식 재료 시세가 없습니다.":"공식 데이터에서 풀게이지 조합을 찾지 못했습니다.");e.code=d.reason;throw e}
    if(d.spid!==id||d.grade!==g||!validOfficialPlan(plan)){const e=Error("공식 재료비 응답을 검증하지 못했습니다.");e.code="invalid_plan";throw e}

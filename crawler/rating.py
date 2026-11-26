@@ -124,11 +124,70 @@ class Api:
         return out
 
 
+# Numerators and denominators are accumulated from actual completed matches.
+def metric_pair(num, den=1):
+    if not isinstance(num, (int, float)) or not isinstance(den, (int, float)) or num < 0 or den <= 0:
+        return None
+    return (num, den)
+
+
+def player_metrics(st):
+    return {
+        "goal": metric_pair(st.get("goal")), "assist": metric_pair(st.get("assist")),
+        "finish": metric_pair(st.get("goal"), st.get("shoot")),
+        "pass": metric_pair(st.get("passSuccess"), st.get("passTry")),
+        "dribble": metric_pair(st.get("dribbleSuccess"), st.get("dribbleTry")),
+        "duel": metric_pair(st.get("ballPossesionSuccess"), st.get("ballPossesionTry")),
+        "aerial": metric_pair(st.get("aerialSuccess"), st.get("aerialTry")),
+        "tackle": metric_pair(st.get("tackle"), st.get("tackleTry")),
+        "intercept": metric_pair(st.get("intercept")), "block": metric_pair(st.get("block")),
+        "rating": metric_pair(st.get("spRating")),
+    }
+
+
+def side_metrics(side, opp):
+    sh, osh = side.get("shoot") or {}, opp.get("shoot") or {}
+    ps, df = side.get("pass") or {}, side.get("defence") or {}
+    result = (side.get("matchDetail") or {}).get("matchResult")
+    return {
+        "goals": metric_pair(sh.get("goalTotal")), "against": metric_pair(osh.get("goalTotal")),
+        "shots": metric_pair(sh.get("shootTotal")),
+        "on_target": metric_pair(sh.get("effectiveShootTotal"), sh.get("shootTotal")),
+        "finish": metric_pair(sh.get("goalTotal"), sh.get("shootTotal")),
+        "pass": metric_pair(ps.get("passSuccess"), ps.get("passTry")),
+        "through": metric_pair(ps.get("throughPassSuccess"), ps.get("throughPassTry")),
+        "tackle": metric_pair(df.get("tackleSuccess"), df.get("tackleTry")),
+        "block": metric_pair(df.get("blockSuccess"), df.get("blockTry")),
+        "win": metric_pair(int(result == "승")) if result in ("승", "무", "패") else None,
+    }
+
+
+def add_metrics(store, key, metrics):
+    group = store.setdefault(key, {"n": 0, "m": {}})
+    group["n"] += 1
+    for k, pair in metrics.items():
+        if pair is None:
+            continue
+        v = group["m"].setdefault(k, [0, 0, 0])
+        v[0] += pair[0]
+        v[1] += pair[1]
+        v[2] += 1
+
+
+def summarize_metrics(store, min_n=30):
+    return {str(key): {"n": group["n"], "metrics": {
+        k: {"avg": round(v[0] / v[1], 6), "n": v[2], "den": v[1]}
+        for k, v in group["m"].items() if v[1] > 0 and v[2] >= min_n
+    }} for key, group in store.items() if group["n"] >= min_n}
+
+
 class Agg:
     """등급 기준(≤900, ≤1000)별 포지션 평점 합계"""
 
     def __init__(self):
         self.s = {CHAMP: {}, WIDE: {}}
+        self.game = {}
+        self.roles = {}
 
     def add(self, basis, pos, rating):
         for b in (CHAMP, WIDE):
@@ -150,7 +209,7 @@ class Agg:
     def result(self):
         groups = {g: v for g in GROUPS if (v := self.pick(("g", g)))}
         pos = {str(p): v for p in range(SUB) if (v := self.pick(("p", p)))}
-        return {"groups": groups, "pos": pos}
+        return {"groups": groups, "pos": pos, "performance": {"groups": summarize_metrics(self.roles), "cohorts": summarize_metrics(self.game), "updated": dt.datetime.now(KST).isoformat(timespec="seconds")}}
 
 
 def side_ok(side):
@@ -167,9 +226,15 @@ def add_match(agg, d):
     if not all(side_ok(s) for s in mi):
         return nxt, False
     used = False
-    for s in mi:
+    for i, s in enumerate(mi):
         div = s.get("division")
-        if not div or div > WIDE:
+        if not isinstance(div, int) or div <= 0 or div >= 9999:
+            continue
+        metrics = side_metrics(s, mi[1-i])
+        add_metrics(agg.game, str(div), metrics)
+        if div <= CHAMP:
+            add_metrics(agg.game, "champ", metrics)
+        if div > WIDE:
             continue
         for p in s.get("player") or []:
             pos = p.get("spPosition")
@@ -177,6 +242,8 @@ def add_match(agg, d):
             if pos is None or pos == SUB or pos < 0 or pos >= SUB or r <= 0:
                 continue
             agg.add(div, pos, float(r))
+            if div <= CHAMP and pos in GROUP_OF:
+                add_metrics(agg.roles, GROUP_OF[pos], player_metrics(p.get("status") or {}))
             used = True
     return nxt, used
 

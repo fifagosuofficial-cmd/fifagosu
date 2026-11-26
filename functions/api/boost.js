@@ -90,8 +90,8 @@ export async function onRequestGet({request,env,waitUntil}){
     if(!gate)throw fault("request_limit",429);
     stage="official";const data={...await fetchOfficialPlan(spid,grade),generated:now};
     stage="cache_write";
-    await db.prepare("INSERT INTO boost_quote_cache(key,created,body) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET created=excluded.created,body=excluded.body").bind(key,now,JSON.stringify(data)).run();
-    if(Math.random()<.02)await db.prepare("DELETE FROM boost_quote_cache WHERE created<?").bind(now-2*86400).run();
+    try{await db.prepare("INSERT INTO boost_quote_cache(key,created,body) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET created=excluded.created,body=excluded.body").bind(key,now,JSON.stringify(data)).run()}catch(e){console.warn("boost cache write failed",String(e))}
+    if(Math.random()<.02)try{await db.prepare("DELETE FROM boost_quote_cache WHERE created<?").bind(now-2*86400).run()}catch{}
     return data;
    })().finally(()=>inflight.delete(key));inflight.set(key,task)
   }

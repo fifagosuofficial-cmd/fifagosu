@@ -1548,3 +1548,10 @@ nav.menu a.nav-diag-feature:hover,nav.menu a.nav-diag-feature:focus-visible{anim
  .dps-table .act,.dps-table .linkbtn{white-space:normal;word-break:keep-all;overflow-wrap:anywhere;font-size:12px}.dps-table .ev{min-width:0}
 }
 @media(max-width:760px){.d-review-items{gap:3px}.d-review-items>div{font-size:11px;padding:4px}.dps-table-4 .dps-player-col{width:26%}.dps-table-4 .dps-col-22{width:23%}.dps-table-4 .dps-col-19{width:9%}}
+
+/* Overall score evidence floats above the table and fullscreen mode. */
+.diag-float-tip{z-index:10001;box-sizing:border-box}
+.dps-table-0 .dps-col-20{width:22%}.dps-table-0 .dps-col-21{width:22%}
+.dps-table-0 .d-score-tip{font-variant-numeric:tabular-nums;white-space:normal;max-width:100%}
+.d-score-tip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:760px){.dps-switch>label{font-size:11px;white-space:nowrap}.dps-table-4 .dps-col-2{width:10%}.dps-table-4 .dps-col-17,.dps-table-4 .dps-col-18{width:10%}.dps-table-4 .dps-col-22{width:21%}.dps-table-4 .dps-player-col{width:26%}}

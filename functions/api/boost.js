@@ -27,7 +27,7 @@ export function cheapestFull(rows,conservative=false){
  }
  return best;
 }
-const ddl=["CREATE TABLE IF NOT EXISTS boost_quote_cache (key TEXT PRIMARY KEY, created INTEGER NOT NULL, body TEXT NOT NULL)","CREATE INDEX IF NOT EXISTS boost_quote_created ON boost_quote_cache(created)","CREATE TABLE IF NOT EXISTS boost_quote_gate (id INTEGER PRIMARY KEY CHECK(id=1), bucket INTEGER NOT NULL, n INTEGER NOT NULL)"];
+const ddl=["CREATE TABLE IF NOT EXISTS boost_quote_cache (key TEXT PRIMARY KEY, created INTEGER NOT NULL, body TEXT NOT NULL)","CREATE INDEX IF NOT EXISTS boost_quote_created ON boost_quote_cache(created)","CREATE TABLE IF NOT EXISTS boost_quote_gate (id INTEGER PRIMARY KEY CHECK(id=1), bucket INTEGER NOT NULL, n INTEGER NOT NULL)","CREATE TABLE IF NOT EXISTS boost_cooldown (id INTEGER PRIMARY KEY CHECK(id=1), until_ts INTEGER NOT NULL)"];
 const ready=new WeakMap(),inflight=new Map();
 async function ensure(db){if(!ready.has(db))ready.set(db,db.batch(ddl.map(s=>db.prepare(s))).catch(e=>{ready.delete(db);throw e}));await ready.get(db)}
 function fault(code,status=503){const e=Error(code);e.code=code;e.status=status;return e}
@@ -86,9 +86,9 @@ export async function onRequestGet({request,env,waitUntil}){
   if(!inflight.has(key)){
    const task=(async()=>{
     // Global aggregate request budget. No IP or account data in this table.
-    stage="request_budget";const bucket=Math.floor(now/60),gate=await db.prepare("INSERT INTO boost_quote_gate(id,bucket,n) VALUES(1,?,1) ON CONFLICT(id) DO UPDATE SET bucket=excluded.bucket,n=CASE WHEN bucket=excluded.bucket THEN n+1 ELSE 1 END WHERE bucket<>excluded.bucket OR n<8 RETURNING n").bind(bucket).first();
+    stage="request_budget";const cool=await db.prepare("SELECT until_ts FROM boost_cooldown WHERE id=1").first();if(cool?.until_ts>now){const e=fault("upstream_cooldown",429);e.retry=cool.until_ts-now;throw e}const bucket=Math.floor(now/60),gate=await db.prepare("INSERT INTO boost_quote_gate(id,bucket,n) VALUES(1,?,1) ON CONFLICT(id) DO UPDATE SET bucket=excluded.bucket,n=CASE WHEN bucket=excluded.bucket THEN n+1 ELSE 1 END WHERE bucket<>excluded.bucket OR n<8 RETURNING n").bind(bucket).first();
     if(!gate)throw fault("request_limit",429);
-    stage="official";const data={...await fetchOfficialPlan(spid,grade),generated:now};
+    stage="official";let data;try{data={...await fetchOfficialPlan(spid,grade),generated:now}}catch(e){if(e.status===429){const until=Math.floor(Date.now()/1000)+120;await db.prepare("INSERT INTO boost_cooldown(id,until_ts) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET until_ts=MAX(until_ts,excluded.until_ts)").bind(until).run();e.retry=120}throw e}
     stage="cache_write";
     try{await db.prepare("INSERT INTO boost_quote_cache(key,created,body) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET created=excluded.created,body=excluded.body").bind(key,now,JSON.stringify(data)).run()}catch(e){console.warn("boost cache write failed",String(e))}
     if(Math.random()<.02)try{await db.prepare("DELETE FROM boost_quote_cache WHERE created<?").bind(now-2*86400).run()}catch{}
@@ -96,5 +96,5 @@ export async function onRequestGet({request,env,waitUntil}){
    })().finally(()=>inflight.delete(key));inflight.set(key,task)
   }
   const data=await inflight.get(key);return json(200,data,data.plan?TTL:NEGATIVE_TTL);
- }catch(e){const status=e.status===429?429:503;const code=e.code||stage;console.warn("boost unavailable",JSON.stringify({code,spid,grade}));const retry=code==="request_limit"?Math.max(1,60-Math.floor(Date.now()/1000)%60+1):status===429?120:0;return json(status,{code,retryAfter:retry,message:status===429?"공식 도우미 조회 제한 · 잠시 후 다시 시도해 주세요.":code.endsWith("_timeout")?"공식 도우미 응답 시간이 초과되었습니다.":code.endsWith("_format")?"공식 도우미 응답 형식을 확인하지 못했습니다.":"공식 강화 도우미 연결을 확인하지 못했습니다."},0,retry)}
+ }catch(e){const status=e.status===429?429:503;const code=e.code||stage;console.warn("boost unavailable",JSON.stringify({code,spid,grade}));const retry=e.retry|| (code==="request_limit"?Math.max(1,60-Math.floor(Date.now()/1000)%60+1):status===429?120:0);return json(status,{code,retryAfter:retry,message:status===429?"공식 도우미 조회 제한 · 잠시 후 다시 시도해 주세요.":code.endsWith("_timeout")?"공식 도우미 응답 시간이 초과되었습니다.":code.endsWith("_format")?"공식 도우미 응답 형식을 확인하지 못했습니다.":"공식 강화 도우미 연결을 확인하지 못했습니다."},0,retry)}
 }

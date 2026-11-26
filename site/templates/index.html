@@ -116,12 +116,12 @@
       <div class="mk-sort" role="group" aria-label="정렬"><button type="button" data-market-sort="impact" aria-pressed="true">종합 순위</button><button type="button" data-market-sort="pct" aria-pressed="false">등락률</button><button type="button" data-market-sort="delta" aria-pressed="false">BP 변동액</button></div>
     </div>
     <div class="mk-sort mk-direction" role="group" aria-label="상승 하락 선택"><button type="button" data-market-dir="up" aria-pressed="true">▲ 급등</button><button type="button" data-market-dir="down" aria-pressed="false">▼ 급락</button></div>
-    <div class="mk-detail-meta"><b data-market-title>1일 급등 TOP 100</b><span data-market-status>실제 이력을 불러오는 중</span></div>
+    <div class="mk-detail-meta"><b data-market-title>1일 급등 TOP 100</b><span data-market-status>실제 이력을 불러오는 중</span><details class="fgix-help" style="position:relative"><summary aria-label="순위 산정 기준" style="list-style:none;cursor:pointer;border:1px solid currentColor;border-radius:50%;width:22px;height:22px;text-align:center;line-height:20px">?</summary><div style="position:absolute;right:0;top:28px;width:min(280px,75vw);z-index:10;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:12px;line-height:1.6">전체 시즌·전체 강화 실제 시세 기준. 종합 순위는 등락률 40% + BP 변동액 40% + 추세 지속성 20%이며, 변동률 3% 이상·절대 변동액 상위 20%·관측 3회 이상을 적용합니다. 등락률·BP 변동액 정렬은 종합 순위의 변동액 필터를 적용하지 않습니다.</div></details></div>
     <div class="mk-panel">
       <section class="mk-box mk-up" data-market-direction="up"><h2>급등 TOP 100</h2><div class="mk-table-scroll"><table class="mk-stock-table">{{ M.table_head() }}<tbody data-market-list="up"></tbody></table></div><p class="mk-empty" data-market-empty="up">실제 시세 순위를 불러오는 중이에요.</p></section>
       <section class="mk-box mk-down" data-market-direction="down"><h2>급락 TOP 100</h2><div class="mk-table-scroll"><table class="mk-stock-table">{{ M.table_head() }}<tbody data-market-list="down"></tbody></table></div><p class="mk-empty" data-market-empty="down">실제 시세 순위를 불러오는 중이에요.</p></section>
     </div>
-    <p class="mk-rule"><b>종합 순위</b>는 등락률 백분위 40% + BP 변동액 백분위 40% + 추세 지속성 20%입니다. 등락률·BP 변동액 정렬은 종합 순위의 변동액 필터를 적용하지 않습니다.</p>
+
   </section>
 {% else %}<p class="empty">시세 집계를 준비하고 있어요.</p>{% endif %}
 </main>

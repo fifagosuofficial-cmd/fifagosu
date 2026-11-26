@@ -22,7 +22,6 @@
   <header class="mk-head">
     <div class="mk-title">
       <h1>오늘의 <em>FC온라인</em> 시장</h1>
-      <p>{% if market %}{{ market.date[5:7]|int }}월 {{ market.date[8:10]|int }}일 시세 기준 · 매일 새벽 갱신{% else %}시세 집계를 준비하고 있어요{% endif %} · 출처 FC온라인 데이터센터</p>
     </div>
     <form class="ask mk-ask" id="hForm" autocomplete="off">
       <input id="hNick" placeholder="구단주 닉네임으로 전적 진단" aria-label="구단주 닉네임">

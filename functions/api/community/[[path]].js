@@ -92,7 +92,18 @@ const PLAYER_QUIZ=[
 async function gameQuestions(game,env,u){
  if(game==="player")return mix(PLAYER_QUIZ).slice(0,5).map(([prompt,correct,...wrong])=>{const choices=mix([correct,...wrong]);return {prompt,choices,answer:choices.indexOf(correct)}});
  if(game==="penalty")return Array.from({length:5},()=>({v:2,prompt:"슛 방향을 선택하세요!",choices:["왼쪽","가운데","오른쪽"],keeper:ri(3)}));
- if(game==="lifting")return Array.from({length:20},(_,i)=>({v:2,prompt:"공이 발에 닿는 순간 차 올리세요!",choices:["터치","놓침"],target:Math.max(1050,1800-i*35)+ri(150),window:Math.max(240,460-i*10)}));
+ if(game==="lifting"){
+  let fromX=128,fromDirection=1;
+  return Array.from({length:20},(_,i)=>{
+   // The landing side is the real direction of travel, relative to the previous touch.
+   const distance=34+Math.floor(i*1.45)+ri(17);
+   const options=[0,1].filter(d=>fromX+(d===0?-distance:distance)>=42&&fromX+(d===0?-distance:distance)<=214);
+   const direction=options.length?options[ri(options.length)]:fromX<128?1:0;
+   const landX=Math.max(42,Math.min(214,fromX+(direction===0?-distance:distance)));
+   const q={v:3,prompt:"공이 발에 닿는 순간 이동 방향을 누르세요!",choices:["왼쪽","오른쪽","놓침"],direction,fromX,fromDirection,landX,target:Math.max(920,1920-i*52)+ri(95),window:Math.max(175,460-i*15),height:Math.max(46,76-i)+ri(10)};
+   fromX=landX;fromDirection=direction;return q;
+  });
+ }
  check(env.ASSETS&&typeof env.ASSETS.fetch==="function","시세 데이터 준비 중입니다.",503);
  const res=await env.ASSETS.fetch(new Request(u.origin+"/fun/price-pool.json"));check(res.ok,"시세 데이터 준비 중입니다.",503);
  const data=await res.json(),groups=(data.groups||[]).filter(g=>g.cards?.length>=10);check(groups.length,"시세 데이터 준비 중입니다.",503);
@@ -107,13 +118,13 @@ function gamePublic(row){let question=null;if(row.state===0){const {answer,price
 function gameCorrect(game,q,a,elapsed){
  if(elapsed<0)return false;
  if(game==="penalty")return a!==q.keeper;
- if(game==="lifting")return a===0&&Math.abs(elapsed-q.target)<=q.window;
+ if(game==="lifting")return q.v===3&&(a===0||a===1)&&a===q.direction&&Math.abs(elapsed-q.target)<=q.window;
  return a===q.answer;
 }
 async function arcadeApi({p,b,m,db,env,u}){
  await ensureBoard(db);
  const day=arcadeDay(),t=now(),q=(s,...a)=>db.prepare(s).bind(...a),first=(s,...a)=>q(s,...a).first(),all=async(s,...a)=>(await q(s,...a).all()).results;
- await q("UPDATE arcade_rounds SET state=2,reward=fee WHERE member_id=? AND state=0 AND (expires<=? OR (game IN ('penalty','lifting') AND COALESCE(json_extract(questions,'$[0].v'),0)<>2))",m.id,t).run();
+ await q("UPDATE arcade_rounds SET state=2,reward=fee WHERE member_id=? AND state=0 AND (expires<=? OR (game='penalty' AND COALESCE(json_extract(questions,'$[0].v'),0)<>2) OR (game='lifting' AND COALESCE(json_extract(questions,'$[0].v'),0)<>3))",m.id,t).run();
  const summary=async()=>{const [r,n,pending]=await Promise.all([authorRanks(db,[m.id]),first("SELECT count(*) n FROM arcade_rounds WHERE member_id=? AND day=? AND "+rewardEligible,m.id,day),first("SELECT * FROM arcade_rounds WHERE member_id=? AND state=0",m.id)]);return {member:{nickname:m.nickname,rank:r.get(m.id)||rankFor(0)},used:n.n,limit:ARCADE_LIMIT,fee:n.n===0?0:2,pending:pending?gamePublic(pending):null}};
  if(p==="game-status"){
   const leaderboard=await all("SELECT game,nickname,score FROM (SELECT r.game,m.nickname,MAX(r.score) score,ROW_NUMBER() OVER(PARTITION BY r.game ORDER BY MAX(r.score) DESC,MIN(r.created),m.nickname) rn FROM arcade_rounds r JOIN members m ON m.id=r.member_id WHERE r.state=1 AND COALESCE(json_extract(r.questions,'$[0].practice'),0)=0 AND r.day>=? AND m.suspended=0 AND m.nickname IS NOT NULL GROUP BY r.game,m.id) WHERE rn<=10 ORDER BY game,rn",arcadeWeek(day));return json({...await summary(),leaderboard});
@@ -140,7 +151,7 @@ async function arcadeApi({p,b,m,db,env,u}){
   const correct=gameCorrect(row.game,question,answer,Date.now()-row.issued),score=row.score+(correct?1:0),finished=step===questions.length-1||(row.game==="lifting"&&!correct);
   const updated=await first("UPDATE arcade_rounds SET step=?,score=?,issued=?,state=?,reward=? WHERE id=? AND member_id=? AND state=0 AND step=? AND expires>? RETURNING *",step+1,score,Date.now()+(row.game==="lifting"&&!finished?650:0),finished?1:0,finished&&!isPractice(row)?rewardFor(score):0,row.id,m.id,step,t);
   const result=updated||await first("SELECT * FROM arcade_rounds WHERE id=? AND member_id=?",row.id,m.id);
-  return json({...await summary(),round:gamePublic(result),feedback:updated?{correct,answer:question.choices[question.answer]||null,prices:question.prices||null,...(row.game==="penalty"?{keeper:question.keeper,shot:answer}:{})}:null});
+  return json({...await summary(),round:gamePublic(result),feedback:updated?{correct,answer:question.choices[question.answer]||null,prices:question.prices||null,...(row.game==="penalty"?{keeper:question.keeper,shot:answer}:row.game==="lifting"?{direction:question.direction,pressed:answer}:{})}:null});
  }
  throw new Err("페이지를 찾을 수 없습니다.",404);
 }

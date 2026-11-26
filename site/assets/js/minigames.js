@@ -1,7 +1,7 @@
 
 /* Server-authoritative XP and game turns. */
 (()=>{"use strict";
-const G={penalty:["승부차기 챌린지","⚽","도트 경기장에서 좌·중·우 슈팅"],player:["선수 맞히기","👤","국적·기록 힌트로 선수 찾기"],price:["시세 맞히기","📈","두 카드 중 더 비싼 카드 찾기"],lifting:["리프팅 챌린지","🏟️","공이 발에 닿을 때 차 올려 콤보 도전"]};
+const G={penalty:["승부차기 챌린지","⚽","도트 경기장에서 좌·중·우 슈팅"],player:["선수 맞히기","👤","국적·기록 힌트로 선수 찾기"],price:["시세 맞히기","📈","두 카드 중 더 비싼 카드 찾기"],lifting:["리프팅 챌린지","🏟️","좌우로 움직이는 공을 발끝에서 차 올리기"]};
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const bp=v=>{let n=Math.round(v),a=[];for(const [d,l] of [[1e12,"조"],[1e8,"억"],[1e4,"만"]]){let x=Math.floor(n/d);if(x)a.push(x.toLocaleString("ko-KR")+l);n%=d}return a.join(" ")||n.toLocaleString("ko-KR")+" BP"};
 async function request(path,body){const start=Date.now(),r=await fetch("/api/community/"+path,{credentials:"same-origin",cache:"no-store",...(body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})});const d=await r.json().catch(()=>({}));if(!r.ok){const e=Error(d.message||"연결을 확인해 주세요.");e.status=r.status;throw e}d.rtt=Date.now()-start;return d}
@@ -42,20 +42,63 @@ function penaltyFrame(c,t=0,shot=null,keeper=null,scored=null){
  pixelBall(c,bx,by,Math.max(2,Math.round(5-2*fly)));
  if(scored!==null&&t>920)label(c,128,74,scored?"GOAL!":"SAVE!",scored?"#fff39d":"#ffb5a8");
 }
-function liftFrame(c,elapsed,q,combo,miss=false){
- crowd(c);rect(c,0,44,256,100,"#388b5e");for(let i=0;i<5;i++)rect(c,0,44+i*20,256,10,"#419967");rect(c,0,124,256,2,"#e4f3db");rect(c,0,126,256,18,"#367b55");rect(c,105,127,61,4,"#276744");
- const target=q.target,window=q.window,foot=112,x=151;
- let progress=clamp(elapsed/target),y=foot-74*4*progress*(1-progress);
- if(combo===0)y=foot-78*(1-progress*progress);
- if(elapsed>target)y=foot+Math.min(18,(elapsed-target)/20);
- if(miss)y=132;
- const close=Math.abs(elapsed-target)<window&&!miss;
- person(c,125,110,{scale:1.6,shirt:"#69ace7",kick:close||elapsed<180&&combo>0});
- rect(c,x-8,130,16,2,"#245d47");
- if(close){rect(c,x-10,foot+7,21,2,"#fff39a");rect(c,x-7,foot+10,15,1,"#f2cf67")}
- pixelBall(c,x,y,5);
- label(c,128,58,"COMBO "+combo,combo?"#fff39d":"#fff6da");
- if(miss)label(c,128,78,"MISS!","#ffb5a8");
+
+// Articulated pixel player: moving joints, a planted supporting foot and a swinging kicking leg.
+function pixelLimb(c,x1,y1,x2,y2,w,color){
+ const n=Math.max(1,Math.ceil(Math.max(Math.abs(x2-x1),Math.abs(y2-y1))));
+ for(let i=0;i<=n;i++)rect(c,x1+(x2-x1)*i/n-w/2,y1+(y2-y1)*i/n-w/2,w,w,color);
+}
+function liftPose(elapsed,q,combo,pose="normal",pressed=q.direction){
+ const dir=q.direction===0?-1:1,prev=q.fromDirection===0?-1:1,side=pressed===0?-1:1;
+ const target=q.target,window=q.window,p=clamp(elapsed/target),smooth=p*p*(3-2*p);
+ const start=combo?q.fromX-prev*23:128,end=q.landX-dir*23,move=clamp(p/.86);
+ const travel=move*move*(3-2*move),playerX=start+(end-start)*travel;
+ const walk=p>0&&p<.86?Math.sin(elapsed/64)*Math.sin(Math.PI*move):0;
+ let x=q.fromX+(q.landX-q.fromX)*smooth,y=106;
+ if(elapsed>=0){
+  const arc=combo?Math.pow(Math.sin(Math.PI*p),1.5):1-p*p;
+  y=106-q.height*arc;
+  if(elapsed>target)y=106+Math.min(24,(elapsed-target)*24/window);
+ }else if(!combo)y=106-q.height;
+ const contact=Math.abs(elapsed-target)<=window&&elapsed>=0&&p>.64;
+ const anticip=clamp((p-.7)/.3);
+ let kick=0,kickSide=dir;
+ if(elapsed<0&&combo){kick=clamp((-elapsed)/550);kickSide=prev}
+ if(pose==="tap"){kick=1;kickSide=side}
+ if(pose==="miss"){kick=0;y=131}
+ return {x,y,playerX,walk,anticip,kick,kickSide,contact,dir,p,miss:pose==="miss"};
+}
+function liftPlayer(c,x,walk,anticip,kick,dir){
+ const px=Math.round(x),bob=Math.round(Math.abs(walk)*3),bend=Math.round(anticip*(1-kick)*3),hipY=105+bend-bob,lean=Math.round(dir*(kick*3+anticip*2+walk*2)),bodyX=px+lean,bodyY=hipY-19;
+ const dark="#1a2738",skin="#e8ab75",highlight="#ffdbac",hair="#553541",shirt="#6db8ec",shirtDark="#3975bd",shorts="#e9f1f8",sock="#4085c9",boot="#223242";
+ const shoulderY=bodyY+3,headY=bodyY-18,shadowX=px-16;
+ rect(c,shadowX,132,33,3,"#286a45");rect(c,shadowX+4,131,25,1,"#286a45");
+ for(const side of [-1,1]){
+  const sx=bodyX+side*10,sy=shoulderY,ex=sx+side*(4+Math.round(kick*4)),ey=sy+9+Math.round(walk*side*5)-Math.round(kick*4),hx=ex+side*2,hy=ey+7-Math.round(kick*5);
+  pixelLimb(c,sx,sy,ex,ey,7,dark);pixelLimb(c,sx,sy,ex,ey,5,shirtDark);pixelLimb(c,ex,ey,hx,hy,5,dark);pixelLimb(c,ex,ey,hx,hy,3,skin);rect(c,hx-2,hy-2,5,5,highlight);
+ }
+ rect(c,bodyX-11,headY,22,19,dark);rect(c,bodyX-9,headY+2,18,15,skin);rect(c,bodyX-9,headY+1,18,6,hair);rect(c,bodyX-11,headY+4,5,7,hair);rect(c,bodyX+7,headY+4,4,6,hair);rect(c,bodyX-7,headY+7,14,3,highlight);
+ rect(c,bodyX-5,headY+10,3,3,dark);rect(c,bodyX+3,headY+10,3,3,dark);rect(c,bodyX-2,headY+15,4,1,"#975340");
+ rect(c,bodyX-4,bodyY-2,8,4,skin);rect(c,bodyX-12,bodyY,24,19,dark);rect(c,bodyX-10,bodyY+2,20,15,shirt);rect(c,bodyX-10,bodyY+2,20,3,shirtDark);rect(c,bodyX-8,bodyY+6,3,10,"#91d5f4");rect(c,bodyX+4,bodyY+7,5,5,"#f7f2e2");rect(c,bodyX+5,bodyY+8,3,3,shirtDark);
+ for(const side of [-1,1]){
+  const sx=px+side*6,sy=hipY,active=side===dir?kick:0;
+  const stride=Math.round(walk*side*8),ax=px+side*9+stride*(1-active)+side*12*active,ay=126-15*active-Math.max(0,Math.round(walk*side*5))*(1-active);
+  const kx=sx+side*(4+5*active)+stride*.45,ky=hipY+10-8*active;
+  pixelLimb(c,sx,sy,kx,ky,9,dark);pixelLimb(c,sx,sy,kx,ky,6,shorts);pixelLimb(c,kx,ky,ax,ay-3,7,dark);pixelLimb(c,kx,ky,ax,ay-3,5,skin);pixelLimb(c,kx+(ax-kx)*.55,ky+(ay-3-ky)*.55,ax,ay-3,5,sock);
+  const toe=active?px+side*23:ax+side*3,bootX=Math.min(ax-3,toe-3),bootW=Math.abs(toe-ax)+7;
+  rect(c,bootX,ay,bootW,5,boot);rect(c,bootX+1,ay+1,Math.max(2,bootW-2),1,"#d7e8f2");
+ }
+ rect(c,px-10,hipY-2,20,7,dark);rect(c,px-8,hipY-1,16,5,shorts);
+}
+function liftFrame(c,elapsed,q,combo,pose="normal",pressed=q.direction){
+ crowd(c);rect(c,0,44,256,100,"#388b5e");for(let i=0;i<5;i++)rect(c,0,44+i*20,256,10,"#419967");rect(c,0,129,256,2,"#e4f3db");rect(c,0,131,256,13,"#367b55");
+ const v=liftPose(elapsed,q,combo,pose,pressed);
+ rect(c,v.x-7,130,14,2,"#245d47");liftPlayer(c,v.playerX,v.walk,v.anticip,v.kick,v.kickSide);
+ if(v.contact&&!v.miss){rect(c,q.landX-8,114,17,2,"#d7ed9b");rect(c,q.landX-5,117,11,1,"#f2cf67")}
+ if(pose==="tap")for(let i=0;i<4;i++){const dx=(i%2?1:-1)*(9+i*2);rect(c,q.landX+dx,100-i*2,3,3,"#fff39a")}
+ pixelBall(c,v.x,v.y,5);
+ label(c,128,15,"COMBO "+combo,combo?"#fff39d":"#fff6da");label(c,128,30,combo<5?"ROOKIE":combo<10?"PRO":combo<15?"EXPERT":"MASTER","#e5f5dc");
+ if(v.miss)label(c,128,56,"MISS!","#ffb5a8");
 }
 function pixelContext(canvas){const c=canvas.getContext("2d");c.imageSmoothingEnabled=false;return c}
 
@@ -79,7 +122,7 @@ function mount(app,layout){
    (practice&&!d.pending?'<p class="arc-notice">'+(d.used>=d.limit?'오늘 XP 보상 횟수를 모두 사용했습니다.':'참가 XP가 부족합니다.')+' 무료 연습으로 계속 플레이하세요. 연습 기록은 주간 랭킹에 반영되지 않습니다.</p>':'')+err);
   app.querySelectorAll("[data-game]").forEach(b=>b.onclick=()=>confirmGame(b.dataset.game));if($("arcResume"))$("arcResume").onclick=()=>play(d.pending,null,d.rtt);
  }
- function confirmGame(game){const practice=status.used>=status.limit||status.fee>status.member.rank.points,fee=practice?0:status.fee;render('<div class="arc-panel"><h1>'+G[game][0]+'</h1><p>'+G[game][2]+'</p><div class="arc-summary"><span>참가비</span><b>'+(fee?fee+" XP":"무료")+'</b></div><div class="arc-summary"><span>최고 보상</span><b class="arc-xp">'+(practice?"보상 없음":"12 XP")+'</b></div><p class="arc-notice">'+(game==="lifting"?"공을 연속으로 차 올리세요. 한 번 놓치면 종료되며 최대 20콤보까지 도전합니다. 5콤보 이상은 12 XP입니다.":"5번 도전한 결과에 따라 XP를 받습니다.")+(practice?" 무료 연습 모드에서는 XP 차감 및 지급이 없습니다.":" 시작하면 참가비가 차감됩니다.")+'</p><button class="cta" id="arcStart">'+(practice?"무료 연습 시작":"게임 시작")+'</button><button class="ghost" id="arcBack">돌아가기</button>'+err+'</div>');$("arcBack").onclick=home;$("arcStart").onclick=async()=>{if(busy)return;busy=true;controls(true);try{const d=await request("game-start",{game,fee,practice});d.leaderboard=status.leaderboard;update(d);if(alive)play(d.round,null,d.rtt)}catch(e){error(e);controls(false)}finally{busy=false}}}
+ function confirmGame(game){const practice=status.used>=status.limit||status.fee>status.member.rank.points,fee=practice?0:status.fee;render('<div class="arc-panel"><h1>'+G[game][0]+'</h1><p>'+G[game][2]+'</p><div class="arc-summary"><span>참가비</span><b>'+(fee?fee+" XP":"무료")+'</b></div><div class="arc-summary"><span>최고 보상</span><b class="arc-xp">'+(practice?"보상 없음":"12 XP")+'</b></div><p class="arc-notice">'+(game==="lifting"?"공이 날아가는 쪽 버튼을 발끝에 닿을 때 누르세요. 콤보가 쌓이면 공이 빨라집니다. 최대 20콤보 · 5콤보 이상 12 XP.":"5번 도전한 결과에 따라 XP를 받습니다.")+(practice?" 무료 연습 모드에서는 XP 차감 및 지급이 없습니다.":" 시작하면 참가비가 차감됩니다.")+'</p><button class="cta" id="arcStart">'+(practice?"무료 연습 시작":"게임 시작")+'</button><button class="ghost" id="arcBack">돌아가기</button>'+err+'</div>');$("arcBack").onclick=home;$("arcStart").onclick=async()=>{if(busy)return;busy=true;controls(true);try{const d=await request("game-start",{game,fee,practice});d.leaderboard=status.leaderboard;update(d);if(alive)play(d.round,null,d.rtt)}catch(e){error(e);controls(false)}finally{busy=false}}}
 
  function play(r,feedback=null,rtt=0){
   if(!alive)return;round=r;if(r.state!==0){result(r);return}
@@ -87,17 +130,17 @@ function mount(app,layout){
   const feedbackText=feedback?(feedback.correct?"성공! ":"아쉽네요. ")+(game==="price"&&feedback.prices?feedback.prices.map(bp).join(" / "):game==="player"?"정답: "+feedback.answer:""):"";
   let answers="";
   if(game==="penalty")answers='<canvas id="arcCanvas" class="arc-pixel" width="256" height="144" role="img" aria-label="선수 뒤에서 바라보는 골대와 골키퍼"></canvas><div class="arc-shot-controls">'+q.choices.map((name,i)=>'<button type="button" data-answer="'+i+'"><span aria-hidden="true">'+["↖","↑","↗"][i]+'</span>'+name+'</button>').join("")+'</div><p class="arc-muted">방향을 고르면 선수가 슛합니다. 골키퍼의 방향은 매번 무작위입니다.</p>';
-  else if(game==="lifting")answers='<canvas id="arcCanvas" class="arc-pixel" width="256" height="144" role="img" aria-label="축구공을 차 올리는 도트 선수"></canvas><button class="cta arc-lift-button" data-answer="0">⚽ 리프팅!</button><p class="arc-muted">공이 발끝에 닿을 순간 터치! 놓치면 게임 종료.</p>';
+  else if(game==="lifting")answers='<canvas id="arcCanvas" class="arc-pixel" width="256" height="144" role="img" aria-label="축구공을 차 올리는 도트 선수"></canvas><div class="arc-lift-controls"><button type="button" class="arc-lift-button" data-answer="0">◀ 왼쪽</button><button type="button" class="arc-lift-button" data-answer="1">오른쪽 ▶</button></div><p class="arc-muted">공이 날아가는 쪽의 버튼을 발끝에 닿을 때 누르세요. 방향이나 타이밍을 놓치면 종료!</p>';
   else answers='<div class="arc-answers">'+q.choices.map((x,i)=>'<button class="arc-choice" type="button" data-answer="'+i+'">'+esc(x)+'</button>').join("")+'</div>'+(game==="price"?'<p class="arc-muted">피파고수 일일 시세 스냅샷 '+esc(q.date||"")+' 기준</p>':'');
   render('<div class="arc-game-head"><b>'+G[game][0]+(r.practice?" · 연습":"")+'</b><small>'+(game==="lifting"?r.score+' 콤보 / 20':(r.step+1)+' / 5 · '+r.score+' 성공')+'</small></div><div class="arc-progress"><i style="width:'+(game==="lifting"?r.score*5:r.step*20)+'%"></i></div><div class="arc-panel'+(action?' arc-pixel-panel':'')+'"><div class="arc-feedback" id="arcFeedback" role="status">'+esc(feedbackText)+'</div><h2>'+esc(q.prompt)+'</h2>'+answers+err+'</div><button class="ghost" id="arcBack">미니게임 목록 (나중에 이어하기)</button>');
   $("arcBack").onclick=refresh;
   scene=null;
   if(action){
-    const canvas=$("arcCanvas"),c=pixelContext(canvas),origin=performance.now(),elapsed=r.serverNow-r.issued+rtt/2;
+    const canvas=$("arcCanvas"),c=pixelContext(canvas),origin=performance.now(),elapsed=r.serverNow-r.issued+(game==="lifting"?Math.min(250,rtt):rtt/2);
     scene={canvas,c,q,r,elapsed:()=>elapsed+performance.now()-origin};
     if(game==="penalty")penaltyFrame(c);
     else{
-      const tick=()=>{if(!alive||!canvas.isConnected||busy)return;const t=scene.elapsed();liftFrame(c,t,q,r.score);if(t>q.target+q.window+120){void answer(1);return}raf=requestAnimationFrame(tick)};scene.tick=tick;raf=requestAnimationFrame(tick);
+      const tick=()=>{if(!alive||!canvas.isConnected||busy)return;const t=scene.elapsed();liftFrame(c,t,q,r.score);if(t>q.target+q.window+120){if(!scene.autoSubmitted){scene.autoSubmitted=true;void answer(2)}return}raf=requestAnimationFrame(tick)};scene.tick=tick;raf=requestAnimationFrame(tick);
     }
   }
   app.querySelectorAll("[data-answer]").forEach(b=>b.onclick=()=>answer(Number(b.dataset.answer)));
@@ -110,14 +153,14 @@ function mount(app,layout){
     const pending=request("game-answer",{id:prior.id,step:prior.step,answer:a});
     // A short anticipation pose while the server returns the hidden keeper direction.
     if(view&&prior.game==="penalty")penaltyFrame(view.c,300,a);
-    if(view&&prior.game==="lifting")liftFrame(view.c,view.q.target,view.q,prior.score);
+    if(view&&prior.game==="lifting")liftFrame(view.c,view.elapsed(),view.q,prior.score,a===2?"miss":"tap",a);
     const d=await pending;d.leaderboard=status.leaderboard;update(d);if(!alive)return;
     if(view&&prior.game==="penalty"&&d.feedback){
       await animate(t=>penaltyFrame(view.c,t,a,d.feedback.keeper,d.feedback.correct),1400);
       if(alive)play({...d.round,serverNow:d.round.serverNow+1400},d.feedback,0);
     }else if(view&&prior.game==="lifting"&&d.feedback&&!d.feedback.correct){
-      liftFrame(view.c,view.q.target+400,view.q,prior.score,true);
-      if($("arcFeedback"))$("arcFeedback").textContent="공을 놓쳤습니다!";
+      liftFrame(view.c,view.q.target+400,view.q,prior.score,"miss",a);
+      if($("arcFeedback"))$("arcFeedback").textContent=a!==2&&a!==view.q.direction?"방향이 틀렸습니다!":"타이밍을 놓쳤습니다!";
       await animate(()=>{},650);if(alive)result(d.round);
     }else if(alive){
       // Schedule the next bounce using the authoritative server timestamp; never trust a client score.
@@ -126,7 +169,7 @@ function mount(app,layout){
   }catch(e){if(!alive)return;error(e);controls(false);busy=false;if(view&&prior.game==="lifting"){raf=requestAnimationFrame(view.tick)}}
   finally{busy=false}
  }
- function result(r){render('<div class="arc-panel"><h1>'+(r.state===2?"게임 만료":r.practice?"연습 완료":"게임 완료")+'</h1><div class="arc-result">'+r.score+(r.game==="lifting"?' 콤보':' / 5')+'</div><div class="arc-summary"><span>획득 XP</span><b class="arc-xp">+'+r.reward+' XP</b></div><div class="arc-summary"><span>참가비</span><b>−'+r.fee+' XP</b></div><div class="arc-summary"><span>최종 XP 변화</span><b>'+((r.reward-r.fee)>=0?"+":"")+(r.reward-r.fee)+' XP</b></div><button class="cta" id="arcDone">미니게임 목록</button></div>');$("arcDone").onclick=refresh}
+ function result(r){render('<div class="arc-panel"><h1>'+(r.state===2?"게임 만료":r.practice?"연습 완료":"게임 완료")+'</h1><div class="arc-result">'+r.score+(r.game==="lifting"?' 콤보':' / 5')+'</div><div class="arc-summary"><span>획득 XP</span><b class="arc-xp">+'+r.reward+' XP</b></div><div class="arc-summary"><span>참가비</span><b>−'+r.fee+' XP</b></div><div class="arc-summary"><span>최종 XP 변화</span><b>'+((r.reward-r.fee)>=0?"+":"")+(r.reward-r.fee)+' XP</b></div><button class="cta" id="arcReplay">다시 도전</button><button class="ghost" id="arcDone">미니게임 목록</button></div>');$("arcDone").onclick=refresh;$("arcReplay").onclick=()=>confirmGame(r.game)}
  async function refresh(){if(!alive)return;render('<section class="hub-hero"><h1>미니게임</h1><p>XP와 기록을 불러오는 중…</p></section>');try{const d=await request("game-status");update(d);if(alive)home()}catch(e){render('<section class="hub-hero"><h1>미니게임</h1><p>축구 미니게임으로 XP를 모아 보세요.</p></section><div class="arc-panel"><p>'+esc(e.message)+'</p>'+(e.status===401||e.status===403?'<a class="cta" href="/mypage/">로그인 / 닉네임 설정</a>':'<button class="cta" id="arcRetry">다시 시도</button>')+'</div>');if($("arcRetry"))$("arcRetry").onclick=refresh}}
  refresh();return ()=>{alive=false;cancelAnimationFrame(raf)}
 }

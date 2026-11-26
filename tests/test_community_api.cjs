@@ -250,10 +250,10 @@ test("pixel penalty keeps the keeper direction secret and judges the chosen dire
 test("pixel lifting continues beyond five consecutive touches and ends on the first miss",async()=>{
  const {env,sql}=fixture();
  let r=await callFixture(env,"game-start",{game:"lifting",fee:0},"a");assert.equal(r.status,200,JSON.stringify(r.data));const id=r.data.round.id;
- const qs=JSON.parse(sql.prepare("SELECT questions FROM arcade_rounds WHERE id=?").get(id).questions);assert.equal(qs.length,20);assert.ok(qs[19].window<qs[0].window);
- for(let i=0;i<7;i++){sql.prepare("UPDATE arcade_rounds SET issued=? WHERE id=?").run(Date.now()-qs[i].target,id);r=await callFixture(env,"game-answer",{id,step:i,answer:0},"a");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.feedback.correct,true);assert.equal(r.data.round.state,0);assert.equal(r.data.round.score,i+1)}
- r=await callFixture(env,"game-answer",{id,step:7,answer:1},"a");assert.equal(r.status,200);assert.equal(r.data.round.state,1);assert.equal(r.data.round.score,7);assert.equal(r.data.round.reward,12);assert.equal(r.data.member.rank.points,21);
- r=await callFixture(env,"game-answer",{id,step:7,answer:1},"a");assert.equal(r.data.member.rank.points,21);sql.close();
+ const qs=JSON.parse(sql.prepare("SELECT questions FROM arcade_rounds WHERE id=?").get(id).questions);assert.equal(qs.length,20);assert.ok(qs[19].window<qs[0].window);assert.ok(qs[19].target<qs[0].target);assert.ok(qs.every(q=>q.v===3&&q.choices.length===3&&q.landX>=42&&q.landX<=214&&Math.sign(q.landX-q.fromX)===(q.direction===0?-1:1)));for(let i=1;i<qs.length;i++)assert.equal(qs[i].fromX,qs[i-1].landX);
+ for(let i=0;i<7;i++){sql.prepare("UPDATE arcade_rounds SET issued=? WHERE id=?").run(Date.now()-qs[i].target,id);r=await callFixture(env,"game-answer",{id,step:i,answer:qs[i].direction},"a");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.feedback.correct,true);assert.equal(r.data.round.state,0);assert.equal(r.data.round.score,i+1)}
+ r=await callFixture(env,"game-answer",{id,step:7,answer:2},"a");assert.equal(r.status,200);assert.equal(r.data.round.state,1);assert.equal(r.data.round.score,7);assert.equal(r.data.round.reward,12);assert.equal(r.data.member.rank.points,21);
+ r=await callFixture(env,"game-answer",{id,step:7,answer:2},"a");assert.equal(r.data.member.rank.points,21);sql.close();
 });
 test("obsolete timed game sessions refund entry fees rather than breaking after an upgrade",async()=>{
  const {env,sql}=fixture();
@@ -275,4 +275,23 @@ test("unlimited practice after five reward rounds never spends XP or awards XP o
   assert.equal(r.data.round.score,5);assert.equal(r.data.round.reward,0);assert.equal(r.data.round.fee,0);assert.equal(r.data.member.rank.points,xp);assert.equal(r.data.used,5);
  }
  r=await callFixture(env,"game-status",null,"a");assert.equal(r.data.leaderboard[0].score,1);assert.equal(r.data.used,5);assert.equal(sql.prepare("SELECT count(*) n FROM arcade_rounds").get().n,6);sql.close();
+});
+
+test("directional lifting rejects opposite direction even at the exact contact time and rejects early taps",async()=>{
+ const {env,sql}=fixture();
+ let r=await callFixture(env,"game-start",{game:"lifting",fee:0,practice:true},"a");assert.equal(r.status,200,JSON.stringify(r.data));let id=r.data.round.id,q=r.data.round.question;
+ assert.equal(q.v,3);assert.ok([0,1].includes(q.direction));assert.equal(q.fromX,128);
+ sql.prepare("UPDATE arcade_rounds SET issued=? WHERE id=?").run(Date.now()-q.target,id);
+ r=await callFixture(env,"game-answer",{id,step:0,answer:1-q.direction},"a");assert.equal(r.status,200);assert.equal(r.data.feedback.correct,false);assert.equal(r.data.round.state,1);assert.equal(r.data.round.score,0);assert.equal(r.data.round.reward,0);
+ r=await callFixture(env,"game-start",{game:"lifting",fee:0,practice:true},"a");assert.equal(r.status,200);id=r.data.round.id;q=r.data.round.question;
+ sql.prepare("UPDATE arcade_rounds SET issued=? WHERE id=?").run(Date.now(),id);
+ r=await callFixture(env,"game-answer",{id,step:0,answer:q.direction},"a");assert.equal(r.status,200);assert.equal(r.data.feedback.correct,false);assert.equal(r.data.round.state,1);assert.equal(r.data.member.rank.points,9);assert.equal(r.data.used,0);
+ sql.close();
+});
+test("directional lifting preserves both fee and XP when obsolete in-flight rounds are refunded",async()=>{
+ const {env,sql}=fixture();
+ let r=await callFixture(env,"game-start",{game:"lifting",fee:0},"a");assert.equal(r.status,200);const id=r.data.round.id;
+ sql.prepare("UPDATE arcade_rounds SET questions=?,fee=2 WHERE id=?").run(JSON.stringify([{v:2,target:1800,window:460}]),id);
+ r=await callFixture(env,"game-status",null,"a");assert.equal(r.status,200);assert.equal(r.data.pending,null);assert.equal(r.data.member.rank.points,9);
+ sql.close();
 });

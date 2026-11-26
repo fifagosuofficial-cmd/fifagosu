@@ -32,6 +32,15 @@
 {% endif %}
 {% endif %}
 {% block head %}{% endblock %}
+<style>
+.fg-nav-shell nav.menu a.nav-fun{display:flex;align-items:center;justify-content:center;gap:6px;background:#211338;color:#f0d7ff;border:1px solid #b66cff;border-radius:10px;box-shadow:0 0 7px #a855f780,inset 0 0 8px #a855f733;animation:fg-fun-glow 3s ease-in-out infinite;transition:transform .12s;min-width:0}
+.fg-nav-shell nav.menu a.nav-fun .fg-fun-copy{display:flex;flex-direction:column;align-items:center;line-height:1.1;gap:3px;font-weight:700}
+.fg-nav-shell nav.menu a.nav-fun small{font:600 8px/1 monospace;letter-spacing:.4px;color:#d8b4fe;white-space:nowrap}
+.fg-nav-shell nav.menu a.nav-fun:active{transform:scale(.96)}
+.fg-nav-shell nav.menu a.nav-fun[aria-current]{background:#512581;color:#fff}
+@keyframes fg-fun-glow{0%,100%{box-shadow:0 0 5px #a855f766,inset 0 0 5px #a855f733}50%{box-shadow:0 0 11px #a855f7aa,inset 0 0 8px #a855f744}}
+@media(prefers-reduced-motion:reduce){.fg-nav-shell nav.menu a.nav-fun{animation:none;transition:none}}
+</style>
 </head><body data-view="{{ view or '' }}"{% if (view or '') in ('home','sim','trade','diag','cards','calc','guide','squad','board','mypage','admin') or (active is defined and active in ('news','press','patch','sim')) %} class="page-wide"{% endif %}>
 <header class="top">
   <div class="row"><a class="logo" href="{{ SITE_URL }}/" aria-label="피파고수 홈"><picture><source srcset="{{ root }}site/brand/fifagosu-logo-480.webp" type="image/webp"><img src="{{ root }}site/brand/fifagosu-logo-480.png" width="480" height="135" alt="피파고수"></picture></a><span class="tag">FC온라인 전적 진단</span></div>
@@ -46,7 +55,7 @@
     <a href="{{ root }}board/"{% if view=='board' %} aria-current="page"{% endif %}>게시판</a>
     <a href="{{ root }}cards">카드 검색</a>
     <a href="{{ root }}sim/" class="nav-sim" aria-label="강화·현질 효율" title="강화·현질 효율"{% if active is defined and active=='sim' %} aria-current="page"{% endif %}><span class="nav-sim-label" data-mobile-label="강화·현질">강화·현질 효율</span></a>
-    <a href="{{ root }}fun/" class="nav-fun" title="축구 미니게임·테스트"><svg class="fg-fun-icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6h11a4 4 0 0 1 3.9 3.2l1.2 5.6a3 3 0 0 1-5.1 2.8l-2.1-2.1H8.6l-2.1 2.1a3 3 0 0 1-5.1-2.8l1.2-5.6A4 4 0 0 1 6.5 6Z"/><path d="M7 9v5M4.5 11.5h5M16 10h.01M19 13h.01"/></svg><span>킥킥</span></a>
+    <a href="{{ root }}fun/" class="nav-fun" title="축구 미니게임·테스트"><svg class="fg-fun-icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6h11a4 4 0 0 1 3.9 3.2l1.2 5.6a3 3 0 0 1-5.1 2.8l-2.1-2.1H8.6l-2.1 2.1a3 3 0 0 1-5.1-2.8l1.2-5.6A4 4 0 0 1 6.5 6Z"/><path d="M7 9v5M4.5 11.5h5M16 10h.01M19 13h.01"/></svg><span class="fg-fun-copy"><span>킥킥</span><small aria-hidden="true">GAME START</small></span></a>
 
   </nav>
 {% endblock %}

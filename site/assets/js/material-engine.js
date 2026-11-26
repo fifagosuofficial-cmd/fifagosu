@@ -23,6 +23,7 @@ function create(data,rules){
   }
  }
  const ready=index.size>0&&table.size>0;
+ function hasRule(base,grade,bonus){return table.has(grade+":"+(base+bonus))}
  function solve(base,grade,bonus,excluded=0,target=100){
   if(!safe(base)||!safe(grade)||grade>12||!Number.isInteger(bonus)||bonus<0)return null;
   const ovr=base+bonus,points=table.get(grade+":"+ovr),full=Math.ceil((rules?.fullPoints||0)*target/100);
@@ -65,7 +66,22 @@ function create(data,rules){
   }
   return null;
  }
- return {ready,solve,estimate,coverage:table.size,date:data?.date||null};
+ function best(base,grade,bonus,excluded,gain){
+  if(!ready||!hasRule(base,grade,bonus)||!Number.isFinite(gain))return null;
+  const ovr=base+bonus,full=rules.fullPoints,points=table.get(grade+":"+ovr),choices=[];
+  for(const [o,p] of points){const card=index.get(o)?.find(c=>c.pid!==excluded);if(card)choices.push({...card,points:Math.min(full,p)})}
+  let dp=new Map([[0,{cost:0,cards:[]}]]),winner=null,bestValue=-Infinity;
+  for(let n=1;n<=5&&dp.size;n++){const next=new Map();
+   for(const [p,state] of dp)for(const c of choices){const v=Math.min(full,p+c.points),cost=state.cost+c.price;if(!safe(cost))continue;const row={cost,cards:[...state.cards,c]};const score=gain*v/full-cost;
+    if(score>bestValue){bestValue=score;winner={...row,ovr,grade,gauge:100*v/full,local:true,estimated:observed,date:data?.date||null}}
+    if(v<full&&(!next.has(v)||next.get(v).cost>cost))next.set(v,row);
+   }
+   dp=new Map();let bound=Infinity;
+   for(const [p,row] of [...next].sort((a,b)=>gain>=0?b[0]-a[0]:a[0]-b[0]))if(row.cost<bound){dp.set(p,row);bound=row.cost}
+  }
+  return winner;
+ }
+ return {ready,hasRule,solve,best,estimate,coverage:table.size,date:data?.date||null};
 }
 // Reuse matching displayed quote rates across two different player identities.
  // Rounded displayed values are not verified internal points; mark estimates.
@@ -84,5 +100,6 @@ function create(data,rules){
   }
   return {schema:1,verified:false,observed:true,source,fullPoints:10000,rows};
  }
- return {create,observedRules};
+ function exactObservedRule(q,base,bonus){return {schema:1,verified:false,observed:true,source,fullPoints:10000,rows:[{grade:q.grade,targetOvr:base+bonus,materials:(q.materials||[]).filter(([o,p])=>safe(o)&&safe(p)&&p>1&&p<=10000).map(([o,p])=>[o,p-1])}]}}
+ return {create,observedRules,exactObservedRule};
 });

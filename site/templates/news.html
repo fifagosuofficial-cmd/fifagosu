@@ -8,7 +8,7 @@
   <div class="bd-head">
     <div>
       <h1 class="bd-h1">{{ '뉴스 게시판' if P else '소식 게시판' }}</h1>
-      <p class="sub">{{ '해외축구·국내축구·FC온라인 관련 기사를 모아요.' if P else 'FC온라인 공식 공지·점검·업데이트·이벤트를 모아요.' }} 읽기 전용 자동 수집 게시판이에요.{% if news %} 마지막 갱신 <time datetime="{{ news.updated }}" data-rel>{{ news.updated[5:7]|int }}.{{ news.updated[8:10]|int }} {{ news.updated[11:16] }}</time>{% endif %}</p>
+      {% if not P %}<p class="sub">FC온라인 공식 공지·점검·업데이트·이벤트를 모아요. 읽기 전용 자동 수집 게시판이에요.{% if news %} 마지막 갱신 <time datetime="{{ news.updated }}" data-rel>{{ news.updated[5:7]|int }}.{{ news.updated[8:10]|int }} {{ news.updated[11:16] }}</time>{% endif %}</p>{% endif %}
     </div>
     <form class="bd-search" role="search" onsubmit="return false">
       <input type="search" id="bdQ" placeholder="{{ '제목·출처 검색 (예: 손흥민, EPL, K리그)' if P else '제목·내용 검색 (예: 점검, 강화, 이벤트)' }}" aria-label="{{ '뉴스' if P else '소식' }} 검색" autocomplete="off">

@@ -62,7 +62,7 @@ test("efficiency ranking subtracts verified cost and recomputes return, profit a
 test("efficiency defaults to verified costs with two rankings and bounded concurrent lookups",()=>{
  const fs=require("node:fs"),path=require("node:path"),s=fs.readFileSync(path.join(__dirname,"../site/assets/js/sim.js"),"utf8"),h=fs.readFileSync(path.join(__dirname,"../site/templates/index.html"),"utf8");
  assert.match(h,/id="effMat" checked/);assert.match(h,/data-em="win" aria-selected="true"/);assert.match(h,/data-em="top" aria-selected="false"/);assert.ok(!h.includes('data-em="budget"'));
- assert.ok(s.includes('EFF_PARALLEL=2'));assert.ok(s.includes('/api/boost?cached=1'));assert.ok(s.includes('ctx.byKey.get(key)'));
+ assert.ok(s.includes('EFF_PARALLEL=1'));assert.ok(s.includes('/api/boost?cached=1'));assert.ok(s.includes('ctx.byKey.get(key)'));
 });
 test("cached boost endpoint returns only verified recent plans and never calls upstream",async()=>{
  const {onRequestGet}=await boost();let min=0;const good={spid:100004000,grade:1,plan:{official:true,gauge:100,cost:5}},bad={...good,plan:{official:true,gauge:99}};
@@ -138,3 +138,6 @@ test("ranking skips missing quotes and keeps lookup details below results",()=>{
  assert.equal(vm.runInContext('effMissingQuote("no_quotes")',ctx),true);assert.equal(vm.runInContext('effLookupBlocked("quotes_http_403")',ctx),true);assert.equal(vm.runInContext('effLookupBlocked("request_limit")',ctx),true);assert.equal(vm.runInContext('effLookupBlocked("quotes_http_400")',ctx),false);
  assert.ok(s.includes("||knownUnavailable(k)"));assert.ok(h.indexOf('id="effOut"')<h.indexOf('id="effActions"'));assert.ok(h.includes('class="eff-lookup-details"'));
 });
+
+
+test("observed quotes are conservative estimates and require matching independent players",()=>{const {observedRules}=require("../site/assets/js/material-engine.js");const quotes=[{spid:1000001,grade:1,materials:[[110,2200],[112,3900]]},{spid:1000002,grade:1,materials:[[110,2200],[112,4000]]}];const rules=observedRules(quotes,[[1000001,"A",110],[1000002,"B",110]],[0,0]);assert.equal(rules.verified,false);assert.deepEqual(rules.rows[0].materials,[[110,2199]]);const plan=create(data,rules).solve(110,1,0,1);assert.equal(plan.estimated,true);assert.equal(plan.gauge,100);assert.equal(create(data,rules).solve(110,1,0,1,40).cost,16);});

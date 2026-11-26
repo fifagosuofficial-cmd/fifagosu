@@ -71,8 +71,9 @@ export async function onRequestGet({request,env,waitUntil}){
   if(request.headers.get("sec-fetch-site")==="cross-site")return json(400,{message:"잘못된 요청입니다."});
   const db=env.COMMUNITY_DB;if(!db)return json(503,{items:[]});
   try{await ensure(db);const now=Math.floor(Date.now()/1000),result=await db.prepare("SELECT body FROM boost_quote_cache WHERE created>? ORDER BY created DESC LIMIT 3000").bind(now-TTL).all();
-   const items=[];for(const row of result.results||[]){try{const d=JSON.parse(row.body);if(d.plan?.official&&d.plan.gauge===100)items.push({spid:d.spid,grade:d.grade,plan:d.plan})}catch{}}
-   return json(200,{items},30);
+   const items=[],quotes=[],includeRules=u.searchParams.get("rules")==="1";
+   for(const row of result.results||[]){try{const d=JSON.parse(row.body);if(d.plan?.official&&d.plan.gauge===100)items.push({spid:d.spid,grade:d.grade,plan:d.plan});if(includeRules&&safe(d.spid)&&safe(d.grade)&&Array.isArray(d.rows)){const materials=d.rows.filter(r=>safe(r.ovr)&&safe(r.points)&&r.points<=10000).map(r=>[r.ovr,r.points]);if(materials.length)quotes.push({spid:d.spid,grade:d.grade,materials})}}catch{}}
+   return json(200,includeRules?{items,quotes}:{items},30);
   }catch{return json(503,{items:[]})}
  }
  if(!/^\d{8,9}$/.test(id)||! /^(?:[1-9]|1[012])$/.test(g)||request.headers.get("sec-fetch-site")==="cross-site")return json(400,{message:"선수와 강화 단계를 확인해 주세요."});

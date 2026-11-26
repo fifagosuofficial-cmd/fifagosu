@@ -31,7 +31,7 @@ def test_community_pages_and_seo(tmp_path):
         if name != "board":
             assert 'name="robots" content="noindex"' in html
     home = (out / "index.html").read_text("utf-8")
-    assert "선수 거래소" in home and 'href="board/"' in home
+    assert "선수 거래소" in home and 'href="/board/"' in home
     sm = (out / "sitemap.xml").read_text("utf-8")
     assert "https://fifagosu.com/board/" in sm and "https://fifagosu.com/admin/" not in sm
 

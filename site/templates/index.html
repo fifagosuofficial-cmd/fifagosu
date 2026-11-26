@@ -215,14 +215,14 @@
     </form>
     <div class="eff-opts">
       <div class="eff-steps" id="effSteps" role="group" aria-label="강화 단계"></div>
-      <label class="eff-chk"><input type="checkbox" id="effMat" checked> 재료비 포함 <small>(공식 풀게이지 재료비 자동 조회)</small></label>
+      <label class="eff-chk"><input type="checkbox" id="effMat" checked> 재료비 포함 <small>(공식 확인 / 자체 예상 구분)</small></label>
       <label class="eff-chk">실패하면<select id="effFail"><option value="keep">단계 유지</option><option value="down">1단계 하락 (5강 이상)</option></select></label>
     </div>
     <div class="eff-sortbar" id="effSort"><span>정렬 기준</span><div role="group" aria-label="인생강화 정렬 기준"><button type="button" data-order="score" aria-pressed="true">종합지수 높은 순</button><button type="button" data-order="profit" aria-pressed="false">순이익 높은 순</button></div></div>
     <details class="eff-score-help" id="effScoreHelp"><summary>종합지수 산정 기준 <span>ⓘ</span></summary><p>피파고수 자체 지표(100점): 성공 수익률 50점 + 성공 확률 30점 + 성공 순이익 20점. 수익률과 순이익은 로그 방식으로 환산하며 각각 1,000%와 1,000억 BP에서 만점입니다. 성공 순이익이 양수인 카드만 평가합니다. 높은 점수가 실제 이익을 보장하지 않으며, 성공 확률과 회수율도 확인하세요.</p></details>
     <div class="eff-cols" id="effOut"></div>
     <div class="eff-lookup-footer">
-      <details class="eff-lookup-details"><summary>공식 시세 조회 안내</summary><p class="sim-note" id="effInfo">시세를 불러오는 중…</p></details>
+      <details class="eff-lookup-details"><summary>재료비 계산 기준</summary><p class="sim-note" id="effInfo">시세를 불러오는 중…</p></details>
       <div class="eff-actions" id="effActions" hidden><span id="effProgress" role="status" aria-live="polite"></span><div><button type="button" class="ghost" id="effMore">추가 조회</button><button type="button" class="ghost" id="effRetry" hidden>다시 조회</button></div></div>
     </div>
     <aside class="slot" data-ad-slot="sim-1" aria-label="광고"></aside>
@@ -245,7 +245,7 @@
           <label>시작 강화<select id="smEFrom"></select></label>
           <label>목표 강화<select id="smETo"></select></label>
           <label>실패하면<select id="smEFail"><option value="keep">단계 유지</option><option value="down">1단계 하락 (5강 이상)</option></select></label>
-          <label class="mat-in">재료 카드 1장 가격 (BP)<input type="text" id="smEMat" placeholder="예: 2500000" inputmode="numeric" autocomplete="off"><span class="mat-v" id="smEMatV">재료비 불러오는 중</span></label><div class="mat-in" style="grid-column:1 / -1;min-width:0;display:grid;gap:8px;padding:12px;border:1px solid rgba(128,128,128,.25);border-radius:12px"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><label style="display:flex;align-items:center;gap:8px;margin:0"><input type="checkbox" id="smEMatAuto" checked style="width:auto;margin:0;accent-color:#00bf70"> 자동 재료비</label><details style="text-align:right;max-width:55%"><summary style="cursor:pointer;list-style:none" aria-label="재료비 기준 안내">ⓘ</summary><small>공식 월평균 최저 거래가 기준 · 최대 5장 · 이벤트 미적용</small></details></div><div id="smEMatCombo" class="mat-v" aria-live="polite" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;min-width:0"></div><a href="https://fconline.nexon.com/DataCenter/PlayerGrow" target="_blank" rel="noopener" style="font-size:12px;color:inherit;opacity:.75;text-decoration:none">공식 도우미 ↗</a></div>
+          <label class="mat-in">재료 카드 1장 가격 (BP)<input type="text" id="smEMat" placeholder="예: 2500000" inputmode="numeric" autocomplete="off"><span class="mat-v" id="smEMatV">재료비 불러오는 중</span></label><div class="mat-in" style="grid-column:1 / -1;min-width:0;display:grid;gap:8px;padding:12px;border:1px solid rgba(128,128,128,.25);border-radius:12px"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><label style="display:flex;align-items:center;gap:8px;margin:0"><input type="checkbox" id="smEMatAuto" checked style="width:auto;margin:0;accent-color:#00bf70"> 자동 재료비</label><details style="text-align:right;max-width:55%"><summary style="cursor:pointer;list-style:none" aria-label="재료비 기준 안내">ⓘ</summary><small>공식 월평균 거래가 또는 수집 시세 · 최대 5장 · 자체 예상은 실제 검증값 아님 · 이벤트 미적용</small></details></div><div id="smEMatCombo" class="mat-v" aria-live="polite" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;min-width:0"></div><small id="smELocalHint" hidden aria-live="polite"></small><a href="https://fconline.nexon.com/DataCenter/PlayerGrow" target="_blank" rel="noopener" style="font-size:12px;color:inherit;opacity:.75;text-decoration:none">공식 도우미 ↗</a></div>
         </div>
         </div>
         <div class="gauge5" id="smEGaugeBox" role="group" aria-label="강화 게이지">

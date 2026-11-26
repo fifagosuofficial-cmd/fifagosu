@@ -1402,6 +1402,8 @@ function marketRank(items,state,direction,limit){
   const count={},out=[];for(const x of rows){if(state.sort==='impact'&&!state.grade&&(count[x.id]||0)>=2)continue;count[x.id]=(count[x.id]||0)+1;out.push(x);if(out.length>=limit)break}return out
 }
 function initMarketDashboard(root){
+  if(root.dataset.home==="true"){root.addEventListener("click",e=>{const row=e.target.closest("[data-card]");if(row){openCard(+row.dataset.card);const g=+(row.dataset.grade||1);if(g>1){pmGrade=g;renderCard()}}});loadSeasons().then(()=>hydrateSeasonBadges(root)).catch(()=>{});return}
+
   const detail=root.dataset.detail==='true',q=new URLSearchParams(location.search),state={day:detail&&['1','3','7'].includes(q.get('period'))?q.get('period'):'1',grade:detail&&/^(?:[1-9]|1[0-3])$/.test(q.get('grade')||'')?q.get('grade'):'',season:detail&&/^\d+$/.test(q.get('season')||'')?q.get('season'):'',sort:detail&&['impact','pct','delta'].includes(q.get('sort'))?q.get('sort'):'impact',direction:detail&&q.get('direction')==='down'?'down':'up'};
   const grade=root.querySelector('[data-market-grade]'),season=root.querySelector('[data-market-season]');grade.value=state.grade;season.value=state.season;
   let seq=0,started=false;

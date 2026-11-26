@@ -209,3 +209,14 @@ test("player record explanation is hidden in a single accessible help disclosure
   const css=fs.readFileSync(path.join(__dirname,'../site/assets/css/main.css'),'utf8');
   assert.match(css,/\.dps-table-2 \.duel-count\{[^}]*white-space:normal;overflow-wrap:anywhere/);
  });
+
+test("diagnosis profile omits the duplicate record strip while retaining ranks and sample labeling",()=>{
+ const fs=require("node:fs"),path=require("node:path");
+ const s=fs.readFileSync(path.join(__dirname,"../site/assets/js/app.js"),"utf8");
+ const board=s.slice(s.indexOf("function dRenderBoard("),s.indexOf("function cmpRows("));
+ assert.ok(board.includes("최근 경기 등급")&&board.includes("역대 최고 등급"));
+ assert.ok(board.includes("예시 데이터(가상)"));
+ assert.ok(!board.includes('class="record"'));
+ assert.ok(!board.includes("승·무·패")&&!board.includes("득실"));
+ assert.ok(s.includes("종합 구단 리포트"));
+});

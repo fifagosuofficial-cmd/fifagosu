@@ -239,3 +239,24 @@ test("arcade refuses anonymous, insufficient XP and missing market data before c
  const r=await callFixture(env,"game-start",{game:"player",fee:0},"b");assert.equal(r.status,200);sql.prepare("UPDATE arcade_rounds SET state=1,step=5 WHERE id=?").run(r.data.round.id);
  assert.equal((await callFixture(env,"game-start",{game:"player",fee:2},"b")).status,409);sql.close();
 });
+
+test("pixel penalty keeps the keeper direction secret and judges the chosen direction",async()=>{
+ const {env,sql}=fixture();
+ let r=await callFixture(env,"game-start",{game:"penalty",fee:0},"a");assert.equal(r.status,200,JSON.stringify(r.data));const id=r.data.round.id;assert.ok(!("keeper" in r.data.round.question));assert.ok(!("phase" in r.data.round.question));
+ const qs=JSON.parse(sql.prepare("SELECT questions FROM arcade_rounds WHERE id=?").get(id).questions);assert.equal(qs.length,5);assert.ok(qs.every(q=>[0,1,2].includes(q.keeper)));
+ for(let i=0;i<5;i++){const shot=i===0?qs[i].keeper:(qs[i].keeper+1)%3;r=await callFixture(env,"game-answer",{id,step:i,answer:shot},"a");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.feedback.keeper,qs[i].keeper);assert.equal(r.data.feedback.correct,i!==0)}
+ assert.equal(r.data.round.score,4);assert.equal(r.data.round.reward,8);sql.close();
+});
+test("pixel lifting continues beyond five consecutive touches and ends on the first miss",async()=>{
+ const {env,sql}=fixture();
+ let r=await callFixture(env,"game-start",{game:"lifting",fee:0},"a");assert.equal(r.status,200,JSON.stringify(r.data));const id=r.data.round.id;
+ const qs=JSON.parse(sql.prepare("SELECT questions FROM arcade_rounds WHERE id=?").get(id).questions);assert.equal(qs.length,20);assert.ok(qs[19].window<qs[0].window);
+ for(let i=0;i<7;i++){sql.prepare("UPDATE arcade_rounds SET issued=? WHERE id=?").run(Date.now()-qs[i].target,id);r=await callFixture(env,"game-answer",{id,step:i,answer:0},"a");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.feedback.correct,true);assert.equal(r.data.round.state,0);assert.equal(r.data.round.score,i+1)}
+ r=await callFixture(env,"game-answer",{id,step:7,answer:1},"a");assert.equal(r.status,200);assert.equal(r.data.round.state,1);assert.equal(r.data.round.score,7);assert.equal(r.data.round.reward,12);assert.equal(r.data.member.rank.points,21);
+ r=await callFixture(env,"game-answer",{id,step:7,answer:1},"a");assert.equal(r.data.member.rank.points,21);sql.close();
+});
+test("obsolete timed game sessions refund entry fees rather than breaking after an upgrade",async()=>{
+ const {env,sql}=fixture();
+ let r=await callFixture(env,"game-start",{game:"penalty",fee:0},"a");assert.equal(r.status,200);sql.prepare("UPDATE arcade_rounds SET questions=?,fee=2 WHERE id=?").run(JSON.stringify([{phase:0}]),r.data.round.id);
+ r=await callFixture(env,"game-status",null,"a");assert.equal(r.status,200);assert.equal(r.data.pending,null);assert.equal(r.data.member.rank.points,9);sql.close();
+});

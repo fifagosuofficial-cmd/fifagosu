@@ -11,7 +11,7 @@ const clamp=(n,a=0,b=1)=>Math.max(a,Math.min(b,n));
 const rect=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))};
 function poly(c,points,color){c.fillStyle=color;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(Math.round(x),Math.round(y)):c.moveTo(Math.round(x),Math.round(y)));c.closePath();c.fill()}
 function pixelBall(c,x,y,size=4){x=Math.round(x);y=Math.round(y);const d=size;rect(c,x-d,y-d+1,d*2+1,d*2-1,"#17252d");rect(c,x-d+1,y-d,d*2-1,d*2+1,"#17252d");rect(c,x-d+1,y-d+1,d*2-1,d*2-1,"#fff8e8");rect(c,x-1,y-1,3,3,"#263945");rect(c,x-d+1,y,2,2,"#65757e");rect(c,x+1,y-d+1,2,2,"#263945")}
-function person(c,x,y,{scale=1,shirt="#ee5364",back=false,kick=0,keeper=false,dive=0}={}){
+function person(c,x,y,{scale=1,shirt="#ee5364",back=false,kick=0,keeper=false,dive=0,articulated=false}={}){
  c.save();c.translate(Math.round(x),Math.round(y));c.scale(scale,scale);
  if(dive){c.rotate(dive*.98);c.translate(dive*5,-4)}
  const dark="#20283c",skin="#e6a76e",light="#ffd29a",hair="#443044",shorts=keeper?"#293c38":"#f5f1e6",trim=keeper?"#ffd15e":"#a82f4c";
@@ -19,11 +19,11 @@ function person(c,x,y,{scale=1,shirt="#ee5364",back=false,kick=0,keeper=false,di
  if(!back){rect(c,-3,-20,2,2,dark);rect(c,2,-20,2,2,dark)}
  rect(c,-3,-15,6,3,skin);rect(c,-9,-13,18,12,dark);rect(c,-8,-12,16,10,shirt);rect(c,-8,-12,16,2,trim);rect(c,-6,-9,12,6,shirt);
  if(back){rect(c,-2,-10,4,5,"#fff5da");rect(c,-1,-9,2,3,shirt)}
- const arm=keeper?12:8;rect(c,-arm,-11,4,8,dark);rect(c,-arm+1,-10,3,6,shirt);rect(c,-arm,-5,3,4,keeper?"#fdf5de":skin);rect(c,arm-4,-11,4,8,dark);rect(c,arm-3,-10,3,6,shirt);rect(c,arm-3,-5,3,4,keeper?"#fdf5de":skin);
+ if(!articulated){const arm=keeper?12:8;rect(c,-arm,-11,4,8,dark);rect(c,-arm+1,-10,3,6,shirt);rect(c,-arm,-5,3,4,keeper?"#fdf5de":skin);rect(c,arm-4,-11,4,8,dark);rect(c,arm-3,-10,3,6,shirt);rect(c,arm-3,-5,3,4,keeper?"#fdf5de":skin);}
  rect(c,-7,-2,14,7,dark);rect(c,-6,-1,12,5,shorts);
- rect(c,-6,4,5,7,dark);rect(c,-5,4,3,6,skin);rect(c,-6,8,5,4,shirt);rect(c,-7,11,7,3,dark);rect(c,-7,11,5,1,"#e5eaf2");
+ if(!articulated){rect(c,-6,4,5,7,dark);rect(c,-5,4,3,6,skin);rect(c,-6,8,5,4,shirt);rect(c,-7,11,7,3,dark);rect(c,-7,11,5,1,"#e5eaf2");
  if(kick){rect(c,1,3,5,4,dark);rect(c,4,4,7,4,skin);rect(c,8,4,5,4,shirt);rect(c,12,3,6,5,dark);rect(c,13,3,4,1,"#f6e8d0")}
- else{rect(c,1,4,5,7,dark);rect(c,2,4,3,6,skin);rect(c,1,8,5,4,shirt);rect(c,1,11,7,3,dark);rect(c,2,11,5,1,"#e5eaf2")}
+ else{rect(c,1,4,5,7,dark);rect(c,2,4,3,6,skin);rect(c,1,8,5,4,shirt);rect(c,1,11,7,3,dark);rect(c,2,11,5,1,"#e5eaf2")}}
  c.restore();
 }
 function crowd(c,w=256){rect(c,0,0,w,17,"#17273d");rect(c,0,17,w,18,"#31455e");rect(c,0,35,w,6,"#536a76");for(let j=0;j<3;j++)for(let i=0;i<43;i++){let x=i*6+((j%2)*3),y=10+j*8;rect(c,x,y,3,3,["#d8b498","#b7d8d1","#ec7580","#7c9bb6","#eef2d4"][(i*7+j*3)%5]);rect(c,x-1,y+3,5,3,["#536d9a","#b14a62","#389a83","#e4c46a"][(i+j*2)%4])}rect(c,0,39,w,5,"#f0e5c7");for(let i=0;i<8;i++)rect(c,i*32,40,29,3,i%2?"#568fba":"#d36e72")}
@@ -44,14 +44,14 @@ function penaltyFrame(c,t=0,shot=null,keeper=null,scored=null){
  const kx=128+side*32*d,ky=43-7*Math.sin(Math.PI*d);
  rect(c,kx-11,57,22,2,"#285c49");
  c.save();c.translate(Math.round(kx),Math.round(ky));if(side)c.rotate(side*d*1.1);
- person(c,0,0,{shirt:"#f7b842",keeper:true});
- if(d>0){for(const sign of [-1,1]){pixelLimb(c,sign*7,-10,sign*(12+7*d),-10-8*d,5,"#e6a139");rect(c,sign*(12+7*d)-2,-12-8*d,5,5,"#fff5df")}}
+ person(c,0,0,{shirt:"#f7b842",keeper:true,articulated:true});
+ for(const sign of [-1,1]){const hx=sign*(11+7*d),hy=-3-15*d;pixelLimb(c,sign*7,-10,hx,hy,5,"#e6a139");rect(c,hx-2,hy-2,5,5,"#fff5df");const fx=sign*(6+4*d);pixelLimb(c,sign*4,3,fx,11,5,"#293c38");rect(c,fx-3,11,6,3,"#20283c")}
  c.restore();
  const stride=active&&run<1?Math.sin(t/48)*Math.sin(Math.PI*run):0,px=104+run*19,py=126-run*17;
  const swing=active?Math.sin(Math.PI*clamp((t-280)/330)):0;
  rect(c,px-12,py+15,26,3,"#286a45");
  c.save();c.translate(Math.round(px),Math.round(py));c.scale(1.25,1.25);
- person(c,0,-Math.abs(stride)*2,{back:true});
+ person(c,0,0,{back:true,articulated:true});
  for(const sign of [-1,1]){
  const hip=sign*4,knee=hip+sign*stride*5+(sign===1?swing*6:0),foot=knee+sign*stride*3+(sign===1?swing*9:0),fy=13-(sign===1?swing*10:Math.max(0,stride*sign)*3);
  pixelLimb(c,hip,3,knee,8,5,"#20283c");pixelLimb(c,hip,3,knee,8,3,"#f5f1e6");pixelLimb(c,knee,8,foot,fy,4,"#e6a76e");rect(c,foot-2,fy,6,3,"#20283c");

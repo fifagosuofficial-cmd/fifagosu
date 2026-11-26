@@ -99,7 +99,7 @@ function effCandidateOrder(rows,mode,order='score'){
   return rows.filter(r=>r.win>0).map(r=>({...r,lifeScore:effLifeScore(r)})).sort((a,b)=>(order==='profit'?b.win-a.win||b.lifeScore-a.lifeScore:b.lifeScore-a.lifeScore||b.win-a.win)||a.id-b.id||a.g-b.g);
 }
 let effCtx=null,effTimer=null,effWork=Promise.resolve(),effLastHTML='';
-const EFF_BATCH=6,EFF_PARALLEL=2;
+const EFF_BATCH=6,EFF_PARALLEL=1;
 const effMissingQuote=code=>["no_quotes","no_full_combo","not_verified"].includes(code);
 const effLookupBlocked=code=>code==="request_limit"||/(?:_http_(?:403|429|5\d\d)|_timeout|_network)$/.test(code||"")||["network","cache_init","cache_read","cache_write","request_budget"].includes(code);
 function effActive(ctx){return effCtx===ctx&&$('effMat').checked&&!$('simEff').hidden&&!$('v-sim').hidden}
@@ -108,7 +108,7 @@ function effMaterialRows(ctx){
 }
 function effStart(ctx,retry=false){
   if(!effActive(ctx)||ctx.running)return;
-  if(retry){for(const k of ctx.retry)ctx.attempted.delete(k);ctx.retry.clear();ctx.issue=''}
+  if(retry){clearTimeout(ctx.resume);ctx.resume=null;for(const k of ctx.retry)ctx.attempted.delete(k);ctx.retry.clear();ctx.issue=''}
   ctx.running=true;ctx.done=0;ctx.issue='';effPaint(ctx);
   effWork=effWork.catch(()=>{}).then(async()=>{
     await loadCachedPlans();
@@ -117,6 +117,8 @@ function effStart(ctx,retry=false){
     for(const r of ctx.candidates){const k=planKey(r.id,r.g);if(officialPlans.has(k)||ctx.attempted.has(k)||knownUnavailable(k))continue;next.push(r);if(next.length>=EFF_BATCH)break}
     for(let i=0;i<next.length&&effActive(ctx);i+=EFF_PARALLEL){
       if(ctx.issue)break;
+      if(i>0)await new Promise(resolve=>setTimeout(resolve,8000));
+      if(!effActive(ctx))break;
       await Promise.all(next.slice(i,i+EFF_PARALLEL).map(async r=>{
         const k=planKey(r.id,r.g);if(officialPlans.has(k))return;
         ctx.attempted.add(k);
@@ -126,7 +128,7 @@ function effStart(ctx,retry=false){
         if(effActive(ctx))effPaint(ctx);
       }));
     }
-  }).finally(()=>{ctx.running=false;if(effActive(ctx))effPaint(ctx)});
+  }).finally(()=>{ctx.running=false;if(effActive(ctx)){effPaint(ctx);if(ctx.retry.size&&ctx.issue&&!ctx.resume){ctx.resume=setTimeout(()=>{ctx.resume=null;if(effActive(ctx))effStart(ctx,true)},65000)}}});
 }
 function effRow(r,i,kind){
   const win=kind==="win",score=win?effLifeScore(r):0,w=win?score:Math.max(4,Math.min(100,r.rr/2*100));
@@ -164,7 +166,7 @@ function effPaint(ctx,baseRows){
   $('effScoreHelp').hidden=$('effSort').hidden=effMode!=='win';
   const rows=ctx?effMaterialRows(ctx):effWithinBudget(baseRows,effBudget);
   const fee=(feeRate()*100).toFixed(1).replace(/\.0$/,'');
-  const empty=ctx?(ctx.candidates.length===0?'예산과 강화 단계에 맞는 후보가 없어요.':ctx.running?'공식 재료비를 조회하고 있어요…':ctx.issue?'조회 실패: 다시 조회해 주세요.':'예산·조건에 맞는 확인된 재료비 조합이 아직 없어요. 추가 조회를 눌러 주세요.'):'조건에 맞는 카드가 없어요.';
+  const empty=ctx?(ctx.candidates.length===0?'예산과 강화 단계에 맞는 후보가 없어요.':ctx.running?'공식 재료비를 조회하고 있어요…':ctx.issue?'공식 조회 대기 · 확인된 결과는 유지됩니다.':'예산·조건에 맞는 확인된 재료비 조합이 아직 없어요. 추가 조회를 눌러 주세요.'):'조건에 맞는 카드가 없어요.';
   const win=effMode==='win',top=effCandidateOrder(rows,effMode,effSort).slice(0,30),title=win?'인생강화 TOP':'회수율 TOP 30';
   const html='<div class="eff-col"><h3>'+title+' <small>'+(win?(effSort==='profit'?'순이익 높은 순':'종합지수 높은 순'):'투자금 대비 회수 비율 순')+(ctx?' · 공식 조회 완료 후보 기준':'')+'</small></h3>'+(top.map((r,i)=>effRow(r,i,win?'win':undefined)).join('')||'<p class="sim-note">'+empty+'</p>')+'</div>';
   if(html!==effLastHTML){$('effOut').className='eff-cols';$('effOut').innerHTML=html;effLastHTML=html}
@@ -172,7 +174,7 @@ function effPaint(ctx,baseRows){
   if(ctx){
     const remaining=ctx.candidates.some(r=>{const k=planKey(r.id,r.g);return !officialPlans.has(k)&&!ctx.attempted.has(k)&&!knownUnavailable(k)});
     $('effInfo').textContent='재료비 포함 · 공식 월평균 거래가 · 확인 '+rows.length.toLocaleString()+' / 후보 '+ctx.candidates.length.toLocaleString()+'건 · 수수료 '+fee+'% · 전체 시장 순위 아님'+(Number.isFinite(effBudget)?' · 예산 '+won(effBudget)+' 이하':'');
-    $('effProgress').textContent=ctx.running?"재료비 확인 중…":ctx.issue?"일부 후보 조회 일시 제한":ctx.retry.size?"일부 후보 미확인":"";
+    $('effProgress').textContent=ctx.running?"재료비 확인 중…":ctx.issue?ctx.issue:ctx.retry.size?"일부 후보 미확인":"";
     $('effMore').disabled=ctx.running||!remaining;
     $('effRetry').hidden=!ctx.retry.size;$('effRetry').disabled=ctx.running;
   }else $('effInfo').textContent='시세 풀 '+POOL.length.toLocaleString()+'장 · 판매 수수료 '+fee+'% · 재료비 제외 · 줄을 누르면 강화 시뮬로 이어서 해 볼 수 있어요.';
@@ -199,10 +201,10 @@ const validOfficialPlan=plan=>plan?.official&&plan.gauge===100&&Number.isSafeInt
 let cachedPlansP=null;
 function loadCachedPlans(){
  if(!cachedPlansP)cachedPlansP=(async()=>{try{
-  const r=await fetch("/api/boost?cached=1",{signal:typeof AbortSignal.timeout==="function"?AbortSignal.timeout(5000):undefined});if(!r.ok)return;
+  const r=await fetch("/api/boost?cached=1",{signal:typeof AbortSignal.timeout==="function"?AbortSignal.timeout(5000):undefined});if(!r.ok){cachedPlansP=null;return;}
   const d=await r.json();for(const item of d.items||[]){if(Number.isSafeInteger(item.spid)&&Number.isInteger(item.grade)&&item.grade>=1&&item.grade<MAX&&validOfficialPlan(item.plan)){const k=planKey(item.spid,item.grade);if(!officialPlans.has(k))officialPlans.set(k,item.plan)}}
   if(effCtx&&effActive(effCtx))effPaint(effCtx);
- }catch{}})();return cachedPlansP;
+ }catch{cachedPlansP=null}})();return cachedPlansP;
 }
 let preparing=false;
 const selectedPlan=g=>SEL?officialPlans.get(planKey(SEL.c.id,g))||null:null;
@@ -244,7 +246,7 @@ function matShow(){
  const v=matPer(),plan=autoMat()?selectedPlan(cur):null,key=SEL?planKey(SEL.c.id,cur):"";
  $('smEMat').disabled=autoMat()||preparing;
  $('smEMatV').textContent=autoMat()?"공식 월평균 최저 거래가":v?korBP(v)+' BP / 장':'재료비 입력 필요';
- $('smEMatCombo').innerHTML=!autoMat()?"수동 재료비 사용 중":plan?'<div style="width:100%"><b>'+korBP(plan.cost)+' BP · '+plan.cards.length+'장 · 100%</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">'+plan.cards.map(c=>'<span style="border:1px solid rgba(128,128,128,.25);border-radius:6px;padding:4px 7px">OVR '+c.ovr+' · '+korBP(c.price)+' BP</span>').join('')+'</div></div>':cur>=MAX?"최대 강화":!SEL?"선수를 선택하세요":officialPending.has(key)?"재료비 조회 중…":officialErrors.has(key)?'<span>재료비 조회 제한</span><button type="button" id="smEBoostRetry" style="font-size:12px;padding:5px 10px;border-radius:8px;cursor:pointer" title="'+H(officialErrors.get(key))+'">다시 조회</button>':"재료비 조회 대기";
+ $('smEMatCombo').innerHTML=!autoMat()?"수동 재료비 사용 중":plan?'<div style="width:100%"><b>'+korBP(plan.cost)+' BP · '+plan.cards.length+'장 · 100%</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">'+plan.cards.map(c=>'<span style="border:1px solid rgba(128,128,128,.25);border-radius:6px;padding:4px 7px">OVR '+c.ovr+' · '+korBP(c.price)+' BP</span>').join('')+'</div></div>':cur>=MAX?"최대 강화":!SEL?"선수를 선택하세요":officialPending.has(key)?"재료비 조회 중…":officialErrors.has(key)?'<span>'+H(officialErrors.get(key))+'</span><button type="button" id="smEBoostRetry" style="font-size:12px;padding:5px 10px;border-radius:8px;cursor:pointer" title="'+H(officialErrors.get(key))+'">다시 조회</button>':"재료비 조회 대기";
  if($('smEBoostRetry'))$('smEBoostRetry').onclick=()=>{void loadOfficial(cur)};
  $('smEGaugeV').textContent=autoMat()?(plan?"풀게이지 · 100%":"게이지 미확인"):`${KAN}칸 · ${KAN*20}%`;
  $('smEGaugeBox').querySelectorAll('[data-k]').forEach(x=>x.classList.toggle('on',autoMat()?!!plan:+x.dataset.k<=KAN));

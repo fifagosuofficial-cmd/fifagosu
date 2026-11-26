@@ -101,5 +101,18 @@ function create(data,rules){
   return {schema:1,verified:false,observed:true,source,fullPoints:10000,rows};
  }
  function exactObservedRule(q,base,bonus){return {schema:1,verified:false,observed:true,source,fullPoints:10000,rows:[{grade:q.grade,targetOvr:base+bonus,materials:(q.materials||[]).filter(([o,p])=>safe(o)&&safe(p)&&p>1&&p<=10000).map(([o,p])=>[o,p-1])}]}}
- return {create,observedRules,exactObservedRule};
+ // Historical community reference approximation, not current verified Nexon rules.
+ // Fit a simple relative-OVR model for the documented 1–7 stages only.
+ // No extrapolation to 8–12 or unobserved OVR differences.
+ function referenceRules(data){
+  const base=[0,50,33,25,20,19.8,19.8,19.8],rows=[];
+  const ovrs=new Set((data?.items||[]).map(r=>r[3]).filter(safe));
+  for(let grade=1;grade<=7;grade++)for(let targetOvr=1;targetOvr<=250;targetOvr++){
+   const materials=[];for(let d=-2;d<=6;d++){const o=targetOvr+d;if(!ovrs.has(o))continue;
+    const points=Math.min(10000,Math.floor(base[grade]*Math.pow(1.33,d)*100));if(points>0)materials.push([o,points]);
+   }if(materials.length)rows.push({grade,targetOvr,materials});
+  }
+  return {schema:1,verified:false,observed:true,source,fullPoints:10000,rows};
+ }
+ return {create,observedRules,exactObservedRule,referenceRules};
 });

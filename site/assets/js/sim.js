@@ -17,13 +17,15 @@ function feeChanged(){$('smfRate').textContent=(feeRate()*100).toFixed(feeRate()
 ['smfTop','smfPc','smfCoupon'].forEach(id=>$(id).addEventListener('change',feeChanged));
 
 /* ================= 공용 데이터: 시세 풀 · 재료비 추정 ================= */
-let POOL=null, poolP=null, materialPrices=null, materialRules=null, materialP=null, verifiedEngine=null, observedEngine=null, cachedQuotes=[],localPlans=new Map(),exactQuotes=new Map(),exactEngines=new Map(),localBestCache=new Map();
-function refreshMaterialEngines(){if(!materialPrices||!window.FGMaterials)return;verifiedEngine=FGMaterials.create(materialPrices,materialRules);observedEngine=FGMaterials.create(materialPrices,FGMaterials.observedRules(cachedQuotes,POOL,GRADE_BONUS));localPlans.clear();exactEngines.clear();localBestCache.clear();exactQuotes=new Map(cachedQuotes.map(q=>[q.spid+':'+q.grade,q]))}
-function loadMaterialData(){if(!materialP)materialP=Promise.all([fetch('/assets/material-data/prices.json').then(r=>r.ok?r.json():null),fetch('/assets/material-data/rules.json').then(r=>r.ok?r.json():null)]).then(([p,r])=>{materialPrices=p;materialRules=r;refreshMaterialEngines();if(effCtx&&effActive(effCtx))effPaint(effCtx);if(SEL){matShow();drawEv()}}).catch(()=>{materialP=null});return materialP}
+let POOL=null, poolP=null, materialPrices=null, materialRules=null, materialP=null, verifiedEngine=null, observedEngine=null, cachedQuotes=[],localPlans=new Map(),exactQuotes=new Map(),exactEngines=new Map(),localBestCache=new Map(),referenceEngine=null,referencePlans=new Map(),materialPids=new Set();
+function timedFetch(url,ms=12000,options={}){const c=new AbortController(),timer=setTimeout(()=>c.abort(),ms);return fetch(url,{...options,signal:c.signal}).then(async r=>({ok:r.ok,status:r.status,body:await r.json().catch(()=>null)})).finally(()=>clearTimeout(timer))}
+function refreshMaterialEngines(){if(!materialPrices?.items?.length||!window.FGMaterials)return;if(!referenceEngine){referenceEngine=FGMaterials.create(materialPrices,FGMaterials.referenceRules(materialPrices));materialPids=new Set(materialPrices.items.map(r=>r[0]%1000000))}verifiedEngine=FGMaterials.create(materialPrices,materialRules);observedEngine=FGMaterials.create(materialPrices,FGMaterials.observedRules(cachedQuotes,POOL,GRADE_BONUS));localPlans.clear();exactEngines.clear();localBestCache.clear();exactQuotes=new Map(cachedQuotes.map(q=>[q.spid+':'+q.grade,q]))}
+function loadMaterialData(){if(!materialP)materialP=Promise.all([timedFetch('/assets/material-data/prices.json',8000).then(r=>r.ok?r.body:null).catch(()=>null),timedFetch('/assets/material-data/rules.json',8000).then(r=>r.ok?r.body:null).catch(()=>null)]).then(([p,r])=>{materialPrices=p;materialRules=r;if(!p?.items?.length)materialP=null;refreshMaterialEngines();if(effCtx&&effActive(effCtx))effPaint(effCtx);if(SEL){matShow();drawEv()}}).catch(()=>{materialP=null});return materialP}
 function localEngine(id,base,g){const b=GRADE_BONUS[g];if(!materialPrices||!window.FGMaterials||!Number.isInteger(b)||!Number.isInteger(base)||base<=0)return null;if(verifiedEngine?.hasRule(base,g,b))return verifiedEngine;if(observedEngine?.hasRule(base,g,b))return observedEngine;const k=id+':'+g,q=exactQuotes.get(k);if(!q)return null;const ek=k+':'+base;if(!exactEngines.has(ek))exactEngines.set(ek,FGMaterials.create(materialPrices,FGMaterials.exactObservedRule(q,base,b)));return exactEngines.get(ek)}
 function localPlan(id,base,g,target=100){const engine=localEngine(id,base,g);if(!engine)return null;const k=id+':'+base+':'+g+':'+target;if(localPlans.has(k))return localPlans.get(k);const p=engine.solve(base,g,GRADE_BONUS[g],id%1000000,target);localPlans.set(k,p);return p}
-function localBest(id,base,g,gain){const engine=localEngine(id,base,g);if(!engine)return null;const k=[id,base,g,gain].join(':');if(!localBestCache.has(k))localBestCache.set(k,engine.best(base,g,GRADE_BONUS[g],id%1000000,gain));return localBestCache.get(k)}
-function loadPool(){if(!poolP)poolP=fetch(DATA_BASE+'/market/pool.json').then(r=>r.ok?r.json():null).then(j=>{POOL=j&&j.items&&j.items.length?j.items:null;return POOL}).catch(()=>null);return poolP}
+function referencePlan(id,base,g,target=100){if(!referenceEngine?.ready||g>7||!Number.isInteger(base))return null;const pid=materialPids.has(id%1000000)?id%1000000:0,k=[base,g,pid,target].join(':');if(!referencePlans.has(k)){const p=referenceEngine.solve(base,g,GRADE_BONUS[g],pid,target);referencePlans.set(k,p?{...p,reference:true}:null)}return referencePlans.get(k)}
+function localBest(id,base,g,gain){const engine=localEngine(id,base,g)||(g<=7?referenceEngine:null);if(!engine)return null;const k=[id,base,g,gain].join(':');if(!localBestCache.has(k)){const p=engine.best(base,g,GRADE_BONUS[g],id%1000000,gain);localBestCache.set(k,p&&engine===referenceEngine?{...p,reference:true}:p)}return localBestCache.get(k)}
+function loadPool(){if(!poolP)poolP=timedFetch(DATA_BASE+'/market/pool.json',20000).then(r=>r.ok?r.body:null).then(j=>{POOL=j&&j.items&&j.items.length?j.items:null;return POOL}).catch(()=>null);return poolP}
 /* ================= 탭 ================= */
 const tabs=document.querySelector('.sim-tabs');
 const PANELS={eff:'simEff',enh:'simEnh',pack:'simPack',cash:'simCash'};
@@ -104,12 +106,12 @@ function effCandidateOrder(rows,mode,order='score'){
   return rows.filter(r=>r.win>0).map(r=>({...r,lifeScore:effLifeScore(r)})).sort((a,b)=>(order==='profit'?b.win-a.win||b.lifeScore-a.lifeScore:b.lifeScore-a.lifeScore||b.win-a.win)||a.id-b.id||a.g-b.g);
 }
 let effCtx=null,effTimer=null,effWork=Promise.resolve(),effLastHTML='';
-const EFF_BATCH=6,EFF_PARALLEL=1;
+const EFF_BATCH=2,EFF_PARALLEL=1;
 const effMissingQuote=code=>["no_quotes","no_full_combo","not_verified"].includes(code);
 const effLookupBlocked=code=>["request_limit","upstream_cooldown"].includes(code)||/(?:_http_(?:403|429|5\d\d)|_timeout|_network)$/.test(code||"")||["network","cache_init","cache_read","cache_write","request_budget"].includes(code);
 function effActive(ctx){return effCtx===ctx&&$('effMat').checked&&!$('simEff').hidden&&!$('v-sim').hidden}
 function effMaterialRows(ctx){
-  const rows=[];for(const r of ctx.candidates){const key=planKey(r.id,r.g),plan=officialPlans.get(key)||localPlan(r.id,r.ovr,r.g);if(plan){const v=effWithMaterial(r,plan);if(v&&v.inv<=ctx.budget)rows.push(v)}}return rows;
+  const rows=[];for(const r of ctx.candidates){const key=planKey(r.id,r.g),plan=officialPlans.get(key)||localPlan(r.id,r.ovr,r.g)||referencePlan(r.id,r.ovr,r.g);if(plan){const v=effWithMaterial(r,plan);if(v&&v.inv<=ctx.budget)rows.push(v)}}return rows;
 }
 function effStart(ctx,retry=false){
   if(!effActive(ctx)||ctx.running)return;
@@ -122,7 +124,7 @@ function effStart(ctx,retry=false){
     for(const r of ctx.candidates){const k=planKey(r.id,r.g);if(officialPlans.has(k)||ctx.attempted.has(k)||knownUnavailable(k)||localPlan(r.id,r.ovr,r.g)?.estimated===false)continue;next.push(r);if(next.length>=EFF_BATCH)break}
     for(let i=0;i<next.length&&effActive(ctx);i+=EFF_PARALLEL){
       if(ctx.issue)break;
-      const delay=Math.max(0,officialNext-Date.now(),officialCooldown-Date.now());if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
+      const delay=Math.max(0,officialNext-Date.now(),officialCooldown-Date.now());if(delay>10000){ctx.issue='공식 조회 제한 · '+Math.ceil(delay/1000)+'초 후 다시 조회 가능';break}if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
       if(!effActive(ctx))break;
       await Promise.all(next.slice(i,i+EFF_PARALLEL).map(async r=>{
         const k=planKey(r.id,r.g);if(officialPlans.has(k))return;
@@ -134,7 +136,7 @@ function effStart(ctx,retry=false){
         if(effActive(ctx))effPaint(ctx);
       }));
     }
-  }).finally(()=>{ctx.running=false;if(effActive(ctx)){effPaint(ctx);if(ctx.retry.size&&ctx.issue&&!ctx.resume){ctx.resume=setTimeout(()=>{ctx.resume=null;if(effActive(ctx))effStart(ctx,true)},Math.max(1000,officialCooldown-Date.now()||65000))}}});
+  }).catch(()=>{ctx.issue='재료비 조회 실패 · 다시 조회해 주세요.'}).finally(()=>{ctx.running=false;if(effActive(ctx))effPaint(ctx)});
 }
 function effRow(r,i,kind){
   const win=kind==="win",score=win?effLifeScore(r):0,w=win?score:Math.max(4,Math.min(100,r.rr/2*100));
@@ -149,7 +151,7 @@ function effRow(r,i,kind){
     '<span class="er-who"><span class="er-name">'+bigBadge(Math.floor(r.id/1e6))+'<b>'+H(r.name)+'</b></span>'+
     '<span class="er-step">'+gchip(r.g)+'<i>→</i>'+gchip(r.g+1)+'<em>성공 확률 '+(r.p*100).toFixed(1).replace(/\.0$/,"")+'%</em></span></span>'+
     '<span class="er-main"><small>'+(win?"종합지수":"회수율")+'</small>'+main+'</span>'+
-    '<span class="er-money'+(win?' er-money-life':' er-money-return')+'">'+metric("총 투자금",money(r.inv),"",r.inv)+metric(r.plan?.local?(r.plan.estimated?'재료비(예상)':'재료비(자체)'):'재료비',r.mat?money(r.mat):"미포함","",r.mat||null)+metric("성공 시 시세",money(r.up),"",r.up)+metric("성공 시 순이익",signed(r.win),r.win>=0?"up":"dn",r.win)+metric(win?"회수율":"성공 수익률",win?r.rr.toFixed(2):(r.win/r.inv*100).toFixed(1)+"%",win?(r.rr>=1?"up":"dn"):(r.win>=0?"up":"dn"))+(win?metric("성공 수익률",(r.win/r.inv*100).toFixed(1)+"%","up"):"")+'</span>'+
+    '<span class="er-money'+(win?' er-money-life':' er-money-return')+'">'+metric("총 투자금",money(r.inv),"",r.inv)+metric(r.plan?.local?(r.plan.reference?'재료비(참고)':r.plan.estimated?'재료비(예상)':'재료비(자체)'):'재료비',r.mat?money(r.mat):"미포함","",r.mat||null)+metric("성공 시 시세",money(r.up),"",r.up)+metric("성공 시 순이익",signed(r.win),r.win>=0?"up":"dn",r.win)+metric(win?"회수율":"성공 수익률",win?r.rr.toFixed(2):(r.win/r.inv*100).toFixed(1)+"%",win?(r.rr>=1?"up":"dn"):(r.win>=0?"up":"dn"))+(win?metric("성공 수익률",(r.win/r.inv*100).toFixed(1)+"%","up"):"")+'</span>'+
     '<span class="er-meter'+(win?' er-score-meter':'')+'" aria-hidden="true"><i style="width:'+w+'%"></i><u></u></span></button>';
 }
 function effRender(){
@@ -164,23 +166,21 @@ function effRender(){
     effCtx={key,budget:effBudget,candidates,byKey:new Map(candidates.map(r=>[planKey(r.id,r.g),r])),attempted:new Set(),retry:new Set(),running:false,done:0,issue:'',started:false};
   }
   const ctx=effCtx;effPaint(ctx);
-  if(effActive(ctx)&&!ctx.started&&ctx.candidates.length){
-    effTimer=setTimeout(()=>{if(effActive(ctx)&&!ctx.started){ctx.started=true;effStart(ctx)}},0);
-  }
+  if(effActive(ctx)&&!ctx.started&&ctx.candidates.length){ctx.started=true;void Promise.all([loadCachedPlans(),loadMaterialData()]).then(()=>{if(effActive(ctx))effPaint(ctx)});}
 }
 function effPaint(ctx,baseRows){
   $('effScoreHelp').hidden=$('effSort').hidden=effMode!=='win';
   const rows=ctx?effMaterialRows(ctx):effWithinBudget(baseRows,effBudget);
   const fee=(feeRate()*100).toFixed(1).replace(/\.0$/,'');
   const empty=ctx?(ctx.candidates.length===0?'예산과 강화 단계에 맞는 후보가 없어요.':ctx.running?'공식 재료비를 조회하고 있어요…':ctx.issue?'공식 조회 대기 · 확인된 결과는 유지됩니다.':'예산·조건에 맞는 확인된 재료비 조합이 아직 없어요. 추가 조회를 눌러 주세요.'):'조건에 맞는 카드가 없어요.';
-  const win=effMode==='win',top=effCandidateOrder(rows,effMode,effSort).slice(0,30),title=win?'인생강화 TOP':'회수율 TOP 30';
-  const html='<div class="eff-col"><h3>'+title+' <small>'+(win?(effSort==='profit'?'순이익 높은 순':'종합지수 높은 순'):'투자금 대비 회수 비율 순')+(ctx?' · 공식 확인 및 자체 계산 후보 기준':'')+'</small></h3>'+(top.map((r,i)=>effRow(r,i,win?'win':undefined)).join('')||'<p class="sim-note">'+empty+'</p>')+'</div>';
+  const win=effMode==='win',preview=!!ctx&&!rows.length,top=effCandidateOrder(preview?ctx.candidates:rows,effMode,effSort).slice(0,30),title=win?'인생강화 TOP':'회수율 TOP 30';
+  const html='<div class="eff-col"><h3>'+title+' <small>'+(win?(effSort==='profit'?'순이익 높은 순':'종합지수 높은 순'):'투자금 대비 회수 비율 순')+(preview?' · 재료비 미포함 임시 목록':ctx?' · 공식 확인 및 자체 계산 후보 기준':'')+'</small></h3>'+(preview?'<p class="sim-note">재료비 확인된 후보 없음 · 아래는 재료비를 제외한 참고 순위입니다. 공식 조회 버튼으로 확인할 수 있습니다.</p>':'')+(top.map((r,i)=>effRow(r,i,win?'win':undefined)).join('')||'<p class="sim-note">'+empty+'</p>')+'</div>';
   if(html!==effLastHTML){$('effOut').className='eff-cols';$('effOut').innerHTML=html;effLastHTML=html}
   $('effActions').hidden=!ctx;
   if(ctx){
     const remaining=ctx.candidates.some(r=>{const k=planKey(r.id,r.g);return !officialPlans.has(k)&&!ctx.attempted.has(k)&&!knownUnavailable(k)&&localPlan(r.id,r.ovr,r.g)?.estimated!==false});
     $('effInfo').textContent='재료비 포함 · 공식 확인 또는 수집 시세 자체 계산 · 표시 '+rows.length.toLocaleString()+' / 후보 '+ctx.candidates.length.toLocaleString()+'건 · 수수료 '+fee+'% · 자체 예상 '+rows.filter(r=>r.plan?.estimated).length.toLocaleString()+'건 · 수집일 '+(materialPrices?.date||'미상')+' · 전체 시장 순위 아님'+(Number.isFinite(effBudget)?' · 예산 '+won(effBudget)+' 이하':'');
-    $('effProgress').textContent=ctx.running?"재료비 확인 중…":ctx.issue?ctx.issue:ctx.retry.size?"일부 후보 미확인":"";
+    $('effProgress').textContent=ctx.running?'공식 확인 중 ('+ctx.done+'/'+EFF_BATCH+')':ctx.issue?ctx.issue:rows.length?'재료비 '+rows.length.toLocaleString()+'건 · 참고 추정 '+rows.filter(r=>r.plan?.reference).length.toLocaleString()+'건':materialPrices?'확인된 재료비 없음 · 공식 조회 가능':'재료 시세 데이터 미확인';
     $('effMore').disabled=ctx.running||!remaining;
     $('effRetry').hidden=!ctx.retry.size;$('effRetry').disabled=ctx.running;
   }else $('effInfo').textContent='시세 풀 '+POOL.length.toLocaleString()+'장 · 판매 수수료 '+fee+'% · 재료비 제외 · 줄을 누르면 강화 시뮬로 이어서 해 볼 수 있어요.';
@@ -224,15 +224,15 @@ async function loadOfficial(g,id=SEL?.c.id){
  if(officialPending.has(key))return officialPending.get(key);
  officialErrors.delete(key);officialErrorCodes.delete(key);
  const task=(async()=>{try{
-   const r=await fetch("/api/boost?spid="+encodeURIComponent(id)+"&grade="+g,{credentials:"same-origin"});
-   const d=await r.json().catch(()=>null);
+   const r=await timedFetch('/api/boost?spid='+encodeURIComponent(id)+'&grade='+g,30000,{credentials:'same-origin'});
+   const d=r.body;
    if(!r.ok||!d){const e=Error(d?.message||"공식 도우미 연결 오류 ("+r.status+")");e.code=d?.code||"http_"+r.status;if(r.status===429)officialCooldown=Math.max(officialCooldown,Date.now()+1000*Math.max(1,Number(d?.retryAfter)||120));throw e}
    const plan=d.plan;
    if(Array.isArray(d.rows)&&d.spid===id&&d.grade===g){const materials=d.rows.filter(x=>Number.isSafeInteger(x.ovr)&&Number.isSafeInteger(x.points)&&x.points>0&&x.points<=10000).map(x=>[x.ovr,x.points]);if(materials.length){cachedQuotes=cachedQuotes.filter(x=>x.spid!==id||x.grade!==g);cachedQuotes.push({spid:id,grade:g,materials});refreshMaterialEngines()}}
    if(!plan&&effMissingQuote(d.reason)){officialUnavailable.set(key,Date.now()+30*60*1000);const e=Error(d.reason==="no_quotes"?"이 선수의 공식 재료 시세가 없습니다.":"공식 데이터에서 풀게이지 조합을 찾지 못했습니다.");e.code=d.reason;throw e}
    if(d.spid!==id||d.grade!==g||!validOfficialPlan(plan)){const e=Error("공식 재료비 응답을 검증하지 못했습니다.");e.code="invalid_plan";throw e}
    officialPlans.set(key,plan);return plan;
- }catch(e){officialErrors.set(key,e.message||"공식 시세 조회 실패");officialErrorCodes.set(key,e.code||"network");return null}finally{
+ }catch(e){officialErrors.set(key,e.name==='AbortError'?'공식 조회 시간 초과 · 다시 조회해 주세요.':e.message||'공식 시세 조회 실패');officialErrorCodes.set(key,e.name==='AbortError'?'quotes_timeout':e.code||'network');return null}finally{
    officialPending.delete(key);
    if(SEL?.c.id===id&&cur===g){matShow();drawEv();$('smEP').textContent=autoMat()&&!selectedPlan(cur)?"미확인":(pOf(cur)*100).toFixed(pOf(cur)<.1?1:0)+"%"}
  }})();
@@ -258,9 +258,9 @@ function matShow(){
  $('smEMatV').textContent=autoMat()?(plan?.local?'수집 시세 · 검증 규칙':'공식 월평균 최저 거래가'):v?korBP(v)+' BP / 장':'재료비 입력 필요';
  $('smEMatCombo').innerHTML=!autoMat()?"수동 재료비 사용 중":plan?'<div style="width:100%"><b>'+korBP(plan.cost)+' BP · '+plan.cards.length+'장 · 100%</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">'+plan.cards.map(c=>'<span style="border:1px solid rgba(128,128,128,.25);border-radius:6px;padding:4px 7px">OVR '+c.ovr+' · '+korBP(c.price)+' BP</span>').join('')+'</div></div>':cur>=MAX?"최대 강화":!SEL?"선수를 선택하세요":officialPending.has(key)?"재료비 조회 중…":officialErrors.has(key)?'<span>'+H(officialErrors.get(key))+'</span><button type="button" id="smEBoostRetry" style="font-size:12px;padding:5px 10px;border-radius:8px;cursor:pointer" title="'+H(officialErrors.get(key))+'">다시 조회</button>':"재료비 조회 대기";
  if($('smEBoostRetry'))$('smEBoostRetry').onclick=()=>{void loadOfficial(cur)};
- const hint=$('smELocalHint'),controls=$('smELocalControls');if(hint&&controls){const base=baseOvr(),target=Number($('smELocalGauge').value)||100,local=SEL&&cur<MAX?localPlan(SEL.c.id,base,cur,target):null;let best=null,ev=null;
+ const hint=$('smELocalHint'),controls=$('smELocalControls');if(hint&&controls){const base=baseOvr(),target=Number($('smELocalGauge').value)||100,local=SEL&&cur<MAX?(localPlan(SEL.c.id,base,cur,target)||referencePlan(SEL.c.id,base,cur,target)):null;let best=null,ev=null;
  if(SEL?.l?.price&&cur<MAX){const buy=priceAt(cur),up=priceAt(cur+1),fv=priceAt($('smEFail').value==='down'&&cur>=5?cur-1:cur);if(buy&&up&&fv){const gain=SUCC[cur]/100*(up-fv)*(1-feeRate());best=localBest(SEL.c.id,base,cur,gain);if(best)ev=fv*(1-feeRate())-buy+gain*best.gauge/100-best.cost}}
- controls.hidden=!autoMat()||!SEL||!localEngine(SEL.c.id,base,cur);hint.hidden=controls.hidden;hint.textContent=(!local?'선택한 게이지 조합 미확인':(local.estimated?'자체 예상':'자체 계산')+' '+local.gauge.toFixed(1)+'% · '+korBP(local.cost)+' BP · '+local.cards.map(c=>c.name+' '+c.grade+'강 (OVR '+c.ovr+')').join(' + ')+' · 수집일 '+(local.date||'미상'))+(best?' / 기대손익 최적: '+best.gauge.toFixed(1)+'% · '+sgn(ev)+' BP ('+(best.estimated?'예상':'검증 규칙')+')':'');}
+ controls.hidden=!autoMat()||!SEL||!(localEngine(SEL.c.id,base,cur)||(cur<=7&&referenceEngine?.ready));hint.hidden=controls.hidden;hint.textContent=(!local?'선택한 게이지 조합 미확인':(local.reference?'과거 자료 참고 추정':local.estimated?'자체 예상':'자체 계산')+' '+local.gauge.toFixed(1)+'% · '+korBP(local.cost)+' BP · '+local.cards.map(c=>c.name+' '+c.grade+'강 (OVR '+c.ovr+')').join(' + ')+' · 수집일 '+(local.date||'미상'))+(best?' / 기대손익 최적: '+best.gauge.toFixed(1)+'% · '+sgn(ev)+' BP ('+(best.reference?'과거 자료 참고 추정':best.estimated?'예상':'검증 규칙')+')':'');}
  $('smEGaugeV').textContent=autoMat()?(plan?"풀게이지 · 100%":"게이지 미확인"):`${KAN}칸 · ${KAN*20}%`;
  $('smEGaugeBox').querySelectorAll('[data-k]').forEach(x=>x.classList.toggle('on',autoMat()?!!plan:+x.dataset.k<=KAN));
 }

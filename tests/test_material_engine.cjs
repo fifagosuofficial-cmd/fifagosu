@@ -144,3 +144,6 @@ test("observed quotes are conservative estimates and require matching independen
 
 
 test("optimizer chooses best expectation across attainable gauge values",()=>{const x=create(data,rules);const p=x.best(110,1,0,1,100);assert.equal(p.cost,32);assert.equal(p.gauge,100);const small=x.best(110,1,0,1,0);assert.equal(small.cost,8);assert.equal(small.gauge,22);});
+
+
+test("historical reference rules stay estimated and exclude unverified higher stages",()=>{const {referenceRules}=require("../site/assets/js/material-engine.js");const model=create(data,referenceRules(data));const p=model.solve(110,4,0,1);assert.ok(p&&p.estimated&&p.gauge===100);assert.equal(model.solve(110,8,0,1),null);});

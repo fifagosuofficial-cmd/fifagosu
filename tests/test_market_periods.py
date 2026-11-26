@@ -105,3 +105,38 @@ def test_market_breadth_uses_the_same_all_grade_counts_as_home(tmp_path):
     assert ix["display"] == "+33.3"
     assert out["_rankPayloads"]["1"]["index"] == ix
     assert out["periods"]["3"]["index"] is None
+
+def test_fg_index_chain_persists_and_never_duplicates_or_invents_dates(tmp_path):
+    from fg_index import build_index, persist
+    dates = ["2026-11-24", "2026-11-25", "2026-11-26"]
+    cards = {str(i): {"name": str(i)} for i in range(1, 41)}
+    prices = {k: {"1": list(zip(dates, [100, 110, 90] if int(k)<=30 else [100, 90, 110]))} for k in cards}
+    put(tmp_path,"market/all_card_history_dates.json",{"basis":"full-list-snapshots","dates":dates})
+    put(tmp_path,"list/0.json",cards)
+    put(tmp_path,"market/all_card_history/0.json",prices)
+    result = build_index(tmp_path)
+    assert [p["date"] for p in result["points"]] == dates
+    assert [p["value"] for p in result["points"]] == [1000, 1050, 997.5]
+    assert result["points"][-1]["up"] == 10 and result["points"][-1]["down"] == 30
+    persist(tmp_path)
+    assert build_index(tmp_path) == result
+    # The previous price window rolls away, but the historical index archive stays.
+    next_dates = ["2026-11-26", "2026-11-28"]
+    put(tmp_path,"market/all_card_history_dates.json",{"basis":"full-list-snapshots","dates":next_dates})
+    put(tmp_path,"market/all_card_history/0.json",{k:{"1":list(zip(next_dates,[100,110]))} for k in cards})
+    appended = build_index(tmp_path)
+    assert appended["points"][:3] == result["points"]
+    assert appended["points"][-1]["date"] == "2026-11-28"
+    assert appended["points"][-1]["from"] == "2026-11-26"
+    assert appended["points"][-1]["value"] == 1097.25
+    assert "2026-11-27" not in [p["date"] for p in appended["points"]]
+
+
+def test_fg_index_market_sample_matches_daily_home_counts(tmp_path):
+    from fg_index import build_index
+    dates = ["2026-11-25", "2026-11-26"]
+    listed = {"1":{"name":"A"},"2":{"name":"B"}}
+    hist = {"1":{"1":list(zip(dates,[100,110])),"5":list(zip(dates,[200,190]))},"2":{"8":list(zip(dates,[100,120]))}}
+    result = build_index(tmp_path,hist,dates,listed,{"2":"2026-11-25"},1)
+    assert result["points"][-1]["value"] == 1000
+    assert result["points"][-1]["sample"] == 2

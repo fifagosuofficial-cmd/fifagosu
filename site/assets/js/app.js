@@ -1427,6 +1427,47 @@ function initMarketDashboard(root){
 }
 document.querySelectorAll('[data-market-dashboard]').forEach(initMarketDashboard);
 
+/* FG INDEX: only dated, verified snapshot points; calendar ranges and compact SVG. */
+function fgIndexCutoff(date,period){
+  const d=new Date(date+"T00:00:00Z");
+  if(period==="1d"||period==="1w"){d.setUTCDate(d.getUTCDate()-(period==="1d"?1:7))}
+  else{const months={"1m":1,"3m":3,"6m":6,"1y":12}[period],day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()-months);const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,last))}
+  return d.toISOString().slice(0,10)
+}
+function fgIndexRange(points,period){
+  if(!points.length)return {rows:[],partial:true};
+  const cutoff=fgIndexCutoff(points.at(-1).date,period);
+  let first=points.findIndex(p=>p.date>=cutoff);if(first<0)first=points.length-1;
+  if(first>0&&points[first].date>cutoff)first--;
+  return {rows:points.slice(first),partial:points[0].date>cutoff};
+}
+function initFGIndex(root){
+  const data=JSON.parse(root.querySelector("[data-fgix-data]").textContent),points=data.points||[],$=k=>root.querySelector("[data-fgix-"+k+"]");
+  const num=v=>v.toLocaleString("ko-KR",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const signed=(v,places=2)=>(v>0?"+":v<0?"−":"")+Math.abs(v).toFixed(places);
+  function render(period){
+    root.querySelectorAll("[data-fgix-period]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.fgixPeriod===period)));
+    const {rows,partial}=fgIndexRange(points,period),last=rows.at(-1),first=rows[0],chart=$("chart");
+    if(!last){$("change").textContent="지수 수집 중";chart.textContent="아직 비교할 시세 이력이 없습니다.";return}
+    const delta=last.value-first.value,pct=first.value?delta/first.value*100:0,cls=delta>0?"up":delta<0?"down":"";
+    $("value").textContent=num(last.value);$("value").className="fgix-value "+cls;
+    $("change").className="fgix-change "+cls;$("change").textContent=rows.length>1?(delta>0?"▲ ":delta<0?"▼ ":"")+signed(delta)+" ("+signed(pct)+"%)":"비교 이력 수집 중";
+    $("date").textContent=last.date.slice(5).replace("-",".")+" 기준";
+    $("status").textContent=(partial?"수집 중 · ":"")+first.date.slice(5).replace("-",".")+" ~ "+last.date.slice(5).replace("-",".")+(data.latestSnapshot&&data.latestSnapshot!==last.date?" · 최신 비교 대기":"");
+    if(rows.length<2){chart.textContent="다음 전체 시세 수집 후 그래프가 표시됩니다.";return}
+    const values=rows.map(p=>p.value),min=Math.min(...values),max=Math.max(...values),pad=Math.max((max-min)*.12,max*.001),low=min-pad,high=max+pad;
+    const start=Date.parse(first.date),span=Math.max(86400000,Date.parse(last.date)-start),X=p=>7+(Date.parse(p.date)-start)/span*260,Y=v=>7+(high-v)/(high-low)*78;
+    const line=rows.map((p,i)=>(i?"L":"M")+X(p).toFixed(2)+" "+Y(p.value).toFixed(2)).join(" "),fill=line+" L267 88 L7 88 Z";
+    const color=cls==="up"?"var(--up)":cls==="down"?"var(--down)":"var(--muted)";
+    const mid=(low+high)/2,axes=[high,mid,low].map(v=>'<line x1="7" x2="267" y1="'+Y(v)+'" y2="'+Y(v)+'" class="fgix-grid"/><text x="274" y="'+(Y(v)+3)+'">'+num(v)+'</text>').join("");
+    chart.innerHTML='<svg viewBox="0 0 327 108" role="img" aria-label="선택 기간 지수 '+num(first.value)+'에서 '+num(last.value)+'"><g class="fgix-axis">'+axes+'<text x="7" y="103">'+first.date.slice(5).replace("-",".")+'</text><text x="267" y="103" text-anchor="end">'+last.date.slice(5).replace("-",".")+'</text></g><path d="'+fill+'" fill="'+color+'" opacity=".09"/><path d="'+line+'" fill="none" stroke="'+color+'" stroke-width="1.8" stroke-linejoin="round"/><circle cx="'+X(last)+'" cy="'+Y(last.value)+'" r="3" fill="'+color+'"/></svg>';
+  }
+  root.addEventListener("click",e=>{const b=e.target.closest("[data-fgix-period]");if(b)render(b.dataset.fgixPeriod)});
+  render("1d");
+}
+document.querySelectorAll("[data-fg-index]").forEach(initFGIndex);
+
+
 // Community integration: explicit member action, no background account data upload.
 document.addEventListener("click",async e=>{if(!e.target.closest("#fgFavoriteMember")||!pmCard)return;const id=pmCard.id,grade=pmGrade,name=document.getElementById("pmTitle")?.textContent||String(id);try{const r=await fetch("/api/community/favorite",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({card_id:id,grade,name})});const j=await r.json();if(!r.ok)throw Error(j.message);alert("관심 선수에 저장했습니다.")}catch(err){alert("관심 선수 저장 실패: "+err.message)}});
 

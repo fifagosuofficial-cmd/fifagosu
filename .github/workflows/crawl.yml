@@ -57,6 +57,10 @@ jobs:
           RATING_SEEDS: ${{ vars.RATING_SEEDS }}   # 시작 닉네임 추가(쉼표로 구분, 선택)
         run: python crawler/rating.py --api https://fifagosu.com/api
 
+      - name: FG INDEX 장기 이력 누적 (전체 스냅샷만 사용)
+        if: github.event_name != 'push'
+        run: python crawler/fg_index.py data
+
       - name: data 브랜치에 저장 (기록 없이 최신 1개만 유지)
         if: github.event_name != 'push'
         env:
@@ -79,7 +83,7 @@ jobs:
           # 긴 수집 중에 사이트 코드가 바뀌었을 수 있으니, 수집 실행은 최신 사이트 코드로 빌드해요.
           if [ "${{ github.event_name }}" != "push" ]; then
             if git fetch -q --depth=1 origin "${{ github.ref_name }}"; then
-              for p in site functions; do git checkout -q FETCH_HEAD -- "$p" 2>/dev/null || true; done
+              for p in site functions fun crawler/fg_index.py; do git checkout -q FETCH_HEAD -- "$p" 2>/dev/null || true; done
             fi
           fi
           # 새 진단 기능에 필요한 정적 데이터는 배포할 때도 생성해요. 외부 API 호출 없음.

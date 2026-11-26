@@ -28,6 +28,7 @@ KST = dt.timezone(dt.timedelta(hours=9))
 sys.path.insert(0, str(ROOT / "crawler"))
 from market_rank import MAX_SAFE_INTEGER, merge_market_moves, rank_market_moves  # noqa: E402
 from news_classify import clean_news_items  # noqa: E402
+from fg_index import build_index  # noqa: E402
 
 # 고정 페이지: (출력 파일, 템플릿, 경로, 제목, 설명, sitemap 포함 여부, 추가 값)
 MAIN_T = "index.html"
@@ -337,6 +338,7 @@ def market_period_views(data_dir, market):
             "defaultSort": default_sort, "fallback": periods[str(days)]["fallback"],
             "items": period_items if ready else [],
         }
+    market["fgIndex"] = build_index(data_dir, history, dates, listed, new_dates, minimum)
     market["periods"] = periods
     market["grades"] = grades
     market["_rankPayloads"] = payloads

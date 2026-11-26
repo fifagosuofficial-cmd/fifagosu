@@ -207,6 +207,19 @@ def refresh_popular_market_cards(data_dir, market):
     return market
 
 
+def market_breadth(up, down, sample, minimum=30):
+    """Signed balance of rising and falling eligible card/grade pairs, -100 to +100 points."""
+    if sample < minimum:
+        return None
+    moved = up + down
+    score = 100 * (up - down) / moved if moved else 0.0
+    # Keep the direction visible even when the difference rounds to zero.
+    display = ("+<0.1" if score > 0 else "-<0.1") if 0 < abs(score) < 0.05 else f"{score:+.1f}" if score else "0.0"
+    return {"breadth": score, "display": display, "n": moved,
+            "up": up, "down": down, "compared": sample,
+            "flat": sample - moved}
+
+
 def market_period_views(data_dir, market):
     """Read full-scan history once; compare exact calendar-day endpoints, never substitute dates."""
     if not market or not market.get("byGrade"):
@@ -238,7 +251,7 @@ def market_period_views(data_dir, market):
         ready = end in dates and start in dates
         buckets, period_items, index, index_sample = {}, [], None, 0
         for grade in grades:
-            changes, candidates, index_changes = [], [], []
+            changes, candidates = [], []
             if ready:
                 for card_id, rec in listed.items():
                     rows = history.get(str(card_id), {}).get(str(grade), [])
@@ -263,8 +276,6 @@ def market_period_views(data_dir, market):
                                        "games": int(rec.get("games") or 0),
                                        "observations": len(valid_prices), "prices": valid_prices[-3:],
                                        "new_date": new_dates.get(int(card_id)), "item": item})
-                    if min(first, last) >= 30000:
-                        index_changes.append(item)
             ranked_moves = rank_market_moves(candidates, end, None)
             period_items.extend(ranked_moves["items"])
             by_id = {x["id"]: x for x in changes}
@@ -276,13 +287,10 @@ def market_period_views(data_dir, market):
                 popular.append(item)
             buckets[str(grade)] = {**{key: value for key, value in ranked_moves.items()
                                       if key != "items"}, "popular": popular}
-            if grade == 1:
-                vals = sorted(x["c"] for x in index_changes)
-                sample = len(vals)
-                index_sample = sample
-                if sample >= minimum:
-                    index = {"median": round((vals[(sample-1)//2]+vals[sample//2])/2,1),
-                             "n": sample, "up": sum(v>0 for v in vals), "down": sum(v<0 for v in vals)}
+            index_sample += ranked_moves["eligible"]
+        up = sum(item["d"] > 0 for item in period_items)
+        down = sum(item["d"] < 0 for item in period_items)
+        index = market_breadth(up, down, index_sample, minimum) if ready else None
         # The per-grade ranker computes the composite score, while these rank
         # numbers are assigned once across every grade so each sort represents
         # the full valid candidate pool before season/grade UI filtering.
@@ -320,8 +328,8 @@ def market_period_views(data_dir, market):
                               "fallback": default_sort == "pct" and bool(period_items),
                               "totalCards": counts_by_date.get(end, len(listed)),
                               "compared": sum(bucket.get("analyzed", 0) for bucket in buckets.values()),
-                              "up": sum(item["d"] > 0 for item in period_items),
-                              "down": sum(item["d"] < 0 for item in period_items)}
+                              "up": up,
+                              "down": down}
         payloads[str(days)] = {
             "ready": ready, "date": end, "prev": start,
             "historyDays": periods[str(days)]["historyDays"], "required": days + 1,
@@ -536,6 +544,11 @@ def main(argv=None):
     news = load_news(data_dir, today)
     market = refresh_popular_market_cards(data_dir, _load(data_dir / "market" / "summary.json"))
     market = market_period_views(data_dir, market)
+    if market:
+        for days, period in market.get("periods", {}).items():
+            ix = period.get("index")
+            if ix is not None:
+                print(f"시장 방향 지수 {days}일: {ix['display']}점 · 상승 {ix['up']} · 하락 {ix['down']} · 보합 {ix['flat']} · 비교 {ix['compared']}")
     run = _load(data_dir / "run.json") or {}
     if market:
         market["collectedAt"] = run.get("at", "") if run.get("date") == market.get("date") else ""

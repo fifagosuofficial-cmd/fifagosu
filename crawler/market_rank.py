@@ -82,7 +82,7 @@ def rank_market_moves(candidates, as_of, top=10):
 
     if not base:
         return {"risers": [], "fallers": [], "items": [], "moved": 0,
-                "analyzed": 0,
+                "analyzed": 0, "eligible": 0,
                 "deltaThreshold": None, "pctThreshold": MIN_CHANGE_PCT}
 
     composite_base = [candidate for candidate in base
@@ -150,7 +150,7 @@ def rank_market_moves(candidates, as_of, top=10):
         risers, fallers = risers[:top], fallers[:top]
     return {"risers": risers, "fallers": fallers, "items": items,
             "moved": sum(item["impact"] is not None for item in items),
-            "analyzed": len(items),
+            "analyzed": len(items), "eligible": len(base),
             "deltaThreshold": delta_threshold, "pctThreshold": MIN_CHANGE_PCT}
 
 

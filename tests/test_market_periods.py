@@ -22,7 +22,8 @@ def test_market_periods_exact_dates_and_missing_history(tmp_path):
     views = build.market_period_views(tmp_path, market)["periods"]
     for day, pct in [("1", 25), ("3", 60), ("7", 100)]:
         v = views[day]
-        assert v["ready"] and v["index"]["median"] == pct
+        assert v["ready"] and v["index"]["breadth"] == 100
+        assert v["index"]["display"] == "+100.0"
         assert v["byGrade"]["1"]["risers"][0]["c"] == pct
         assert v["risers"][0]["g"] == 1
         assert v["byGrade"]["1"]["popular"][0]["c"] == pct
@@ -72,3 +73,35 @@ def test_market_payload_keeps_full_candidates_and_real_history(tmp_path):
     assert payload["totalCards"] == 2 and len(payload["items"]) == 2
     assert payload["items"][0]["h"] == [["2026-11-24", 100], ["2026-11-25", 200]]
     assert payload["items"][0]["impact"] is None
+
+def test_market_breadth_counts_exact_directions_instead_of_median():
+    # An overwhelming number of flat cards must not pin a directional index to zero.
+    assert build.market_breadth(60, 40, 10000)["breadth"] == 20
+    assert build.market_breadth(40, 60, 10000)["breadth"] == -20
+    assert build.market_breadth(50, 50, 10000)["breadth"] == 0
+    assert build.market_breadth(0, 0, 10000)["display"] == "0.0"
+    assert build.market_breadth(50001, 50000, 100001)["display"] == "+<0.1"
+    assert build.market_breadth(50000, 50001, 100001)["display"] == "-<0.1"
+    assert build.market_breadth(1, 0, 1) is None
+
+
+def test_market_breadth_uses_the_same_all_grade_counts_as_home(tmp_path):
+    dates = ["2026-11-25", "2026-11-26"]
+    put(tmp_path, "market/all_card_history_dates.json", {"basis": "full-list-snapshots", "dates": dates})
+    rows = {
+        "100000001": {"1": [100, 101], "2": [1000, 999], "5": [1000, 1100]},
+        "100000002": {"1": [100000, 100000], "8": [200, 201], "13": [100, 100]},
+        "100000003": {"1": [10000, 10001], "8": [200, 199]},
+    }
+    put(tmp_path, "list/1.json", {key: {"name": key} for key in rows})
+    put(tmp_path, "market/all_card_history/1.json", {
+        key: {grade: list(zip(dates, prices)) for grade, prices in grades.items()} for key, grades in rows.items()})
+    market = {"date": dates[-1], "indexMinimum": 1, "byGrade": {"1": {"popular": []}}}
+    out = build.market_period_views(tmp_path, market)
+    period = out["periods"]["1"]
+    ix = period["index"]
+    assert (period["up"], period["down"]) == (4, 2)
+    assert (ix["up"], ix["down"], ix["flat"], ix["compared"]) == (4, 2, 2, 8)
+    assert ix["display"] == "+33.3"
+    assert out["_rankPayloads"]["1"]["index"] == ix
+    assert out["periods"]["3"]["index"] is None

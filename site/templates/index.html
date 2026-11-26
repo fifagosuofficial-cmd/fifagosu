@@ -41,8 +41,8 @@
   <div class="mk-period-panel" data-mdp="{{ d }}" data-default-sort="{{ P.defaultSort }}" data-fallback="{{ 'true' if P.fallback else 'false' }}"{% if not loop.first %} hidden{% endif %}>
   <section class="mk-strip" aria-label="시장 요약">
     <div class="mk-tile">
-      <span class="mk-k">시장 종합 지수 <small>{{ d }}일 전 대비{% if ix %} · 1강 표본 {{ ix.n }}장{% endif %}</small></span>
-      {% if ix %}<span class="mk-v {{ 'up' if ix.median > 0 else ('down' if ix.median < 0 else '') }}">{{ M.pct(ix.median) }}</span>
+      <span class="mk-k">시장 종합 지수 <small>{{ d }}일 전 대비 · 상승·하락 우세</small></span>
+      {% if ix %}<span class="mk-v {{ 'up' if ix.breadth > 0 else ('down' if ix.breadth < 0 else '') }}" title="상승 수−하락 수를 등락 수로 나눈 방향 지수 (−100~+100점). 보합 제외. 가격 상승률 아님.">{{ ix.display|e }}<small style="font-size:.55em">점</small></span>
       {% else %}<span class="mk-v mk-wait">{% if not P.ready %}전체 카드 이력 {{ P.historyDays }}/{{ P.required }}일 누적{% else %}표본 {{ P.sample }}/{{ market.indexMinimum|default(30) }}장{% endif %}</span>{% endif %}
     </div>
     <div class="mk-tile">
@@ -56,7 +56,7 @@
     <div class="mk-tile"><span class="mk-k">수집 카드 수</span><span class="mk-v" data-market-total>{{ '{:,}'.format((P.totalCards|default(P.sample))|int) }}</span></div>
   </section>
 
-  <div class="mk-bar2"><small class="mk-rule"><b>전체 시즌·전체 강화 카드의 실제 시세 변동 기준</b> · 종합 순위만 변동률 3% 이상·절대 변동액 상위 20%·관측 3회 이상 · {{ d }}일 전 대비{% if P.ready %} ({{ P.prev[5:7]|int }}.{{ P.prev[8:10]|int }} → {{ P.date[5:7]|int }}.{{ P.date[8:10]|int }}){% else %} · 비교 이력 부족{% endif %}</small><span class="mk-load-state" data-market-status>{% if P.fallback %}종합 순위 관측 부족 · 등락률 순위 표시{% endif %}</span></div>
+  <div class="mk-bar2"><small class="mk-rule"><b>전체 시즌·전체 강화 카드의 실제 시세 변동 기준</b> · 시장지수 = (상승 수 − 하락 수) ÷ 등락 수 × 100 (보합 제외, 가격 등락률 아님) · 종합 순위만 변동률 3% 이상·절대 변동액 상위 20%·관측 3회 이상 · {{ d }}일 전 대비{% if P.ready %} ({{ P.prev[5:7]|int }}.{{ P.prev[8:10]|int }} → {{ P.date[5:7]|int }}.{{ P.date[8:10]|int }}){% else %} · 비교 이력 부족{% endif %}</small><span class="mk-load-state" data-market-status>{% if P.fallback %}종합 순위 관측 부족 · 등락률 순위 표시{% endif %}</span></div>
   <div class="mk-panel">
     <section class="mk-box mk-up">
       <h3>급등 TOP 10</h3>

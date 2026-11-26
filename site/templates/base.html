@@ -41,6 +41,12 @@
 @keyframes fg-fun-glow{0%,100%{box-shadow:0 0 5px #a855f766,inset 0 0 5px #a855f733}50%{box-shadow:0 0 11px #a855f7aa,inset 0 0 8px #a855f744}}
 @media(prefers-reduced-motion:reduce){.fg-nav-shell nav.menu a.nav-fun{animation:none;transition:none}}
 </style>
+<link rel="manifest" href="/assets/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="피파고수">
+<style>
+.fg-install[hidden]{display:none!important}.fg-install{cursor:pointer;font:inherit;color:inherit}.fg-install-top{flex:none;border:1px solid #00a86b;border-radius:10px;background:transparent;color:#008858;padding:6px;white-space:nowrap;font-size:11px;display:inline-flex;align-items:center;gap:3px}.fg-install-top svg{width:14px;height:14px}.fg-install-foot{background:none;border:0;text-decoration:underline;padding:4px}.fg-install-dialog{max-width:min(340px,88vw);border:1px solid #aaa;border-radius:14px;padding:20px;background:Canvas;color:CanvasText}.fg-install-dialog::backdrop{background:#0006}.fg-install-dialog button{padding:8px 16px;margin-top:8px}
+</style>
 </head><body data-view="{{ view or '' }}"{% if (view or '') in ('home','sim','trade','diag','cards','calc','guide','squad','board','mypage','admin') or (active is defined and active in ('news','press','patch','sim')) %} class="page-wide"{% endif %}>
 <header class="top">
   <div class="row"><a class="logo" href="{{ SITE_URL }}/" aria-label="피파고수 홈"><picture><source srcset="{{ root }}site/brand/fifagosu-logo-480.webp" type="image/webp"><img src="{{ root }}site/brand/fifagosu-logo-480.png" width="480" height="135" alt="피파고수"></picture></a><span class="tag">FC온라인 전적 진단</span></div>
@@ -59,7 +65,7 @@
 
   </nav>
 {% endblock %}
-<div class="fg-account-group"><span class="fg-welcome" hidden><img class="fg-welcome-rank" width="32" height="32" alt=""><span class="fg-welcome-copy"><span class="fg-welcome-message"><b class="fg-welcome-name"></b>님 환영합니다.</span> <span class="fg-welcome-xp"></span></span></span><a class="fg-account-icon" href="{{ root }}mypage/" aria-label="마이페이지" title="마이페이지"{% if view=='mypage' %} aria-current="page"{% endif %}><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 21v-2.2a7.5 7.5 0 0 1 15 0V21z"/></svg></a></div>
+<div class="fg-account-group"><span class="fg-welcome" hidden><img class="fg-welcome-rank" width="32" height="32" alt=""><span class="fg-welcome-copy"><span class="fg-welcome-message"><b class="fg-welcome-name"></b>님 환영합니다.</span> <span class="fg-welcome-xp"></span></span></span><button type="button" class="fg-install fg-install-top" hidden aria-label="피파고수 앱 설치"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 6v9m-3-3 3 3 3-3"/></svg>앱 설치</button><a class="fg-account-icon" href="{{ root }}mypage/" aria-label="마이페이지" title="마이페이지"{% if view=='mypage' %} aria-current="page"{% endif %}><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 21v-2.2a7.5 7.5 0 0 1 15 0V21z"/></svg></a></div>
 </div>
 </header>
 <div class="wrap"{% if view in ('home','market','diag','cards','sim','trade','guide','squad','board') or active in ('news','press','patch') %} data-ad-layout="public"{% endif %}>
@@ -68,10 +74,13 @@
 <aside class="fg-ad-rail fg-ad-right" data-ad-slot="side-right" aria-label="광고" hidden></aside>
 {% endif %}
 {% block content %}{% endblock %}
-<footer>Data based on NEXON Open API · 선수 능력치·시세: FC온라인 데이터센터 · 피파고수는 넥슨·EA SPORTS와 관련 없는 비공식 서비스예요.<br>약점 진단은 피파고수 자체 계산이며 게임 공식 수치가 아니에요.<br><a href="{{ root }}about">소개</a> · <a href="{{ root }}privacy">개인정보처리방침</a> · <a href="{{ root }}terms">이용약관</a> · <a href="{{ root }}contact">문의</a> · <a href="{{ root }}guide/">게임 가이드</a></footer>
+<footer>Data based on NEXON Open API · 선수 능력치·시세: FC온라인 데이터센터 · 피파고수는 넥슨·EA SPORTS와 관련 없는 비공식 서비스예요.<br>약점 진단은 피파고수 자체 계산이며 게임 공식 수치가 아니에요.<br><a href="{{ root }}about">소개</a> · <a href="{{ root }}privacy">개인정보처리방침</a> · <a href="{{ root }}terms">이용약관</a> · <a href="{{ root }}contact">문의</a> · <a href="{{ root }}guide/">게임 가이드</a><button type="button" class="fg-install fg-install-foot" hidden>피파고수 앱 설치</button></footer>
 </div>
 <script defer src="{{ root }}assets/js/ads.js?v={{ ver }}"></script>
 <script defer src="{{ root }}assets/js/traffic.js?v={{ ver }}"></script>
 <script defer src="{{ root }}assets/js/welcome.js?v={{ ver }}"></script>
 {% block scripts %}{% endblock %}
-</body></html>
+<dialog id="fgInstallDialog" class="fg-install-dialog"><strong>피파고수 앱 설치</strong><p id="fgInstallHelp"></p><form method="dialog"><button>닫기</button></form></dialog>
+<script>
+(()=>{let promptEvent=null;const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),android=/Android/i.test(navigator.userAgent),standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true,buttons=[...document.querySelectorAll('.fg-install')];const refresh=()=>buttons.forEach(b=>b.hidden=standalone()||!(ios||android||promptEvent));window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();promptEvent=e;refresh()});window.addEventListener('appinstalled',()=>{promptEvent=null;buttons.forEach(b=>b.hidden=true)});matchMedia('(display-mode: standalone)').addEventListener?.('change',refresh);buttons.forEach(b=>b.addEventListener('click',async()=>{if(promptEvent){const p=promptEvent;promptEvent=null;await p.prompt();await p.userChoice;refresh();return}document.getElementById('fgInstallHelp').textContent=ios?'Safari에서 공유 버튼을 누른 뒤 홈 화면에 추가를 선택하세요. 다른 앱 내 브라우저라면 Safari로 먼저 열어 주세요.':'Chrome에서 우측 상단 ⋮ 메뉴를 누른 뒤 앱 설치 또는 홈 화면에 추가를 선택하세요.';document.getElementById('fgInstallDialog').showModal()}));refresh()})();
+</script></body></html>

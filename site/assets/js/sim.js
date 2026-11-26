@@ -244,7 +244,7 @@ function matShow(){
  const v=matPer(),plan=autoMat()?selectedPlan(cur):null,key=SEL?planKey(SEL.c.id,cur):"";
  $('smEMat').disabled=autoMat()||preparing;
  $('smEMatV').textContent=autoMat()?"공식 월평균 최저 거래가":v?korBP(v)+' BP / 장':'재료비 입력 필요';
- $('smEMatCombo').innerHTML=plan?'<b>'+korBP(plan.cost)+' BP · '+plan.cards.length+'장 · 공식 게이지 100%</b><br>'+plan.cards.map(c=>'OVR '+c.ovr+' · '+korBP(c.price)+' BP').join('<br>')+'<br>지난 한 달 일일 최저 거래가 평균 · 실제 매물가와 다를 수 있음':cur>=MAX?"최대 강화":!SEL?"강화할 선수를 선택하세요.":officialPending.has(key)?"공식 강화 도우미 조회 중…":officialErrors.has(key)?H(officialErrors.get(key))+' <button type="button" id="smEBoostRetry">다시 조회</button>':"공식 조합 조회 대기";
+ $('smEMatCombo').innerHTML=!autoMat()?"수동 재료비 사용 중":plan?'<div style="width:100%"><b>'+korBP(plan.cost)+' BP · '+plan.cards.length+'장 · 100%</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">'+plan.cards.map(c=>'<span style="border:1px solid rgba(128,128,128,.25);border-radius:6px;padding:4px 7px">OVR '+c.ovr+' · '+korBP(c.price)+' BP</span>').join('')+'</div></div>':cur>=MAX?"최대 강화":!SEL?"선수를 선택하세요":officialPending.has(key)?"재료비 조회 중…":officialErrors.has(key)?'<span>재료비 조회 제한</span><button type="button" id="smEBoostRetry" style="font-size:12px;padding:5px 10px;border-radius:8px;cursor:pointer" title="'+H(officialErrors.get(key))+'">다시 조회</button>':"재료비 조회 대기";
  if($('smEBoostRetry'))$('smEBoostRetry').onclick=()=>{void loadOfficial(cur)};
  $('smEGaugeV').textContent=autoMat()?(plan?"풀게이지 · 100%":"게이지 미확인"):`${KAN}칸 · ${KAN*20}%`;
  $('smEGaugeBox').querySelectorAll('[data-k]').forEach(x=>x.classList.toggle('on',autoMat()?!!plan:+x.dataset.k<=KAN));

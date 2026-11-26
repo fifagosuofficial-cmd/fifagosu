@@ -232,6 +232,8 @@ def test_kickkick_ad_layout_and_nav_icon(tmp_path):
     html=(out / "fun/index.html").read_text("utf-8")
     doc=BeautifulSoup(html,"html.parser")
     assert doc.body["data-view"]=="fun"
+    xp = doc.select_one('#arcTabs a[href="#/games"] .arc-xp-bubble')
+    assert xp and xp.get_text(strip=True) == "XP 획득 기회!"
     assert doc.select_one('body>.wrap[data-ad-layout="public"]')
     for slot in ("fun-left","fun-right","fun-center"):
         assert doc.select_one(f'[data-ad-slot="{slot}"][hidden]')
@@ -273,3 +275,13 @@ def test_arcade_and_mypage_link(tmp_path):
     assert 'href="#/" aria-current="page">축구테스트</a>' in source
     assert 'window.FGArcade.mount' in source
     assert 'view!="mypage"' in (root/"site/templates/community.html").read_text("utf-8")
+
+
+def test_board_header_uses_common_nav_width():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    main = (root / "site/assets/css/main.css").read_text("utf-8")
+    board = (root / "site/assets/css/community.css").read_text("utf-8")
+    assert "body[data-view=board] .fg-nav-shell{max-width:1600px}" not in main
+    assert 'body[data-view="board"] nav.menu{max-width:' not in board
+    assert 'body[data-view="board"] .top .row,' not in board

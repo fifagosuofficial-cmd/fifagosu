@@ -497,7 +497,8 @@ function dRenderSummary(d,a){
 function dControllerSummary(matches){
  const stats={keyboard:{n:0,w:0},pad:{n:0,w:0}};
  for(const m of matches||[]){const [me,op]=m.matchInfo||[],raw=String(op?.matchDetail?.controller||'').trim().toLowerCase(),key=['gamepad','pad','game pad','controller'].includes(raw)?'pad':raw,res=me?.matchDetail?.matchResult;if(!Object.hasOwn(stats,key)||!['승','무','패'].includes(res))continue;stats[key].n++;if(res==='승')stats[key].w++}
- const item=(key,label)=>{const x=stats[key];return '<small title="'+label+' 상대 '+x.n+'경기 · '+x.w+'승" style="white-space:nowrap;font-size:10px">'+label+' <strong>'+ (x.n?Math.round(x.w/x.n*100)+'%':'—')+'</strong></small>'};
+ const icons={keyboard:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h1m3 0h1m3 0h1m3 0h1M6 13h1m3 0h1m3 0h1m3 0h1M8 16h8"/>',pad:'<path d="M6 6h12c3 0 5 9 3 11-2 2-5-3-7-3h-4c-2 0-5 5-7 3-2-2 0-11 3-11Z"/><path d="M7 9v4m-2-2h4m7-1h.01m3 2h.01"/>'};
+ const item=(key,label)=>{const x=stats[key];return '<small title="'+label+' 상대 '+x.n+'경기 · '+x.w+'승" style="white-space:nowrap;font-size:10px"><svg aria-hidden="true" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px">'+icons[key]+'</svg>'+label+' <strong>'+ (x.n?Math.round(x.w/x.n*100)+'%':'—')+'</strong></small>'};
  return '<div aria-label="상대 조작 방식별 승률" style="display:flex;flex-wrap:wrap;gap:3px 8px;justify-content:center;margin-top:5px;padding-top:5px;border-top:1px solid var(--line,#d5dfda)">'+item('keyboard','키보드')+item('pad','패드')+'</div>';
 }
 /* 막대·칸에 마우스를 올리면 그 경기의 날짜·상대·스코어 */

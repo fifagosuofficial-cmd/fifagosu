@@ -116,7 +116,7 @@ function effMaterialRows(ctx){
 function effStart(ctx,retry=false){
   if(!effActive(ctx)||ctx.running)return;
   if(retry){clearTimeout(ctx.resume);ctx.resume=null;for(const k of ctx.retry)ctx.attempted.delete(k);ctx.retry.clear();ctx.issue=''}
-  ctx.running=true;ctx.done=0;ctx.issue='';effPaint(ctx);
+  const metricStart=Date.now();ctx.running=true;ctx.done=0;ctx.issue='';effPaint(ctx);
   effWork=effWork.catch(()=>{}).then(async()=>{
     await Promise.all([loadCachedPlans(),loadMaterialData()]);
     if(!effActive(ctx))return;
@@ -136,7 +136,7 @@ function effStart(ctx,retry=false){
         if(effActive(ctx))effPaint(ctx);
       }));
     }
-  }).catch(()=>{ctx.issue='재료비 조회 실패 · 다시 조회해 주세요.'}).finally(()=>{ctx.running=false;if(effActive(ctx))effPaint(ctx)});
+  }).catch(()=>{ctx.issue='재료비 조회 실패 · 다시 조회해 주세요.'}).finally(()=>{ctx.running=false;if(effActive(ctx)){effPaint(ctx);window.FGMetric?.('boost_lookup',ctx.issue?'error':effMaterialRows(ctx).length?'ok':'empty',Date.now()-metricStart)}});
 }
 function effRow(r,i,kind){
   const win=kind==="win",score=win?effLifeScore(r):0,w=win?score:Math.max(4,Math.min(100,r.rr/2*100));
@@ -359,7 +359,7 @@ function step(){
   if(cur>=to){draw(`목표 ${to}강 달성! 총 ${tries}회 시도했어요.${spent?' 재료비 약 '+won(spent)+' BP':''}`,'win');return false}
   return true;
 }
-$('smEOne').onclick=async()=>{if(preparing)return;clearInterval(timer);timer=null;$('smEAuto').textContent='목표까지 자동';if(autoMat()&&SEL&&!selectedPlan(cur)){lockEnh(true);try{if(!await loadOfficial(cur)){draw('공식 재료비 확인 실패. 다시 조회하거나 수동 입력하세요.');return}}finally{lockEnh(false);matShow()}}step()};
+$('smEOne').onclick=async()=>{if(preparing)return;const metricStart=Date.now();clearInterval(timer);timer=null;$('smEAuto').textContent='목표까지 자동';if(autoMat()&&SEL&&!selectedPlan(cur)){lockEnh(true);try{if(!await loadOfficial(cur)){window.FGMetric?.('enhance_sim','error',Date.now()-metricStart);draw('공식 재료비 확인 실패. 다시 조회하거나 수동 입력하세요.');return}}finally{lockEnh(false);matShow()}}const prev=tries;step();window.FGMetric?.('enhance_sim',tries>prev?'ok':'empty',Date.now()-metricStart)};
 $('smEAuto').onclick=async()=>{if(preparing)return;if(timer){clearInterval(timer);timer=null;$('smEAuto').textContent='목표까지 자동';return}
   if(autoMat()){lockEnh(true);try{if(!await prepareStages(cur,+$('smETo').value,$('smEFail').value==='down')){draw('일부 단계 공식 조합을 확인하지 못했습니다. 다시 시도하거나 수동 입력하세요.');return}}finally{lockEnh(false);matShow()}}
   $('smEAuto').textContent='멈추기';let n=0;timer=setInterval(()=>{if(!step()||++n>5000){clearInterval(timer);timer=null;$('smEAuto').textContent='목표까지 자동'}},90)};
@@ -566,7 +566,7 @@ function evItem(item,depth=1){
 let cashRows=null,cashBusy=false;
 async function cashRun(){
   if(cashRows){cashRender();return}
-  if(cashBusy)return;cashBusy=true;
+  if(cashBusy)return;cashBusy=true;const metricStart=Date.now();
   try{
     $('cashSrc').textContent='상점·확률표 불러오는 중…';
     await Promise.all([loadShelf(),loadPool()]);
@@ -582,8 +582,8 @@ async function cashRun(){
       }catch(e){row.err=e.message}
       rows.push(row);
     }
-    cashRows=rows;cashRender();
-  }catch(e){$('cashSrc').textContent='불러오지 못했어요: '+e.message}
+    cashRows=rows;cashRender();window.FGMetric?.('cash_calc',rows.some(r=>r.ok)?'ok':'empty',Date.now()-metricStart);
+  }catch(e){window.FGMetric?.('cash_calc','error',Date.now()-metricStart);$('cashSrc').textContent='불러오지 못했어요: '+e.message}
   cashBusy=false;
 }
 function cashRender(){

@@ -17,6 +17,12 @@ return "other"}catch{return null}}
 const device=()=>{const ua=navigator.userAgent||"";return /iPad|Tablet|Android(?!.*Mobile)/i.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1)?"tablet":/Mobile|iPhone|Android/i.test(ua)?"mobile":"desktop"};
 function state(){const day=Math.floor((Date.now()+32400000)/86400000);let v;try{v=JSON.parse(storage.getItem(keys.daily)||"null")}catch{}if(!v||v.day!==day||! /^[a-f0-9]{32}$/.test(v.token||"")){v={day,token:Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,"0")).join(""),source:source()||"direct"};storage.setItem(keys.daily,JSON.stringify(v))}return v}
 let last=0,lastDay=-1,lastPage=null;
+const metricLast=new Map();
+window.FGMetric=(feature,outcome,ms=0)=>{try{
+ if(blocked()||storage.getItem(keys.choice)==="1")return;
+ const t=Date.now(),k=feature+":"+outcome;if(t-(metricLast.get(k)||0)<700)return;metricLast.set(k,t);
+ fetch("/api/community/ops-event",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({feature,outcome,ms:Math.min(300000,Math.max(0,Math.round(ms)||0))}),keepalive:true}).catch(()=>{});
+}catch{}};
 function send(kind){try{if(blocked()||storage.getItem(keys.choice)==="1"||document.visibilityState!=="visible")return;const v=state(),t=Date.now();if(kind===0&&(lastDay!==v.day||lastPage!==page))kind=1;if(kind===0&&t-last<210000)return;last=t;lastDay=v.day;lastPage=page;fetch("/api/community/traffic",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:v.token,page,source:v.source,device:device(),kind}),keepalive:true}).catch(()=>{})}catch{}}
 document.addEventListener("fg:view",e=>{const next=e.detail==="home"?"home":Object.hasOwn(pages,e.detail)?pages[e.detail]:null;if(!next||next===page)return;page=next;send(1)});
 if(document.visibilityState==="visible")send(1);document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")send(last===0?1:0)});setInterval(()=>send(0),240000);

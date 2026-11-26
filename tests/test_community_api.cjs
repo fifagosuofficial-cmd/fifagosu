@@ -329,3 +329,6 @@ test("traffic records SPA navigation and activity on the current menu without du
  document.visibilityState="hidden";events["fg:view"]({detail:"cards"});document.visibilityState="visible";events.visibilitychange();
  assert.deepEqual(sent.map(x=>[x.page,x.kind]),[["home",1],["diag",1],["sim",1],["cards",1]]);assert.equal(new Set(sent.map(x=>x.token)).size,1);assert.equal(sent[1].device,"mobile");assert.ok(interval);
 });
+
+
+test("operations metrics aggregate anonymous outcomes, reject extra fields and require admin",async()=>{const {env,sql}=fixture();const b={feature:"diag_manager",outcome:"ok",ms:500};assert.equal((await callFixture(env,"ops-event",b)).status,200);assert.equal((await callFixture(env,"ops-event",b)).status,200);assert.equal((await callFixture(env,"ops-event",{...b,nickname:"not-stored"})).status,400);assert.equal((await callFixture(env,"ops-event",b,"a")).status,200);assert.equal((await callFixture(env,"admin/ops",null,"b")).status,403);const r=await callFixture(env,"admin/ops?range=1",null,"a");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.rows[0].n,2);assert.equal(r.data.rows[0].total_ms,1000);assert.equal(r.data.database,"ok");assert.equal(sql.prepare("SELECT count(*) n FROM ops_counts").get().n,1);});

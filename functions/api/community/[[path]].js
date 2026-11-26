@@ -41,6 +41,20 @@ function squadPayload(v){
  return {schema:1,opts,mode:["performance","balanced","value"].includes(v.mode)?v.mode:"balanced",players};
 }
 
+const opsDDL="CREATE TABLE IF NOT EXISTS ops_counts(hour INTEGER NOT NULL, channel TEXT NOT NULL, feature TEXT NOT NULL, outcome TEXT NOT NULL, n INTEGER NOT NULL, total_ms INTEGER NOT NULL, max_ms INTEGER NOT NULL, last_at INTEGER NOT NULL, PRIMARY KEY(hour,channel,feature,outcome)) WITHOUT ROWID",opsInsert="INSERT INTO ops_counts(hour,channel,feature,outcome,n,total_ms,max_ms,last_at) VALUES(?,?,?,?,1,?,?,?) ON CONFLICT(hour,channel,feature,outcome) DO UPDATE SET n=n+1,total_ms=total_ms+excluded.total_ms,max_ms=MAX(max_ms,excluded.max_ms),last_at=MAX(last_at,excluded.last_at)";
+const opsFeatures=new Set(["diag_official","diag_manager","card_search","boost_lookup","enhance_sim","cash_calc","squad_generate","mini_game"]);
+const opsOutcomes=new Set(["ok","empty","error"]);
+async function ensureOps(db){await db.prepare(opsDDL).run()}
+async function opsSummary(db,u,env){
+ await ensureOps(db);const t=now(),hour=Math.floor(t/3600),day=trafficDay(t),range=u.searchParams.get("range")==="1"?1:u.searchParams.get("range")==="30"?30:7,from=(day-range+1)*24-9;
+ const q=(sql,...args)=>db.prepare(sql).bind(...args);
+ await q("DELETE FROM ops_counts WHERE hour<?",(day-29)*24-9).run();
+ const rows=(await q("SELECT channel,feature,outcome,SUM(n) n,SUM(total_ms) total_ms,MAX(max_ms) max_ms,MAX(last_at) last_at FROM ops_counts WHERE hour>=? AND hour<=? GROUP BY channel,feature,outcome",from,hour).all()).results;
+ const latest=(await q("SELECT feature,outcome,last_at FROM ops_counts WHERE channel='api' AND hour>=? AND hour<=? ORDER BY last_at DESC",hour-23,hour).all()).results;
+ let manifest=null;
+ try{if(env.ASSETS?.fetch){const r=await env.ASSETS.fetch(new Request(u.origin+"/assets/ops-manifest.json"));if(r.ok)manifest=await r.json()}}catch{}
+ return {generated:t,range,rows,latest,manifest,database:"ok",nexonConfigured:!!env.NEXON_API_KEY};
+}
 const trafficPages=new Set(["home","diag","market","trade","squad","cards","sim","news","board","fun","guide"]);
 const trafficSources=new Set(["direct","fmkorea","inven","naver","google","dcinside","youtube","daum","instagram","other"]);
 const trafficDevices=new Set(["desktop","mobile","tablet","other"]);
@@ -237,6 +251,7 @@ export async function onRequest({request,env}){
      history:await all("SELECT h.squad_id,h.bp,h.observed FROM value_history h JOIN squads s ON s.id=h.squad_id WHERE s.member_id=? ORDER BY h.observed DESC LIMIT 300",m.id)
    })}
    if(p==="admin/traffic"){requireAdmin();return json(await trafficSummary(db,u))}
+   if(p==="admin/ops"){requireAdmin();return json(await opsSummary(db,u,env))}
    if(p==="admin"){requireAdmin();await cleanup();
      const kstDay=Math.floor((now()+32400)/86400),start=(kstDay-6)*86400-32400,today=kstDay*86400-32400;
      const stats=await first("SELECT (SELECT count(*) FROM members) members,(SELECT count(*) FROM members WHERE created>=?) new_members,(SELECT count(*) FROM members WHERE suspended=1) suspended,(SELECT count(*) FROM posts WHERE hidden=0) posts,(SELECT count(*) FROM posts WHERE created>=? AND hidden=0) new_posts,(SELECT count(*) FROM comments WHERE hidden=0 AND post_id IN (SELECT id FROM posts WHERE hidden=0)) comments,(SELECT count(*) FROM comments WHERE created>=? AND hidden=0 AND post_id IN (SELECT id FROM posts WHERE hidden=0)) new_comments,(SELECT count(*) FROM reports WHERE status='open') open_reports,(SELECT count(*) FROM feedback WHERE status='open') open_feedback,(SELECT COALESCE(sum(views),0) FROM posts WHERE hidden=0) views",today,today,today);
@@ -256,6 +271,13 @@ export async function onRequest({request,env}){
  check(request.headers.get("Origin")===u.origin,"요청 출처가 올바르지 않습니다.",403);
  check(request.headers.get("content-type")?.includes("application/json"),"잘못된 요청입니다.",415);
  const raw=await request.text();check(raw.length<=40000,"요청이 너무 큽니다.",413);let b;try{b=JSON.parse(raw)}catch{throw new Err("잘못된 요청입니다.")}
+ if(p==="ops-event"){
+   if(admin||request.headers.get("Sec-GPC")==="1"||request.headers.get("DNT")==="1"||/bot|crawl|spider|headless|preview|curl|wget/i.test(request.headers.get("User-Agent")||""))return json({ok:true});
+   check(raw.length<=200&&b&&Object.keys(b).length===3&&opsFeatures.has(b.feature)&&opsOutcomes.has(b.outcome)&&Number.isInteger(b.ms)&&b.ms>=0&&b.ms<=300000,"잘못된 기능 통계 요청입니다.");
+   await ensureOps(db);const t=now();await run(opsInsert,Math.floor(t/3600),"feature",b.feature,b.outcome,b.ms,b.ms,t);
+   if(Math.random()<0.01)await run("DELETE FROM ops_counts WHERE hour<?",(trafficDay(t)-29)*24-9);
+   return json({ok:true});
+ }
  if(p==="traffic"){
    if(admin||request.headers.get("Sec-GPC")==="1"||request.headers.get("DNT")==="1"||/bot|crawl|spider|headless|preview|curl|wget/i.test(request.headers.get("User-Agent")||"")||/prefetch|prerender/i.test((request.headers.get("Purpose")||"")+" "+(request.headers.get("Sec-Purpose")||"")))return json({ok:true});
    check(raw.length<=600&&b&&typeof b.token==="string"&&/^[a-f0-9]{32}$/.test(b.token)&&trafficPages.has(b.page)&&trafficSources.has(b.source)&&trafficDevices.has(b.device)&&(b.kind===0||b.kind===1),"잘못된 통계 요청입니다.");

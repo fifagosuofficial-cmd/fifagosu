@@ -1055,16 +1055,16 @@ async function names(ids){
 let diagSeq=0;
 async function runDiag(nick){
   nick=(nick||'').trim();if(!nick)return;
-  const seq=++diagSeq;recoClose();$('dTip').hidden=true;
+  const seq=++diagSeq,diagStarted=Date.now(),metricKey=dMode==='52'?'diag_manager':'diag_official';recoClose();$('dTip').hidden=true;
   let d;
   if(LIVE){
     try{runDiag.ctrl&&runDiag.ctrl.abort()}catch(e){}
     runDiag.ctrl=typeof AbortController==='function'?new AbortController():null;DIAG_SIGNAL=runDiag.ctrl&&runDiag.ctrl.signal;
     $('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta">최근 ${dCount}경기를 불러오는 중이에요. 100경기는 30초 정도 걸릴 수 있어요.</div></div>`;
     try{await loadSeasons();d=await realData(nick,dMode,dCount,fetchJSON,names,4)}
-    catch(err){if(seq!==diagSeq||(err&&err.name==='AbortError'))return;$('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta" style="color:var(--crit)">${esc(err&&err.message||'불러오지 못했어요. 잠시 후 다시 시도해 주세요.')}</div></div>`;dClear();return}
+    catch(err){if(seq!==diagSeq||(err&&err.name==='AbortError'))return;window.FGMetric?.(metricKey,err?.code==='http_404'?'empty':'error',Date.now()-diagStarted);$('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta" style="color:var(--crit)">${esc(err&&err.message||'불러오지 못했어요. 잠시 후 다시 시도해 주세요.')}</div></div>`;dClear();return}
     if(seq!==diagSeq)return;
-    if(d.matches.length<5){$('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta">${dMode==='52'?'감독모드':'공식경기'} 경기가 ${d.matches.length}경기뿐이라 진단하기에 부족해요. 5경기 이상부터 진단해요.</div></div>`;dClear();return}
+    if(d.matches.length<5){window.FGMetric?.(metricKey,'empty',Date.now()-diagStarted);$('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta">${dMode==='52'?'감독모드':'공식경기'} 경기가 ${d.matches.length}경기뿐이라 진단하기에 부족해요. 5경기 이상부터 진단해요.</div></div>`;dClear();return}
   }else{
     const snap=window.FG_SNAP&&FG_SNAP[nick.toLowerCase()+'|'+dMode];
     if(snap){d={...snap,matches:snap.matches.slice(0,dCount)};if(d.matches.length<5){$('dBoard').innerHTML=`<div><div class="nick">${esc(snap.basic.nickname)}</div><div class="meta">${dMode==='52'?'감독모드':'공식경기'} 최근 경기가 ${d.matches.length}경기뿐이라 진단하기에 부족해요. ${dMode==='50'?'감독모드 탭을 눌러보세요.':''}</div></div>`;dClear();return}}
@@ -1075,6 +1075,7 @@ async function runDiag(nick){
   dTab='pstats';   // 공식경기·감독모드 모두 선수별 기록이 메인
   // Both modes share the fixed report → details → opponent teamcolor → weaknesses order.
   dSaveVisit(d,a);dRenderBoard(d,a);dRenderSummary(d,a);dRenderReport(d,a);dRenderTip(a);dRenderCards(a);dRenderTabs();dRenderPanel();dRenderMatches(d,a);
+  if(LIVE&&!d.sample)window.FGMetric?.(metricKey,'ok',Date.now()-diagStarted);
   $('dUpdated').textContent=`마지막 조회 ${new Date().toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}`;
   dLoadTeamcolors(d,a,seq);
   Promise.allSettled([dLoadRanker(a,dMode,seq),dLoadRating(a,dMode,seq)]).then(()=>{if(seq===diagSeq)dEnrich(a,seq)});
@@ -1183,7 +1184,7 @@ function renderCards(){
   $('cRes').innerHTML=r.slice(0,cLimit).map(cardHTML).join('');
   $('cMore').hidden=r.length<=cLimit;
 }
-let cT;$('cq').addEventListener('input',()=>{clearTimeout(cT);cT=setTimeout(()=>{cLimit=60;renderCards()},150)});
+let cT;$('cq').addEventListener('input',()=>{clearTimeout(cT);cT=setTimeout(()=>{cLimit=60;renderCards();if(cardsReady&&$('cq').value.trim())window.FGMetric?.('card_search',searchCards().length?'ok':'empty',0)},500)});
 ['cSeason','cSort','cTrade'].forEach(id=>$(id).addEventListener('change',()=>{cLimit=60;renderCards()}));
 $('cMore').addEventListener('click',()=>{cLimit+=60;renderCards()});
 $('cRes').addEventListener('click',e=>{const b=e.target.closest('[data-sp]');if(b)openCard(+b.dataset.sp)});

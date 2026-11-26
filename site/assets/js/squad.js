@@ -89,14 +89,14 @@ function request(opts,modes,ls,bs={},replace=false){
  closeTeamList();
  if(!manifest||!validOpts(opts)){status("입력 조건을 확인해 주세요.",true);return}
  if(task||slotBusy)return;closePicker();
- if(!worker){try{worker=new Worker("/assets/js/squad-worker.js?v="+encodeURIComponent(ver));worker.onmessage=receive;worker.onerror=()=>{task=null;worker.terminate();worker=null;busy(false);status("추천 작업이 중단됐습니다. 다시 시도해 주세요.",true)}}catch(e){status("브라우저가 추천 작업을 지원하지 않습니다.",true);return}}
- const id=++requestId;task={id,opts,modes,replace};busy(true);status("실제 선수 후보를 탐색하고 예산·급여를 검증하고 있습니다…");
+ if(!worker){try{worker=new Worker("/assets/js/squad-worker.js?v="+encodeURIComponent(ver));worker.onmessage=receive;worker.onerror=()=>{if(task)window.FGMetric?.('squad_generate','error',Date.now()-task.started);task=null;worker.terminate();worker=null;busy(false);status("추천 작업이 중단됐습니다. 다시 시도해 주세요.",true)}}catch(e){status("브라우저가 추천 작업을 지원하지 않습니다.",true);return}}
+ const id=++requestId;task={id,opts,modes,replace,started:Date.now()};busy(true);status("실제 선수 후보를 탐색하고 예산·급여를 검증하고 있습니다…");
  worker.postMessage({id,opts,modes,locks:ls,bans:bs});
 }
 function receive(e){
  const t=task;if(!t||e.data.id!==t.id)return;task=null;busy(false);
- if(e.data.error){status(e.data.error,true);return}
- const next=e.data.results;
+ if(e.data.error){window.FGMetric?.('squad_generate','error',Date.now()-t.started);status(e.data.error,true);return}
+ const next=e.data.results;window.FGMetric?.('squad_generate',Object.values(next||{}).some(r=>r.ok)?'ok':'empty',Date.now()-t.started);
  if(t.replace){
    const r=next[t.modes[0]];if(!r.ok){status(r.reason,true);return}
    results={...results,[t.modes[0]]:r};

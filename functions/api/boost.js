@@ -3,7 +3,7 @@
  * No credentials or user identifiers sent upstream. No retries on rejection. */
 const BASE="https://fconline.nexon.com",SOURCE=BASE+"/DataCenter/PlayerGrow",TTL=6*3600,NEGATIVE_TTL=30*60;
 const safe=v=>Number.isSafeInteger(v)&&v>0;
-const json=(status,body,ttl=0)=>new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":ttl?"public, max-age="+ttl:"no-store","x-content-type-options":"nosniff"}});
+const json=(status,body,ttl=0,retry=0)=>new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":ttl?"public, max-age="+ttl:"no-store","x-content-type-options":"nosniff",...(retry?{"retry-after":String(retry)}:{})}});
 const rowsOf=j=>Array.isArray(j)?j:Array.isArray(j?.ResultData)?j.ResultData:Array.isArray(j?.ResultData?.PlayerList)?j.ResultData.PlayerList:null;
 const pct=x=>typeof x==="number"||typeof x==="string"&&/^\d+(\.\d+)?$/.test(x)?Number(x):NaN;
 export function quoteRows(raw){
@@ -70,7 +70,7 @@ export async function onRequestGet({request,env,waitUntil}){
  if(u.searchParams.get("cached")==="1"){
   if(request.headers.get("sec-fetch-site")==="cross-site")return json(400,{message:"잘못된 요청입니다."});
   const db=env.COMMUNITY_DB;if(!db)return json(503,{items:[]});
-  try{await ensure(db);const now=Math.floor(Date.now()/1000),result=await db.prepare("SELECT body FROM boost_quote_cache WHERE created>? ORDER BY created DESC LIMIT 600").bind(now-TTL).all();
+  try{await ensure(db);const now=Math.floor(Date.now()/1000),result=await db.prepare("SELECT body FROM boost_quote_cache WHERE created>? ORDER BY created DESC LIMIT 3000").bind(now-TTL).all();
    const items=[];for(const row of result.results||[]){try{const d=JSON.parse(row.body);if(d.plan?.official&&d.plan.gauge===100)items.push({spid:d.spid,grade:d.grade,plan:d.plan})}catch{}}
    return json(200,{items},30);
   }catch{return json(503,{items:[]})}
@@ -96,5 +96,5 @@ export async function onRequestGet({request,env,waitUntil}){
    })().finally(()=>inflight.delete(key));inflight.set(key,task)
   }
   const data=await inflight.get(key);return json(200,data,data.plan?TTL:NEGATIVE_TTL);
- }catch(e){const status=e.status===429?429:503;const code=e.code||stage;console.warn("boost unavailable",JSON.stringify({code,spid,grade}));return json(status,{code,message:status===429?"공식 도우미 조회 제한 · 잠시 후 다시 시도해 주세요.":code.endsWith("_timeout")?"공식 도우미 응답 시간이 초과되었습니다.":code.endsWith("_format")?"공식 도우미 응답 형식을 확인하지 못했습니다.":"공식 강화 도우미 연결을 확인하지 못했습니다."})}
+ }catch(e){const status=e.status===429?429:503;const code=e.code||stage;console.warn("boost unavailable",JSON.stringify({code,spid,grade}));const retry=code==="request_limit"?Math.max(1,60-Math.floor(Date.now()/1000)%60+1):status===429?120:0;return json(status,{code,retryAfter:retry,message:status===429?"공식 도우미 조회 제한 · 잠시 후 다시 시도해 주세요.":code.endsWith("_timeout")?"공식 도우미 응답 시간이 초과되었습니다.":code.endsWith("_format")?"공식 도우미 응답 형식을 확인하지 못했습니다.":"공식 강화 도우미 연결을 확인하지 못했습니다."},0,retry)}
 }

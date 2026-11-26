@@ -263,6 +263,7 @@ test("obsolete timed game sessions refund entry fees rather than breaking after 
 
 test("unlimited practice after five reward rounds never spends XP or awards XP or ranking",async()=>{
  const {env,sql}=fixture(),day=Math.floor((Math.floor(Date.now()/1000)+32400)/86400);
+ assert.equal((await callFixture(env,"game-status",null,"a")).status,200);
  const insert=sql.prepare("INSERT INTO arcade_rounds(id,member_id,game,day,created,expires,issued,questions,fee,state,reward,score) VALUES(?,?,?,?,0,0,0,'[]',0,1,2,1)");
  for(let i=0;i<5;i++)insert.run("reward"+i,"a","player",day);
  let r=await callFixture(env,"game-status",null,"a");assert.equal(r.status,200);assert.equal(r.data.used,5);const xp=r.data.member.rank.points;

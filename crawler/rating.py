@@ -243,7 +243,13 @@ def add_match(agg, d):
                 continue
             agg.add(div, pos, float(r))
             if div <= CHAMP and pos in GROUP_OF:
-                add_metrics(agg.roles, GROUP_OF[pos], player_metrics(p.get("status") or {}))
+                role_metrics = player_metrics(p.get("status") or {})
+                if GROUP_OF[pos] == "GK":
+                    against = (mi[1-i].get("shoot") or {}).get("goalTotal")
+                    if isinstance(against, (int, float)) and not isinstance(against, bool) and against >= 0:
+                        role_metrics["against"] = metric_pair(against)
+                        role_metrics["clean"] = metric_pair(int(against == 0))
+                add_metrics(agg.roles, GROUP_OF[pos], role_metrics)
             used = True
     return nxt, used
 

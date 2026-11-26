@@ -755,7 +755,7 @@ function dAssessPlayer(x,peers){
 }
 
 /* Contribution uses observed role metrics, not win rate or same-card ranker deficits. */
-function dPerfPair(n,d=1){return Number.isFinite(n)&&Number.isFinite(d)&&n>=0&&d>0?[n,d]:null}
+function dPerfPair(n,d){if(arguments.length===1)d=1;return Number.isFinite(n)&&Number.isFinite(d)&&n>=0&&d>0?[n,d]:null}
 function dPerfPlayer(st){return {goal:dPerfPair(st.goal),assist:dPerfPair(st.assist),finish:dPerfPair(st.goal,st.shoot),pass:dPerfPair(st.passSuccess,st.passTry),dribble:dPerfPair(st.dribbleSuccess,st.dribbleTry),duel:dPerfPair(st.ballPossesionSuccess,st.ballPossesionTry),aerial:dPerfPair(st.aerialSuccess,st.aerialTry),tackle:dPerfPair(st.tackle,st.tackleTry),intercept:dPerfPair(st.intercept),block:dPerfPair(st.block),rating:dPerfPair(st.spRating)}}
 function dPerfSide(s,o){const sh=s.shoot||{},os=o.shoot||{},p=s.pass||{},f=s.defence||{},r=s.matchDetail?.matchResult;return {goals:dPerfPair(sh.goalTotal),against:dPerfPair(os.goalTotal),shots:dPerfPair(sh.shootTotal),on_target:dPerfPair(sh.effectiveShootTotal,sh.shootTotal),finish:dPerfPair(sh.goalTotal,sh.shootTotal),pass:dPerfPair(p.passSuccess,p.passTry),through:dPerfPair(p.throughPassSuccess,p.throughPassTry),tackle:dPerfPair(f.tackleSuccess,f.tackleTry),block:dPerfPair(f.blockSuccess,f.blockTry),win:['승','무','패'].includes(r)?dPerfPair(+(r==='승')):null}}
 function dPerfAdd(store,pairs){for(const [k,v] of Object.entries(pairs)){if(!v)continue;const x=store[k]??=[0,0,0];x[0]+=v[0];x[1]+=v[1];x[2]++}}
@@ -764,24 +764,45 @@ function dBuildPerformance(matches,players){
  const mine={},op={},roles={},by=new Map(players.map(x=>[x.spId,x]));let division=null;
  for(const m of matches){const [a,b]=m.matchInfo||[];if(!a||!b)continue;if(division===null&&Number.isInteger(a.division))division=a.division;
  dPerfAdd(mine,dPerfSide(a,b));dPerfAdd(op,dPerfSide(b,a));
- for(const p of a.player||[]){const x=by.get(p.spId),g=RT_GROUP[p.pos];if(!x||!g||g!==RT_GROUP[x.pos]||!(p.status?.spRating>0))continue;x.roleApps=(x.roleApps||0)+1;dPerfAdd(x.roleRaw??={},dPerfPlayer(p.status));if(g==='GK'&&Number.isFinite(b.shoot?.goalTotal)){x.gkMatches=(x.gkMatches||0)+1;x.gkAgainst=(x.gkAgainst||0)+b.shoot.goalTotal;x.gkClean=(x.gkClean||0)+ +(b.shoot.goalTotal===0)}}
- for(const p of b.player||[]){const g=RT_GROUP[p.pos];if(!g||!(p.status?.spRating>0))continue;dPerfAdd(roles[g]??={},dPerfPlayer(p.status))}
+ for(const p of a.player||[]){const x=by.get(p.spId),g=RT_GROUP[p.pos];if(!x||!g||g!==RT_GROUP[x.pos]||!(p.status?.spRating>0))continue;x.roleApps=(x.roleApps||0)+1;dPerfAdd(x.roleRaw??={},dPerfPlayer(p.status));if(g==='GK'&&Number.isFinite(b.shoot?.goalTotal)&&b.shoot.goalTotal>=0){x.gkMatches=(x.gkMatches||0)+1;x.gkAgainst=(x.gkAgainst||0)+b.shoot.goalTotal;x.gkClean=(x.gkClean||0)+ +(b.shoot.goalTotal===0)}}
+ for(const p of b.player||[]){const g=RT_GROUP[p.pos];if(!g||!(p.status?.spRating>0))continue;dPerfAdd(roles[g]??={},dPerfPlayer(p.status));if(g==='GK'&&Number.isFinite(a.shoot?.goalTotal)&&a.shoot.goalTotal>=0){dPerfAdd(roles[g],{against:dPerfPair(a.shoot.goalTotal),clean:dPerfPair(+(a.shoot.goalTotal===0))})}}
  }
  return {mine:dPerfSummary(mine),op:dPerfSummary(op),roles:Object.fromEntries(Object.entries(roles).map(([g,x])=>[g,dPerfSummary(x)])),division};
 }
 const D_ROLE_WEIGHTS={ST:{goal:30,finish:25,assist:15,dribble:10,rating:20},W:{goal:20,finish:15,assist:20,dribble:25,rating:20},AM:{pass:25,assist:25,goal:15,dribble:15,rating:20},CM:{pass:30,assist:15,duel:15,tackle:10,intercept:10,rating:20},WM:{pass:25,assist:20,dribble:20,duel:15,rating:20},DM:{pass:25,tackle:20,intercept:15,duel:20,rating:20},CB:{tackle:25,intercept:20,block:20,aerial:15,rating:20},FB:{tackle:25,intercept:15,block:15,duel:10,pass:15,rating:20}};
 const D_METRIC_NAMES={goal:'득점',assist:'도움',finish:'결정률',pass:'패스 성공률',dribble:'드리블 성공률',duel:'볼 경합',aerial:'공중볼',tackle:'태클 성공률',intercept:'가로채기',block:'블록',rating:'평점'};
 function dGrade(v){return v>=90?'S':v>=80?'A':v>=70?'B':v>=60?'C':v>=45?'D':'F'}
-function dKeeperReference(x,a){
- const own=dPerfSummary(x.roleRaw||{}).rating?.avg,opp=a.performance?.roles?.GK?.rating,champ=a.perfRef?.groups?.GK?.metrics?.rating,ref=champ?.n>=30?champ:opp?.n>=30?opp:x.rtRef?.n>=30?x.rtRef:null;
- if(!Number.isFinite(own)||!(ref?.avg>0))return null;
- const v=Math.round(Math.max(0,Math.min(100,75+(own-ref.avg)*40)));
- const details=['평점 '+own.toFixed(2)+' / 기준 '+ref.avg.toFixed(2)];
- if(x.gkMatches>0)details.push('출전 경기 팀 실점 '+(x.gkAgainst/x.gkMatches).toFixed(2)+'/경기','팀 무실점 '+Math.round(x.gkClean/x.gkMatches*100)+'% (개인 선방률 아님)');
- return {value:v,grade:dGrade(v),basis:'GK 평점 참고 평가',details,coverage:0,weight:0,weak:[],keeper:true,tip:['GK 평점 참고 평가 · 기준 표본 '+ref.n+'건',...details,'평점만 반영 (100%) · 선방률 미제공']};
+function dKeeperScore(x,a){
+ const own=dPerfSummary(x.roleRaw||{}).rating,opp=a.performance?.roles?.GK,champ=a.perfRef?.groups?.GK?.metrics,clamp=v=>Math.max(0,Math.min(100,v));
+ const valid=r=>r?.n>=30&&Number.isFinite(r.avg)&&r.avg>0;
+ if(x.roleApps<5||own?.n<5||!Number.isFinite(own?.avg)||own.avg<=0)return null;
+ const parts=[],details=[],weak=[];
+ const add=(name,m,b,w,score,n,individual=false)=>{parts.push({name,m,b,w,score:clamp(score),n,individual});if(individual&&score<60)weak.push(name)};
+ const ranked=valid(champ?.rating)?champ.rating:valid(x.rtRef)?x.rtRef:null,local=valid(opp?.rating)?opp.rating:null;
+ if(!ranked&&!local)return null;
+ if(ranked)add('상위등급 GK 평점',own.avg,ranked.avg,60,75+(own.avg-ranked.avg)*40,ranked.n,true);
+ if(local)add('최근 상대 GK 평점',own.avg,local.avg,20,75+(own.avg-local.avg)*40,local.n,true);
+ const ga=x.gkMatches>=5?x.gkAgainst/x.gkMatches:null,cs=x.gkMatches>=5?x.gkClean/x.gkMatches:null;
+ const against=[champ?.against,opp?.against].find(r=>r?.n>=30&&Number.isFinite(r.avg)&&r.avg>=0);
+ const clean=[champ?.clean,opp?.clean].find(r=>r?.n>=30&&Number.isFinite(r.avg)&&r.avg>=0&&r.avg<=1);
+ if(Number.isFinite(ga)&&against)add('출전 경기 팀 실점/경기',ga,against.avg,15,75+(against.avg-ga)*20,against.n);
+ if(Number.isFinite(cs)&&clean)add('출전 경기 팀 무실점률',cs,clean.avg,5,75+(cs-clean.avg)*100,clean.n);
+ const individual=parts.filter(p=>p.individual),team=parts.filter(p=>!p.individual),iw=individual.reduce((n,p)=>n+p.w,0),tw=team.reduce((n,p)=>n+p.w,0),teamWeight=tw/100;
+ for(const p of individual)p.share=(1-teamWeight)*p.w/iw;
+ for(const p of team)p.share=p.w/100;
+ const value=Math.round(parts.reduce((n,p)=>n+p.score*p.share,0)),ref=ranked||local;
+ const ratings=(x.r||[]).filter(v=>Number.isFinite(v)&&v>0),repeat=ratings.filter(v=>v<=ref.avg-.35+1e-9).length;
+ const persistent=x.roleApps>=10&&ratings.length>=10&&ref.avg-own.avg>=.4&&repeat/ratings.length>=.7;
+ const independent=individual.every(p=>p.score<60)&&individual.length>=2;
+ const confirmed=persistent&&(independent||individual.length===1&&ratings.length>=15&&ref.avg-own.avg>=.6);
+ const tip=['GK 전용 종합 평가 · 내 기록 / 비교 평균',...parts.map(p=>{const pct=p.name.includes('무실점률'),fmt=v=>pct?(v*100).toFixed(1)+'%':v.toFixed(2);const line=p.name+' '+fmt(p.m)+' / '+fmt(p.b)+' · '+Math.round(p.score)+'점 (비중 '+(p.share*100).toFixed(1)+'%, '+p.n+'건)';details.push(line);return line})];
+ if(Number.isFinite(ga)&&!against)tip.push('팀 실점 '+ga.toFixed(2)+'/경기 · 비교 표본 부족, 점수 제외');
+ if(Number.isFinite(cs)&&!clean)tip.push('팀 무실점 '+(cs*100).toFixed(1)+'% · 비교 표본 부족, 점수 제외');
+ tip.push('팀 실점·무실점은 수비 전체 영향 · 최대 20% 반영','개인 선방률은 API 미제공 · 추정하지 않음','반복 평점 부진 '+repeat+'/'+ratings.length+'경기 · 교체 판단 '+(confirmed?'근거 충족':'보류'));
+ return {value,grade:dGrade(value),basis:'GK 전용 종합 평가',details,coverage:tw,weight:100,weak,keeper:true,confirmed,tip};
 }
 function dRoleScore(x,a){
- const g=RT_GROUP[x.pos],w=D_ROLE_WEIGHTS[g];if(!(x.roleApps>=5))return null;if(g==='GK')return dKeeperReference(x,a);if(!w)return null;
+ const g=RT_GROUP[x.pos],w=D_ROLE_WEIGHTS[g];if(!(x.roleApps>=5))return null;if(g==='GK')return dKeeperScore(x,a);if(!w)return null;
  const own=dPerfSummary(x.roleRaw||{}),champ=a.perfRef?.groups?.[g]?.metrics,opp=a.performance?.roles?.[g];
  const clamp=v=>Math.max(0,Math.min(100,v)),ratio=(m,b)=>clamp(75*m/b);
  function score(ref,basis){
@@ -815,7 +836,7 @@ function dRoleScore(x,a){
 function dReinforce(x){return x.action==='교체 검토'||x.action==='우선 보강'}
 function dPlayerAction(x,role,old){
  if(!role)return '평가 보류';
- const v=role.value;if(role.keeper)return v<70?'개선 필요':'참고 평가';const confirmed=x.roleApps>=10&&(old.action==='교체 검토'||role.weak.length>=2);
+ const v=role.value;const confirmed=x.roleApps>=10&&(role.keeper?role.confirmed:(old.action==='교체 검토'||role.weak.length>=2));
  if(x.roleApps<10)return v<70?'개선 필요':v>=80?'기용 추천':'유지';
  if(v<45&&confirmed)return '우선 보강';
  if(v<60&&confirmed)return '교체 검토';
@@ -829,11 +850,11 @@ function dTeamDiagnosis(a){
 }
 function dRatePlayers(a){
  const by={};a.players.forEach(x=>(by[RT_GROUP[x.pos]||x.pos]??=[]).push(x));
- Object.values(by).forEach(list=>{list.forEach(x=>{const old=dAssessPlayer(x,list),role=!a.sample?dRoleScore(x,a):null;Object.assign(x,old);x.eval=role?.value??null;x.evalGrade=role?.grade??null;x.evalBasis=role?.basis??null;x.keeperRef=!!role?.keeper;x.scoreTip=role?.tip||null;x.action=dPlayerAction(x,role,old);x.low=dReinforce(x);x.reason=role?role.basis+' · '+x.roleApps+'경기 · '+(role.keeper?'팀 실점은 참고만 사용 · ':'역할 지표 '+role.coverage+'/80 · 종합 가중치 '+role.weight+'% · ')+role.details.join(' / ')+(role.keeper?'':' · '+old.reason):'포지션별 비교 표본 부족';x.posRank=null;x.reco=null});list.filter(x=>x.eval!=null).sort((x,y)=>y.eval-x.eval).forEach((x,i,arr)=>{x.posRank=`${i+1}/${arr.length}`})})
+ Object.values(by).forEach(list=>{list.forEach(x=>{const old=dAssessPlayer(x,list),role=!a.sample?dRoleScore(x,a):null;Object.assign(x,old);x.eval=role?.value??null;x.evalGrade=role?.grade??null;x.evalBasis=role?.basis??null;x.keeperRef=!!role?.keeper;x.scoreTip=role?.tip||null;x.action=dPlayerAction(x,role,old);x.low=dReinforce(x);x.reason=role?role.basis+' · '+x.roleApps+'경기 · '+(role.keeper?'팀 지표 최대 20% · ':'역할 지표 '+role.coverage+'/80 · 종합 가중치 '+role.weight+'% · ')+role.details.join(' / ')+(role.keeper?'':' · '+old.reason):'포지션별 비교 표본 부족';x.posRank=null;x.reco=null});list.filter(x=>x.eval!=null).sort((x,y)=>y.eval-x.eval).forEach((x,i,arr)=>{x.posRank=`${i+1}/${arr.length}`})})
 }
 function dPriority(a){return a.players.filter(dReinforce).sort((x,y)=>(y.action==='우선 보강')-(x.action==='우선 보강')||(x.eval??100)-(y.eval??100)||y.risk-x.risk||y.apps-x.apps)}
 function dReviewPriority(a){
- return dRecentRows(a.players,a.recentLineup,true).filter(x=>x.roleApps>=10&&x.eval!=null&&!x.keeperRef&&(dReinforce(x)||x.eval<70||(a.dm&&a.W/a.n<.4&&x.eval<75&&x.posRank?.split('/').every(v=>Number.isFinite(+v))&&+x.posRank.split('/')[1]>=3&&+x.posRank.split('/')[0]===+x.posRank.split('/')[1]))).sort((x,y)=>Number(dReinforce(y))-Number(dReinforce(x))||x.eval-y.eval||y.apps-x.apps).slice(0,4);
+ return dRecentRows(a.players,a.recentLineup,true).filter(x=>x.roleApps>=10&&x.eval!=null&&(dReinforce(x)||x.eval<70||(a.dm&&a.W/a.n<.4&&x.eval<75&&x.posRank?.split('/').every(v=>Number.isFinite(+v))&&+x.posRank.split('/')[1]>=3&&+x.posRank.split('/')[0]===+x.posRank.split('/')[1]))).sort((x,y)=>Number(dReinforce(y))-Number(dReinforce(x))||x.eval-y.eval||y.apps-x.apps).slice(0,4);
 }
 function dReviewStrip(a){
  const rows=dReviewPriority(a);if(!a.enriched||!rows.length)return '';
@@ -852,7 +873,7 @@ async function dEnrich(a,seq){
 }
 const dPct=(v,days)=>v==null?'<span class="muted">조회 불가</span>':`<span class="${v>0?'up':v<0?'dn':''}"${days?` title="실제 ${days}일 전 전체 스냅샷과 비교"`:''}>${v>0?'+':''}${v.toFixed(1)}%${days?`<small> · ${days}일</small>`:''}</span>`;
 function dRenderReport(d,a){
-  const best=a.players.filter(x=>x.eval!=null&&!x.keeperRef).sort((x,y)=>y.eval-x.eval)[0],worst=dPriority(a).find(x=>dRecentRows([x],a.recentLineup,true).length);
+  const best=a.players.filter(x=>x.eval!=null).sort((x,y)=>y.eval-x.eval)[0],worst=dPriority(a).find(x=>dRecentRows([x],a.recentLineup,true).length);
   $('dReportShell').hidden=false;
   $('dReportHead').innerHTML=`<div><b>종합 구단 리포트</b><small>최근 ${a.n}경기 · 실제 경기와 수집 시세 기반</small></div><span>${a.enriched?'분석 완료':'선수 시세·팀컬러 분석 중…'}</span>`;
   $('dReport').innerHTML=`<div class="dr-grid dr-insights">
@@ -988,11 +1009,11 @@ function dPStatsView(a){
     `${(x.g/x.apps).toFixed(2)}`,
     `${(x.a/x.apps).toFixed(2)}`,
     `${x.posRank||'-'}`,
-    `<button type="button" class="ev d-score-tip ${dReinforce(x)?'bad':['핵심 선수','기용 추천'].includes(x.action)?'good':''}" style="cursor:help;border:0;text-decoration:underline dotted;text-underline-offset:3px" aria-label="종합 점수 평가 근거 보기" data-tip="${esc(x.scoreTip?[x.name+' · '+x.eval+'점 '+x.evalGrade, ...x.scoreTip].join('\n'):x.reason||'표본 부족')}">${x.eval==null?'—':x.eval+' '+x.evalGrade+(x.keeperRef?' 참고':x.roleApps<10?'*':'')}</button>`,
+    `<button type="button" class="ev d-score-tip ${dReinforce(x)?'bad':['핵심 선수','기용 추천'].includes(x.action)?'good':''}" style="cursor:help;border:0;text-decoration:underline dotted;text-underline-offset:3px" aria-label="종합 점수 평가 근거 보기" data-tip="${esc(x.scoreTip?[x.name+' · '+x.eval+'점 '+x.evalGrade, ...x.scoreTip].join('\n'):x.reason||'표본 부족')}">${x.eval==null?'—':x.eval+' '+x.evalGrade+(x.roleApps<10?'*':'')}</button>`,
     `<b class="act ${dReinforce(x)?'bad':x.action==='개선 필요'?'improve':['핵심 선수','기용 추천'].includes(x.action)?'good':''}">${x.action||'분석 중'}</b>`,
     `${x.reco?`<button type="button" class="linkbtn" data-reco="${x.spId}">${sch(Math.floor(x.reco.id/1e6))}${esc(x.reco.name)} ${x.reco.grade}강</button>`:dReinforce(x)?(a.enriched?'후보 없음':'분석 중'):'-'}`,
     `${x.reco&&x.reco.need!=null?(x.reco.need?fmtBP(x.reco.need):'0 BP'):'-'}`]}});
-  return `<div class="pfilters pstats-filters">${dRecentCheckbox(a)}<label>라인<select data-dfilter="pos"><option value="">전체</option>${['공격','미드','수비','GK'].map(v=>`<option${dFilter.pos===v?' selected':''}>${v}</option>`).join('')}</select></label><label>최소 출전<select data-dfilter="apps">${[1,3,5,10].map(v=>`<option value="${v}"${dFilter.apps===v?' selected':''}>${v}경기</option>`).join('')}</select></label><label>추천<select data-dfilter="action"><option value="">전체</option>${['핵심 선수','기용 추천','유지','개선 필요','교체 검토','우선 보강','참고 평가','평가 보류'].map(v=>`<option${dFilter.action===v?' selected':''}>${v}</option>`).join('')}</select></label><label>정렬<select data-dfilter="sort">${[['pitch','포지션'],['apps','출전'],['rating','평점'],['win','승률'],['eval','종합 점수'],['price','시세']].map(([v,l])=>`<option value="${v}"${dFilter.sort===v?' selected':''}>${l}</option>`).join('')}</select></label><details class="dps-help"><summary aria-label="선수별 기록 설명" title="선수별 기록 설명">?</summary><div class="dps-help-popup"><b>선수별 기록 안내</b><p class="note">최근 ${a.n}경기 합계예요. ${dFilter.recent?'최근 1경기 출전 카드만 표시하며 기록은 선택한 전체 경기의 누적값입니다. ':''}볼 경합·공중볼은 성공률과 성공·시도 횟수를 구분하며, 모바일의 숫자/숫자는 성공/시도 횟수이며, 시도가 없으면 '-'로 표시합니다. 포지션 순위는 같은 포지션 묶음 내 종합 점수 기준이며, 종합 점수는 실제 같은 역할의 챔피언스 이상 표본(부족 시 최근 상대 표본) 대비 득점·패스·수비 등 가중 점수입니다. 비교 평균 75점 기준 S(90+)·A(80+)·B(70+)·C(60+)·D(45+)·F 등급이며 백분위가 아닙니다. 공식경기 역할·평점·상위등급·출전 승률 가중치는 55·25·15·5, 감독모드는 30·25·35·10입니다. 비교 불가 항목은 제외하고 남은 가중치를 재배분합니다. 출전·미출전 모두 5경기 이상일 때만 승률 차이를 참고합니다. 5경기 미만 또는 역할 지표 가중치 48/80 미만은 보류, 5~9경기는 임시 평가입니다. GK는 동일 포지션 평점 기반 참고 점수이며 출전 경기 팀 실점·무실점은 점수에 반영하지 않습니다. 개인 선방률이 아니므로 자동 교체 추천에서 제외합니다. *는 임시 평가입니다. 교체 검토·우선 보강은 10경기 이상, 낮은 종합점수와 복수의 역할 지표 열세 또는 반복 부진 근거가 함께 있을 때만 표시합니다. 팀 승률만으로 개인을 감점하지 않습니다. 가격 효율은 참고용입니다. 시세 변동은 수집 이력이 있는 1·5·8강만 제공하고 누락값은 0으로 계산하지 않아요.${rkNote}${rtNote(a)}</p></div></details></div>${dPStatsMobile(records,columns)}`;
+  return `<div class="pfilters pstats-filters">${dRecentCheckbox(a)}<label>라인<select data-dfilter="pos"><option value="">전체</option>${['공격','미드','수비','GK'].map(v=>`<option${dFilter.pos===v?' selected':''}>${v}</option>`).join('')}</select></label><label>최소 출전<select data-dfilter="apps">${[1,3,5,10].map(v=>`<option value="${v}"${dFilter.apps===v?' selected':''}>${v}경기</option>`).join('')}</select></label><label>추천<select data-dfilter="action"><option value="">전체</option>${['핵심 선수','기용 추천','유지','개선 필요','교체 검토','우선 보강','평가 보류'].map(v=>`<option${dFilter.action===v?' selected':''}>${v}</option>`).join('')}</select></label><label>정렬<select data-dfilter="sort">${[['pitch','포지션'],['apps','출전'],['rating','평점'],['win','승률'],['eval','종합 점수'],['price','시세']].map(([v,l])=>`<option value="${v}"${dFilter.sort===v?' selected':''}>${l}</option>`).join('')}</select></label><details class="dps-help"><summary aria-label="선수별 기록 설명" title="선수별 기록 설명">?</summary><div class="dps-help-popup"><b>선수별 기록 안내</b><p class="note">최근 ${a.n}경기 합계예요. ${dFilter.recent?'최근 1경기 출전 카드만 표시하며 기록은 선택한 전체 경기의 누적값입니다. ':''}볼 경합·공중볼은 성공률과 성공·시도 횟수를 구분하며, 모바일의 숫자/숫자는 성공/시도 횟수이며, 시도가 없으면 '-'로 표시합니다. 포지션 순위는 같은 포지션 묶음 내 종합 점수 기준이며, 종합 점수는 실제 같은 역할의 챔피언스 이상 표본(부족 시 최근 상대 표본) 대비 득점·패스·수비 등 가중 점수입니다. 비교 평균 75점 기준 S(90+)·A(80+)·B(70+)·C(60+)·D(45+)·F 등급이며 백분위가 아닙니다. 공식경기 역할·평점·상위등급·출전 승률 가중치는 55·25·15·5, 감독모드는 30·25·35·10입니다. 비교 불가 항목은 제외하고 남은 가중치를 재배분합니다. 출전·미출전 모두 5경기 이상일 때만 승률 차이를 참고합니다. 5경기 미만 또는 역할 지표 가중치 48/80 미만은 보류, 5~9경기는 임시 평가입니다. GK는 상위등급·최근 상대 GK 평점(기본 60·20), 출전 경기 팀 실점(15)·무실점률(5)로 평가합니다. 비교 불가 항목은 제외하고 평점 비중을 조정하며 팀 지표는 최대 20%만 반영합니다. 개인 선방률은 API 미제공입니다. GK 교체 검토는 충분한 경기의 반복 평점 부진 근거가 있을 때만 표시합니다. *는 임시 평가입니다. 교체 검토·우선 보강은 10경기 이상, 낮은 종합점수와 복수의 역할 지표 열세 또는 반복 부진 근거가 함께 있을 때만 표시합니다. 팀 승률만으로 개인을 감점하지 않습니다. 가격 효율은 참고용입니다. 시세 변동은 수집 이력이 있는 1·5·8강만 제공하고 누락값은 0으로 계산하지 않아요.${rkNote}${rtNote(a)}</p></div></details></div>${dPStatsMobile(records,columns)}`;
 }
 function dGrowthView(a){
   const s=dRead(),key=dHistoryKey(dCur.d.basic.nickname,dMode),list=(s.history&&s.history[key])||[],prev=list.length>1?list[list.length-2]:null,now=list[list.length-1],own=(s.goals&&s.goals[key])||{};

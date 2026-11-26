@@ -42,9 +42,10 @@ function squadPayload(v){
 }
 
 const opsDDL="CREATE TABLE IF NOT EXISTS ops_counts(hour INTEGER NOT NULL, channel TEXT NOT NULL, feature TEXT NOT NULL, outcome TEXT NOT NULL, n INTEGER NOT NULL, total_ms INTEGER NOT NULL, max_ms INTEGER NOT NULL, last_at INTEGER NOT NULL, PRIMARY KEY(hour,channel,feature,outcome)) WITHOUT ROWID",opsInsert="INSERT INTO ops_counts(hour,channel,feature,outcome,n,total_ms,max_ms,last_at) VALUES(?,?,?,?,1,?,?,?) ON CONFLICT(hour,channel,feature,outcome) DO UPDATE SET n=n+1,total_ms=total_ms+excluded.total_ms,max_ms=MAX(max_ms,excluded.max_ms),last_at=MAX(last_at,excluded.last_at)";
-const opsFeatures=new Set(["diag_official","diag_manager","card_search","boost_lookup","enhance_sim","cash_calc","squad_generate","mini_game"]);
+const opsFeatures=new Set(["diag_official","diag_manager","card_search","boost_rank","boost_lookup","enhance_sim","cash_calc","squad_generate","mini_game"]);
 const opsOutcomes=new Set(["ok","empty","error"]);
-async function ensureOps(db){await db.prepare(opsDDL).run()}
+const opsReady=new WeakMap();
+async function ensureOps(db){if(!opsReady.has(db))opsReady.set(db,db.prepare(opsDDL).run().catch(e=>{opsReady.delete(db);throw e}));await opsReady.get(db)}
 async function opsSummary(db,u,env){
  await ensureOps(db);const t=now(),hour=Math.floor(t/3600),day=trafficDay(t),range=u.searchParams.get("range")==="1"?1:u.searchParams.get("range")==="30"?30:7,from=(day-range+1)*24-9;
  const q=(sql,...args)=>db.prepare(sql).bind(...args);

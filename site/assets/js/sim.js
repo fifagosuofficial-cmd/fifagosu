@@ -166,7 +166,7 @@ function effRender(){
     effCtx={key,budget:effBudget,candidates,byKey:new Map(candidates.map(r=>[planKey(r.id,r.g),r])),attempted:new Set(),retry:new Set(),running:false,done:0,issue:'',started:false};
   }
   const ctx=effCtx;effPaint(ctx);
-  if(effActive(ctx)&&!ctx.started&&ctx.candidates.length){ctx.started=true;void Promise.all([loadCachedPlans(),loadMaterialData()]).then(()=>{if(effActive(ctx))effPaint(ctx)});}
+  if(effActive(ctx)&&!ctx.started){ctx.started=true;const started=Date.now();void Promise.all([loadCachedPlans(),loadMaterialData()]).then(()=>{if(effActive(ctx)){effPaint(ctx);window.FGMetric?.('boost_rank',effMaterialRows(ctx).length?'ok':'empty',Date.now()-started)}}).catch(()=>{if(effActive(ctx))window.FGMetric?.('boost_rank','error',Date.now()-started)});}
 }
 function effPaint(ctx,baseRows){
   $('effScoreHelp').hidden=$('effSort').hidden=effMode!=='win';

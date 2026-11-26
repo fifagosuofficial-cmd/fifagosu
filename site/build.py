@@ -554,10 +554,9 @@ def main(argv=None):
     run = _load(data_dir / "run.json") or {}
     # Deployed data freshness, not an external health probe. No secrets or raw user data.
     news_feed = _load(data_dir / "news" / "feed.json") or {}
-    press_feed = _load(data_dir / "news" / "press.json") or {}
     material = _load(out / "assets" / "material-data" / "prices.json") or {}
     boost_rules = _load(out / "assets" / "material-data" / "rules.json") or {}
-    manifest = {"built_at": dt.datetime.now(KST).isoformat(timespec="seconds"), "market_at": run.get("at") if market and run.get("date") == market.get("date") else None, "market_date": (market or {}).get("date"), "news_at": news_feed.get("updated"), "press_at": press_feed.get("updated"), "material_date": material.get("date"), "rules_verified": boost_rules.get("verified") is True and bool(boost_rules.get("rows"))}
+    manifest = {"built_at": dt.datetime.now(KST).isoformat(timespec="seconds"), "market_at": run.get("at") if market and run.get("date") == market.get("date") else None, "market_date": (market or {}).get("date"), "news_at": news_feed.get("updated"), "material_date": material.get("date"), "rules_verified": boost_rules.get("verified") is True and bool(boost_rules.get("rows"))}
     (out / "assets" / "ops-manifest.json").write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
     if market:
         market["collectedAt"] = run.get("at", "") if run.get("date") == market.get("date") else ""

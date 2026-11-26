@@ -201,7 +201,7 @@ def test_kickkick_menu_visible_with_and_without_news(tmp_path, monkeypatch):
         build.main(["--data", str(data), "--out", str(out)])
         doc = BeautifulSoup((out / "index.html").read_text("utf-8"), "html.parser")
         assert bool(doc.select_one("#v-home .mk-news")) == has_news
-        links = doc.select("nav.menu a[href=\"fun/\"]")
+        links = doc.select("nav.menu a[href=\"/fun/\"]")
         assert len(links) == 1 and links[0].get_text(strip=True) == "킥킥"
         assert not doc.select("#v-home a.funlink")
         assert doc.select_one("#smEMatAuto").has_attr("checked")
@@ -288,3 +288,18 @@ def test_board_header_uses_common_nav_width():
     assert "body[data-view=board] .fg-nav-shell{max-width:1600px}" not in main
     assert 'body[data-view="board"] nav.menu{max-width:' not in board
     assert 'body[data-view="board"] .top .row,' not in board
+
+
+def test_primary_menu_links_survive_spa_path_changes(tmp_path):
+    from bs4 import BeautifulSoup
+    from urllib.parse import urljoin
+    out = tmp_path / "site"
+    build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
+    expected = ["/", "/news/", "/diag", "/trade/", "/squad/", "/board/", "/cards", "/sim/", "/fun/"]
+    for file in ("index.html", "diag.html", "sim/index.html", "trade/index.html", "guide/index.html", "board/index.html", "news/index.html", "squad/index.html"):
+        doc = BeautifulSoup((out / file).read_text("utf-8"), "html.parser")
+        hrefs = [a["href"] for a in doc.select("nav.menu > a")]
+        assert hrefs == expected, file
+        for route in ("/", "/diag", "/sim/", "/trade/", "/guide/", "/board/"):
+            assert [urljoin("https://fifagosu.com" + route, href) for href in hrefs] == ["https://fifagosu.com" + href for href in expected]
+        assert doc.select_one(".fg-account-icon")["href"] == "/mypage/"

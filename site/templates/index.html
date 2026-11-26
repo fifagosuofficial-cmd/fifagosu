@@ -3,15 +3,15 @@
 {% import "_market.html" as M with context %}
 {% block nav %}
   <nav class="menu" aria-label="메뉴" id="menu">
-    <a href="{{ root or './' }}" data-view="home"{% if view=='home' %} aria-current="page"{% endif %}>홈</a>
-    <a href="{{ root }}news/"{% if active is defined and active in ('news','press','patch') %} aria-current="page"{% endif %}>소식</a>
-    <a class="core nav-diag-feature" href="{{ root }}diag" data-view="diag"{% if view=='diag' %} aria-current="page"{% endif %}><svg class="fg-diag-icon" viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v14h14M6 13l4-5 3 3 4-6"/><path d="M14 5h3v3"/></svg><span>전적 진단</span><span class="fg-diag-bubble" aria-hidden="true">내 약점 찾기!</span></a>
-    <a href="{{ root }}trade/" data-view="trade"{% if view=='trade' %} aria-current="page"{% endif %}>선수 거래소</a>
-    <a href="{{ root }}squad/">AI 스쿼드</a>
-    <a href="{{ root }}board/"{% if view=='board' %} aria-current="page"{% endif %}>게시판</a>
-    <a href="{{ root }}cards" data-view="cards"{% if view=='cards' %} aria-current="page"{% endif %}>카드 검색</a>
-    <a href="{{ root }}sim/" class="nav-sim" data-view="sim" aria-label="강화·현질 효율" title="강화·현질 효율"{% if view=='sim' %} aria-current="page"{% endif %}><span class="nav-sim-label" data-mobile-label="강화·현질">강화·현질 효율</span></a>
-    <a href="{{ root }}fun/" class="nav-fun" title="축구 미니게임·테스트"><svg class="fg-fun-icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6h11a4 4 0 0 1 3.9 3.2l1.2 5.6a3 3 0 0 1-5.1 2.8l-2.1-2.1H8.6l-2.1 2.1a3 3 0 0 1-5.1-2.8l1.2-5.6A4 4 0 0 1 6.5 6Z"/><path d="M7 9v5M4.5 11.5h5M16 10h.01M19 13h.01"/></svg><span>킥킥</span></a>
+    <a href="/" data-view="home"{% if view=='home' %} aria-current="page"{% endif %}>홈</a>
+    <a href="/news/"{% if active is defined and active in ('news','press','patch') %} aria-current="page"{% endif %}>소식</a>
+    <a class="core nav-diag-feature" href="/diag" data-view="diag"{% if view=='diag' %} aria-current="page"{% endif %}><svg class="fg-diag-icon" viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v14h14M6 13l4-5 3 3 4-6"/><path d="M14 5h3v3"/></svg><span>전적 진단</span><span class="fg-diag-bubble" aria-hidden="true">내 약점 찾기!</span></a>
+    <a href="/trade/" data-view="trade"{% if view=='trade' %} aria-current="page"{% endif %}>선수 거래소</a>
+    <a href="/squad/">AI 스쿼드</a>
+    <a href="/board/"{% if view=='board' %} aria-current="page"{% endif %}>게시판</a>
+    <a href="/cards" data-view="cards"{% if view=='cards' %} aria-current="page"{% endif %}>카드 검색</a>
+    <a href="/sim/" class="nav-sim" data-view="sim" aria-label="강화·현질 효율" title="강화·현질 효율"{% if view=='sim' %} aria-current="page"{% endif %}><span class="nav-sim-label" data-mobile-label="강화·현질">강화·현질 효율</span></a>
+    <a href="/fun/" class="nav-fun" title="축구 미니게임·테스트"><svg class="fg-fun-icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6h11a4 4 0 0 1 3.9 3.2l1.2 5.6a3 3 0 0 1-5.1 2.8l-2.1-2.1H8.6l-2.1 2.1a3 3 0 0 1-5.1-2.8l1.2-5.6A4 4 0 0 1 6.5 6Z"/><path d="M7 9v5M4.5 11.5h5M16 10h.01M19 13h.01"/></svg><span>킥킥</span></a>
   </nav>
 {% endblock %}
 {% block content %}

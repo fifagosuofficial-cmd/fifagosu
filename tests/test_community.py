@@ -303,3 +303,15 @@ def test_primary_menu_links_survive_spa_path_changes(tmp_path):
         for route in ("/", "/diag", "/sim/", "/trade/", "/guide/", "/board/"):
             assert [urljoin("https://fifagosu.com" + route, href) for href in hrefs] == ["https://fifagosu.com" + href for href in expected]
         assert doc.select_one(".fg-account-icon")["href"] == "/mypage/"
+
+
+def test_kickkick_markup_matches_all_primary_pages():
+    from bs4 import BeautifulSoup
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    for filename in ("base.html", "index.html"):
+        source = (root / "site" / "templates" / filename).read_text(encoding="utf-8")
+        soup = BeautifulSoup(source, "html.parser")
+        link = soup.select_one("nav.menu a.nav-fun")
+        assert link and link.select_one(".fg-fun-copy small[aria-hidden=true]") is not None
+        assert link.get_text(strip=True) == "킥킥"

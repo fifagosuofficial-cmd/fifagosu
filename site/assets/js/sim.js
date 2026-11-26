@@ -318,7 +318,17 @@ function drawEv(){
     </dl>${head}`;
 }
 function draw(msg,kind){
-  $('smEGrade').textContent=cur;$('smETier').textContent=tier(cur);$('smECard').className='sim-card g-'+gcls(cur)+(kind?' fx-'+kind:'');
+  const card=$('smECard');
+  card.className='sim-card g-'+gcls(cur)+(kind?' fx-'+kind:'');
+  card.style.cssText='position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px';
+  if(SEL){
+    const {c,l,d}=SEL, main=((d&&d.pos&&d.pos.length?d.pos:l&&l.pos)||[])[0];
+    const ovr=main?(main[1]||0)+(GRADE_BONUS[cur]||0)+ADAPT:null;
+    card.innerHTML=`<div style="position:absolute;top:10px;left:10px;z-index:2;text-align:left;color:inherit">${ovr!==null?`<b style="font-size:25px;line-height:1">${ovr}</b><div style="font-size:11px">${H(main[0])}</div>`:''}</div><div style="position:absolute;top:10px;right:10px;z-index:2">${bigBadge(c.sid)}</div><div style="width:90%;height:67%;display:flex;align-items:center;justify-content:center;overflow:hidden">${bigImg(c.id).replace('<img ','<img style="width:100%;height:100%;object-fit:contain" ')}</div><b style="font-size:14px;max-width:95%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${H(c.name||(d&&d.name)||'')}</b><div style="display:flex;align-items:center;gap:6px"><span id="smEGrade" style="font-size:16px">${gchip(cur)}</span><small id="smETier">${cur}강</small></div>`;
+  }else{
+    card.style.background='transparent';card.style.color='inherit';card.style.border='1px dashed currentColor';card.style.boxShadow='none';
+    card.innerHTML='<span style="font-size:30px;opacity:.55">＋</span><b style="font-size:14px">선수를 선택하세요</b><span id="smEGrade" hidden></span><small id="smETier" hidden></small>';
+  }
   $('smETry').textContent=tries;$('smEOk').textContent=ok;$('smENg').textContent=ng;
   $('smEP').textContent=cur>=MAX?'최대':autoMat()&&!selectedPlan(cur)?'미확인':(pOf(cur)*100).toFixed(pOf(cur)<.1?1:0)+'%';
   if(msg)$('smEMsg').textContent=msg;

@@ -492,7 +492,13 @@ function dRenderSummary(d,a){
     ['최근 5경기',`${count('승')}승 ${count('무')}무 ${count('패')}패`,'가장 최근 경기 기준'],
     ['경기당 득실',`${(a.gf/a.n).toFixed(2)} · ${(a.ga/a.n).toFixed(2)}`,'득점 · 실점']
   ];
-  $('dSum').innerHTML=`<div class="ds-kpi">${kpi.map(([k,v,s2])=>`<div><span>${k}</span><b>${v}</b><small>${s2}</small></div>`).join('')}</div>`;
+  $('dSum').innerHTML=`<div class="ds-kpi">${kpi.map(([k,v,s2])=>`<div><span>${k}</span><b>${v}</b><small>${s2}</small></div>`).join('')}</div>${d.sample||a.dm?'':dControllerSummary(d.matches)}`;
+}
+function dControllerSummary(matches){
+ const stats={keyboard:{n:0,w:0},pad:{n:0,w:0}};
+ for(const m of matches||[]){const [me,op]=m.matchInfo||[],key=String(op?.matchDetail?.controller||'').trim().toLowerCase(),res=me?.matchDetail?.matchResult;if(!Object.hasOwn(stats,key)||!['승','무','패'].includes(res))continue;stats[key].n++;if(res==='승')stats[key].w++}
+ const item=(key,label)=>{const x=stats[key];return '<span style="white-space:nowrap">'+label+' <b>'+ (x.n?Math.round(x.w/x.n*100)+'%':'—')+'</b> <small>('+x.n+')</small></span>'};
+ return '<div style="margin-top:8px;padding:10px 8px;border:1px solid var(--line,#d5dfda);border-radius:10px"><small>상대 조작 방식별 승률</small><div style="display:flex;justify-content:space-around;gap:4px;font-size:clamp(11px,3vw,14px);margin-top:4px">'+item('keyboard','⌨ 키보드')+item('pad','🎮 패드')+'</div></div>';
 }
 /* 막대·칸에 마우스를 올리면 그 경기의 날짜·상대·스코어 */
 $('dSum').addEventListener('mouseover',e=>{const t=e.target.closest('[data-i]'),tip=$('dsTip');if(!tip||!dCur)return;if(!t){tip.hidden=true;return}

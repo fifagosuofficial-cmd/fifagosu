@@ -320,3 +320,12 @@ test("endless lifting reward milestones and unlimited practice remain server-aut
  sql.prepare("UPDATE arcade_rounds SET step=100,score=100 WHERE id=?").run(id);
  r=await callFixture(env,"game-answer",{id,step:100,answer:2},"a");assert.equal(r.status,200);assert.equal(r.data.round.reward,0);assert.equal(r.data.member.rank.points,expected);sql.close();
 });
+
+test("traffic records SPA navigation and activity on the current menu without duplicate initial view",()=>{
+ const vm=require("node:vm"),code=fs.readFileSync(path.join(__dirname,"../site/assets/js/traffic.js"),"utf8"),events={},sent=[],store=new Map();let interval;
+ const document={visibilityState:"visible",referrer:"",querySelector:()=>null,addEventListener:(name,fn)=>{events[name]=fn}};
+ const sandbox={location:{protocol:"https:",pathname:"/",hostname:"example.test"},navigator:{userAgent:"iPhone"},window:{},document,localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},crypto:{getRandomValues:x=>x.fill(7)},fetch:(url,o)=>{sent.push(JSON.parse(o.body));return Promise.resolve({})},setInterval:fn=>{interval=fn},Date,URL};
+ vm.runInNewContext(code,sandbox);events["fg:view"]({detail:"home"});events["fg:view"]({detail:"diag"});events["fg:view"]({detail:"diag"});events["fg:view"]({detail:"sim"});
+ document.visibilityState="hidden";events["fg:view"]({detail:"cards"});document.visibilityState="visible";events.visibilitychange();
+ assert.deepEqual(sent.map(x=>[x.page,x.kind]),[["home",1],["diag",1],["sim",1],["cards",1]]);assert.equal(new Set(sent.map(x=>x.token)).size,1);assert.equal(sent[1].device,"mobile");assert.ok(interval);
+});

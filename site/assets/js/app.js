@@ -1474,7 +1474,7 @@ if(LIVE){
 initCards();
 {const h=location.hash.replace('#',''),bv=document.body.dataset.view;
  if(VIEWS.includes(h))show(h);else if(bv&&bv!=='home'&&VIEWS.includes(bv))show(bv,true);}
-window.addEventListener('popstate',()=>{const R=window.FG_ROUTES||{};const p=location.pathname.replace(/\.html$/,'').replace(/(.)\/$/,'$1');const v=Object.keys(R).find(k=>R[k]===p)||(p.startsWith('/guide')?'guide':p.startsWith('/market')?'market':p.startsWith('/sim')?'sim':p.startsWith('/trade')?'trade':'home');show(v,true);if(window.FG_TITLES&&FG_TITLES[v])document.title=FG_TITLES[v]});
+window.addEventListener('popstate',()=>{const R=window.FG_ROUTES||{};const p=location.pathname.replace(/\.html$/,'').replace(/(.)\/$/,'$1');const v=Object.keys(R).find(k=>R[k].replace(/(.)\/$/,'$1')===p)||(p.startsWith('/guide')?'guide':p.startsWith('/market')?'market':p.startsWith('/sim')?'sim':p.startsWith('/trade')?'trade':'home');show(v,true);if(window.FG_TITLES&&FG_TITLES[v])document.title=FG_TITLES[v]});
 
 /* 이적시장: 기본 TOP10은 HTML로 즉시 표시하고, 필터 조작·상세 화면에서만 전체 후보 JSON을 지연 로딩 */
 function hydrateSeasonBadges(scope){

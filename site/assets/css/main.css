@@ -1515,3 +1515,36 @@ nav.menu a.nav-diag-feature:hover,nav.menu a.nav-diag-feature:focus-visible{anim
 
 /* Home sections share one consistent vertical rhythm. */
 #v-home.home2{gap:10px}#v-home .fg-index{margin:0}#v-home .market-dashboard[data-home]{gap:10px}#v-home .market-dashboard[data-home] .mk-panel{gap:10px}#v-home .mk-head{margin-bottom:0}
+
+/* Compact diagnosis table on every screen; every metric remains in one of five tabs. */
+.d-review-strip{border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin:8px 0;background:var(--surface)}
+.d-review-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:6px}
+.d-review-head small{color:var(--muted);font-size:10px;font-weight:400}
+.d-review-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px}
+.d-review-items>div{display:flex;gap:5px;align-items:center;min-width:0;padding:4px 6px;background:var(--sunk);border-radius:5px;font-size:12px}
+.d-review-items>div>small{color:var(--muted);font-size:10px}.d-review-items>div>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.d-review-items>div>b{color:var(--crit);white-space:nowrap;font-variant-numeric:tabular-nums}
+.dps-table-0 .dps-col-21{width:19%}
+.dps-table-4 .dps-col-17,.dps-table-4 .dps-col-18{width:11%}
+@media(min-width:761px){
+ .dps-mobile{display:block;min-width:0;max-width:100%}
+ .dps-bar{display:flex;align-items:center;gap:9px;font-size:13px;margin:4px 0 7px}.dps-bar small{font-size:12px;color:var(--muted);margin-right:auto}
+ .dps-expand{display:none}
+ .dps-switch{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;min-width:0}
+ .dps-mode{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+ .dps-switch>label{display:grid;place-items:center;min-height:34px;background:var(--sunk);border:1px solid var(--line);border-radius:7px;font-size:13px;font-weight:600;cursor:pointer}
+ .dps-mode:checked+label{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+ .dps-mode:focus-visible+label{outline:2px solid var(--accent);outline-offset:1px}
+ .dps-table-panel{display:none;grid-column:1/-1;min-width:0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+ #dps-mode-0:checked~.dps-panel-0,#dps-mode-1:checked~.dps-panel-1,#dps-mode-2:checked~.dps-panel-2,#dps-mode-3:checked~.dps-panel-3,#dps-mode-4:checked~.dps-panel-4{display:block}
+ .dps-table{width:100%;min-width:0!important;table-layout:fixed;border-collapse:collapse;margin:0;font-size:13px;font-variant-numeric:tabular-nums}
+ .dps-table .dps-player-col{width:27%}.dps-table-3 .dps-col-14{width:32%}
+ .dps-table th,.dps-table td{padding:5px 6px;min-width:0!important;text-align:center;vertical-align:middle;border-bottom:1px solid var(--line);white-space:normal;overflow-wrap:anywhere;line-height:1.3}
+ .dps-table thead th{background:var(--sunk);color:var(--muted);font-size:12px;font-weight:700}.dps-table thead th:first-child{text-align:left;padding-left:12px}
+ .dps-table tbody tr:last-child>*{border-bottom:0}
+ .dps-table tbody th.dps-player{text-align:left;padding:5px 10px;background:var(--surface);font-size:12px;font-weight:600;color:var(--fg)}
+ .dps-table tbody tr.low th.dps-player{box-shadow:inset 2px 0 var(--crit);background:var(--crit-soft)}.dps-table tbody tr.hi th.dps-player{box-shadow:inset 2px 0 var(--good);background:var(--good-soft)}
+ .dps-player-meta{display:inline-flex;align-items:center;gap:3px;flex-wrap:wrap;margin-right:6px}.dps-player-meta .pos{margin:0}.dps-player-name{display:inline;overflow-wrap:anywhere}
+ .dps-table .why{display:none}.dps-table .duel-rate,.dps-table .duel-count{display:block}.dps-table .duel-count{font-size:10px;color:var(--muted)}
+ .dps-table .act,.dps-table .linkbtn{white-space:normal;word-break:keep-all;overflow-wrap:anywhere;font-size:12px}.dps-table .ev{min-width:0}
+}
+@media(max-width:760px){.d-review-items{gap:3px}.d-review-items>div{font-size:11px;padding:4px}.dps-table-4 .dps-player-col{width:26%}.dps-table-4 .dps-col-22{width:23%}.dps-table-4 .dps-col-19{width:9%}}

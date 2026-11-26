@@ -63,7 +63,7 @@ function liftPose(elapsed,q,combo,pose="normal",pressed=q.direction){
  const contact=Math.abs(elapsed-target)<=window&&elapsed>=0&&p>.64;
  const anticip=clamp((p-.7)/.3);
  let kick=0,kickSide=dir;
- if(elapsed<0&&combo){kick=clamp((-elapsed)/550);kickSide=prev}
+ if(elapsed<0&&combo){kick=clamp((-elapsed)/(q.tier==="HYPER"?85:q.tier==="EXPERT"?150:260));kickSide=prev}
  if(pose==="tap"){kick=1;kickSide=side}
  if(pose==="miss"){kick=0;y=131}
  return {x,y,playerX,walk,anticip,kick,kickSide,contact,dir,p,miss:pose==="miss"};
@@ -97,11 +97,12 @@ function liftFrame(c,elapsed,q,combo,pose="normal",pressed=q.direction){
  if(v.contact&&!v.miss){rect(c,q.landX-8,114,17,2,"#d7ed9b");rect(c,q.landX-5,117,11,1,"#f2cf67")}
  if(pose==="tap")for(let i=0;i<4;i++){const dx=(i%2?1:-1)*(9+i*2);rect(c,q.landX+dx,100-i*2,3,3,"#fff39a")}
  pixelBall(c,v.x,v.y,5);
- label(c,128,15,"COMBO "+combo,combo?"#fff39d":"#fff6da");label(c,128,30,combo<5?"ROOKIE":combo<10?"PRO":combo<15?"EXPERT":"MASTER","#e5f5dc");
+ label(c,128,15,"COMBO "+combo,combo?"#fff39d":"#fff6da");label(c,128,30,q.tier||"ROOKIE",q.tier==="HYPER"?"#ff9c79":q.tier==="EXPERT"?"#fff39d":"#e5f5dc");
  if(v.miss)label(c,128,56,"MISS!","#ffb5a8");
 }
 function pixelContext(canvas){const c=canvas.getContext("2d");c.imageSmoothingEnabled=false;return c}
 
+const liftReward=s=>s>=50?100:s>=30?70:s>=20?50:s>=15?35:s>=10?20:s>=5?12:s*2;
 function mount(app,layout){
  let alive=true,busy=false,status=null,round=null,raf=0,scene=null;
  const $=id=>app.querySelector("#"+id);
@@ -116,13 +117,13 @@ function mount(app,layout){
   round=null;
   render('<section class="hub-hero"><h1>미니게임</h1><p>축구 실력으로 XP를 모아 고양이를 성장시켜 보세요.</p></section><div class="arc-summary"><div><small>보유 XP</small><div class="arc-xp">'+points.toLocaleString("ko-KR")+' XP</div></div><div><small>오늘 XP 보상 '+d.used+'/'+d.limit+'판</small><br><b>다음 참가 '+fee+'</b></div></div>'+
    (d.pending?'<button class="cta" id="arcResume">진행 중인 '+G[d.pending.game][0]+' 이어하기</button>':'')+
-   '<div class="arc-grid">'+Object.entries(G).map(([id,[name,emoji,desc]])=>'<button type="button" class="arc-tile" data-game="'+id+'" '+(d.pending?'disabled':'')+'><span class="arc-emoji" aria-hidden="true">'+emoji+'</span><b>'+name+'</b><small>'+desc+'</small><em>'+(practice?"무료 연습 · XP 없음":"최대 +12 XP")+'</em></button>').join("")+'</div>'+
-   '<div class="arc-panel"><h2>XP 보상</h2><p class="arc-notice">하루 첫 판 무료 · 이후 2 XP · XP 보상 최대 5판<br>이후에는 무료 연습으로 무제한 플레이할 수 있습니다.<br>성공 0~4개: 개당 2 XP · 5개 이상 성공: 12 XP<br>리프팅은 최대 20콤보에 도전하세요.<br>XP는 현금·BP로 교환할 수 없는 활동 점수입니다. 중단한 게임은 10분 이내 이어할 수 있으며 만료 시 참가비를 환급합니다(참가 횟수는 차감).</p></div>'+
+   '<div class="arc-grid">'+Object.entries(G).map(([id,[name,emoji,desc]])=>'<button type="button" class="arc-tile" data-game="'+id+'" '+(d.pending?'disabled':'')+'><span class="arc-emoji" aria-hidden="true">'+emoji+'</span><b>'+name+'</b><small>'+desc+'</small><em>'+(practice?"무료 연습 · XP 없음":id==="lifting"?"최대 +100 XP":"최대 +12 XP")+'</em></button>').join("")+'</div>'+
+   '<div class="arc-panel"><h2>XP 보상</h2><p class="arc-notice">하루 첫 판 무료 · 이후 2 XP · XP 보상 최대 5판<br>이후에는 무료 연습으로 무제한 플레이할 수 있습니다.<br>다른 게임: 성공 0~4개는 개당 2 XP · 5개 성공 12 XP<br>리프팅: 횟수 제한 없음 · 5/10/15/20/30/50콤보부터 12/20/35/50/70/100 XP. 4콤보 이하는 개당 2 XP.<br>XP는 현금·BP로 교환할 수 없는 활동 점수입니다. 중단한 게임은 10분 이내 이어할 수 있으며 만료 시 참가비를 환급합니다(참가 횟수는 차감).</p></div>'+
    '<div class="arc-panel"><h2>주간 랭킹</h2><small>월요일~일요일 · 게임별 최고 점수</small>'+Object.entries(G).map(([id,[name]])=>{const rows=(d.leaderboard||[]).filter(r=>r.game===id);return '<details class="arc-rank"><summary>'+name+'</summary>'+(rows.length?'<ol>'+rows.map(r=>'<li>'+esc(r.nickname)+' <span>'+r.score+(id==="lifting"?' 콤보':'/5')+'</span></li>').join("")+'</ol>':'<p class="arc-muted">아직 기록이 없습니다.</p>')+'</details>'}).join("")+'</div>'+
    (practice&&!d.pending?'<p class="arc-notice">'+(d.used>=d.limit?'오늘 XP 보상 횟수를 모두 사용했습니다.':'참가 XP가 부족합니다.')+' 무료 연습으로 계속 플레이하세요. 연습 기록은 주간 랭킹에 반영되지 않습니다.</p>':'')+err);
   app.querySelectorAll("[data-game]").forEach(b=>b.onclick=()=>confirmGame(b.dataset.game));if($("arcResume"))$("arcResume").onclick=()=>play(d.pending,null,d.rtt);
  }
- function confirmGame(game){const practice=status.used>=status.limit||status.fee>status.member.rank.points,fee=practice?0:status.fee;render('<div class="arc-panel"><h1>'+G[game][0]+'</h1><p>'+G[game][2]+'</p><div class="arc-summary"><span>참가비</span><b>'+(fee?fee+" XP":"무료")+'</b></div><div class="arc-summary"><span>최고 보상</span><b class="arc-xp">'+(practice?"보상 없음":"12 XP")+'</b></div><p class="arc-notice">'+(game==="lifting"?"공이 날아가는 쪽 버튼을 발끝에 닿을 때 누르세요. 콤보가 쌓이면 공이 빨라집니다. 최대 20콤보 · 5콤보 이상 12 XP.":"5번 도전한 결과에 따라 XP를 받습니다.")+(practice?" 무료 연습 모드에서는 XP 차감 및 지급이 없습니다.":" 시작하면 참가비가 차감됩니다.")+'</p><button class="cta" id="arcStart">'+(practice?"무료 연습 시작":"게임 시작")+'</button><button class="ghost" id="arcBack">돌아가기</button>'+err+'</div>');$("arcBack").onclick=home;$("arcStart").onclick=async()=>{if(busy)return;busy=true;controls(true);try{const d=await request("game-start",{game,fee,practice});d.leaderboard=status.leaderboard;update(d);if(alive)play(d.round,null,d.rtt)}catch(e){error(e);controls(false)}finally{busy=false}}}
+ function confirmGame(game){const practice=status.used>=status.limit||status.fee>status.member.rank.points,fee=practice?0:status.fee;render('<div class="arc-panel"><h1>'+G[game][0]+'</h1><p>'+G[game][2]+'</p><div class="arc-summary"><span>참가비</span><b>'+(fee?fee+" XP":"무료")+'</b></div><div class="arc-summary"><span>최고 보상</span><b class="arc-xp">'+(practice?"보상 없음":game==="lifting"?"100 XP":"12 XP")+'</b></div><p class="arc-notice">'+(game==="lifting"?"공이 날아가는 쪽 버튼을 발끝에 닿을 때 누르세요. 횟수 제한 없이 도전! 5번째 공부터 EXPERT, 15번째부터 HYPER. 5/10/15/20/30/50콤보 보상: 12/20/35/50/70/100 XP.":"5번 도전한 결과에 따라 XP를 받습니다.")+(practice?" 무료 연습 모드에서는 XP 차감 및 지급이 없습니다.":" 시작하면 참가비가 차감됩니다.")+'</p><button class="cta" id="arcStart">'+(practice?"무료 연습 시작":"게임 시작")+'</button><button class="ghost" id="arcBack">돌아가기</button>'+err+'</div>');$("arcBack").onclick=home;$("arcStart").onclick=async()=>{if(busy)return;busy=true;controls(true);try{const d=await request("game-start",{game,fee,practice});d.leaderboard=status.leaderboard;update(d);if(alive)play(d.round,null,d.rtt)}catch(e){error(e);controls(false)}finally{busy=false}}}
 
  function play(r,feedback=null,rtt=0){
   if(!alive)return;round=r;if(r.state!==0){result(r);return}
@@ -132,7 +133,7 @@ function mount(app,layout){
   if(game==="penalty")answers='<canvas id="arcCanvas" class="arc-pixel" width="256" height="144" role="img" aria-label="선수 뒤에서 바라보는 골대와 골키퍼"></canvas><div class="arc-shot-controls">'+q.choices.map((name,i)=>'<button type="button" data-answer="'+i+'"><span aria-hidden="true">'+["↖","↑","↗"][i]+'</span>'+name+'</button>').join("")+'</div><p class="arc-muted">방향을 고르면 선수가 슛합니다. 골키퍼의 방향은 매번 무작위입니다.</p>';
   else if(game==="lifting")answers='<canvas id="arcCanvas" class="arc-pixel" width="256" height="144" role="img" aria-label="축구공을 차 올리는 도트 선수"></canvas><div class="arc-lift-controls"><button type="button" class="arc-lift-button" data-answer="0">◀ 왼쪽</button><button type="button" class="arc-lift-button" data-answer="1">오른쪽 ▶</button></div><p class="arc-muted">공이 날아가는 쪽의 버튼을 발끝에 닿을 때 누르세요. 방향이나 타이밍을 놓치면 종료!</p>';
   else answers='<div class="arc-answers">'+q.choices.map((x,i)=>'<button class="arc-choice" type="button" data-answer="'+i+'">'+esc(x)+'</button>').join("")+'</div>'+(game==="price"?'<p class="arc-muted">피파고수 일일 시세 스냅샷 '+esc(q.date||"")+' 기준</p>':'');
-  render('<div class="arc-game-head"><b>'+G[game][0]+(r.practice?" · 연습":"")+'</b><small>'+(game==="lifting"?r.score+' 콤보 / 20':(r.step+1)+' / 5 · '+r.score+' 성공')+'</small></div><div class="arc-progress"><i style="width:'+(game==="lifting"?r.score*5:r.step*20)+'%"></i></div><div class="arc-panel'+(action?' arc-pixel-panel':'')+'"><div class="arc-feedback" id="arcFeedback" role="status">'+esc(feedbackText)+'</div><h2>'+esc(q.prompt)+'</h2>'+answers+err+'</div><button class="ghost" id="arcBack">미니게임 목록 (나중에 이어하기)</button>');
+  render('<div class="arc-game-head"><b>'+G[game][0]+(r.practice?" · 연습":"")+'</b><small>'+(game==="lifting"?r.score+' 콤보 · '+esc(q.tier):(r.step+1)+' / 5 · '+r.score+' 성공')+'</small></div>'+(game==="lifting"?'<div class="arc-lift-record"><span>기록 도전 · 무제한</span><b>'+ (r.practice?"연습 모드":'현재 보상 '+liftReward(r.score)+' XP')+'</b></div>':'<div class="arc-progress"><i style="width:'+r.step*20+'%"></i></div>')+'<div class="arc-panel'+(action?' arc-pixel-panel':'')+'"><div class="arc-feedback" id="arcFeedback" role="status">'+esc(feedbackText)+'</div><h2>'+esc(q.prompt)+'</h2>'+answers+err+'</div><button class="ghost" id="arcBack">미니게임 목록 (나중에 이어하기)</button>');
   $("arcBack").onclick=refresh;
   scene=null;
   if(action){
@@ -166,7 +167,7 @@ function mount(app,layout){
       // Schedule the next bounce using the authoritative server timestamp; never trust a client score.
       busy=false;play(d.round,d.feedback,d.rtt);
     }
-  }catch(e){if(!alive)return;error(e);controls(false);busy=false;if(view&&prior.game==="lifting"){raf=requestAnimationFrame(view.tick)}}
+  }catch(e){if(!alive)return;error(e);controls(false);busy=false;if(view&&prior.game==="lifting"&&a!==2){raf=requestAnimationFrame(view.tick)}}
   finally{busy=false}
  }
  function result(r){render('<div class="arc-panel"><h1>'+(r.state===2?"게임 만료":r.practice?"연습 완료":"게임 완료")+'</h1><div class="arc-result">'+r.score+(r.game==="lifting"?' 콤보':' / 5')+'</div><div class="arc-summary"><span>획득 XP</span><b class="arc-xp">+'+r.reward+' XP</b></div><div class="arc-summary"><span>참가비</span><b>−'+r.fee+' XP</b></div><div class="arc-summary"><span>최종 XP 변화</span><b>'+((r.reward-r.fee)>=0?"+":"")+(r.reward-r.fee)+' XP</b></div><button class="cta" id="arcReplay">다시 도전</button><button class="ghost" id="arcDone">미니게임 목록</button></div>');$("arcDone").onclick=refresh;$("arcReplay").onclick=()=>confirmGame(r.game)}

@@ -247,13 +247,21 @@ test("pixel penalty keeps the keeper direction secret and judges the chosen dire
  for(let i=0;i<5;i++){const shot=i===0?qs[i].keeper:(qs[i].keeper+1)%3;r=await callFixture(env,"game-answer",{id,step:i,answer:shot},"a");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.feedback.keeper,qs[i].keeper);assert.equal(r.data.feedback.correct,i!==0)}
  assert.equal(r.data.round.score,4);assert.equal(r.data.round.reward,8);sql.close();
 });
-test("pixel lifting continues beyond five consecutive touches and ends on the first miss",async()=>{
+
+test("endless lifting generates one next ball at a time, accelerates at 5 and 15, and continues past 50",async()=>{
  const {env,sql}=fixture();
  let r=await callFixture(env,"game-start",{game:"lifting",fee:0},"a");assert.equal(r.status,200,JSON.stringify(r.data));const id=r.data.round.id;
- const qs=JSON.parse(sql.prepare("SELECT questions FROM arcade_rounds WHERE id=?").get(id).questions);assert.equal(qs.length,20);assert.ok(qs[19].window<qs[0].window);assert.ok(qs[19].target<qs[0].target);assert.ok(qs.every(q=>q.v===3&&q.choices.length===3&&q.landX>=42&&q.landX<=214&&Math.sign(q.landX-q.fromX)===(q.direction===0?-1:1)));for(let i=1;i<qs.length;i++)assert.equal(qs[i].fromX,qs[i-1].landX);
- for(let i=0;i<7;i++){sql.prepare("UPDATE arcade_rounds SET issued=? WHERE id=?").run(Date.now()-qs[i].target,id);r=await callFixture(env,"game-answer",{id,step:i,answer:qs[i].direction},"a");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.feedback.correct,true);assert.equal(r.data.round.state,0);assert.equal(r.data.round.score,i+1)}
- r=await callFixture(env,"game-answer",{id,step:7,answer:2},"a");assert.equal(r.status,200);assert.equal(r.data.round.state,1);assert.equal(r.data.round.score,7);assert.equal(r.data.round.reward,12);assert.equal(r.data.member.rank.points,21);
- r=await callFixture(env,"game-answer",{id,step:7,answer:2},"a");assert.equal(r.data.member.rank.points,21);sql.close();
+ const seen=[];
+ for(let i=0;i<55;i++){
+  const qs=JSON.parse(sql.prepare("SELECT questions FROM arcade_rounds WHERE id=?").get(id).questions);assert.equal(qs.length,1);
+  const q=qs[0];seen.push(q);assert.equal(q.v,4);assert.ok(q.landX>=42&&q.landX<=214&&Math.sign(q.landX-q.fromX)===(q.direction===0?-1:1));if(i)assert.equal(q.fromX,seen[i-1].landX);
+  sql.prepare("UPDATE arcade_rounds SET issued=? WHERE id=?").run(Date.now()-q.target,id);
+  r=await callFixture(env,"game-answer",{id,step:i,answer:q.direction},"a");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.round.state,0);assert.equal(r.data.round.score,i+1);
+ }
+ assert.equal(seen[3].tier,"ROOKIE");assert.equal(seen[4].tier,"EXPERT");assert.equal(seen[13].tier,"EXPERT");assert.equal(seen[14].tier,"HYPER");assert.ok(seen[4].target<seen[3].target);assert.ok(seen[14].target<seen[13].target*.8);assert.ok(seen[54].window<seen[14].window);
+ r=await callFixture(env,"game-answer",{id,step:55,answer:2},"a");assert.equal(r.status,200);assert.equal(r.data.round.state,1);assert.equal(r.data.round.score,55);assert.equal(r.data.round.reward,100);assert.equal(r.data.member.rank.points,109);
+ r=await callFixture(env,"game-answer",{id,step:55,answer:2},"a");assert.equal(r.data.member.rank.points,109);
+ r=await callFixture(env,"game-status",null,"a");assert.equal(r.data.leaderboard.find(x=>x.game==="lifting").score,55);sql.close();
 });
 test("obsolete timed game sessions refund entry fees rather than breaking after an upgrade",async()=>{
  const {env,sql}=fixture();
@@ -280,7 +288,7 @@ test("unlimited practice after five reward rounds never spends XP or awards XP o
 test("directional lifting rejects opposite direction even at the exact contact time and rejects early taps",async()=>{
  const {env,sql}=fixture();
  let r=await callFixture(env,"game-start",{game:"lifting",fee:0,practice:true},"a");assert.equal(r.status,200,JSON.stringify(r.data));let id=r.data.round.id,q=r.data.round.question;
- assert.equal(q.v,3);assert.ok([0,1].includes(q.direction));assert.equal(q.fromX,128);
+ assert.equal(q.v,4);assert.ok([0,1].includes(q.direction));assert.equal(q.fromX,128);
  sql.prepare("UPDATE arcade_rounds SET issued=? WHERE id=?").run(Date.now()-q.target,id);
  r=await callFixture(env,"game-answer",{id,step:0,answer:1-q.direction},"a");assert.equal(r.status,200);assert.equal(r.data.feedback.correct,false);assert.equal(r.data.round.state,1);assert.equal(r.data.round.score,0);assert.equal(r.data.round.reward,0);
  r=await callFixture(env,"game-start",{game:"lifting",fee:0,practice:true},"a");assert.equal(r.status,200);id=r.data.round.id;q=r.data.round.question;
@@ -294,4 +302,21 @@ test("directional lifting preserves both fee and XP when obsolete in-flight roun
  sql.prepare("UPDATE arcade_rounds SET questions=?,fee=2 WHERE id=?").run(JSON.stringify([{v:2,target:1800,window:460}]),id);
  r=await callFixture(env,"game-status",null,"a");assert.equal(r.status,200);assert.equal(r.data.pending,null);assert.equal(r.data.member.rank.points,9);
  sql.close();
+});
+
+test("endless lifting reward milestones and unlimited practice remain server-authoritative",async()=>{
+ const {env,sql}=fixture();let r=await callFixture(env,"game-status",null,"a");assert.equal(r.status,200);
+ const day=Math.floor((Math.floor(Date.now()/1000)+32400)/86400);
+ // Each synthetic record has one currently active ball, with a previously verified score.
+ const tiers=[[4,8],[5,12],[10,20],[15,35],[20,50],[30,70],[50,100],[1000,100]];
+ const q={v:4,choices:["왼쪽","오른쪽","놓침"],direction:0,target:500,window:100,fromX:128,landX:60};
+ let expected=9;
+ for(const [score,reward] of tiers){
+  const id=(score.toString(16)).padStart(64,"0"),ts=Math.floor(Date.now()/1000);
+  sql.prepare("INSERT INTO arcade_rounds(id,member_id,game,day,created,expires,issued,questions,step,score,fee) VALUES(?,?,?,?,?,?,?,?,?,?,0)").run(id,"a","lifting",day,ts,ts+600,Date.now(),JSON.stringify([q]),score,score);
+  r=await callFixture(env,"game-answer",{id,step:score,answer:2},"a");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.round.reward,reward);expected+=reward;assert.equal(r.data.member.rank.points,expected);
+ }
+ r=await callFixture(env,"game-start",{game:"lifting",fee:0,practice:true},"a");assert.equal(r.status,200);const id=r.data.round.id;
+ sql.prepare("UPDATE arcade_rounds SET step=100,score=100 WHERE id=?").run(id);
+ r=await callFixture(env,"game-answer",{id,step:100,answer:2},"a");assert.equal(r.status,200);assert.equal(r.data.round.reward,0);assert.equal(r.data.member.rank.points,expected);sql.close();
 });

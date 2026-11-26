@@ -89,21 +89,25 @@ const PLAYER_QUIZ=[
 ["이탈리아 · 2006 월드컵 우승 골키퍼","잔루이지 부폰","이케르 카시야스","디노 조프","파비오 칸나바로"],
 ["스페인 · 라 데시마 결승 동점골","세르히오 라모스","라울 곤살레스","카를레스 푸욜","페르난도 토레스"],
 ["프랑스 · 아스널 무패 우승 공격수","티에리 앙리","로베르 피레스","올리비에 지루","카림 벤제마"]];
+
+function liftingQuestion(i,fromX=128,fromDirection=1,practice=false){
+ // Touch #5 is expert, touch #15 is hyper. Difficulty keeps increasing to a mobile-playable floor.
+ const tier=i<4?"ROOKIE":i<14?"EXPERT":"HYPER";
+ const target=i<4?1810-i*130:i<14?1120-(i-4)*28:Math.max(360,620-(i-14)*12);
+ const window=i<4?390-i*45:i<14?220-(i-4)*6:Math.max(85,125-(i-14)*2);
+ const distance=34+Math.min(34,Math.floor(i*2))+ri(17);
+ const options=[0,1].filter(d=>fromX+(d===0?-distance:distance)>=42&&fromX+(d===0?-distance:distance)<=214);
+ const direction=options.length?options[ri(options.length)]:fromX<128?1:0;
+ const landX=Math.max(42,Math.min(214,fromX+(direction===0?-distance:distance)));
+ return {v:4,practice,tier,prompt:"공이 발에 닿는 순간 이동 방향을 누르세요!",choices:["왼쪽","오른쪽","놓침"],direction,fromX,fromDirection,landX,target:target+ri(i<4?65:i<14?45:25),window,height:Math.max(34,76-Math.min(i,42))+ri(8)};
+}
+const liftingLead=i=>i===0?650:i<4?260:i<14?150:85;
+const liftingReward=score=>score>=50?100:score>=30?70:score>=20?50:score>=15?35:score>=10?20:score>=5?12:score*2;
+
 async function gameQuestions(game,env,u){
  if(game==="player")return mix(PLAYER_QUIZ).slice(0,5).map(([prompt,correct,...wrong])=>{const choices=mix([correct,...wrong]);return {prompt,choices,answer:choices.indexOf(correct)}});
  if(game==="penalty")return Array.from({length:5},()=>({v:2,prompt:"슛 방향을 선택하세요!",choices:["왼쪽","가운데","오른쪽"],keeper:ri(3)}));
- if(game==="lifting"){
-  let fromX=128,fromDirection=1;
-  return Array.from({length:20},(_,i)=>{
-   // The landing side is the real direction of travel, relative to the previous touch.
-   const distance=34+Math.floor(i*1.45)+ri(17);
-   const options=[0,1].filter(d=>fromX+(d===0?-distance:distance)>=42&&fromX+(d===0?-distance:distance)<=214);
-   const direction=options.length?options[ri(options.length)]:fromX<128?1:0;
-   const landX=Math.max(42,Math.min(214,fromX+(direction===0?-distance:distance)));
-   const q={v:3,prompt:"공이 발에 닿는 순간 이동 방향을 누르세요!",choices:["왼쪽","오른쪽","놓침"],direction,fromX,fromDirection,landX,target:Math.max(920,1920-i*52)+ri(95),window:Math.max(175,460-i*15),height:Math.max(46,76-i)+ri(10)};
-   fromX=landX;fromDirection=direction;return q;
-  });
- }
+ if(game==="lifting")return [liftingQuestion(0)];
  check(env.ASSETS&&typeof env.ASSETS.fetch==="function","시세 데이터 준비 중입니다.",503);
  const res=await env.ASSETS.fetch(new Request(u.origin+"/fun/price-pool.json"));check(res.ok,"시세 데이터 준비 중입니다.",503);
  const data=await res.json(),groups=(data.groups||[]).filter(g=>g.cards?.length>=10);check(groups.length,"시세 데이터 준비 중입니다.",503);
@@ -114,20 +118,20 @@ async function gameQuestions(game,env,u){
 const rewardFor=s=>s>=5?12:s*2;
 const isPractice=row=>JSON.parse(row.questions)[0]?.practice===true;
 const rewardEligible="COALESCE(json_extract(questions,'$[0].practice'),0)=0";
-function gamePublic(row){let question=null;if(row.state===0){const {answer,prices,keeper,practice,...q}=JSON.parse(row.questions)[row.step];question=q}return {id:row.id,game:row.game,step:row.step,score:row.score,fee:row.fee,reward:row.reward,state:row.state,issued:row.issued,serverNow:Date.now(),practice:isPractice(row),question}}
+function gamePublic(row){let question=null;if(row.state===0){const {answer,prices,keeper,practice,...q}=JSON.parse(row.questions)[row.game==="lifting"?0:row.step];question=q}return {id:row.id,game:row.game,step:row.step,score:row.score,fee:row.fee,reward:row.reward,state:row.state,issued:row.issued,serverNow:Date.now(),practice:isPractice(row),question}}
 function gameCorrect(game,q,a,elapsed){
  if(elapsed<0)return false;
  if(game==="penalty")return a!==q.keeper;
- if(game==="lifting")return q.v===3&&(a===0||a===1)&&a===q.direction&&Math.abs(elapsed-q.target)<=q.window;
+ if(game==="lifting")return q.v===4&&(a===0||a===1)&&a===q.direction&&Math.abs(elapsed-q.target)<=q.window;
  return a===q.answer;
 }
-async function arcadeApi({p,b,m,db,env,u}){
+async function arcadeApi({p,b,m,db,env,u,received=Date.now()}){
  await ensureBoard(db);
  const day=arcadeDay(),t=now(),q=(s,...a)=>db.prepare(s).bind(...a),first=(s,...a)=>q(s,...a).first(),all=async(s,...a)=>(await q(s,...a).all()).results;
- await q("UPDATE arcade_rounds SET state=2,reward=fee WHERE member_id=? AND state=0 AND (expires<=? OR (game='penalty' AND COALESCE(json_extract(questions,'$[0].v'),0)<>2) OR (game='lifting' AND COALESCE(json_extract(questions,'$[0].v'),0)<>3))",m.id,t).run();
+ await q("UPDATE arcade_rounds SET state=2,reward=fee WHERE member_id=? AND state=0 AND (expires<=? OR (game='penalty' AND COALESCE(json_extract(questions,'$[0].v'),0)<>2) OR (game='lifting' AND COALESCE(json_extract(questions,'$[0].v'),0)<>4))",m.id,t).run();
  const summary=async()=>{const [r,n,pending]=await Promise.all([authorRanks(db,[m.id]),first("SELECT count(*) n FROM arcade_rounds WHERE member_id=? AND day=? AND "+rewardEligible,m.id,day),first("SELECT * FROM arcade_rounds WHERE member_id=? AND state=0",m.id)]);return {member:{nickname:m.nickname,rank:r.get(m.id)||rankFor(0)},used:n.n,limit:ARCADE_LIMIT,fee:n.n===0?0:2,pending:pending?gamePublic(pending):null}};
  if(p==="game-status"){
-  const leaderboard=await all("SELECT game,nickname,score FROM (SELECT r.game,m.nickname,MAX(r.score) score,ROW_NUMBER() OVER(PARTITION BY r.game ORDER BY MAX(r.score) DESC,MIN(r.created),m.nickname) rn FROM arcade_rounds r JOIN members m ON m.id=r.member_id WHERE r.state=1 AND COALESCE(json_extract(r.questions,'$[0].practice'),0)=0 AND r.day>=? AND m.suspended=0 AND m.nickname IS NOT NULL GROUP BY r.game,m.id) WHERE rn<=10 ORDER BY game,rn",arcadeWeek(day));return json({...await summary(),leaderboard});
+  const leaderboard=await all("SELECT game,nickname,score FROM (SELECT r.game,m.nickname,MAX(r.score) score,ROW_NUMBER() OVER(PARTITION BY r.game ORDER BY MAX(r.score) DESC,MIN(r.created),m.nickname) rn FROM arcade_rounds r JOIN members m ON m.id=r.member_id WHERE r.state=1 AND COALESCE(json_extract(r.questions,'$[0].practice'),0)=0 AND (r.game<>'lifting' OR json_extract(r.questions,'$[0].v')=4) AND r.day>=? AND m.suspended=0 AND m.nickname IS NOT NULL GROUP BY r.game,m.id) WHERE rn<=10 ORDER BY game,rn",arcadeWeek(day));return json({...await summary(),leaderboard});
  }
  if(p==="game-start"){
   check(ARCADE_GAMES.has(b.game)&&[0,2].includes(b.fee)&&(b.practice===undefined||typeof b.practice==="boolean")&&(!b.practice||b.fee===0),"게임과 참가비를 확인해 주세요.");
@@ -144,12 +148,14 @@ async function arcadeApi({p,b,m,db,env,u}){
   if(!row){const s=await summary();if(s.pending)return json({...s,round:s.pending});throw new Err(s.used>=ARCADE_LIMIT?"오늘 참가 횟수를 모두 사용했습니다.":s.fee!==b.fee?"참가비가 변경되었습니다. 다시 확인해 주세요.":"XP가 부족합니다.",409)}return json({...await summary(),round:gamePublic(row)});
  }
  if(p==="game-answer"){
-  check(typeof b.id==="string"&&/^[a-f0-9]{64}$/.test(b.id),"게임 번호 오류");const step=integer(b.step,0,19),answer=integer(b.answer,0,3);
+  check(typeof b.id==="string"&&/^[a-f0-9]{64}$/.test(b.id),"게임 번호 오류");const step=integer(b.step,0),answer=integer(b.answer,0,3);
   const row=await first("SELECT * FROM arcade_rounds WHERE id=? AND member_id=?",b.id,m.id);check(row,"게임을 찾을 수 없습니다.",404);
   if(row.state!==0||row.step!==step)return json({...await summary(),round:gamePublic(row)});
-  const questions=JSON.parse(row.questions),question=questions[step];check(question&&answer<question.choices.length,"선택지를 확인해 주세요.");
-  const correct=gameCorrect(row.game,question,answer,Date.now()-row.issued),score=row.score+(correct?1:0),finished=step===questions.length-1||(row.game==="lifting"&&!correct);
-  const updated=await first("UPDATE arcade_rounds SET step=?,score=?,issued=?,state=?,reward=? WHERE id=? AND member_id=? AND state=0 AND step=? AND expires>? RETURNING *",step+1,score,Date.now()+(row.game==="lifting"&&!finished?650:0),finished?1:0,finished&&!isPractice(row)?rewardFor(score):0,row.id,m.id,step,t);
+  const questions=JSON.parse(row.questions),lifting=row.game==="lifting",question=questions[lifting?0:step];check(question&&answer<question.choices.length,"선택지를 확인해 주세요.");
+  const correct=gameCorrect(row.game,question,answer,received-row.issued),score=row.score+(correct?1:0),finished=lifting?!correct:step===questions.length-1;
+  const nextQuestions=lifting&&correct?JSON.stringify([liftingQuestion(score,question.landX,question.direction,isPractice(row))]):row.questions;
+  const reward=finished&&!isPractice(row)?(lifting?liftingReward(score):rewardFor(score)):0;
+  const updated=await first("UPDATE arcade_rounds SET step=?,score=?,issued=?,state=?,reward=?,questions=?,expires=? WHERE id=? AND member_id=? AND state=0 AND step=? AND expires>? RETURNING *",step+1,score,Date.now()+(lifting&&!finished?liftingLead(score):0),finished?1:0,reward,nextQuestions,lifting&&!finished?t+600:row.expires,row.id,m.id,step,t);
   const result=updated||await first("SELECT * FROM arcade_rounds WHERE id=? AND member_id=?",row.id,m.id);
   return json({...await summary(),round:gamePublic(result),feedback:updated?{correct,answer:question.choices[question.answer]||null,prices:question.prices||null,...(row.game==="penalty"?{keeper:question.keeper,shot:answer}:row.game==="lifting"?{direction:question.direction,pressed:answer}:{})}:null});
  }
@@ -157,6 +163,7 @@ async function arcadeApi({p,b,m,db,env,u}){
 }
 
 export async function onRequest({request,env}){
+ const received=Date.now();
  const u=new URL(request.url),p=u.pathname.replace(/^\/api\/community\/?/,"").replace(/\/$/,""),db=env.COMMUNITY_DB;
  const enabled=env.COMMUNITY_ENABLED==="1"&&[POLICY,LEGACY_POLICY].includes(env.COMMUNITY_POLICY_VERSION)&&!!db&&!!env.GOOGLE_CLIENT_ID&&!!env.GOOGLE_CLIENT_SECRET&&env.COMMUNITY_ORIGIN===u.origin&&u.protocol==="https:";
  if(!enabled)return json({enabled:false,message:"회원·게시판 서버는 아직 연결되지 않았습니다."},503);
@@ -283,7 +290,7 @@ export async function onRequest({request,env}){
  }
  if(p==="view"){const id=integer(b.post_id);await run("UPDATE posts SET views=views+1 WHERE id=? AND hidden=0",id);return json({ok:true})}
  const m=active();
- if(p==="game-start"||p==="game-answer")return await arcadeApi({p,b,m,db,env,u});
+ if(p==="game-start"||p==="game-answer")return await arcadeApi({p,b,m,db,env,u,received});
  if(p==="post"){
    check(cats.has(b.category)&&prefixes.has(b.prefix),"분류를 확인해 주세요.");
    check(b.prefix==="normal"||b.category==="free","머릿말은 자유게시판에서만 선택할 수 있습니다.");

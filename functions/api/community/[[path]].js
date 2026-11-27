@@ -200,8 +200,9 @@ export async function onRequest({request,env}){
  const chatKey=()=>crypto.subtle.importKey("raw",enc.encode(env.GOOGLE_CLIENT_SECRET),{name:"HMAC",hash:"SHA-256"},false,["sign","verify"]);
  const hex=x=>Array.from(new Uint8Array(x),v=>v.toString(16).padStart(2,"0")).join("");
  const authorKey=async id=>hex(await crypto.subtle.sign("HMAC",await chatKey(),enc.encode("fg-chat-author-v2:"+id)));
- const canonical=x=>JSON.stringify(["fg-chat-v2",x.id,x.author,x.nickname,x.body,x.created,x.verified]);
- const validChat=x=>x&&typeof x.id==="string"&&/^[0-9a-f-]{36}$/.test(x.id)&&typeof x.author==="string"&&/^[0-9a-f]{64}$/.test(x.author)&&typeof x.nickname==="string"&&x.nickname.length<=20&&typeof x.body==="string"&&x.body.length>0&&x.body.length<=300&&Number.isSafeInteger(x.created)&&typeof x.verified==="boolean"&&typeof x.sig==="string"&&/^[0-9a-f]{64}$/.test(x.sig);
+ const chatGrades=new Set(LEVELS.map(x=>x[2]));
+ const canonical=x=>JSON.stringify(["fg-chat-v2",x.id,x.author,x.nickname,x.body,x.created,x.verified,...(x.grade===undefined?[]:[x.grade])]);
+ const validChat=x=>x&&typeof x.id==="string"&&/^[0-9a-f-]{36}$/.test(x.id)&&typeof x.author==="string"&&/^[0-9a-f]{64}$/.test(x.author)&&typeof x.nickname==="string"&&x.nickname.length<=20&&typeof x.body==="string"&&x.body.length>0&&x.body.length<=300&&Number.isSafeInteger(x.created)&&typeof x.verified==="boolean"&&(x.grade===undefined||chatGrades.has(x.grade))&&typeof x.sig==="string"&&/^[0-9a-f]{64}$/.test(x.sig);
  const broadcast=async(event,path="/broadcast")=>{const h=hub();check(h,"실시간 채팅 서버 연결을 확인해 주세요.",503);const response=await h.fetch("https://chat.internal"+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(event)});check(response.ok,response.status===429?"잠시 후 다시 작성해 주세요.":"실시간 채팅 서버 연결을 확인해 주세요.",response.status===429?429:503)};
  const expireReports=()=>db.batch([q("DELETE FROM reported_chat WHERE created<=?",now()-30*86400),q("DELETE FROM live_chat WHERE created<=?",now()-7*86400)]);
  const audit=async(action,target,reason)=>run("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",member.id,action,String(target),reason,now());
@@ -307,7 +308,7 @@ export async function onRequest({request,env}){
    return json({ok:true});
  }
  if(p==="live-chat/send"){
-   const m=active(),body=str(b?.body,300),x={id:crypto.randomUUID(),author:await authorKey(m.id),nickname:m.nickname,body,created:now(),verified:admin};
+   const m=active(),body=str(b?.body,300);await ensureBoard(db);const ranks=await authorRanks(db,[m.id]);const x={id:crypto.randomUUID(),author:await authorKey(m.id),nickname:m.nickname,body,created:now(),verified:admin,grade:(ranks.get(m.id)||rankFor(0)).grade};
    x.sig=hex(await crypto.subtle.sign("HMAC",await chatKey(),enc.encode(canonical(x))));
    await broadcast({type:"message",message:x});return json({ok:true,message:x});
  }

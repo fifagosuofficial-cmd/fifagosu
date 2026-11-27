@@ -342,11 +342,12 @@ test("live chat broadcasts without DB history; only authenticated, signed report
  const req=(p,body,who)=>onRequest({request:new Request(origin+"/api/community/"+p,{...(body===undefined?{}:{method:"POST",body:JSON.stringify(body)}),headers:{Origin:origin,"Content-Type":"application/json","CF-Connecting-IP":"192.0.2.1",...(who?{Cookie:"fg_session="+who.repeat(64)}:{})}}),env});
  assert.equal((await req("live-chat/send",{body:"hello"})).status,401);
  const first=await req("live-chat/send",{body:"hello"},"b");assert.equal(first.status,200);const message=(await first.json()).message;
- assert.equal(sent[0].message.body,"hello");assert.equal("author_subject" in message,false);
+ assert.equal(sent[0].message.body,"hello");assert.equal(message.grade,0);assert.equal("author_subject" in message,false);
  assert.equal((await req("live-chat/send",{body:"spam"},"b")).status,429);
  const chat=await (await req("live-chat")).json();assert.equal(chat.version,2);assert.equal("rows" in chat,false);
  assert.equal(sql.prepare("SELECT count(*) n FROM live_chat").get().n,0);assert.equal(sql.prepare("SELECT count(*) n FROM reported_chat").get().n,0);
  assert.equal((await req("live-chat/report",{message:{...message,body:"forged"}},"a")).status,403);
+ assert.equal((await req("live-chat/report",{message:{...message,grade:13}},"a")).status,403);
  assert.equal((await req("live-chat/report",{message},"b")).status,400);
  assert.equal((await req("live-chat/report",{message},"a")).status,200);
  assert.equal((await req("live-chat/report",{message},"a")).status,200);

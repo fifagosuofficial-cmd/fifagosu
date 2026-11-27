@@ -119,6 +119,7 @@ def test_floating_chat_is_shared_and_minimal():
     assert '피파고수에게 건의하기' in partial
     assert '.fg-floating-chat{position:fixed;right:' in css and 'bottom:max(' in css
     assert 'fg-chat-avatar' in js and 'node("time"' not in js
+    assert '/assets/ranks/cat-' in js and 'grade+"강냥"' in js
     assert '최근 200개 대화는 이 브라우저에만 저장됩니다.' not in js
     assert 'return chat&&!document.hidden&&!chat.hidden' in js
     assert 'setChatOpen(chat.hidden)' in js

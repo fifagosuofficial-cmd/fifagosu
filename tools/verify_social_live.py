@@ -50,6 +50,12 @@ def verify():
     assert '.fg-community[data-screen="mypage"] #fcMineTabs{display:grid' in mycss
     assert "fc-my-count" in myjs and "다음 등급까지" in myjs
     print("Public compact mypage assets OK")
+    board = get("/board/?fgverify=" + stamp)
+    assert '<th scope="col">날짜</th><th scope="col">조회</th><th scope="col">순추천</th>' in board
+    assert ".fc-board-table .fc-col-views{width:32px}" in mycss
+    assert ".fc-board-table td:nth-child(5){display:none}" not in mycss
+    assert "fc-count fc-views" in myjs
+    print("Public board view counts visible OK")
     assert 'id="fcGiftDialog"' in my and 'id="fcPointHistory"' in my
     assert "points/gift" in myjs and "admin/member-detail" in myjs and "admin/points" in myjs
     assert "포인트" in myjs and " XP" not in myjs

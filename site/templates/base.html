@@ -23,6 +23,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <link rel="stylesheet" href="{{ root }}assets/css/main.css?v={{ ver }}">
 <link rel="stylesheet" href="{{ root }}assets/css/welcome.css?v={{ ver }}">
+<link rel="stylesheet" href="{{ root }}assets/css/social.css?v={{ ver }}">
 <script>window.FG_SITE_URL={{ SITE_URL|tojson }};window.FG_LIVE=/^https?:$/.test(location.protocol)&&!/(^|\.)(claude\.ai|claudeusercontent\.com|claude\.site)$/.test(location.hostname);window.FG_AD_CONFIG={{ cfg.get('ads', {})|tojson }};</script>
 {% set ad_cfg = cfg.get('ads', {}) %}
 {% if ad_cfg.get('adsense_client') %}
@@ -74,13 +75,12 @@
 <aside class="fg-ad-rail fg-ad-right" data-ad-slot="side-right" aria-label="광고" hidden></aside>
 {% endif %}
 {% block content %}{% endblock %}
-<footer>Data based on NEXON Open API · 선수 능력치·시세: FC온라인 데이터센터 · 피파고수는 넥슨·EA SPORTS와 관련 없는 비공식 서비스예요.<br>약점 진단은 피파고수 자체 계산이며 게임 공식 수치가 아니에요.<br><a href="{{ root }}about">소개</a> · <a href="{{ root }}privacy">개인정보처리방침</a> · <a href="{{ root }}terms">이용약관</a> · <a href="{{ root }}contact">문의</a> · <button type="button" class="fg-footer-contact" data-fg-contact>피파고수에게 말해주세요</button> · <a href="{{ root }}guide/">게임 가이드</a><button type="button" class="fg-install fg-install-foot" hidden>피파고수 앱 설치</button></footer>
+<footer>Data based on NEXON Open API · 선수 능력치·시세: FC온라인 데이터센터 · 피파고수는 넥슨·EA SPORTS와 관련 없는 비공식 서비스예요.<br>약점 진단은 피파고수 자체 계산이며 게임 공식 수치가 아니에요.<br><a href="{{ root }}about">소개</a> · <a href="{{ root }}privacy">개인정보처리방침</a> · <a href="{{ root }}terms">이용약관</a> · <a href="{{ root }}contact">문의</a> · <button type="button" class="fg-footer-contact" data-fg-contact>피파고수에게 건의하기</button> · <a href="{{ root }}guide/">게임 가이드</a><button type="button" class="fg-install fg-install-foot" hidden>피파고수 앱 설치</button></footer>
 </div>
 <script defer src="{{ root }}assets/js/ads.js?v={{ ver }}"></script>
 <script defer src="{{ root }}assets/js/traffic.js?v={{ ver }}"></script>
 <script defer src="{{ root }}assets/js/welcome.js?v={{ ver }}"></script>
-<link rel="stylesheet" href="{{ root }}assets/css/social.css?v={{ ver }}">
-<dialog id="fgContactDialog" class="fg-contact-dialog"><form id="fgContactForm"><div class="fg-social-head"><h2>피파고수에게 말해주세요</h2><button type="button" id="fgContactClose" aria-label="닫기">×</button></div><p>작성한 의견은 운영자만 확인합니다. 비회원도 접수할 수 있어요.</p><label>구분<select name="kind"><option value="suggestion">기능 제안</option><option value="bug">오류 제보</option><option value="improvement">개선 요청</option><option value="other">기타 의견</option></select></label><label>내용<textarea name="body" minlength="5" maxlength="2000" required rows="5" placeholder="개인정보·비밀번호는 입력하지 마세요."></textarea></label><label class="fg-check"><input name="age" type="checkbox" required> 만 14세 이상입니다.</label><label class="fg-check"><input name="consent" type="checkbox" required> 문의 처리에 필요한 내용·접수 페이지·회원 식별자(회원인 경우)를 최대 180일 보관하고, 비회원 도배 방지용 IP 기반 일시 해시를 처리하는 데 동의합니다. 거부 시 접수할 수 없습니다.</label><small><a href="/privacy">개인정보처리방침</a> · 회원은 마이페이지에서 답변을 확인할 수 있습니다. 비회원에게는 직접 답변할 수 없습니다.</small><button type="submit">피파고수에게 전달하기</button><p id="fgContactStatus" role="status"></p></form></dialog>
+{% include "_social.html" %}
 <script defer src="{{ root }}assets/js/social.js?v={{ ver }}"></script>
 {% block scripts %}{% endblock %}
 <dialog id="fgInstallDialog" class="fg-install-dialog"><strong>피파고수 앱 설치</strong><p id="fgInstallHelp"></p><form method="dialog"><button>닫기</button></form></dialog>

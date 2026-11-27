@@ -293,7 +293,7 @@ export async function onRequest({request,env}){
  check(request.headers.get("content-type")?.includes("application/json"),"잘못된 요청입니다.",415);
  const raw=await request.text();check(raw.length<=40000,"요청이 너무 큽니다.",413);let b;try{b=JSON.parse(raw)}catch{throw new Err("잘못된 요청입니다.")}
  if(p==="contact/send"){
-   check(b&&b.consent===true&&b.age===true,"개인정보 안내 및 만 14세 이상 여부를 확인해 주세요.");
+   check(b&&typeof b==="object"&&!Array.isArray(b),"문의 내용을 확인해 주세요.");
    check(["suggestion","bug","improvement","other"].includes(b.kind),"문의 유형을 확인해 주세요.");
    const body=str(b.body,2000,5),page=str(b.page,120);
    check(/^\/[a-zA-Z0-9/_-]*$/.test(page)&&!page.startsWith("//"),"페이지 형식 오류");

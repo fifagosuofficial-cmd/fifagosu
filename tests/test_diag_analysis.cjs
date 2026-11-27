@@ -244,3 +244,23 @@ test('playstyle uses observed match records and refuses inadequate or synthetic 
  assert.match(css,/\.diag-report-shell \.dr-insights\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
  assert.ok(src.includes('나의 플레이스타일')&&src.includes('dStyleDialog'));
 });
+
+test('timing advice distinguishes repeated early losses, first concession, scoring strength and noise',()=>{
+ const i=src.indexOf('function dRateGap('),z=src.indexOf('function analyze(',i),a=src.indexOf('function dTimingAdvice('),b=src.indexOf('function dRenderTip(',a);
+ const scope={esc:x=>String(x)};vm.createContext(scope);vm.runInContext(src.slice(i,z)+src.slice(a,b),scope);
+ const match=(f,a,res)=>({matchInfo:[{shoot:{goalTotal:f.length},shootDetail:f.map(goalTime=>({goalTime,result:3})),matchDetail:{matchResult:res,matchEndType:0}},{shoot:{goalTotal:a.length},shootDetail:a.map(goalTime=>({goalTime,result:3}))}]});
+ const many=(n,m)=>Array.from({length:n},()=>m);
+ let rows=[...many(12,match([], [200,400], '패')),...many(18,match([1200,2000],[],'승'))];
+ let ev=scope.dTimingEvidence(rows);assert.equal(ev.earlyAgainst.l,12);assert.match(scope.dTimingAdvice(ev).text,/초반 선제 실점 관리/);
+ rows=[...many(12,match([], [1800], '패')),...many(18,match([1200,2000],[],'승'))];assert.match(scope.dTimingAdvice(scope.dTimingEvidence(rows)).text,/선제 실점 이후/);
+ rows=[...many(12,match([3200,3300],[],'승')),...many(18,match([1000],[],'승'))];assert.match(scope.dTimingAdvice(scope.dTimingEvidence(rows)).text,/45~60분 득점 강점/);
+ rows=[...many(2,match([], [200], '패')),...many(28,match([],[],'무'))];assert.equal(scope.dTimingAdvice(scope.dTimingEvidence(rows)),null);
+ rows=[...many(2,match([],Array(20).fill(200),'패')),...many(28,match([],[],'무'))];assert.equal(scope.dTimingAdvice(scope.dTimingEvidence(rows)),null);
+ rows=[...many(12,match([], [200], '패')),...many(18,match([],[],'패'))];assert.equal(scope.dTimingAdvice(scope.dTimingEvidence(rows)),null);
+ const invalid=match([],[200],'패');invalid.matchInfo[1].shoot.goalTotal=3;assert.equal(scope.dTimingEvidence([invalid]).total,0);
+ assert.equal(scope.dRateGap(.49,.50,100,100),false);assert.equal(scope.dRateGap(.2,.5,5,5),false);assert.equal(scope.dRateGap(.3,.6,100,100),true);
+ const base={n:30,W:15,seq:many(30,{r:'무'}),weak:[{score:.1,unit:'패스',fix:'큰 문제'}]};assert.match(scope.dAdvice(base),/뚜렷하게 반복되는 약점은 확인되지/);assert.ok(!scope.dAdvice(base).includes('큰 문제'));
+ assert.match(scope.dAdvice({...base,W:22,weak:[{score:.5,unit:'패스',fix:'큰 문제'}]}),/가볍게 점검/);
+ assert.match(scope.dAdvice({...base,n:5,seq:many(5,{r:'패'})}),/표본이 적어/);
+ assert.match(scope.dAdvice({...base,sample:true}),/예시 데이터/);
+});

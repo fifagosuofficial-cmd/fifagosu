@@ -151,6 +151,17 @@ function dCardLabel(x){
   return [x.pos,name&&name!=='?'?name:'시즌 '+(Number.isFinite(season)?season:'미상'),x.name,Number(x.grade)>0?x.grade+'강':''].filter(Boolean).join(' ');
 }
 function dRecentStatus(x,lineup){return dRecentRows([x],lineup,true).length?'최근 경기 출전':'최근 경기 미출전'}
+/* Conservative evidence gate: absolute + relative gap, minimum attempts, and repeated outcomes. */
+function dRateGap(mine,other,mineN,otherN,minN=40,gap=.12,relative=.20){
+ return [mine,other,mineN,otherN].every(Number.isFinite)&&mineN>=minN&&otherN>=minN&&mine>=0&&other<=1&&other-mine>=gap-1e-9&&mine<=other*(1-relative);
+}
+function dTimingEvidence(matches){
+ const rows=[],bins=Array.from({length:6},(_,i)=>({i,f:0,a:0,forMatches:0,againstMatches:0,earlyFirst:0,loss:0}));
+ const goals=x=>{if(!Array.isArray(x?.shootDetail)||!Number.isInteger(x?.shoot?.goalTotal)||x.shoot.goalTotal<0)return null;const g=x.shootDetail.filter(y=>y.result===3).map(y=>y.goalTime);return g.length===x.shoot.goalTotal&&g.every(t=>Number.isFinite(t)&&t>=0&&t<=7200)?g:null};
+ for(const m of matches||[]){const [me,op]=m.matchInfo||[],res=me?.matchDetail?.matchResult;if(!['승','무','패'].includes(res)||(me.matchDetail.matchEndType!=null&&me.matchDetail.matchEndType!==0))continue;const f=goals(me),a=goals(op);if(!f||!a)continue;const ft=Math.min(...f),at=Math.min(...a),first=ft<at?'me':at<ft?'op':'none';rows.push({f,a,first,res,at});const bin=t=>Math.min(5,Math.floor(t/900));for(const t of f)bins[bin(t)].f++;for(const t of a)bins[bin(t)].a++;for(const i of new Set(f.map(bin)))bins[i].forMatches++;for(const i of new Set(a.map(bin))){bins[i].againstMatches++;if(res==='패')bins[i].loss++}if(first==='op')bins[bin(at)].earlyFirst++}
+ const total=rows.length,all=matches?.length||0,forGoals=bins.reduce((n,x)=>n+x.f,0),against=bins.reduce((n,x)=>n+x.a,0),summ=xs=>({n:xs.length,l:xs.filter(x=>x.res==='패').length,w:xs.filter(x=>x.res==='승').length});
+ return {total,all,forGoals,against,bins,firstAgainst:summ(rows.filter(x=>x.first==='op')),firstFor:summ(rows.filter(x=>x.first==='me')),earlyAgainst:summ(rows.filter(x=>x.first==='op'&&x.at<900)),other:summ(rows.filter(x=>x.first!=='op')),overall:summ(rows)};
+}
 function analyze(data,mode){
   const dm=mode==='52';
   const M=data.matches, me=M.map(m=>m.matchInfo[0]), op=M.map(m=>m.matchInfo[1]), n=M.length, recentLineup=dLatestLineup(M);
@@ -165,45 +176,45 @@ function analyze(data,mode){
   const conceded=B.goalsDetail, cN=conceded.length;
   const pct=v=>Math.round(v*100), rate=(a,b)=>b?a/b:0;
   const F=(o,d)=>dm&&d?d:o;   // 감독모드용 처방 문구
-  const items=[], add=o=>items.push(o);
+  const timing=dTimingEvidence(M);const items=[], add=o=>items.push(o);
 
   const f1=rate(A.goals,A.eff), f2=rate(B.goals,B.eff), d1=f2?(f1-f2)/f2:0;
-  add({weakIf:d1<=-0.2,strongIf:d1>=0.15,score:Math.abs(d1)*1.2,weak:'유효슈팅을 골로 못 바꿔요',strong:'결정력이 좋아요',
+  add({weakIf:n>=15&&dRateGap(f1,f2,A.eff,B.eff,40,.12,.20),strongIf:n>=15&&dRateGap(f2,f1,B.eff,A.eff,40,.10,.15),score:Math.abs(d1)*1.2,weak:'유효슈팅 골 전환율이 낮아요',strong:'결정력이 좋아요',
     desc:`유효슈팅 ${A.eff}개 중 ${A.goals}골 (전환율 ${pct(f1)}%). 상대 평균은 ${pct(f2)}%예요.`,me:f1,opp:f2,fmt:v=>pct(v)+'%',unit:'골 전환율',
     fix:F('골문 앞에서 <b>한 번 더 접고 각도를 만드는</b> 슈팅을 늘리고, 결정력 높은 공격수를 선발로 쓰세요.','<b>골 결정력·침착성 높은 공격수</b>로 바꾸거나 공격수 강화 단계를 올려 보세요.'),
     sfix:'지금 마무리가 잘 통하고 있어요. 찬스 수를 늘리는 데 집중하세요.'});
   const o1=rate(A.outShots,A.shots), og1=rate(A.outGoals,A.outShots), og2=rate(B.outGoals,B.outShots);
-  add({weakIf:o1>=0.4&&og1<og2,score:(o1-0.3)*1.5,weak:'중거리 슈팅에 너무 의존해요',
+  add({weakIf:n>=15&&A.shots>=60&&o1>=.45&&dRateGap(og1,og2,A.outShots,B.outShots,30,.08,.25),score:(o1-0.3)*1.5,weak:'중거리 슈팅 비중과 효율을 점검해요',
     desc:`전체 슈팅의 ${pct(o1)}%가 박스 밖이고, 박스 밖 득점률은 ${pct(og1)}%로 상대(${pct(og2)}%)보다 낮아요.`,me:o1,opp:rate(B.outShots,B.shots),fmt:v=>pct(v)+'%',unit:'박스 밖 비중',
     fix:F('중거리 대신 <b>한 번 더 패스해서 박스 안으로</b> 들어가세요.','팀 전술 공격 설정에서 <b>박스 안 공격 인원을 늘리고</b>, 중거리 슈팅 성향이 강한 선수 비중을 줄여 보세요.')});
   const late=conceded.filter(s=>s.goalTime>=75*60).length, l1=rate(late,cN);
-  add({weakIf:cN>=4&&l1>=0.35,score:(l1-0.2)*1.8,weak:'후반 막판에 무너져요',desc:`실점 ${cN}골 중 ${late}골(${pct(l1)}%)이 75분 이후에 나왔어요.`,
+  add({weakIf:timing.total>=15&&timing.total>=n*.8&&timing.against>=20&&timing.bins[5].a/timing.against>=.40&&timing.bins[5].againstMatches>=Math.max(6,Math.ceil(timing.total*.25)),score:(l1-0.2)*1.8,weak:'후반 막판 실점이 집중돼요',desc:`실점 ${cN}골 중 ${late}골(${pct(l1)}%)이 75분 이후에 나왔어요.`,
     me:l1,opp:0.2,fmt:v=>pct(v)+'%',unit:'75분 이후 실점',oppLabel:'일반적 수준',
     fix:F('<b>65~70분에 체력 떨어진 선수를 교체</b>하고, 리드 중이면 수비적 전술로 바꿔 보세요.','감독모드는 AI가 뛰어서 체력이 떨어지는 후반에 차이가 커져요. <b>스태미너 높은 미드필더</b>나 체력 관련 특성(예: 두 개의 심장) 선수를 우선 검토해 보세요.')});
   const early=conceded.filter(s=>s.goalTime<15*60).length, e1=rate(early,cN);
-  add({weakIf:cN>=4&&e1>=0.3,score:(e1-0.17)*1.5,weak:'경기 초반에 흔들려요',desc:`실점 ${cN}골 중 ${early}골(${pct(e1)}%)이 15분 안에 나왔어요.`,
+  add({weakIf:timing.total>=15&&timing.total>=n*.8&&timing.against>=20&&timing.bins[0].a/timing.against>=.35&&timing.bins[0].againstMatches>=Math.max(6,Math.ceil(timing.total*.25)),score:(e1-0.17)*1.5,weak:'경기 초반 실점이 집중돼요',desc:`실점 ${cN}골 중 ${early}골(${pct(e1)}%)이 15분 안에 나왔어요.`,
     me:e1,opp:0.17,fmt:v=>pct(v)+'%',unit:'15분 이전 실점',oppLabel:'일반적 수준',
     fix:F('시작하고 15분은 <b>수비 라인을 낮추고</b> 상대 공격 패턴부터 보세요.','팀 전술 수비 설정의 <b>깊이(수비 라인)를 조금 낮춰</b> 초반 뒷공간 실점을 줄여 보세요.')});
   const hd=conceded.filter(s=>s.type==='header').length, h1=rate(hd,cN);
-  add({weakIf:cN>=4&&h1>=0.25,score:(h1-0.12)*1.6,weak:'헤딩 실점이 많아요',desc:`실점 ${cN}골 중 ${hd}골(${pct(h1)}%)이 헤딩이에요.`,
+  add({weakIf:n>=15&&cN>=25&&hd>=10&&h1>=.35&&me.filter((s,i)=>op[i].shootDetail.some(x=>x.result===3&&x.type==="header")).length>=6,score:(h1-0.12)*1.6,weak:'헤딩 실점이 많아요',desc:`실점 ${cN}골 중 ${hd}골(${pct(h1)}%)이 헤딩이에요.`,
     me:h1,opp:0.12,fmt:v=>pct(v)+'%',unit:'헤딩 실점 비중',oppLabel:'일반적 수준',
     fix:F('<b>키와 몸싸움이 좋은 센터백</b>을 쓰고, 크로스가 올라오기 전에 풀백으로 먼저 막으세요.','<b>헤더·점프·몸싸움 높은 센터백</b>으로 바꾸고, 풀백 수비 성향을 올려 크로스를 줄이세요.')});
   const t1=rate(A.thruS,A.thruT), t2=rate(B.thruS,B.thruT);
-  add({weakIf:t1<=t2-0.1,strongIf:t1>=t2+0.08,score:(t2-t1)*2,weak:'스루패스가 자주 끊겨요',strong:'스루패스가 날카로워요',
+  add({weakIf:n>=15&&dRateGap(t1,t2,A.thruT,B.thruT),strongIf:n>=15&&dRateGap(t2,t1,B.thruT,A.thruT),score:(t2-t1)*2,weak:'스루패스가 자주 끊겨요',strong:'스루패스가 날카로워요',
     desc:`스루패스 성공률 ${pct(t1)}%, 상대 평균 ${pct(t2)}%예요.`,me:t1,opp:t2,fmt:v=>pct(v)+'%',unit:'스루패스 성공률',
     fix:F('수비 라인이 올라와 있을 때만 쓰고, 그 전에는 <b>짧은 패스로 수비를 끌어내세요</b>.','<b>시야·짧은 패스 높은 중앙 미드필더</b>를 쓰거나, 공격 빌드업을 롱패스 위주로 바꿔 스루패스 의존을 줄여 보세요.'),
     sfix:'침투 패스가 잘 통해요. 빠른 공격수와 조합하면 더 위협적이에요.'});
   const pg=me.filter(s=>s.matchDetail.possession>=55), pw=pg.filter(s=>s.matchDetail.matchResult==='승').length, p1=rate(pw,pg.length);
-  add({weakIf:pg.length>=5&&p1<0.5,score:(0.55-p1)*1.4,weak:'공은 오래 갖는데 못 이겨요',desc:`점유율 55% 이상인 ${pg.length}경기에서 ${pw}승(승률 ${pct(p1)}%)이에요.`,
+  add({weakIf:n>=15&&pg.length>=10&&p1<=.35&&p1<=rate(W,n)-.15&&me.filter(s=>s.matchDetail.possession<55).length>=8,score:(0.55-p1)*1.4,weak:'점유 우세 경기 승률이 낮아요',desc:`점유율 55% 이상인 ${pg.length}경기에서 ${pw}승(승률 ${pct(p1)}%)이에요.`,
     me:p1,opp:0.55,fmt:v=>pct(v)+'%',unit:'점유 우세 시 승률',oppLabel:'기대 승률',
-    fix:F('뒤에서 돌리는 패스를 줄이고 <b>공을 뺏은 직후 빠르게 전진</b>하세요.','공격 빌드업을 <b>롱패스</b>로, 팀 성향을 공격적으로 올려 점유를 득점으로 바꿔 보세요. 상위 랭커가 많이 쓰는 설정이에요.')});
+    fix:F('뒤에서 돌리는 패스를 줄이고 <b>공을 뺏은 직후 빠르게 전진</b>하세요.','공격 빌드업을 <b>롱패스</b>로, 팀 성향을 공격적으로 올려 점유를 득점으로 바꿔 보세요.')});
   const k1=rate(A.tackS,A.tackT), k2=rate(B.tackS,B.tackT);
-  add({weakIf:k1<=k2-0.1,strongIf:k1>=k2+0.08,score:(k2-k1)*1.8,weak:'태클이 자주 실패해요',strong:'수비 타이밍이 좋아요',
+  add({weakIf:n>=15&&dRateGap(k1,k2,A.tackT,B.tackT,60),strongIf:n>=15&&dRateGap(k2,k1,B.tackT,A.tackT,60),score:(k2-k1)*1.8,weak:'태클이 자주 실패해요',strong:'수비 타이밍이 좋아요',
     desc:`태클 성공률 ${pct(k1)}%, 상대 평균 ${pct(k2)}%예요.`,me:k1,opp:k2,fmt:v=>pct(v)+'%',unit:'태클 성공률',
     fix:F('바로 태클하지 말고 <b>지연 수비로 따라붙다가</b> 공이 발에서 떨어질 때 들어가세요.','<b>스탠딩 태클·대인 수비 높은 수비수</b>로 바꾸고, 슬라이딩 태클 성향 센터백은 피하세요.'),
     sfix:'볼 탈취가 안정적이에요. 높은 위치에서 압박해도 좋아요.'});
   const fo1=A.fouls/n, fo2=B.fouls/n;
-  add({weakIf:fo1>=fo2*1.5,score:(fo1/fo2-1)*0.6,weak:'반칙이 너무 많아요',desc:`경기당 반칙 ${fo1.toFixed(1)}개, 상대 평균 ${fo2.toFixed(1)}개예요.`,
+  add({weakIf:n>=15&&fo1>=2&&fo1-fo2>=1&&fo1>=fo2*1.5,score:Math.min(1,(fo1-fo2)/2),weak:'반칙 빈도가 상대보다 높아요',desc:`경기당 반칙 ${fo1.toFixed(1)}개, 상대 평균 ${fo2.toFixed(1)}개예요.`,
     me:fo1,opp:fo2,fmt:v=>v.toFixed(1)+'개',unit:'경기당 반칙',max:Math.max(fo1,fo2)*1.2,
     fix:F('뒤에서 들어가는 태클을 줄이고, 박스 근처에서는 <b>몸으로 막기</b>를 우선하세요.','<b>공격성 낮은 수비형 미드필더</b>를 쓰고, 센터백은 슬라이딩 태클 성향 선수를 피하세요.')});
 
@@ -255,8 +266,8 @@ function analyze(data,mode){
     M.forEach(m=>{const f=formationOf(m.matchInfo[1].player),r=m.matchInfo[0].matchDetail.matchResult;(fm[f]??={f,n:0,w:0,d:0,l:0}).n++;fm[f][r==='승'?'w':r==='무'?'d':'l']++});
     forms=Object.values(fm).map(x=>({...x,wr:x.w/x.n})).sort((a,b)=>b.n-a.n);
     const totalWr=W/n;
-    const worstF=forms.filter(x=>x.n>=4).sort((a,b)=>a.wr-b.wr)[0];
-    if(worstF&&worstF.wr<=totalWr-0.2)add({weakIf:true,score:(totalWr-worstF.wr)*1.6,weak:`${worstF.f} 상대로 약해요`,
+    const worstF=forms.filter(x=>x.n>=10&&n-x.n>=10).sort((a,b)=>a.wr-b.wr)[0];
+    if(worstF&&worstF.wr<=totalWr-0.20&&worstF.wr<=.35)add({weakIf:true,score:(totalWr-worstF.wr)*1.6,weak:`${worstF.f} 상대로 약해요`,
       desc:`${worstF.f} 상대로 ${worstF.n}경기 ${worstF.w}승 ${worstF.d}무 ${worstF.l}패(승률 ${pct(worstF.wr)}%)예요. 전체 승률은 ${pct(totalWr)}%예요.`,
       me:worstF.wr,opp:totalWr,fmt:v=>pct(v)+'%',unit:'이 포메이션 상대 승률',oppLabel:'전체 승률',
       fix:`${worstF.f}는 중앙에 사람이 많은 구조예요. <b>미드필더를 한 명 더 두는 포메이션</b>이나 측면 공격 전술로 대응해 보세요.`});
@@ -264,24 +275,24 @@ function analyze(data,mode){
     me.forEach((s,i)=>{s.player.forEach(x=>{const k=LINE(x.pos);(lr[k]??={k,me:[],op:[]}).me.push(x.status.spRating)});op[i].player.forEach(x=>{const k=LINE(x.pos);(lr[k]??={k,me:[],op:[]}).op.push(x.status.spRating)})});
     lines=['공격','미드','수비','GK'].filter(k=>lr[k]&&lr[k].me.length&&lr[k].op.length).map(k=>({k,me:sum(lr[k].me,v=>v)/lr[k].me.length,op:sum(lr[k].op,v=>v)/lr[k].op.length}));
     const wl=lines.filter(x=>x.k!=='GK').sort((a,b)=>(a.me-a.op)-(b.me-b.op))[0];
-    if(wl&&wl.me<=wl.op-0.25){wl.weak=true;add({weakIf:true,score:(wl.op-wl.me)*1.4,weak:`${wl.k} 라인이 밀려요`,
+    if(n>=20&&wl&&wl.me<=wl.op-0.5){wl.weak=true;add({weakIf:true,score:(wl.op-wl.me)*1.4,weak:`${wl.k} 라인이 밀려요`,
       desc:`${wl.k} 선수들 평균 평점 ${wl.me.toFixed(2)}, 같은 라인 상대 평균은 ${wl.op.toFixed(2)}예요.`,
       me:wl.me,opp:wl.op,fmt:v=>v.toFixed(2),unit:`${wl.k} 라인 평점`,min:5,max:8.5,
       fix:`감독모드에서는 라인 하나가 밀리면 경기 전체가 흔들려요. <b>${wl.k} 라인 강화·교체</b>를 먼저 하세요.`})}
   }
 
   const du1=pr(TA.ballPossesionSuccess,TA.ballPossesionTry), du2=pr(TB.ballPossesionSuccess,TB.ballPossesionTry);
-  add({weakIf:du1<=du2-0.06,strongIf:du1>=du2+0.06,score:(du2-du1)*4.5,weak:'몸싸움(볼 경합)에서 밀려요',strong:'볼 경합에 강해요',
+  add({weakIf:n>=15&&dRateGap(du1,du2,TA.ballPossesionTry,TB.ballPossesionTry,80,.12,.20),strongIf:n>=15&&dRateGap(du2,du1,TB.ballPossesionTry,TA.ballPossesionTry,80,.12,.20),score:(du2-du1)*4.5,weak:'몸싸움(볼 경합)에서 밀려요',strong:'볼 경합에 강해요',
     desc:`볼 경합 ${TA.ballPossesionTry}번 중 ${TA.ballPossesionSuccess}번 이겼어요(${pct(du1)}%). 상대 평균은 ${pct(du2)}%예요.`,me:du1,opp:du2,fmt:v=>pct(v)+'%',unit:'볼 경합 승률',
     fix:F('공을 오래 끌지 말고 <b>원터치 패스로 경합 자체를 줄이세요</b>.','<b>몸싸움·밸런스 높은 미드필더</b>로 바꾸거나 강화 단계를 올려 보세요. 감독모드는 능력치 차이가 경합에 그대로 나와요.'),
     sfix:'경합에서 이기는 힘이 있어요. 전방 압박 전술과 잘 맞아요.'});
   const ae1=pr(TA.aerialSuccess,TA.aerialTry), ae2=pr(TB.aerialSuccess,TB.aerialTry);
   const aeRel=ae2?(ae1-ae2)/ae2:0;
-  add({weakIf:TA.aerialTry>=30&&aeRel<=-0.25,strongIf:TA.aerialTry>=30&&aeRel>=0.25,score:-aeRel*0.9,weak:'공중볼 경합에서 져요',strong:'공중볼을 잘 따내요',
+  add({weakIf:n>=15&&dRateGap(ae1,ae2,TA.aerialTry,TB.aerialTry,60,.08,.30),strongIf:n>=15&&dRateGap(ae2,ae1,TB.aerialTry,TA.aerialTry,60,.08,.30),score:-aeRel*0.9,weak:'공중볼 경합에서 져요',strong:'공중볼을 잘 따내요',
     desc:`공중볼 경합 ${TA.aerialTry}번 중 ${TA.aerialSuccess}번 성공(${(ae1*100).toFixed(1)}%), 상대 평균 ${(ae2*100).toFixed(1)}%예요. 넥슨 기준 '성공' 판정이 엄격해 수치 자체는 낮게 나와요.`,me:ae1,opp:ae2,fmt:v=>pct(v)+'%',unit:'공중볼 경합 승률',
     fix:F('크로스 수비 때 <b>먼저 자리를 잡고</b>, 공격은 땅볼 위주로 바꿔 보세요.','<b>키·점프·헤더 높은 센터백과 스트라이커</b>를 검토하고, 크로스 위주 공격 전술은 줄이세요.'),
     sfix:'세트피스와 크로스 공격을 더 활용해 보세요.'});
-  const weak=items.filter(x=>x.weakIf).sort((a,b)=>b.score-a.score).slice(0,3);
+  const weak=items.filter(x=>x.weakIf&&Number.isFinite(x.score)&&x.score>0).sort((a,b)=>b.score-a.score).slice(0,3);
   const strong=items.filter(x=>x.strongIf).sort((a,b)=>Math.abs(b.me-b.opp)-Math.abs(a.me-a.opp))[0];
   const bins=[0,15,30,45,60,75].map(s=>({label:s===75?'75+':`${s}–${s+15}`,f:0,a:0}));
   const bi=t=>Math.min(5,Math.floor(t/900));
@@ -289,7 +300,7 @@ function analyze(data,mode){
   // Display order is independent of pitch coordinates and Nexon position codes.
   // 경기 흐름(오래된 경기 → 최근 경기)
   const seq=M.map(m=>{const [x,y]=m.matchInfo;return {r:x.matchDetail.matchResult,gf:x.shoot.goalTotal,ga:y.shoot.goalTotal,opp:y.nickname,date:m.matchDate,poss:x.matchDetail.possession}}).reverse();
-  return {n,W,D,L,gf:A.goals,ga:B.goals,weak,strong,bins,shots:A.shotsDetail,stats,flow,seq,players:players.sort(dComparePosition),recentLineup,teamAvg,forms,lines,myForm,dm,performance:dBuildPerformance(M,players),sample:!!data.sample};
+  return {n,W,D,L,gf:A.goals,ga:B.goals,weak,strong,bins,timing,shots:A.shotsDetail,stats,flow,seq,players:players.sort(dComparePosition),recentLineup,teamAvg,forms,lines,myForm,dm,performance:dBuildPerformance(M,players),sample:!!data.sample};
 }
 
 
@@ -509,13 +520,41 @@ $('dSum').addEventListener('mouseover',e=>{const t=e.target.closest('[data-i]'),
   tip.hidden=false;const left=Math.max(4,Math.min(box.width-tip.offsetWidth-4,r.left-box.left+r.width/2-tip.offsetWidth/2));tip.style.left=left+'px';tip.style.top=(r.top-box.top-tip.offsetHeight-6)+'px'});
 $('dSum').addEventListener('mouseleave',()=>{const tip=$('dsTip');if(tip)tip.hidden=true});
 /* ---------- 피파고수의 한마디: 약점·흐름·랭커 비교를 종합한 조언 ---------- */
+function dTimingAdvice(t,dm=false){
+ if(!t||t.total<15||t.total<t.all*.8)return null;
+ const pct=x=>Math.round(x*100)+'%',F=(manual,manager)=>dm?manager:manual;
+ const loss=x=>x.n?x.l/x.n:0,win=x=>x.n?x.w/x.n:0,overall=loss(t.overall),first=t.firstAgainst,early=t.earlyAgainst,other=t.other;
+ const badFirst=first.n>=10&&other.n>=10&&loss(first)>=.75&&loss(first)-loss(other)>=.30;
+ const badEarly=early.n>=8&&t.total-early.n>=10&&loss(early)>=.75&&loss(early)-(t.overall.l-early.l)/(t.total-early.n)>=.30;
+ if(badEarly)return {priority:4,text:`<b>초반 선제 실점 관리</b>: 15분 안에 먼저 실점한 ${early.n}경기 중 ${early.l}패(패배율 ${pct(loss(early))})예요. ${F('초반 15분은 무리한 전진·압박보다 수비 간격을 유지하세요.','초반 실점을 줄이도록 수비 깊이와 팀 성향을 한 단계씩 조정해 보세요.')}`};
+ const windows=['0~15분','15~30분','30~45분','45~60분','60~75분','75분 이후'];
+ const defensive=t.bins.filter(x=>t.against>=20&&x.a>=8&&x.a/t.against>=(x.i===5?.40:.35)&&x.againstMatches>=Math.max(6,Math.ceil(t.total*.25))&&x.a>x.f&&x.loss/x.againstMatches>=.50).sort((a,b)=>(b.a-b.f)-(a.a-a.f)||b.a-a.a)[0];
+ if(defensive){const x=defensive,i=x.i;const fix=i===0?F('초반 수비 간격과 볼 관리에 먼저 집중하세요.','초반 수비 깊이와 공격 성향을 점검해 보세요.'):i>=4?F('60분 이후 체력과 수비 간격을 확인하고, 필요하면 교체를 활용하세요.','후반 수비 간격과 체력, 교체 선수 구성을 점검해 보세요.'):F('해당 구간의 실점 장면을 복기해 무리한 압박과 전진을 줄여 보세요.','해당 구간에 반복되는 실점 장면을 보고 전술을 한 가지씩 조정해 보세요.');return {priority:3,text:`<b>${windows[i]} 실점 집중</b>: 전체 실점 ${t.against}골 중 ${x.a}골(${pct(x.a/t.against)})이 이 구간에 나왔고, ${x.againstMatches}경기에서 반복됐어요. ${fix}`}}
+ if(badFirst)return {priority:3,text:`<b>선제 실점 이후 경기 운영</b>: 먼저 실점한 ${first.n}경기 중 ${first.l}패(${pct(loss(first))}), 그 외 경기 패배율은 ${pct(loss(other))}예요. ${F('첫 실점 직후 무리하게 공격하기보다 수비 균형을 유지하고 차근차근 동점을 노려 보세요.','선제 실점 이후 급격한 전술 변경보다 수비 균형과 득점 루트를 점검해 보세요.')}`};
+ const lead=t.firstFor;if(lead.n>=10&&loss(lead)>=.40&&lead.l>=5)return {priority:2,text:`<b>선제골 이후 리드 관리</b>: 먼저 득점한 ${lead.n}경기에서 ${lead.l}패했어요. ${F('득점 직후에도 수비 간격을 유지하고 무리한 공격을 줄여 보세요.','선제골 이후 실점 장면을 복기해 수비 균형과 교체 구성을 점검해 보세요.')}`};
+ const attack=t.bins.filter(x=>t.forGoals>=25&&x.f>=10&&x.f/t.forGoals>=(x.i===5?.40:.35)&&x.forMatches>=Math.max(6,Math.ceil(t.total*.25))&&x.f>=x.a*1.5).sort((a,b)=>(b.f-b.a)-(a.f-a.a))[0];
+ if(attack)return {priority:1,text:`<b>${windows[attack.i]} 득점 강점</b>: 전체 득점 ${t.forGoals}골 중 ${attack.f}골(${pct(attack.f/t.forGoals)})이 이 구간에 집중돼요. 해당 시간대의 공격 루트를 유지해 보세요.`};
+ if(lead.n>=10&&other.n>=10&&win(lead)>=.80&&win(lead)-win(first)>=.35&&first.n>=10)return {priority:1,text:`<b>선제골 강점</b>: 먼저 득점한 ${lead.n}경기 중 ${lead.w}승(${pct(win(lead))})이에요. 안정적인 수비를 유지하면서 첫 득점 기회를 만들어 보세요.`};
+ return null;
+}
 function dAdvice(a){
-  const seq=a.seq,n=seq.length,last=seq[n-1];let st=1;for(let i=n-2;i>=0&&seq[i].r===last.r;i--)st++;
-  const w5=seq.slice(-5).filter(x=>x.r==='승').length;
-  const flow=last.r==='승'&&st>=3?`지금 <b>${st}연승</b> 중이라 현재 전술의 큰 틀은 유지해도 좋아요.`:last.r==='패'&&st>=3?`최근 <b>${st}연패</b>라 한 번에 여러 설정을 바꾸기보다 한 가지씩 점검해야 해요.`:`최근 5경기 <b>${w5}승</b>, 전체 승률은 <b>${Math.round(a.W/a.n*100)}%</b>예요.`;
-  const one=s=>{const t=String(s||'').trim(),m=t.match(/^.*?[.!?](?:\s|$)/);return (m?m[0]:t).trim()};
-  const w=a.weak[0],action=w?`<b>${esc(w.weak)}</b>: ${one(w.fix)}`:a.strong?`뚜렷한 약점은 적으니 <b>${esc(a.strong.strong)}</b>을 계속 살리세요.`:'지금은 뚜렷한 약점보다 경기 표본을 더 쌓는 것이 먼저예요.';
-  return `${flow} ${action}`;
+ const seq=a.seq||[],n=seq.length;if(!n)return '';
+ if(a.sample)return '예시 데이터로 표시한 진단입니다. 실제 구단주 경기 기록을 조회하면 조언을 확인할 수 있어요.';
+ const w5=seq.slice(-5).filter(x=>x.r==='승').length;
+ const flow=`최근 ${Math.min(n,5)}경기 <b>${w5}승</b>, 전체 승률은 <b>${Math.round(a.W/a.n*100)}%</b>예요.`;
+ if(n<15)return flow+' 아직 경기 표본이 적어 뚜렷한 약점을 단정하지 않을게요.';
+ const timing=dTimingAdvice(a.timing,a.dm);
+ const one=s=>{const t=String(s||'').trim(),m=t.match(/^.*?[.!?](?:\s|$)/);return (m?m[0]:t).trim()};
+ const w=(a.weak||[]).find(x=>Number.isFinite(x.score)&&x.score>=.25);
+ const good=a.W/a.n>=.60;
+ let action;
+ if(timing?.priority>=2)action=timing.text;
+ else if(w&&!good)action=`<b>${esc(w.unit+' 개선 점검')}</b>: ${one(w.fix)}`;
+ else if(timing)action=timing.text;
+ else if(w)action='전체 성적은 좋은 편이에요. 현재 전술은 유지하고, '+esc(w.unit)+' 지표만 가볍게 점검해 보세요.';
+ else if(a.strong)action=`뚜렷한 개선 과제는 확인되지 않았어요. <b>${esc(a.strong.strong)}</b>라는 강점을 계속 살려 보세요.`;
+ else action='현재 기록에서 뚜렷하게 반복되는 약점은 확인되지 않았어요. 전술을 무리하게 변경할 필요는 없어요.';
+ return flow+' '+action;
 }
 function dRenderTip(a){const advice=dAdvice(a);$('dTip').hidden=!advice;$('dTip').innerHTML=`<div class="tip-h"><span class="tip-ic" aria-hidden="true">💬</span><b>피파고수의 한마디</b><small>최근 ${a.n}경기</small></div><p>${advice}</p>`}
 /* ---------- 상위 랭커 비교 (넥슨 Open API ranker-stats: TOP 10,000 랭커가 같은 선수·같은 포지션으로 뛴 20경기 평균) ---------- */

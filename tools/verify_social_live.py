@@ -33,6 +33,12 @@ def verify():
     print("Public evidence-based diagnosis advice OK")
     assert "function dCoachWeak(" in app and "지금 <b>${streak}연패" in app and "개선 점검" not in app[app.index("function dAdvice("):app.index("function dRenderTip(")]
     print("Public conversational coach advice OK")
+    welcome = get("/assets/css/welcome.css?fgverify=" + stamp)
+    assert "min-height:30px;height:30px;box-sizing:border-box" in css
+    assert ".fg-nav-shell nav.menu{padding-top:0!important}" in css
+    assert "position:static;transform:none;grid-column:2;grid-row:2" in css
+    assert "width:100%;min-width:0;margin:2px 0 0" in welcome
+    print("Public compact mobile navigation OK")
     js = get("/assets/js/social.js?fgverify=" + stamp)
     assert "setChatOpen(chat.hidden)" in js and 'node("time"' not in js
     state = json.loads(get("/api/community/live-chat"))

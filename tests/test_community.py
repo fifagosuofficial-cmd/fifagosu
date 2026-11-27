@@ -233,7 +233,7 @@ def test_kickkick_ad_layout_and_nav_icon(tmp_path):
     doc=BeautifulSoup(html,"html.parser")
     assert doc.body["data-view"]=="fun"
     xp = doc.select_one('#arcTabs a[href="#/games"] .arc-xp-bubble')
-    assert xp and xp.get_text(strip=True) == "XP 획득 기회!"
+    assert xp and xp.get_text(strip=True) == "포인트 획득 기회!"
     assert doc.select_one('body>.wrap[data-ad-layout="public"]')
     for slot in ("fun-left","fun-right","fun-center"):
         assert doc.select_one(f'[data-ad-slot="{slot}"][hidden]')
@@ -274,7 +274,7 @@ def test_arcade_and_mypage_link(tmp_path):
     from bs4 import BeautifulSoup
     tab = BeautifulSoup(source, "html.parser").select_one('#arcTabs a[href="#/games"]')
     assert tab and tab.get_text(strip=True).startswith("미니게임")
-    assert tab.select_one(".arc-xp-bubble").get_text(strip=True) == "XP 획득 기회!"
+    assert tab.select_one(".arc-xp-bubble").get_text(strip=True) == "포인트 획득 기회!"
     assert 'href="#/" aria-current="page">축구테스트</a>' in source
     assert 'window.FGArcade.mount' in source
     assert 'view!="mypage"' in (root/"site/templates/community.html").read_text("utf-8")

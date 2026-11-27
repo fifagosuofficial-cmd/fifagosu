@@ -206,7 +206,7 @@ export async function onRequest({request,env}){
  const broadcast=async(event,path="/broadcast")=>{const h=hub();check(h,"실시간 채팅 서버 연결을 확인해 주세요.",503);const response=await h.fetch("https://chat.internal"+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(event)});check(response.ok,response.status===429?"잠시 후 다시 작성해 주세요.":"실시간 채팅 서버 연결을 확인해 주세요.",response.status===429?429:503)};
  const expireReports=()=>db.batch([q("DELETE FROM reported_chat WHERE created<=?",now()-30*86400),q("DELETE FROM live_chat WHERE created<=?",now()-7*86400)]);
  const pointHistory=async id=>all("SELECT e.kind,e.amount,e.created,CASE WHEN e.sender=? THEN -e.amount ELSE e.amount END delta,CASE WHEN e.kind='adjust' THEN '운영자' WHEN e.sender=? THEN COALESCE(r.nickname,'탈퇴 회원') ELSE COALESCE(s.nickname,'탈퇴 회원') END nickname FROM point_events e LEFT JOIN members s ON s.id=e.sender LEFT JOIN members r ON r.id=e.recipient WHERE e.sender=? OR e.recipient=? ORDER BY e.created DESC,e.id DESC LIMIT 100",id,id,id,id);
- const pointId=(id,value)=>{check(typeof value==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value),"전송 번호가 올바르지 않습니다.");return id+":"+value};
+ const pointId=(id,value)=>{check(typeof value==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value),"전송 번호가 올바르지 않습니다.");return value.toLowerCase()};
  const audit=async(action,target,reason)=>run("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",member.id,action,String(target),reason,now());
  try{
  if(request.method==="GET"){

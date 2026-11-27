@@ -214,3 +214,16 @@ def test_board_article_compact_header_and_mobile_full_width():
         assert token in js
     assert 'new URL("/board/?id="+selected,location.origin)' in js
     assert 'window.matchMedia("(max-width:700px)").matches?88:132' in js
+
+
+def test_market_detail_removes_repeated_explanation_and_retains_help():
+    html = (ROOT / "site/templates/index.html").read_text("utf-8")
+    js = (ROOT / "site/assets/js/app.js").read_text("utf-8")
+    market = html.split('id="v-market"', 1)[1].split('</main>', 1)[0]
+    assert '실제 수집 가격 이력으로 전체 유효 후보군을 계산합니다.' not in market
+    assert 'class="mk-detail-meta"' not in market
+    assert 'class="fgix-help mk-detail-help"' in market
+    assert 'class="mk-help-source"' in market and 'data-market-status' in market
+    assert market.count('<h2 data-market-title>') == 2
+    assert 'data-market-fallback' in market and 'notice.hidden=false' in js
+    assert "root.querySelectorAll('[data-market-title]')" in js

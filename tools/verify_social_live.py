@@ -63,6 +63,12 @@ def verify():
     assert "width:calc(100% + 16px);max-width:none;margin-inline:-8px;padding-inline:0" in mycss
     assert "fc-detail-nav fc-detail-top" in myjs and "fc-detail-share" in myjs and "추천 <strong>" in myjs
     print("Public compact board article and full-width mobile layout OK")
+    market = get("/market/?fgverify=" + stamp).split('id="v-market"', 1)[1].split("</main>", 1)[0]
+    assert "실제 수집 가격 이력으로 전체 유효 후보군을 계산합니다." not in market
+    assert 'class="mk-detail-meta"' not in market and 'class="fgix-help mk-detail-help"' in market
+    assert market.count("<h2 data-market-title>") == 2 and "data-market-fallback" in market
+    assert ".market-dashboard[data-detail] .mk-detail-help" in css
+    print("Public compact market TOP 100 layout OK")
     assert 'id="fcGiftDialog"' in my and 'id="fcPointHistory"' in my
     assert "points/gift" in myjs and "admin/member-detail" in myjs and "admin/points" in myjs
     assert "포인트" in myjs and " XP" not in myjs

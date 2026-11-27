@@ -336,21 +336,31 @@ test("operations metrics aggregate anonymous outcomes, reject extra fields and r
 
 test("operations layout separates status and wraps long mobile metrics",()=>{const js=fs.readFileSync(path.join(__dirname,"../site/assets/js/community.js"),"utf8"),css=fs.readFileSync(path.join(__dirname,"../site/assets/css/community.css"),"utf8");assert.ok(js.includes('class="fc-ops-detail"'));assert.ok(js.includes('class="fc-ops-line"'));assert.match(css,/\.fc-ops-state\{[^}]*white-space:normal/);assert.match(css,/\.fc-ops-line\{[^}]*grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\)/);});
 
-test("private feedback and chat enforce identity, visibility and rate limits",async()=>{
- const {env}=fixture(),{onRequest}=await load();
+test("live chat broadcasts without DB history; only authenticated, signed reports persist",async()=>{
+ const {env,sql}=fixture(),{onRequest}=await load(),sent=[],seen=new Set();
+ env.CHAT_HUB={idFromName:x=>x,get:()=>({fetch:async(url,o)=>{const e=JSON.parse(o.body);if(e.type==="message"){if(seen.has(e.message.author))return new Response(null,{status:429});seen.add(e.message.author)}sent.push(e);return new Response(null,{status:204})}})};
  const req=(p,body,who)=>onRequest({request:new Request(origin+"/api/community/"+p,{...(body===undefined?{}:{method:"POST",body:JSON.stringify(body)}),headers:{Origin:origin,"Content-Type":"application/json","CF-Connecting-IP":"192.0.2.1",...(who?{Cookie:"fg_session="+who.repeat(64)}:{})}}),env});
  assert.equal((await req("live-chat/send",{body:"hello"})).status,401);
- assert.equal((await req("live-chat/send",{body:"hello"},"b")).status,200);
+ const first=await req("live-chat/send",{body:"hello"},"b");assert.equal(first.status,200);const message=(await first.json()).message;
+ assert.equal(sent[0].message.body,"hello");assert.equal("author_subject" in message,false);
  assert.equal((await req("live-chat/send",{body:"spam"},"b")).status,429);
- const chat=await (await req("live-chat")).json();assert.equal(chat.rows[0].body,"hello");assert.equal("author_subject" in chat.rows[0],false);
+ const chat=await (await req("live-chat")).json();assert.equal(chat.version,2);assert.equal("rows" in chat,false);
+ assert.equal(sql.prepare("SELECT count(*) n FROM live_chat").get().n,0);assert.equal(sql.prepare("SELECT count(*) n FROM reported_chat").get().n,0);
+ assert.equal((await req("live-chat/report",{message:{...message,body:"forged"}},"a")).status,403);
+ assert.equal((await req("live-chat/report",{message},"b")).status,400);
+ assert.equal((await req("live-chat/report",{message},"a")).status,200);
+ assert.equal((await req("live-chat/report",{message},"a")).status,200);
+ assert.equal(sql.prepare("SELECT count(*) n FROM reported_chat").get().n,1);
+ assert.equal(sql.prepare("SELECT count(*) n FROM reported_chat_votes").get().n,1);
  assert.equal((await req("contact/send",{kind:"bug",body:"private issue",page:"/",age:true,consent:true})).status,200);
  assert.equal((await req("contact/send",{kind:"suggestion",body:"member issue",page:"/",age:true,consent:true},"b")).status,200);
  assert.equal((await req("admin/social",undefined,"b")).status,403);
  assert.equal((await req("contact/mine")).status,401);
  const mine=await (await req("contact/mine",undefined,"b")).json();assert.equal(mine.rows.length,1);assert.equal(mine.rows[0].body,"member issue");
- const admin=await (await req("admin/social",undefined,"a")).json();assert.equal(admin.unread,2);
+ const admin=await (await req("admin/social",undefined,"a")).json();assert.equal(admin.unread,2);assert.equal(admin.chat.length,1);assert.equal(admin.chat[0].reports,1);
  assert.equal((await req("admin/contact",{id:mine.rows[0].id,status:"done",reply:"fixed"},"a")).status,200);
  assert.equal((await (await req("contact/mine",undefined,"b")).json()).rows[0].reply,"fixed");
- assert.equal((await req("admin/live-chat",{id:chat.rows[0].id,hidden:true},"a")).status,200);
- assert.equal((await (await req("live-chat")).json()).rows.length,0);
+ assert.equal((await req("admin/live-chat",{id:message.id,hidden:true},"a")).status,200);
+ assert.deepEqual((await (await req("live-chat")).json()).hidden,[message.id]);
+ assert.equal(sent.at(-1).type,"moderation");
 });

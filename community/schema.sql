@@ -50,3 +50,8 @@ CREATE TABLE IF NOT EXISTS private_contact(id INTEGER PRIMARY KEY AUTOINCREMENT,
 CREATE INDEX IF NOT EXISTS private_contact_owner ON private_contact(member_id,created);
 CREATE INDEX IF NOT EXISTS private_contact_status ON private_contact(status,created);
 CREATE TABLE IF NOT EXISTS contact_limits(bucket TEXT PRIMARY KEY,expires INTEGER NOT NULL,n INTEGER NOT NULL);
+
+-- Only reported messages are persisted; live delivery is WebSocket-only.
+CREATE TABLE IF NOT EXISTS reported_chat(id TEXT PRIMARY KEY,author_key TEXT NOT NULL,nickname TEXT NOT NULL,body TEXT NOT NULL,created INTEGER NOT NULL,hidden INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS reported_chat_created ON reported_chat(created);
+CREATE TABLE IF NOT EXISTS reported_chat_votes(chat_id TEXT NOT NULL REFERENCES reported_chat(id) ON DELETE CASCADE,member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,created INTEGER NOT NULL,PRIMARY KEY(chat_id,member_id));

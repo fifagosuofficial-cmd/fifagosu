@@ -1,5 +1,6 @@
-# 실시간 채팅 배포
-1. Cloudflare 계정에서 Worker Scripts Edit 권한이 있는 API 토큰을 사용해 `npx wrangler deploy --config workers/chat-hub/wrangler.toml` 실행.
-2. Cloudflare Dashboard → Workers & Pages → fifagosu (Pages) → Settings → Bindings → Durable Object 추가: CHAT_HUB, Worker fifagosu-chat-hub, class ChatHub, Production 환경. 기존 DB와 환경 변수 유지.
-3. 운영 main 배포 후 브라우저 두 개로 채팅 송수신 확인. /api/community/live-chat/socket WebSocket 업그레이드 HTTP 101 확인. 로그인 사용자만 작성하며 D1에 저장된 공개 채팅만 조회. 소켓 연결은 변경 신호만 보내고 내용은 권한 확인 후 API로 읽음.
-4. 연결 실패 시 5초 간격 재연결. 주기적 메시지 폴링 없음. 브라우저가 숨겨지거나 채팅이 화면 밖이면 연결을 닫음. 
+# 피파고수 로컬 채팅 v2
+- 운영 Pages CHAT_HUB 연결 유지. Worker 먼저 배포 후 Pages main 배포.
+- 일반 채팅은 서명된 메시지를 WebSocket으로 전송하고 D1에 저장하지 않음. 브라우저당 최대 200개, 차단 목록 로컬 저장. 미접속 기간 기록은 없음.
+- 서버는 도배 방지용 가명 키·시간만 약 1분 저장. 신고 접수 시 서버 서명 검증 후 신고 메시지만 D1에 저장(30일 조회). 기존 신고 없는 채팅은 새 테이블 생성 시 삭제; 기존 신고 기록은 유지.
+- PC/모바일 동일 기능. 보이지 않는 탭 및 홈 이탈 시 소켓 닫기, 재진입 시 로컬 복원 및 재연결.
+- 운영 배포 후 두 브라우저로 송수신, 새로고침, 로컬 삭제, 신고, 차단, 관리자 권한 테스트 권장.

@@ -21,7 +21,7 @@
 <main id="v-home" class="wrap home2 home3"{% if view!='home' %} hidden{% endif %}>
   <header class="mk-head">
     <div class="mk-title">
-      <h1>오늘의 <em>FC온라인</em> 시장</h1>
+      <h1>오늘의 <em>FC온라인</em> 시장</h1><a class="fg-chat-shortcut" href="#fgLiveChat">실시간 채팅 ↓</a>
     </div>
     <form class="ask mk-ask" id="hForm" autocomplete="off">
       <input id="hNick" placeholder="구단주 닉네임으로 전적 진단" aria-label="구단주 닉네임">
@@ -80,7 +80,7 @@
     <div class="fg-social-head"><h2 id="fgChatTitle">실시간 채팅</h2><span id="fgChatState">연결 중</span></div>
     <div id="fgChatLog" class="fg-chat-log" role="log" aria-label="최근 채팅"></div>
     <form id="fgChatForm"><input name="body" maxlength="300" required placeholder="메시지 입력" aria-label="채팅 메시지" disabled><button disabled>전송</button></form>
-    <div class="fg-social-meta"><span id="fgChatHint" role="status"></span><button id="fgUnblock" type="button" hidden>차단 초기화</button></div>
+    <div class="fg-social-meta"><span id="fgChatHint" role="status"></span><span class="fg-chat-actions"><button id="fgClearChat" type="button">내역 삭제</button><button id="fgUnblock" type="button" hidden>차단 초기화</button></span></div>
     <button class="fg-contact-launch" type="button" data-fg-contact><b>피파고수에게 말해주세요</b><small>건의 · 오류 · 개선 요청을 운영자에게 비공개로 전달</small><span aria-hidden="true">→</span></button>
   </section>
   <aside class="slot" data-ad-slot="home-1" aria-label="광고"></aside>

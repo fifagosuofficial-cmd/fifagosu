@@ -18,10 +18,15 @@ def verify():
         print("Public UI OK:", path)
     diag = get("/diag?fgverify=" + stamp)
     assert 'id="dStyleDialog"' in diag
+    assert '<details id="dQuick" class="dquick-menu">' in diag
+    assert 'id="dFavCount"' in diag and '<div class="dquick" id="dQuick"' not in diag
     app = get("/assets/js/app.js?fgverify=" + stamp)
     assert "function dPlayStyle(" in app and "나의 플레이스타일" in app and "diag-owner-tiers" in app
     css = get("/assets/css/main.css?fgverify=" + stamp)
     assert ".diag-tier-row" in css and ".dr-style-open" in css
+    assert ".dquick-menu:not([open])>.dquick-popover{display:none}" in css
+    assert "countEl.hidden=n===0" in app
+    print("Public compact favorites menu OK")
     print("Public diagnosis layout and playstyle assets OK")
     js = get("/assets/js/social.js?fgverify=" + stamp)
     assert "setChatOpen(chat.hidden)" in js and 'node("time"' not in js

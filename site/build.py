@@ -534,7 +534,10 @@ function renderAds(opt={}){
                  f'<script defer src="/assets/js/ads.js?v={ver}"></script>\n'
                  f'<script defer src="/assets/js/traffic.js?v={ver}"></script>\n'
                  f'<link rel="stylesheet" href="/assets/css/welcome.css?v={ver}">\n'
-                 f'<script defer src="/assets/js/welcome.js?v={ver}"></script>\n</head>')
+                 f'<script defer src="/assets/js/welcome.js?v={ver}"></script>\n'
+                 f'<link rel="stylesheet" href="/assets/css/social.css?v={ver}">\n'
+                 f'<script defer src="/assets/js/social.js?v={ver}"></script>\n</head>')
+    replace_once("</body>", (SITE / "templates" / "_social.html").read_text("utf-8") + "\n</body>")
     path.write_text(html, encoding="utf-8")
 
 

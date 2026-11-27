@@ -112,3 +112,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: dist
           command: pages deploy . --project-name=fifagosu --branch=${{ github.ref_name == 'main' && 'main' || 'renewal' }}
+
+      - name: 운영 채팅 화면 및 WebSocket 확인
+        if: github.event_name == 'push' && github.ref_name == 'main' && env.CF_TOKEN != ''
+        run: python tools/verify_social_live.py

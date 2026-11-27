@@ -102,3 +102,24 @@ def test_mobile_fee_controls_keep_all_discounts_in_one_row():
         assert html.count(f'id="{control}"') == 1
     assert ".sim-fee-bar{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto" in css
     assert ".sim-fee-bar .sfb-out{width:auto;margin:0" in css
+
+
+def test_floating_chat_is_shared_and_minimal():
+    base = (ROOT / "site/templates/base.html").read_text("utf-8")
+    index = (ROOT / "site/templates/index.html").read_text("utf-8")
+    partial = (ROOT / "site/templates/_social.html").read_text("utf-8")
+    css = (ROOT / "site/assets/css/social.css").read_text("utf-8")
+    js = (ROOT / "site/assets/js/social.js").read_text("utf-8")
+    build = (ROOT / "site/build.py").read_text("utf-8")
+    assert '{% include "_social.html" %}' in base
+    assert 'id="fgLiveChat"' not in index and 'fg-chat-shortcut' not in index
+    assert 'id="fgChatToggle"' in partial and 'aria-expanded="false"' in partial
+    assert 'aria-labelledby="fgChatTitle" hidden' in partial
+    assert 'type="checkbox"' not in partial
+    assert '피파고수에게 건의하기' in partial
+    assert '.fg-floating-chat{position:fixed;right:' in css and 'bottom:max(' in css
+    assert 'fg-chat-avatar' in js and 'node("time"' not in js
+    assert '최근 200개 대화는 이 브라우저에만 저장됩니다.' not in js
+    assert 'return chat&&!document.hidden&&!chat.hidden' in js
+    assert 'setChatOpen(chat.hidden)' in js
+    assert '_social.html' in build

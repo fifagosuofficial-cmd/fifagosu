@@ -352,8 +352,8 @@ test("live chat broadcasts without DB history; only authenticated, signed report
  assert.equal((await req("live-chat/report",{message},"a")).status,200);
  assert.equal(sql.prepare("SELECT count(*) n FROM reported_chat").get().n,1);
  assert.equal(sql.prepare("SELECT count(*) n FROM reported_chat_votes").get().n,1);
- assert.equal((await req("contact/send",{kind:"bug",body:"private issue",page:"/",age:true,consent:true})).status,200);
- assert.equal((await req("contact/send",{kind:"suggestion",body:"member issue",page:"/",age:true,consent:true},"b")).status,200);
+ assert.equal((await req("contact/send",{kind:"bug",body:"private issue",page:"/"})).status,200);
+ assert.equal((await req("contact/send",{kind:"suggestion",body:"member issue",page:"/"},"b")).status,200);
  assert.equal((await req("admin/social",undefined,"b")).status,403);
  assert.equal((await req("contact/mine")).status,401);
  const mine=await (await req("contact/mine",undefined,"b")).json();assert.equal(mine.rows.length,1);assert.equal(mine.rows[0].body,"member issue");

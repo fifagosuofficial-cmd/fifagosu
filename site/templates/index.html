@@ -76,6 +76,13 @@
   </section>
   {% endif %}
 {% endif %}
+  <section class="fg-social" id="fgLiveChat" aria-labelledby="fgChatTitle">
+    <div class="fg-social-head"><h2 id="fgChatTitle">실시간 채팅</h2><span id="fgChatState">연결 중</span></div>
+    <div id="fgChatLog" class="fg-chat-log" role="log" aria-label="최근 채팅"></div>
+    <form id="fgChatForm"><input name="body" maxlength="300" required placeholder="메시지 입력" aria-label="채팅 메시지" disabled><button disabled>전송</button></form>
+    <div class="fg-social-meta"><span id="fgChatHint" role="status"></span><button id="fgUnblock" type="button" hidden>차단 초기화</button></div>
+    <button class="fg-contact-launch" type="button" data-fg-contact><b>피파고수에게 말해주세요</b><small>건의 · 오류 · 개선 요청을 운영자에게 비공개로 전달</small><span aria-hidden="true">→</span></button>
+  </section>
   <aside class="slot" data-ad-slot="home-1" aria-label="광고"></aside>
 {% if news %}
   <div class="mk-news">

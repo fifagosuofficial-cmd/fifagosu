@@ -27,7 +27,7 @@ test("non-admin member cannot create notice",async()=>{
 test("popular feed applies inclusive 30-vote threshold before pagination",async()=>{
  const {onRequest}=await load();
  let sql="";
- const env={...enabled,COMMUNITY_DB:{prepare(s){if(s.includes("sqlite_master"))return {first:async()=>({n:4})};sql=s;return {bind(){return {all:async()=>({results:[{id:2,likes:30}]})}}}}}};
+ const env={...enabled,COMMUNITY_DB:{prepare(s){if(s.includes("sqlite_master"))return {first:async()=>({n:5})};sql=s;return {bind(){return {all:async()=>({results:[{id:2,likes:30}]})}}}}}};
  const r=await onRequest({request:new Request(origin+"/api/community/posts?category=popular"),env});
  assert.equal(r.status,200);
  assert.match(sql,/WHERE .*p\.hidden=0.*\(\(SELECT count\(\*\) FROM votes v WHERE v\.post_id=p\.id\)-\(SELECT count\(\*\) FROM post_dislikes d WHERE d\.post_id=p\.id\)\)>=30.*ORDER BY likes DESC.*LIMIT 30/);
@@ -66,7 +66,7 @@ test("login state queue is cleaned and capped before inserting more OAuth state"
 test("public verification uses the allowlisted subject, never a nickname, and never leaks subject",async()=>{
  const {onRequest}=await load();
  const rows=[{id:1,nickname:"피파고수",author_subject:"ordinary"},{id:2,nickname:"different",author_subject:"owner-sub"}];
- const env={...enabled,COMMUNITY_ADMIN_SUBS:"owner-sub",COMMUNITY_DB:{prepare(sql){if(sql.includes("sqlite_master"))return {first:async()=>({n:4})};return {bind(){return {all:async()=>({results:rows}),first:async()=>rows[1]}}}}}};
+ const env={...enabled,COMMUNITY_ADMIN_SUBS:"owner-sub",COMMUNITY_DB:{prepare(sql){if(sql.includes("sqlite_master"))return {first:async()=>({n:5})};return {bind(){return {all:async()=>({results:rows}),first:async()=>rows[1]}}}}}};
  let r=await onRequest({request:new Request(origin+"/api/community/posts"),env});
  assert.equal(r.status,200);let j=await r.json();
  assert.deepEqual(j.posts.map(x=>x.verified),[false,true]);
@@ -364,4 +364,41 @@ test("live chat broadcasts without DB history; only authenticated, signed report
  assert.equal((await req("admin/live-chat",{id:message.id,hidden:true},"a")).status,200);
  assert.deepEqual((await (await req("live-chat")).json()).hidden,[message.id]);
  assert.equal(sent.at(-1).type,"moderation");
+});
+
+test("point gifts are atomic, private, capped and idempotent; admin adjustments are audited",async()=>{
+ const {env,sql}=fixture();
+ const send=(who,nickname,amount,request_id=crypto.randomUUID())=>callFixture(env,"points/gift",{nickname,amount,request_id},who);
+ const id=crypto.randomUUID();assert.equal((await send("","테스트회원",1)).status,401);
+ assert.equal((await send("a","피파고수",1)).status,400);
+ assert.equal((await send("b","피파고수",1)).status,409);
+ assert.equal((await send("a","테스트회원",501)).status,400);
+ let r=await send("a","테스트회원",5,id);assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.rank.points,4);
+ r=await send("a","테스트회원",5,id);assert.equal(r.status,200);assert.equal(r.data.rank.points,4);
+ assert.equal((await send("a","테스트회원",4,id)).status,409);
+ assert.equal((await send("a","테스트회원",5)).status,409);
+ assert.equal((await callFixture(env,"me",null,"b")).data.member.rank.points,5);
+ r=await callFixture(env,"points/history",null,"b");assert.equal(r.data.rows[0].delta,5);assert.equal(r.data.rows[0].nickname,"피파고수");assert.ok(!("sender" in r.data.rows[0]));
+ assert.equal((await callFixture(env,"points/history")).status,401);
+ const adjustment={id:"b",amount:2000,reason:"test grant",request_id:crypto.randomUUID()};
+ assert.equal((await callFixture(env,"admin/points",adjustment,"b")).status,403);
+ r=await callFixture(env,"admin/points",adjustment,"a");assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.rank.points,2005);
+ assert.equal((await callFixture(env,"admin/points",adjustment,"a")).data.rank.points,2005);
+ assert.equal(sql.prepare("SELECT count(*) n FROM audit WHERE action='point-adjust'").get().n,1);
+ assert.equal((await send("b","피파고수",500)).status,200);assert.equal((await send("b","피파고수",500)).status,200);assert.equal((await send("b","피파고수",1)).status,409);
+ r=await callFixture(env,"admin/points",{...adjustment,amount:-1001,request_id:crypto.randomUUID()},"a");assert.equal(r.status,200);assert.equal(r.data.rank.points,4);
+ assert.equal((await callFixture(env,"admin/points",{...adjustment,amount:-5,request_id:crypto.randomUUID()},"a")).status,409);
+ assert.equal((await callFixture(env,"admin/member-detail?id=b",null,"b")).status,403);
+ r=await callFixture(env,"admin/member-detail?id=b",null,"a");assert.equal(r.status,200);assert.equal(r.data.member.rank.points,4);assert.ok(!("subject" in r.data.member));
+ assert.equal((await callFixture(env,"admin/member-search?q=테스트",null,"a")).data.rows.length,1);
+ assert.equal((await callFixture(env,"admin/member-sessions",{id:"b",reason:"test"}, "a")).status,200);
+ assert.equal((await callFixture(env,"points/history",null,"b")).status,401);
+ sql.close();
+});
+test("withdrawal never refunds sent points or erases remaining member gift balance",async()=>{
+ const {env,sql}=fixture();let r=await callFixture(env,"points/gift",{nickname:"테스트회원",amount:5,request_id:crypto.randomUUID()},"a");assert.equal(r.status,200);
+ r=await callFixture(env,"withdraw",{confirm:"탈퇴"},"a");assert.equal(r.status,200);
+ r=await callFixture(env,"me",null,"b");assert.equal(r.data.member.rank.points,5);
+ r=await callFixture(env,"points/history",null,"b");assert.equal(r.data.rows[0].nickname,"탈퇴 회원");assert.equal(r.data.rows[0].delta,5);
+ sql.close();
 });

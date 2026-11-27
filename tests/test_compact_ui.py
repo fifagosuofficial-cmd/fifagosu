@@ -169,3 +169,23 @@ def test_point_gift_and_member_management_ui():
     for path in ("site/assets/js/community.js","site/assets/js/welcome.js","site/assets/js/minigames.js","fun/index.html"):
         import re
         assert not re.search(r"\bXP\b",(ROOT/path).read_text("utf-8")), path
+
+
+def test_board_has_no_duplicate_account_link():
+    html = (ROOT / "site/templates/community.html").read_text("utf-8")
+    base = (ROOT / "site/templates/base.html").read_text("utf-8")
+    js = (ROOT / "site/assets/js/community.js").read_text("utf-8")
+    assert '{% if view=="admin" %}<a id="fcAccountLink"' in html
+    assert 'if($("fcAccountLink"))$("fcAccountLink").innerHTML' in js
+    assert 'fg-account-icon' in base and '/mypage/' in base
+
+
+def test_board_view_count_stays_visible_on_mobile():
+    html = (ROOT / "site/templates/community.html").read_text("utf-8")
+    css = (ROOT / "site/assets/css/community.css").read_text("utf-8")
+    js = (ROOT / "site/assets/js/community.js").read_text("utf-8")
+    assert '<th scope="col">날짜</th><th scope="col">조회</th><th scope="col">순추천</th>' in html
+    assert 'fc-count fc-views' in js and 'count(x.views)' in js
+    assert '.fc-board-table .fc-col-views{width:0}' not in css
+    assert '.fc-board-table td:nth-child(5){display:none}' not in css
+    assert '.fc-board-table .fc-col-views{width:32px}' in css

@@ -522,41 +522,58 @@ $('dSum').addEventListener('mouseleave',()=>{const tip=$('dsTip');if(tip)tip.hid
 /* ---------- 피파고수의 한마디: 약점·흐름·랭커 비교를 종합한 조언 ---------- */
 function dTimingAdvice(t,dm=false){
  if(!t||t.total<15||t.total<t.all*.8)return null;
- const pct=x=>Math.round(x*100)+'%',F=(manual,manager)=>dm?manager:manual;
- const loss=x=>x.n?x.l/x.n:0,win=x=>x.n?x.w/x.n:0,overall=loss(t.overall),first=t.firstAgainst,early=t.earlyAgainst,other=t.other;
+ const F=(manual,manager)=>dm?manager:manual;
+ const loss=x=>x.n?x.l/x.n:0,win=x=>x.n?x.w/x.n:0,first=t.firstAgainst,early=t.earlyAgainst,other=t.other;
  const badFirst=first.n>=10&&other.n>=10&&loss(first)>=.75&&loss(first)-loss(other)>=.30;
  const badEarly=early.n>=8&&t.total-early.n>=10&&loss(early)>=.75&&loss(early)-(t.overall.l-early.l)/(t.total-early.n)>=.30;
- if(badEarly)return {priority:4,text:`<b>초반 선제 실점 관리</b>: 15분 안에 먼저 실점한 ${early.n}경기 중 ${early.l}패(패배율 ${pct(loss(early))})예요. ${F('초반 15분은 무리한 전진·압박보다 수비 간격을 유지하세요.','초반 실점을 줄이도록 수비 깊이와 팀 성향을 한 단계씩 조정해 보세요.')}`};
- const windows=['0~15분','15~30분','30~45분','45~60분','60~75분','75분 이후'];
+ if(badEarly)return {priority:4,text:F('경기 초반에 먼저 실점하면 그대로 지는 경우가 많네요. <b>첫 15분은 수비 간격을 유지하고 공을 안전하게 돌리는 데</b> 집중해 보세요.','초반에 먼저 실점하면 그대로 지는 경우가 많네요. <b>경기 초반의 수비 깊이와 팀 성향</b>부터 하나씩 조정해 보세요.')};
+ const windows=['경기 시작부터 15분 사이','15~30분 사이','전반 막판','후반 시작부터 60분 사이','60~75분 사이','75분 이후'];
  const defensive=t.bins.filter(x=>t.against>=20&&x.a>=8&&x.a/t.against>=(x.i===5?.40:.35)&&x.againstMatches>=Math.max(6,Math.ceil(t.total*.25))&&x.a>x.f&&x.loss/x.againstMatches>=.50).sort((a,b)=>(b.a-b.f)-(a.a-a.f)||b.a-a.a)[0];
- if(defensive){const x=defensive,i=x.i;const fix=i===0?F('초반 수비 간격과 볼 관리에 먼저 집중하세요.','초반 수비 깊이와 공격 성향을 점검해 보세요.'):i>=4?F('60분 이후 체력과 수비 간격을 확인하고, 필요하면 교체를 활용하세요.','후반 수비 간격과 체력, 교체 선수 구성을 점검해 보세요.'):F('해당 구간의 실점 장면을 복기해 무리한 압박과 전진을 줄여 보세요.','해당 구간에 반복되는 실점 장면을 보고 전술을 한 가지씩 조정해 보세요.');return {priority:3,text:`<b>${windows[i]} 실점 집중</b>: 전체 실점 ${t.against}골 중 ${x.a}골(${pct(x.a/t.against)})이 이 구간에 나왔고, ${x.againstMatches}경기에서 반복됐어요. ${fix}`}}
- if(badFirst)return {priority:3,text:`<b>선제 실점 이후 경기 운영</b>: 먼저 실점한 ${first.n}경기 중 ${first.l}패(${pct(loss(first))}), 그 외 경기 패배율은 ${pct(loss(other))}예요. ${F('첫 실점 직후 무리하게 공격하기보다 수비 균형을 유지하고 차근차근 동점을 노려 보세요.','선제 실점 이후 급격한 전술 변경보다 수비 균형과 득점 루트를 점검해 보세요.')}`};
- const lead=t.firstFor;if(lead.n>=10&&loss(lead)>=.40&&lead.l>=5)return {priority:2,text:`<b>선제골 이후 리드 관리</b>: 먼저 득점한 ${lead.n}경기에서 ${lead.l}패했어요. ${F('득점 직후에도 수비 간격을 유지하고 무리한 공격을 줄여 보세요.','선제골 이후 실점 장면을 복기해 수비 균형과 교체 구성을 점검해 보세요.')}`};
+ if(defensive){const i=defensive.i;const fix=i===0?F('처음부터 공을 뺏으려고 달려들기보다는 수비 간격을 지키며 상대 공격을 읽어 보세요.','초반부터 수비가 흔들리지 않도록 수비 깊이와 공격 성향을 하나씩 조정해 보세요.'):i>=4?F('60분쯤부터 선수 체력을 확인하고, 지친 선수를 교체하면서 중앙 공간을 내주지 마세요.','후반에 체력이 떨어지는 선수와 교체 구성을 먼저 살펴보세요.'):F('이 시간대에는 무리한 압박보다 중앙 공간을 지키고 상대의 다음 패스 길을 막아 보세요.','이 시간대 실점 장면을 다시 보고 수비 간격과 전술을 한 가지씩 조정해 보세요.');return {priority:3,text:`<b>${windows[i]}에 실점이 유독 많이 나오네요.</b> ${fix}`}}
+ if(badFirst)return {priority:3,text:F('먼저 실점한 경기에서 흐름을 되찾지 못하는 경우가 많네요. 한 골을 먹었다고 바로 공격에 인원을 몰지 말고, <b>수비 균형을 지키면서 동점 기회</b>를 노려 보세요.','먼저 실점한 뒤 경기를 뒤집지 못하는 경우가 많네요. 공격 성향을 무작정 높이기보다는 <b>수비 균형과 득점 루트</b>부터 점검해 보세요.')};
+ const lead=t.firstFor;if(lead.n>=10&&loss(lead)>=.40&&lead.l>=5)return {priority:2,text:F('선제골을 넣고도 경기를 내주는 경우가 꽤 있네요. 앞서갈 때는 추가골을 서두르기보다 <b>공을 안전하게 소유하고 수비 간격을 지켜</b> 보세요.','선제골을 넣고도 경기를 내주는 경우가 꽤 있네요. 득점 이후 반복되는 실점 장면을 살펴보고 수비 균형과 교체 구성을 점검해 보세요.')};
  const attack=t.bins.filter(x=>t.forGoals>=25&&x.f>=10&&x.f/t.forGoals>=(x.i===5?.40:.35)&&x.forMatches>=Math.max(6,Math.ceil(t.total*.25))&&x.f>=x.a*1.5).sort((a,b)=>(b.f-b.a)-(a.f-a.a))[0];
- if(attack)return {priority:1,text:`<b>${windows[attack.i]} 득점 강점</b>: 전체 득점 ${t.forGoals}골 중 ${attack.f}골(${pct(attack.f/t.forGoals)})이 이 구간에 집중돼요. 해당 시간대의 공격 루트를 유지해 보세요.`};
- if(lead.n>=10&&other.n>=10&&win(lead)>=.80&&win(lead)-win(first)>=.35&&first.n>=10)return {priority:1,text:`<b>선제골 강점</b>: 먼저 득점한 ${lead.n}경기 중 ${lead.w}승(${pct(win(lead))})이에요. 안정적인 수비를 유지하면서 첫 득점 기회를 만들어 보세요.`};
+ if(attack)return {priority:1,text:`<b>${windows[attack.i]}에 득점이 잘 나오네요.</b> 지금 통하는 공격 루트는 유지하고, 그 전후에는 무리하게 공격하다가 공을 잃지 않도록 신경 써 보세요.`};
+ if(lead.n>=10&&other.n>=10&&win(lead)>=.80&&win(lead)-win(first)>=.35&&first.n>=10)return {priority:1,text:'먼저 골을 넣었을 때 경기를 잘 풀어가는 편이네요. 초반부터 무리할 필요는 없지만, <b>첫 득점 기회</b>만큼은 놓치지 않도록 집중해 보세요.'};
  return null;
+}
+function dCoachWeak(w,dm){
+ const F=(manual,manager)=>dm?manager:manual;
+ const advice={
+ '골 전환율':F('유효슈팅에 비해 골이 잘 나오지 않는 편이네요. 슈팅을 서두르기보다 <b>수비수와 골키퍼 위치를 보고 각도를 한 번 더 만들어</b> 보세요.','유효슈팅에 비해 골이 잘 나오지 않는 편이네요. 공격수의 결정력과 침착성, 실제 슈팅 위치부터 살펴보세요.'),
+ '박스 밖 비중':F('중거리 슈팅을 많이 시도하는데 마무리 효율은 낮은 편이네요. 슈팅을 한 박자 참았다가 <b>박스 안으로 패스를 연결</b>해 보세요.','박스 밖 슈팅에 비해 득점이 잘 나오지 않네요. 박스 안에서 찬스를 만들 수 있도록 공격 전술을 한 가지씩 조정해 보세요.'),
+ '75분 이후 실점':F('경기 막판에 실점이 몰리는 편이네요. 65~70분쯤 체력을 확인하고, 지친 선수를 교체하면서 수비 간격을 지켜 보세요.','경기 막판에 실점이 몰리는 편이네요. 후반 체력과 교체 선수 구성을 먼저 점검해 보세요.'),
+ '15분 이전 실점':F('경기 초반에 실점이 몰리는 편이네요. 첫 15분은 무리한 압박보다 수비 간격을 지키면서 상대 패턴을 읽어 보세요.','경기 초반에 실점이 몰리는 편이네요. 수비 깊이와 팀 성향을 조금씩 조정해 보세요.'),
+ '헤딩 실점 비중':F('헤딩 실점이 반복되는 편이네요. 센터백으로 공만 따라가기보다 크로스가 올라오기 전에 측면을 막고, 박스 안에서는 공격수보다 먼저 자리를 잡아 보세요.','헤딩 실점이 반복되는 편이네요. 센터백의 키와 점프, 헤더 능력뿐 아니라 측면에서 크로스를 허용하는 장면도 확인해 보세요.'),
+ '스루패스 성공률':F('침투 패스가 자주 끊기는 편이네요. 아무 때나 스루패스를 넣기보다 <b>공격수가 수비수 사이로 뛰어드는 순간</b>까지 기다려 보세요.','침투 패스가 자주 끊기는 편이네요. 미드필더의 시야와 패스 능력, 공격수의 움직임이 잘 맞는지 확인해 보세요.'),
+ '점유 우세 시 승률':F('공을 오래 소유했을 때 오히려 경기가 잘 풀리지 않는 편이네요. 뒤에서 계속 공을 돌리기보다는 상대 수비 사이에 공간이 생기는 순간 전진 패스를 시도해 보세요.','점유율이 높은 경기에서 오히려 결과가 좋지 않네요. 공을 소유하는 것보다 박스 안에서 찬스를 만드는 데 초점을 맞춰 공격 전술을 조정해 보세요.'),
+ '태클 성공률':F('태클이 잘 들어가지 않는 편이네요. 상대에게 무작정 달려들기보다 <b>패스 길부터 막고 공이 발에서 떨어지는 순간</b> 태클해 보세요.','태클 성공률이 상대보다 낮은 편이네요. 수비수의 대인 수비와 스탠딩 태클 능력, 수비 간격이 잘 유지되는지 살펴보세요.'),
+ '경기당 반칙':F('반칙이 상대보다 자주 나오는 편이네요. 특히 박스 근처에서는 뒤에서 태클하기보다 몸으로 길을 막고 상대가 방향을 바꿀 때 공을 노려 보세요.','반칙이 상대보다 자주 나오는 편이네요. 수비수의 공격성과 태클 성향, 수비 압박 설정을 먼저 살펴보세요.'),
+ '볼 경합 승률':F('몸싸움에서 공을 내주는 경우가 상대보다 많네요. 공을 오래 끌기보다는 가까운 선수에게 빠르게 연결해서 불필요한 경합을 줄여 보세요.','몸싸움에서 공을 내주는 경우가 상대보다 많네요. 중원 선수의 몸싸움과 밸런스, 패스를 받을 때 주변 지원이 충분한지 확인해 보세요.'),
+ '공중볼 경합 승률':F('공중볼 경합에서 밀리는 편이네요. 무리하게 높은 공을 보내기보다는 땅볼 패스를 활용하고, 수비할 때는 낙하지점에 먼저 자리 잡아 보세요.','공중볼 경합에서 밀리는 편이네요. 센터백과 공격수의 키·점프 능력을 살펴보고 높은 공을 자주 사용하는 전술이 맞는지도 점검해 보세요.')
+ };
+ if(Object.hasOwn(advice,w.unit))return advice[w.unit];
+ if(w.unit==='이 포메이션 상대 승률')return '특정 포메이션을 상대할 때 경기가 유독 잘 풀리지 않네요. 그 경기들에서 중앙과 측면 중 어느 쪽 공간을 많이 내주는지 먼저 살펴보고 전술을 조정해 보세요.';
+ if(/ 라인 평점$/.test(w.unit||''))return '특정 라인에서 상대에게 밀리는 경향이 있네요. 선수 교체부터 하기보다는 그 라인의 역할과 주변 선수의 지원이 충분한지 먼저 확인해 보세요.';
+ return '한 가지 지표에서 개선할 여지가 보이네요. 여러 설정을 동시에 바꾸기보다 해당 장면을 다시 확인하고 하나씩 조정해 보세요.';
 }
 function dAdvice(a){
  const seq=a.seq||[],n=seq.length;if(!n)return '';
- if(a.sample)return '예시 데이터로 표시한 진단입니다. 실제 구단주 경기 기록을 조회하면 조언을 확인할 수 있어요.';
- const w5=seq.slice(-5).filter(x=>x.r==='승').length;
- const flow=`최근 ${Math.min(n,5)}경기 <b>${w5}승</b>, 전체 승률은 <b>${Math.round(a.W/a.n*100)}%</b>예요.`;
- if(n<15)return flow+' 아직 경기 표본이 적어 뚜렷한 약점을 단정하지 않을게요.';
- const timing=dTimingAdvice(a.timing,a.dm);
- const one=s=>{const t=String(s||'').trim(),m=t.match(/^.*?[.!?](?:\s|$)/);return (m?m[0]:t).trim()};
- const w=(a.weak||[]).find(x=>Number.isFinite(x.score)&&x.score>=.25);
- const good=a.W/a.n>=.60;
+ if(a.sample)return '예시 경기 기록이에요. 실제 구단주를 검색하면 경기 흐름에 맞춰 조언해 드릴게요.';
+ const last=seq[n-1].r;let streak=1;while(streak<n&&seq[n-1-streak].r===last)streak++;
+ const flow=streak>=2&&last==='승'?`지금 <b>${streak}연승</b> 중이네요. `:streak>=2&&last==='패'?`지금 <b>${streak}연패</b> 중이네요. `:'';
+ if(n<15)return flow+'아직 경기 기록이 많지 않네요. 지금 전술을 크게 바꾸기보다는 몇 경기 더 지켜보세요.';
+ const timing=dTimingAdvice(a.timing,a.dm),w=(a.weak||[]).find(x=>Number.isFinite(x.score)&&x.score>=.25),good=a.W/a.n>=.60;
  let action;
  if(timing?.priority>=2)action=timing.text;
- else if(w&&!good)action=`<b>${esc(w.unit+' 개선 점검')}</b>: ${one(w.fix)}`;
+ else if(w&&!good)action=dCoachWeak(w,a.dm);
  else if(timing)action=timing.text;
- else if(w)action='전체 성적은 좋은 편이에요. 현재 전술은 유지하고, '+esc(w.unit)+' 지표만 가볍게 점검해 보세요.';
- else if(a.strong)action=`뚜렷한 개선 과제는 확인되지 않았어요. <b>${esc(a.strong.strong)}</b>라는 강점을 계속 살려 보세요.`;
- else action='현재 기록에서 뚜렷하게 반복되는 약점은 확인되지 않았어요. 전술을 무리하게 변경할 필요는 없어요.';
- return flow+' '+action;
+ else if(w)action='지금 경기 운영은 전반적으로 잘하고 있네요. 현재 전술의 큰 틀은 유지하고, '+(w.unit==='태클 성공률'?'수비 타이밍':w.unit==='골 전환율'?'마무리 슈팅':'눈에 띄는 지표 한 가지')+'만 가볍게 점검해 보세요.';
+ else if(a.strong?.sfix)action=a.strong.sfix;
+ else action='뚜렷하게 반복되는 약점은 확인되지 않았어요. 지금은 전술을 무리하게 바꾸기보다 잘 풀렸던 경기의 흐름을 유지해 보세요.';
+ return flow+action;
 }
-function dRenderTip(a){const advice=dAdvice(a);$('dTip').hidden=!advice;$('dTip').innerHTML=`<div class="tip-h"><span class="tip-ic" aria-hidden="true">💬</span><b>피파고수의 한마디</b><small>최근 ${a.n}경기</small></div><p>${advice}</p>`}
+function dRenderTip(a){const advice=dAdvice(a);$('dTip').hidden=!advice;$('dTip').innerHTML=`<div class="tip-h"><span class="tip-ic" aria-hidden="true">💬</span><b>피파고수의 한마디</b></div><p>${advice}</p>`}
 /* ---------- 상위 랭커 비교 (넥슨 Open API ranker-stats: TOP 10,000 랭커가 같은 선수·같은 포지션으로 뛴 20경기 평균) ---------- */
 const RK_ATT=[['goal','골'],['assist','도움'],['shoot','슈팅'],['effectiveShoot','유효슈팅'],['dribbleSuccess','드리블 성공률'],['passSuccess','패스 성공률']],RK_DEF=[['tackle','태클'],['block','블락']];
 const RK_TIP='같은 선수·포지션의 상위 랭커 비교 기준보다 낮은 기록입니다.';

@@ -251,9 +251,9 @@ test('timing advice distinguishes repeated early losses, first concession, scori
  const match=(f,a,res)=>({matchInfo:[{shoot:{goalTotal:f.length},shootDetail:f.map(goalTime=>({goalTime,result:3})),matchDetail:{matchResult:res,matchEndType:0}},{shoot:{goalTotal:a.length},shootDetail:a.map(goalTime=>({goalTime,result:3}))}]});
  const many=(n,m)=>Array.from({length:n},()=>m);
  let rows=[...many(12,match([], [200,400], '패')),...many(18,match([1200,2000],[],'승'))];
- let ev=scope.dTimingEvidence(rows);assert.equal(ev.earlyAgainst.l,12);assert.match(scope.dTimingAdvice(ev).text,/초반 선제 실점 관리/);
- rows=[...many(12,match([], [1800], '패')),...many(18,match([1200,2000],[],'승'))];assert.match(scope.dTimingAdvice(scope.dTimingEvidence(rows)).text,/선제 실점 이후/);
- rows=[...many(12,match([3200,3300],[],'승')),...many(18,match([1000],[],'승'))];assert.match(scope.dTimingAdvice(scope.dTimingEvidence(rows)).text,/45~60분 득점 강점/);
+ let ev=scope.dTimingEvidence(rows);assert.equal(ev.earlyAgainst.l,12);assert.match(scope.dTimingAdvice(ev).text,/경기 초반에 먼저 실점하면/);
+ rows=[...many(12,match([], [1800], '패')),...many(18,match([1200,2000],[],'승'))];assert.match(scope.dTimingAdvice(scope.dTimingEvidence(rows)).text,/먼저 실점한 경기에서/);
+ rows=[...many(12,match([3200,3300],[],'승')),...many(18,match([1000],[],'승'))];assert.match(scope.dTimingAdvice(scope.dTimingEvidence(rows)).text,/후반 시작부터 60분 사이에 득점/);
  rows=[...many(2,match([], [200], '패')),...many(28,match([],[],'무'))];assert.equal(scope.dTimingAdvice(scope.dTimingEvidence(rows)),null);
  rows=[...many(2,match([],Array(20).fill(200),'패')),...many(28,match([],[],'무'))];assert.equal(scope.dTimingAdvice(scope.dTimingEvidence(rows)),null);
  rows=[...many(12,match([], [200], '패')),...many(18,match([],[],'패'))];assert.equal(scope.dTimingAdvice(scope.dTimingEvidence(rows)),null);
@@ -261,6 +261,18 @@ test('timing advice distinguishes repeated early losses, first concession, scori
  assert.equal(scope.dRateGap(.49,.50,100,100),false);assert.equal(scope.dRateGap(.2,.5,5,5),false);assert.equal(scope.dRateGap(.3,.6,100,100),true);
  const base={n:30,W:15,seq:many(30,{r:'무'}),weak:[{score:.1,unit:'패스',fix:'큰 문제'}]};assert.match(scope.dAdvice(base),/뚜렷하게 반복되는 약점은 확인되지/);assert.ok(!scope.dAdvice(base).includes('큰 문제'));
  assert.match(scope.dAdvice({...base,W:22,weak:[{score:.5,unit:'패스',fix:'큰 문제'}]}),/가볍게 점검/);
- assert.match(scope.dAdvice({...base,n:5,seq:many(5,{r:'패'})}),/표본이 적어/);
- assert.match(scope.dAdvice({...base,sample:true}),/예시 데이터/);
+ assert.match(scope.dAdvice({...base,n:5,seq:many(5,{r:'패'})}),/경기 기록이 많지 않네요/);
+ assert.match(scope.dAdvice({...base,sample:true}),/예시 경기 기록/);
+});
+
+test('coach advice is conversational, only actual streaks appear, and no report headings or win percentages',()=>{
+ const a=src.indexOf('function dTimingAdvice('),b=src.indexOf('function dRenderTip(',a),scope={};vm.createContext(scope);vm.runInContext(src.slice(a,b),scope);
+ const seq=Array.from({length:30},(_,i)=>({r:i%2?'승':'패'})),base={n:30,W:15,seq,weak:[{score:.4,unit:'태클 성공률'}]};
+ let q=scope.dAdvice(base);assert.match(q,/^태클이 잘 들어가지/);assert.doesNotMatch(q,/최근|승률|%|개선 점검|:/);
+ q=scope.dAdvice({...base,seq:[...seq.slice(0,27),...Array.from({length:3},()=>({r:'패'}))]});assert.match(q,/4연패/);
+ q=scope.dAdvice({...base,seq:[...seq.slice(0,28),{r:'승'},{r:'승'}]});assert.match(q,/3연승/);
+ assert.match(scope.dAdvice({...base,dm:true}),/스탠딩 태클/);
+ assert.doesNotMatch(scope.dAdvice({...base,weak:[{score:.1,unit:'태클 성공률'}]}),/태클이 잘/);
+ const render=src.slice(src.indexOf('function dRenderTip('),src.indexOf('/* ---------- 상위 랭커 비교'));
+ assert.doesNotMatch(render,/<small>최근/);
 });

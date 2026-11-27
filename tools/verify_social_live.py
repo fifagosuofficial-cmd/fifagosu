@@ -56,6 +56,10 @@ def verify():
     assert ".fc-board-table td:nth-child(5){display:none}" not in mycss
     assert "fc-count fc-views" in myjs
     print("Public board view counts visible OK")
+    assert 'id="fcMobileWrite"' in board and "순추천" not in board
+    assert "function boardMobileMeta(x,type)" in myjs and "fc-mobile-views" in myjs
+    assert ".fc-board-table .fc-title-cell{display:block;width:100%" in mycss
+    print("Public mobile two-line board layout OK")
     assert 'id="fcGiftDialog"' in my and 'id="fcPointHistory"' in my
     assert "points/gift" in myjs and "admin/member-detail" in myjs and "admin/points" in myjs
     assert "포인트" in myjs and " XP" not in myjs

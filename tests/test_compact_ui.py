@@ -189,3 +189,17 @@ def test_board_view_count_stays_visible_on_mobile():
     assert '.fc-board-table .fc-col-views{width:0}' not in css
     assert '.fc-board-table td:nth-child(5){display:none}' not in css
     assert '.fc-board-table .fc-col-views{width:32px}' in css
+
+
+def test_mobile_board_two_line_layout_and_desktop_table():
+    html = (ROOT / "site/templates/community.html").read_text("utf-8")
+    css = (ROOT / "site/assets/css/community.css").read_text("utf-8")
+    js = (ROOT / "site/assets/js/community.js").read_text("utf-8")
+    assert 'id="fcMobileWrite"' in html
+    assert '.fc-mobile-meta,.fc-mobile-tag,.fc-mobile-board-tools{display:none}' in css
+    assert '.fc-board-table .fc-title-cell{display:block;width:100%' in css
+    assert 'function boardMobileMeta(x,type)' in js and 'boardMobileMeta(x,type)' in js
+    assert 'fc-mobile-views' in js and 'fc-mobile-author' in js
+    assert 'fc-mobile-notice' in js and 'fc-mobile-hot' in js
+    assert 'boardMobileTime' in js and 'syncMobileWrite' in js
+    assert '순추천' not in html

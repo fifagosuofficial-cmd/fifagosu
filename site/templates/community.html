@@ -9,7 +9,7 @@
 {% if view=='board' %}
 <section id="fcPost" class="fc-detail" hidden></section>
 <h2 id="fcListTitle" class="fc-list-title" hidden>게시글 목록</h2>
-<nav id="fcTabs" class="fc-tabs" aria-label="게시판 분류"></nav>
+<div class="fc-mobile-board-tools"><span>게시글</span><button id="fcMobileWrite" type="button" disabled>글쓰기</button></div><nav id="fcTabs" class="fc-tabs" aria-label="게시판 분류"></nav>
 <section id="fcBoardList" class="fc-board-list" aria-label="게시글 목록">
 <aside id="fcBoardAd" class="slot" data-ad-slot="board-1" aria-label="광고"></aside>
 <p id="fcPopularHint" hidden>추천에서 비추천을 뺀 점수가 30점 이상인 게시글이 자동으로 표시됩니다.</p>

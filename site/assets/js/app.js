@@ -464,8 +464,9 @@ function dFavoriteButton(nick){const on=dIsFavorite(nick);return `<button type="
 dMigrateFavorites();
 function dRenderQuick(active){const s=dRead(),mk=(x,k)=>`<button type="button" data-dnick="${esc(x.nick)}" class="dquick-chip${active&&x.nick.toLowerCase()===active.toLowerCase()?' on':''}">${k==='fav'?'★ ':''}${esc(x.nick)}<small>${x.at?new Date(x.at).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'}):''}</small></button>`;
   $('dFavs').innerHTML=(s.favs||[]).map(x=>`<span class="df-pair">${mk(x,'fav')}<button type="button" class="df-remove" data-dfavorite-remove="${esc(x.nick)}" aria-label="${esc(x.nick)} 즐겨찾기 삭제" title="즐겨찾기 삭제">×</button></span>`).join('')||'<span class="muted">즐겨찾기가 없어요.</span>';
-  const fav=active&&(s.favs||[]).some(x=>x.nick.toLowerCase()===active.toLowerCase());$('dFav').textContent=fav?'★ 즐겨찾기 해제':'☆ 즐겨찾기';$('dFav').disabled=!active;$('dMine').disabled=!active;$('dShare').disabled=!active;
-  if(active&&s.mine)$('dMine').textContent=s.mine.toLowerCase()===active.toLowerCase()?'내 구단 ✓':'내 구단 등록';
+  const n=(s.favs||[]).length;const countEl=$('dFavCount');countEl.hidden=n===0;countEl.textContent=n;const mine=s.mine&&!(s.favs||[]).some(x=>x.nick.toLowerCase()===s.mine.toLowerCase());if(mine){$('dFavs').insertAdjacentHTML('afterbegin',`<button type="button" class="dquick-chip dquick-mine" data-dnick="${esc(s.mine)}">내 구단 · ${esc(s.mine)}</button>`)}
+  const fav=active&&(s.favs||[]).some(x=>x.nick.toLowerCase()===active.toLowerCase());$('dFav').textContent=fav?'★ 즐겨찾기 해제':'☆ 즐겨찾기 추가';$('dFav').disabled=!active;$('dMine').disabled=!active;$('dShare').disabled=!active;
+  $('dMine').textContent=active&&s.mine&&s.mine.toLowerCase()===active.toLowerCase()?'내 구단 ✓':'내 구단 등록';
   const star=$('dBoard').querySelector('[data-dfavorite-toggle]');if(star){const on=dIsFavorite(star.dataset.dfavoriteToggle);star.setAttribute('aria-pressed',String(on));star.textContent=on?'★':'☆';star.setAttribute('aria-label',on?'즐겨찾기 해제':'즐겨찾기에 추가');star.title=on?'즐겨찾기 해제':'즐겨찾기에 추가'}
 }
 dRenderQuick('');
@@ -1147,13 +1148,14 @@ async function runDiag(nick){
   Promise.allSettled([dLoadRanker(a,dMode,seq),dLoadRating(a,dMode,seq)]).then(()=>{if(seq===diagSeq)dEnrich(a,seq)});
 }
 function dClear(){['dCards','dPanel','dMatches','dSum','dReport','dReportHead'].forEach(id=>$(id).innerHTML='');$('dTip').hidden=true;$('dReportShell').hidden=true;$('dTc').hidden=true;$('dAllN').textContent=''}
-$('dForm').addEventListener('submit',e=>{e.preventDefault();runDiag($('dNick').value)});
+$('dForm').addEventListener('submit',e=>{e.preventDefault();$('dQuick').open=false;runDiag($('dNick').value)});
 $('dBoard').addEventListener('click',e=>{const fav=e.target.closest('[data-dfavorite-toggle]');if(fav){dChangeFavorite(fav.dataset.dfavoriteToggle);return}if(e.target.closest('[data-sample]')){$('dNick').value='예시';runDiag('예시')}});
 $('dCount').addEventListener('click',e=>{const b=e.target.closest('[data-n]');if(!b)return;dCount=+b.dataset.n;$('dCount').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));runDiag($('dNick').value)});
 $('dMode').addEventListener('click',e=>{const b=e.target.closest('[data-mode]');if(!b)return;dMode=b.dataset.mode;$('dMode').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));runDiag($('dNick').value)});
 $('dPanel').addEventListener('click',e=>{const b=e.target.closest('[data-change-limit]');if(b&&dCur){dChangeLimit=+b.dataset.changeLimit;dRenderPanel()}});
 $('dTabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;dTab=b.dataset.tab;dRenderPanel()});
-$('dQuick').addEventListener('click',e=>{const remove=e.target.closest('[data-dfavorite-remove]');if(remove){dChangeFavorite(remove.dataset.dfavoriteRemove,true);return}const b=e.target.closest('[data-dnick]');if(b){$('dNick').value=b.dataset.dnick;runDiag(b.dataset.dnick)}});
+$('dQuick').addEventListener('click',e=>{const remove=e.target.closest('[data-dfavorite-remove]');if(remove){dChangeFavorite(remove.dataset.dfavoriteRemove,true);return}const b=e.target.closest('[data-dnick]');if(b){$('dQuick').open=false;$('dNick').value=b.dataset.dnick;runDiag(b.dataset.dnick)}});
+document.addEventListener('pointerdown',e=>{const menu=$('dQuick');if(menu.open&&!menu.contains(e.target))menu.open=false});document.addEventListener('keydown',e=>{const menu=$('dQuick');if(e.key==='Escape'&&menu.open){menu.open=false;menu.querySelector('summary').focus()}});
 $('dFav').addEventListener('click',()=>{if(dCur)dChangeFavorite(dCur.d.basic.nickname)});
 $('dMine').addEventListener('click',()=>{if(!dCur)return;dStore(s=>s.mine=dCur.d.basic.nickname);dRenderQuick(dCur.d.basic.nickname)});
 $('dShare').addEventListener('click',async()=>{if(!dCur)return;const u=new URL((window.FG_ROUTES&&FG_ROUTES.diag)||'/diag',window.FG_SITE_URL||location.origin);u.searchParams.set('nick',dCur.d.basic.nickname);u.searchParams.set('mode',dMode);u.searchParams.set('count',dCount);const data={title:`${dCur.d.basic.nickname} 전적 진단 | 피파고수`,text:`${dCur.d.basic.nickname} 최근 ${dCur.a.n}경기 승률 ${Math.round(dCur.a.W/dCur.a.n*100)}%`,url:u.href};try{if(navigator.share)await navigator.share(data);else{await navigator.clipboard.writeText(u.href);$('dShare').textContent='링크 복사됨 ✓';setTimeout(()=>$('dShare').textContent='진단 공유',1600)}}catch(e){}});

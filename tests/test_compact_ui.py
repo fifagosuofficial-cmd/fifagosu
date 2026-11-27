@@ -203,3 +203,14 @@ def test_mobile_board_two_line_layout_and_desktop_table():
     assert 'fc-mobile-notice' in js and 'fc-mobile-hot' in js
     assert 'boardMobileTime' in js and 'syncMobileWrite' in js
     assert '순추천' not in html
+
+def test_board_article_compact_header_and_mobile_full_width():
+    css = (ROOT / "site/assets/css/community.css").read_text("utf-8")
+    js = (ROOT / "site/assets/js/community.js").read_text("utf-8")
+    assert 'width:calc(100% + 16px);max-width:none;margin-inline:-8px;padding-inline:0' in css
+    assert 'body[data-view="board"] .fc-reading>.fc-heading{display:none}' in css
+    assert 'class="fc-detail-top"' not in js or 'fc-detail-nav fc-detail-top' in js
+    for token in ('fc-detail-author','fcDetailViews','추천 <strong>','댓글 <strong>','fc-detail-date','fc-detail-share','data-action","share"','esc(p.body)'):
+        assert token in js
+    assert 'new URL("/board/?id="+selected,location.origin)' in js
+    assert 'window.matchMedia("(max-width:700px)").matches?88:132' in js

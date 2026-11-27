@@ -142,3 +142,18 @@ def test_mobile_nav_keeps_nine_links_without_extra_callout_row():
     assert "grid-template-rows:auto auto;justify-content:center;align-content:center" in css
     assert ".fg-nav-shell nav.menu .fg-diag-bubble::after{display:none}" in css
     assert "width:100%;min-width:0;margin:2px 0 0" in welcome
+
+
+def test_mypage_compact_profile_and_existing_actions():
+    html = (ROOT / "site/templates/community.html").read_text("utf-8")
+    css = (ROOT / "site/assets/css/community.css").read_text("utf-8")
+    js = (ROOT / "site/assets/js/community.js").read_text("utf-8")
+    assert '<details id="fcProfileSettings"' in html
+    assert '<details class="fc-my-contact">' in html
+    for key in ("fcProfileForm", "fcLogout", "fcWithdraw", "fcAdminLink", "fcMineTabs", "fcMineBody", "fgMyContactRows"):
+        assert html.count('id="'+key+'"') == 1
+    assert 'role="progressbar"' in js and "다음 등급까지" in js
+    assert 'fcProfileSettings").open=true' in js
+    assert 'fc-my-count' in js
+    assert '.fg-community[data-screen="mypage"] #fcMineTabs{display:grid' in css
+    assert 'grid-template-columns:repeat(6,minmax(0,1fr))' in css

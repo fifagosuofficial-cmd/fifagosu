@@ -39,6 +39,20 @@ def verify():
     assert "position:static;transform:none;grid-column:2;grid-row:2" in css
     assert "width:100%;min-width:0;margin:2px 0 0" in welcome
     print("Public compact mobile navigation OK")
+    my = get("/mypage/?fgverify=" + stamp)
+    mycss = get("/assets/css/community.css?fgverify=" + stamp)
+    myjs = get("/assets/js/community.js?fgverify=" + stamp)
+    assert '<details id="fcProfileSettings"' in my and '<details class="fc-my-contact">' in my
+    assert '.fg-community[data-screen="mypage"] #fcMineTabs{display:grid' in mycss
+    assert "fc-my-count" in myjs and "다음 등급까지" in myjs
+    print("Public compact mypage assets OK")
+    try:
+        ads = get("/ads.txt?fgverify=" + stamp)
+        print("Public ads.txt publisher entry:", "present" if "google.com, pub-2025317658537963, DIRECT" in ads else "missing")
+        home = get("/?fgverify=" + stamp)
+        print("Public AdSense publisher marker:", "present" if "ca-pub-2025317658537963" in home else "not in HTML")
+    except Exception as e:
+        print("AdSense public verification unavailable:", type(e).__name__)
     js = get("/assets/js/social.js?fgverify=" + stamp)
     assert "setChatOpen(chat.hidden)" in js and 'node("time"' not in js
     state = json.loads(get("/api/community/live-chat"))

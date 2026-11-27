@@ -315,3 +315,13 @@ def test_kickkick_markup_matches_all_primary_pages():
         link = soup.select_one("nav.menu a.nav-fun")
         assert link and link.select_one(".fg-fun-copy small[aria-hidden=true]") is not None
         assert link.get_text(strip=True) == "킥킥"
+
+
+def test_daily_report_uses_actual_dates_and_values():
+    m = {"date":"2026-11-27","periods":{"1":{"ready":True,"date":"2026-11-27","prev":"2026-11-26","sample":10,"up":6,"down":3,"defaultSort":"impact","risers":[{"id":1000001,"n":"테스트","s":1,"g":5,"v":120,"pv":100}],"fallers":[]}},"fgIndex":{"points":[{"date":"2026-11-26","value":1000},{"date":"2026-11-27","value":1020}]}}
+    r = build.market_report(m, {1:{"className":"TEST (테스트)"}})
+    assert r["ready"] and r["indexChange"] == 2 and r["flat"] == 1
+    assert r["risers"][0]["pct"] == 20 and r["risers"][0]["season"] == "TEST"
+    m["fgIndex"]["points"].pop()
+    assert build.market_report(m,{})["index"] is None
+    assert not build.market_report(None,{})["ready"]

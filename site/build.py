@@ -146,6 +146,33 @@ def _load(p):
         return None
 
 
+def market_report(market, seasons):
+    """Compact daily promotional report; no extra API calls or synthetic prices."""
+    m = market or {}
+    period = (m.get("periods") or {}).get("1") or {}
+    if not period.get("ready"):
+        return {"ready": False, "date": period.get("date") or m.get("date")}
+    end, start = period["date"], period["prev"]
+    points = [p for p in (m.get("fgIndex") or {}).get("points", [])
+              if p.get("date") and p["date"] <= end and isinstance(p.get("value"), (int, float)) and p["value"] > 0]
+    points.sort(key=lambda p: p["date"])
+    index = next((p for p in reversed(points) if p["date"] == end), None)
+    previous = next((p for p in reversed(points) if p["date"] == start), None)
+    def movers(key):
+        return [{"id": x["id"], "name": x.get("n") or str(x["id"]),
+                 "season": (seasons.get(x.get("s"), {}).get("className") or str(x.get("s") or "")).split(" (")[0],
+                 "grade": x["g"], "price": x["v"], "previous": x["pv"],
+                 "pct": round((x["v"] - x["pv"]) / x["pv"] * 100, 2)}
+                for x in period.get(key, [])[:3] if x.get("pv", 0) > 0 and x.get("v", 0) > 0]
+    sample, up, down = (int(period.get(k) or 0) for k in ("sample", "up", "down"))
+    return {"ready": True, "date": end, "previousDate": start, "collectedAt": m.get("collectedAt") if m.get("date") == end else None,
+            "sample": sample, "up": up, "down": down, "flat": max(0, sample-up-down),
+            "index": index["value"] if index else None,
+            "indexChange": round((index["value"]/previous["value"]-1)*100, 2) if index and previous else None,
+            "points": [{"date": p["date"], "value": p["value"]} for p in points[-7:]] if index else [],
+            "sort": period.get("defaultSort", "pct"), "risers": movers("risers"), "fallers": movers("fallers")}
+
+
 def arcade_price_pool(data_dir, out):
     pool = _load(data_dir / "market" / "pool.json") or {}
     seasons = {int(s["seasonId"]): str(s.get("className", "")).split(" (")[0] for s in (_load(data_dir / "meta" / "seasonid.json") or []) if "seasonId" in s}
@@ -567,6 +594,7 @@ def main(argv=None):
     for days, payload in market_payloads.items():
         (market_data_dir / f"{days}.json").write_text(
             json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    (market_data_dir / "daily-report.json").write_text(json.dumps(market_report(market, market_seasons), ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     if market and not market.get("byGrade"):
         market = None
     common = dict(news=news, market=market, market_seasons=market_seasons, SITE_URL=site_url, ver=ver, cfg=cfg, contact=cfg.get("CONTACT_EMAIL") or "",

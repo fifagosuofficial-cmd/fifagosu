@@ -1,7 +1,7 @@
 name: chat-hub-setup
 on:
   push:
-    branches: [feature/home-chat-private-feedback]
+    branches: [feature/local-only-chat]
     paths: ['workers/chat-hub/**', '.github/workflows/chat-hub.yml']
   workflow_dispatch:
 permissions:
@@ -20,5 +20,5 @@ jobs:
           node-version: '22'
       - name: Deploy private WebSocket hub
         run: npx --yes wrangler@4 deploy --config workers/chat-hub/wrangler.toml
-      - name: Add only chat namespace binding to existing Pages project
-        run: python workers/chat-hub/bind.py
+      - name: Existing Pages binding retained
+        run: echo 'CHAT_HUB binding already provisioned; no settings modified'

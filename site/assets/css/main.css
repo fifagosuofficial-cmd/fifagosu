@@ -1290,8 +1290,8 @@ nav.menu a.core{display:inline-flex;align-items:center;gap:5px}.fg-diag-icon{fle
 
 /* 2026-11-25: 모바일 메뉴와 전적 리포트를 한 화면에 컴팩트하게 정리 */
 @media(max-width:760px){
-  .fg-nav-shell nav.menu{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;margin-top:7px;padding:0 0 8px!important;overflow:visible}
-  .fg-nav-shell nav.menu>a{display:flex!important;align-items:center;justify-content:center;gap:3px;min-height:34px;padding:4px 3px!important;border-radius:8px!important;white-space:nowrap!important;text-align:center;font-size:12px!important;line-height:1.2}
+  .fg-nav-shell nav.menu{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;margin-top:2px;padding:0 0 4px!important;overflow:visible}
+  .fg-nav-shell nav.menu>a{display:flex!important;align-items:center;justify-content:center;gap:3px;min-height:30px;height:30px;box-sizing:border-box;padding:2px 3px!important;border-radius:6px!important;white-space:nowrap!important;text-align:center;font-size:12px!important;line-height:1.2}
   .fg-nav-shell nav.menu .fg-diag-icon{width:15px;height:15px}
   .nav-sim-label{font-size:0;white-space:nowrap}
   .nav-sim-label::after{content:attr(data-mobile-label);font-size:12px}
@@ -1441,9 +1441,14 @@ nav.menu a.nav-diag-feature:hover,nav.menu a.nav-diag-feature:focus-visible{anim
 @keyframes fg-diag-glow{0%,100%{box-shadow:0 0 0 1px rgba(0,201,120,.55),0 0 8px rgba(0,201,120,.45),inset 0 0 5px rgba(0,201,120,.16)}50%{box-shadow:0 0 0 1px rgba(0,223,130,.95),0 0 13px 2px rgba(0,210,124,.70),inset 0 0 8px rgba(0,210,124,.28)}}
 @media(prefers-reduced-motion:reduce){nav.menu a.nav-diag-feature:not([aria-current]){animation:none}}
 @media(max-width:760px){
-  .fg-nav-shell nav.menu{padding-top:20px!important}
-  .fg-account-icon{margin-top:27px}
-  .fg-diag-bubble{font-size:9px;padding:2px 5px}
+  .fg-nav-shell nav.menu{padding-top:0!important}
+  .fg-nav-shell nav.menu>a.nav-diag-feature{display:grid!important;grid-template-columns:auto auto;grid-template-rows:auto auto;justify-content:center;align-content:center;column-gap:3px;row-gap:0}
+  .fg-nav-shell nav.menu .fg-diag-icon{grid-row:1/3;grid-column:1;align-self:center;width:14px;height:14px}
+  .fg-nav-shell nav.menu .nav-diag-feature>span:not(.fg-diag-bubble){grid-column:2;grid-row:1;line-height:1.1}
+  .fg-nav-shell nav.menu .fg-diag-bubble{position:static;transform:none;grid-column:2;grid-row:2;padding:0;background:none;color:currentColor;font-size:8px;line-height:1;white-space:nowrap;opacity:.85}
+  .fg-nav-shell nav.menu .fg-diag-bubble::after{display:none}
+  .fg-nav-shell nav.menu a.nav-fun .fg-fun-copy{gap:1px!important}
+  .fg-nav-shell nav.menu a.nav-fun small{font-size:7px!important;letter-spacing:.2px!important}
   .sim-fee-bar{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:3px;padding:6px 5px;min-width:0;white-space:nowrap}
   .sim-fee-bar .sfb-t,.sim-fee-bar .sfb-chip small{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .sim-fee-bar .sfb-chip{gap:3px;padding:5px 4px;font-size:10px;min-height:32px;box-sizing:border-box}

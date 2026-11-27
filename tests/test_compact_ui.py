@@ -92,7 +92,9 @@ def test_diagnosis_nav_has_compact_callout_and_respects_motion_preference():
     assert "box-shadow:" in glow and "transform:" not in glow
     assert "13px 2px" in glow
     assert "@media(prefers-reduced-motion:reduce)" in css
-    assert ".fg-nav-shell nav.menu{padding-top:20px!important}" in css
+    assert ".fg-nav-shell nav.menu{padding-top:0!important}" in css
+    assert ".fg-nav-shell nav.menu{padding-top:20px}" in css  # desktop callout unchanged
+    assert "position:static;transform:none;grid-column:2;grid-row:2" in css
 
 
 def test_mobile_fee_controls_keep_all_discounts_in_one_row():
@@ -124,3 +126,19 @@ def test_floating_chat_is_shared_and_minimal():
     assert 'return chat&&!document.hidden&&!chat.hidden' in js
     assert 'setChatOpen(chat.hidden)' in js
     assert '_social.html' in build
+
+
+def test_mobile_nav_keeps_nine_links_without_extra_callout_row():
+    import re
+    css = (ROOT / "site/assets/css/main.css").read_text("utf-8")
+    welcome = (ROOT / "site/assets/css/welcome.css").read_text("utf-8")
+    for name in ("base.html", "index.html"):
+        html = (ROOT / "site/templates" / name).read_text("utf-8")
+        menu = re.search(r'<nav class="menu"[^>]*>(.*?)</nav>', html, re.S).group(1)
+        assert len(re.findall(r'<a\s', menu)) == 9
+        assert "내 약점 찾기!" in menu and 'class="nav-fun"' in menu
+    assert "gap:2px;margin-top:2px;padding:0 0 4px!important" in css
+    assert "min-height:30px;height:30px;box-sizing:border-box" in css
+    assert "grid-template-rows:auto auto;justify-content:center;align-content:center" in css
+    assert ".fg-nav-shell nav.menu .fg-diag-bubble::after{display:none}" in css
+    assert "width:100%;min-width:0;margin:2px 0 0" in welcome

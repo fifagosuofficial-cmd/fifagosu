@@ -23,9 +23,9 @@ body:not(.page-wide) .fg-has-member nav.menu{grid-row:2;margin-top:3px}
 
 /* Mobile navigation must not depend on authentication state. */
 @media(max-width:760px){
- .fg-nav-shell,.fg-nav-shell.fg-has-member,body:not(.page-wide) .fg-nav-shell{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;width:100%;min-width:0}
+ .fg-nav-shell,.fg-nav-shell.fg-has-member,body:not(.page-wide) .fg-nav-shell{display:grid;grid-template-columns:minmax(0,1fr);gap:2px;width:100%;min-width:0}
  .fg-nav-shell .fg-account-group{grid-row:1;grid-column:1;justify-self:end;width:100%;min-width:0;justify-content:flex-end;gap:6px}
- .fg-nav-shell nav.menu,.fg-nav-shell.fg-has-member nav.menu{grid-row:2;grid-column:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;min-width:0;margin:8px 0 0}
+ .fg-nav-shell nav.menu,.fg-nav-shell.fg-has-member nav.menu{grid-row:2;grid-column:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;min-width:0;margin:2px 0 0}
  .fg-nav-shell nav.menu a{min-width:0;justify-content:center;box-sizing:border-box}
  .fg-nav-shell .fg-welcome{flex:0 1 auto;min-width:0;max-width:100%;overflow:hidden}
  .fg-nav-shell .fg-account-group .fg-account-icon{margin:2px 0 3px}

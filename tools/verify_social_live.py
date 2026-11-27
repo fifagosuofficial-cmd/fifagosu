@@ -15,6 +15,10 @@ def verify():
         assert 'aria-labelledby="fgChatTitle" hidden' in html, path
         assert '피파고수에게 건의하기' in html, path
         assert 'name="consent"' not in html.split('id="fgContactDialog"',1)[1].split("</dialog>",1)[0], path
+        if path == "/board/":
+            assert 'id="fcAccountLink"' not in html
+            assert 'class="fg-account-icon"' in html
+            print("Public board duplicate account link removed")
         print("Public UI OK:", path)
     diag = get("/diag?fgverify=" + stamp)
     assert 'id="dStyleDialog"' in diag

@@ -106,7 +106,7 @@
 <!-- ================= 이적시장 TOP 100 ================= -->
 <main id="v-market" class="wrap market-page"{% if view!='market' %} hidden{% endif %}>
 {% if market %}
-  <header class="market-page-head"><div><a href="/">← 홈 시세 동향</a><h1>이적시장 급등락 TOP 100</h1><p>실제 수집 가격 이력으로 전체 유효 후보군을 계산합니다.</p></div><time>{{ market.collectedAt[:16]|replace("T", " ") if market.collectedAt else market.date }} 수집</time></header>
+  <header class="market-page-head"><div><a href="/">← 홈 시세 동향</a><h1>이적시장 급등락 TOP 100</h1></div></header>
   <aside class="slot" data-ad-slot="market-1" aria-label="광고"></aside>
   <section class="market-dashboard" data-market-dashboard data-detail="true" data-limit="100" aria-label="이적시장 급등락 상세">
     <div class="mk-controls">
@@ -114,11 +114,11 @@
       <div class="mk-selects"><label>강화<select data-market-grade><option value="">전체 강화</option>{% for g in range(1,14) %}<option value="{{ g }}">{{ g }}강</option>{% endfor %}</select></label><label>시즌<select data-market-season><option value="">전체 시즌</option></select></label></div>
       <div class="mk-sort" role="group" aria-label="정렬"><button type="button" data-market-sort="impact" aria-pressed="true">종합 순위</button><button type="button" data-market-sort="pct" aria-pressed="false">등락률</button><button type="button" data-market-sort="delta" aria-pressed="false">BP 변동액</button></div>
     </div>
-    <div class="mk-sort mk-direction" role="group" aria-label="상승 하락 선택"><button type="button" data-market-dir="up" aria-pressed="true">▲ 급등</button><button type="button" data-market-dir="down" aria-pressed="false">▼ 급락</button></div>
-    <div class="mk-detail-meta"><b data-market-title>1일 급등 TOP 100</b><span data-market-status>실제 이력을 불러오는 중</span><details class="fgix-help" style="position:relative"><summary aria-label="순위 산정 기준" style="list-style:none;cursor:pointer;border:1px solid currentColor;border-radius:50%;width:22px;height:22px;text-align:center;line-height:20px">?</summary><div style="position:absolute;right:0;top:28px;width:min(280px,75vw);z-index:10;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:12px;line-height:1.6">전체 시즌·전체 강화 카드의 실제 시세 변동 기준. 종합 순위는 등락률 40% + BP 변동액 40% + 추세 지속성 20%이며, 종합 순위만 변동률 3% 이상·절대 변동액 상위 20%·관측 3회 이상을 적용합니다. 등락률·BP 변동액 정렬은 종합 순위의 변동액 필터를 적용하지 않습니다.</div></details></div>
+    <div class="mk-sort mk-direction" role="group" aria-label="상승 하락 선택"><button type="button" data-market-dir="up" aria-pressed="true">▲ 급등</button><button type="button" data-market-dir="down" aria-pressed="false">▼ 급락</button><details class="fgix-help mk-detail-help" style="position:relative"><summary aria-label="순위 산정 기준" style="list-style:none;cursor:pointer;border:1px solid currentColor;border-radius:50%;width:22px;height:22px;text-align:center;line-height:20px">?</summary><div style="position:absolute;right:0;top:28px;width:min(280px,75vw);z-index:10;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:12px;line-height:1.6"><div class="mk-help-source"><time>{{ market.collectedAt[:16]|replace("T", " ") if market.collectedAt else market.date }} 수집</time><br><span data-market-status aria-live="polite">실제 이력을 불러오는 중</span></div>전체 시즌·전체 강화 카드의 실제 시세 변동 기준. 종합 순위는 등락률 40% + BP 변동액 40% + 추세 지속성 20%이며, 종합 순위만 변동률 3% 이상·절대 변동액 상위 20%·관측 3회 이상을 적용합니다. 등락률·BP 변동액 정렬은 종합 순위의 변동액 필터를 적용하지 않습니다.</div></details></div><p class="mk-sort-notice" data-market-fallback role="status" hidden></p>
+    
     <div class="mk-panel">
-      <section class="mk-box mk-up" data-market-direction="up"><h2>급등 TOP 100</h2><div class="mk-table-scroll"><table class="mk-stock-table">{{ M.table_head() }}<tbody data-market-list="up"></tbody></table></div><p class="mk-empty" data-market-empty="up">실제 시세 순위를 불러오는 중이에요.</p></section>
-      <section class="mk-box mk-down" data-market-direction="down"><h2>급락 TOP 100</h2><div class="mk-table-scroll"><table class="mk-stock-table">{{ M.table_head() }}<tbody data-market-list="down"></tbody></table></div><p class="mk-empty" data-market-empty="down">실제 시세 순위를 불러오는 중이에요.</p></section>
+      <section class="mk-box mk-up" data-market-direction="up"><h2 data-market-title>1일 급등 TOP 100</h2><div class="mk-table-scroll"><table class="mk-stock-table">{{ M.table_head() }}<tbody data-market-list="up"></tbody></table></div><p class="mk-empty" data-market-empty="up">실제 시세 순위를 불러오는 중이에요.</p></section>
+      <section class="mk-box mk-down" data-market-direction="down"><h2 data-market-title>1일 급락 TOP 100</h2><div class="mk-table-scroll"><table class="mk-stock-table">{{ M.table_head() }}<tbody data-market-list="down"></tbody></table></div><p class="mk-empty" data-market-empty="down">실제 시세 순위를 불러오는 중이에요.</p></section>
     </div>
 
   </section>

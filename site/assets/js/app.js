@@ -470,8 +470,8 @@ function dRenderQuick(active){const s=dRead(),mk=(x,k)=>`<button type="button" d
 }
 dRenderQuick('');
 function dRenderBoard(d,a){
-  $('dBoard').innerHTML=`<div><div class="nick nick-wrap">${divImg(d.maxdivision.division)}<span>${esc(d.basic.nickname)}</span>${dFavoriteButton(d.basic.nickname)}</div><div class="meta">Lv.${d.basic.level} · ${a.dm?'감독모드 · '+esc(a.myForm):'공식경기'}</div></div>
-  <div class="tier">${d.current?`<span class="lbl">최근 경기 등급</span>${tierBadge(d.current)}`:''}<span class="lbl">${a.dm?'감독모드 ':''}역대 최고 등급</span><span class="tier-max">${divImg(d.maxdivision.division,'divimg-sm')}${tierBadge(d.maxdivision.division)}</span></div>
+  $('dBoard').innerHTML=`<div class="diag-owner"><div class="nick nick-wrap">${divImg(d.maxdivision.division)}<span>${esc(d.basic.nickname)}</span>${dFavoriteButton(d.basic.nickname)}</div><div class="meta">Lv.${d.basic.level} · ${a.dm?'감독모드 · '+esc(a.myForm):'공식경기'}</div></div>
+  <div class="tier diag-owner-tiers">${d.current?`<div class="diag-tier-row"><span class="lbl">최근 경기 등급</span>${tierBadge(d.current)}</div>`:''}<div class="diag-tier-row"><span class="lbl">${a.dm?'감독모드 ':''}역대 최고 등급</span><span class="tier-max">${divImg(d.maxdivision.division,'divimg-sm')}${tierBadge(d.maxdivision.division)}</span></div></div>
   ${d.sample?'<small class="meta" style="grid-column:1/-1">예시 데이터(가상)</small>':''}`;
 }
 function cmpRows(x){const mn=x.min??0,mx=x.max??Math.max(x.me,x.opp,0.0001)*1.15,w=v=>Math.max(3,Math.min(100,(v-mn)/(mx-mn)*100));
@@ -880,13 +880,36 @@ function dDrawImage(){if(!dImageData)return;const {d,a}=dImageData,latest=dRecen
 }
 async function dImageSave(share){const c=$('dImageCanvas'),status=$('dImageStatus');try{const blob=await new Promise(resolve=>c.toBlob(resolve,'image/png'));if(!blob)throw Error('이미지 생성 실패');const file=new File([blob],'피파고수_전적진단.png',{type:'image/png'});if(share&&navigator.canShare?.({files:[file]})){await navigator.share({files:[file],title:'피파고수 전적진단'});return}const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=file.name;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);status.textContent=share?'이미지 저장 후 공유해 주세요.':'이미지 저장을 요청했습니다.'}catch(e){if(e.name!=='AbortError')status.textContent=e.message||'저장 실패'}}
 $('dImageNick').addEventListener('change',dDrawImage);$('dImageClose').addEventListener('click',()=>$('dImageDialog').close());$('dImageDownload').addEventListener('click',()=>dImageSave(false));$('dImageShare').addEventListener('click',()=>dImageSave(true));$('dImageDialog').addEventListener('close',()=>{dImageData=null;$('dImageStatus').textContent=''});
+/* Heuristic tendencies from recorded actions, not inferred in-game tactical settings. */
+function dPlayStyle(matches,sample=false){
+ const pending={name:'분석 보류',short:'유효 경기 부족',detail:'실제 경기의 점유율과 슈팅 통계가 있는 정상 종료 경기 10개 이상이 필요합니다.'};
+ if(sample||!Array.isArray(matches))return pending;
+ const rows=matches.filter(m=>{const [s,o]=m.matchInfo||[];return [s,o].every(x=>Number.isFinite(x?.matchDetail?.possession)&&x.matchDetail.possession>=0&&x.matchDetail.possession<=100&&Number.isFinite(x?.shoot?.shootTotal)&&x.shoot.shootTotal>=0&&Number.isFinite(x?.shoot?.shootOutPenalty)&&x.shoot.shootOutPenalty>=0&&x.shoot.shootOutPenalty<=x.shoot.shootTotal)&&s.matchDetail.possession+o.matchDetail.possession>=98&&s.matchDetail.possession+o.matchDetail.possession<=102&&(s.matchDetail.matchEndType==null||s.matchDetail.matchEndType===0)});
+ if(rows.length<10)return pending;
+ let pos=0,shots=0,out=0,opp=0,pass=0,long=0,thru=0,passN=0;
+ for(const m of rows){const [s,o]=m.matchInfo;pos+=s.matchDetail.possession;shots+=s.shoot.shootTotal;out+=s.shoot.shootOutPenalty;opp+=o.shoot.shootTotal;const p=s.pass;if(p&&[p.passTry,p.longPassTry,p.throughPassTry].every(v=>Number.isFinite(v)&&v>=0)&&p.passTry>0&&p.longPassTry+p.throughPassTry<=p.passTry){pass+=p.passTry;long+=p.longPassTry;thru+=p.throughPassTry;passN++}}
+ pos/=rows.length;const percent=v=>Math.round(v*100)+'%',outside=shots?out/shots:null,share=shots+opp?shots/(shots+opp):null,passOK=passN>=10&&pass>=100;
+ const details=['유효 '+rows.length+'경기','평균 점유율 '+Math.round(pos)+'%','경기당 슈팅 '+(shots/rows.length).toFixed(1),'박스 밖 슈팅 '+(outside===null?'—':percent(outside)),'전체 슈팅 중 내 비중 '+(share===null?'—':percent(share))];
+ if(passOK)details.push('롱패스 '+percent(long/pass),'스루패스 '+percent(thru/pass));
+ let name='균형형',short='점유율 '+Math.round(pos)+'%';
+ if(shots>=30&&outside>=.45){name='중거리형';short='중거리 '+percent(outside)}
+ else if(passOK&&long/pass>=.18){name='롱패스형';short='롱패스 '+percent(long/pass)}
+ else if(passOK&&thru/pass>=.16){name='침투패스형';short='스루패스 '+percent(thru/pass)}
+ else if(pos>=55){name='점유형';short='점유율 '+Math.round(pos)+'%'}
+ else if(pos<=45&&share!==null&&share>=.48){name='역습 성향';short='점유율 '+Math.round(pos)+'%'}
+ else if(pos<=45&&share!==null&&share<=.42){name='수세형';short='슈팅 비중 '+percent(share)}
+ else if(share!==null&&share>=.60){name='공격주도형';short='슈팅 비중 '+percent(share)}
+ return {name,short,detail:details.join(' · ')+'。 경기 기록 기반 피파고수 자체 분류이며 실제 전술 설정을 의미하지 않습니다.'};
+}
 function dRenderReport(d,a){
+  const style=dPlayStyle(d.matches,d.sample||a.sample);
   const best=a.players.filter(x=>x.eval!=null).sort((x,y)=>y.eval-x.eval)[0],worst=dPriority(a).find(x=>dRecentRows([x],a.recentLineup,true).length);
   $('dReportShell').hidden=false;
   $('dReportHead').innerHTML=`<div><b>종합 구단 리포트</b><small>최근 ${a.n}경기 · 실제 경기와 수집 시세 기반</small></div><span>${a.enriched?'분석 완료':'선수 시세·팀컬러 분석 중…'}</span>`;
   $('dReport').innerHTML=`<div class="dr-grid dr-insights">
     <div><span>최근 스쿼드 가치</span><b>${a.squadValue?fmtBP(a.squadValue):'계산 중'}</b><small>${a.valueMissing?`${a.valueMissing}명 시세 제외`:`${a.valueKnown||0}명 확인`}</small></div>
-    <div class="dr-priority"><span>우선 보강</span><b>${!a.enriched?'분석 중':worst?esc(dCardLabel(worst)):dRecentRows(a.players,a.recentLineup,true).some(x=>x.action&&x.action!=='평가 보류')?'뚜렷한 보강 후보 없음':'판단 보류'}</b><small>${worst?'낮은 종합 점수와 복수 부진 근거 확인':a.enriched?'최근 출전 선수 기준':'랭커·평점 비교 중'}</small></div></div>${dTeamDiagnosis(a)?`<div class="note" style="margin:6px 0;font-size:12px"><b>팀 진단</b> · ${dTeamDiagnosis(a)} (승률 ${Math.round(a.W/a.n*100)}%)</div>`:''}${dReviewStrip(a)}<div class="dr-actions" aria-label="구단 리포트 작업"></div>`
+    <div class="dr-priority"><span>우선 보강</span><b>${!a.enriched?'분석 중':worst?esc(dCardLabel(worst)):dRecentRows(a.players,a.recentLineup,true).some(x=>x.action&&x.action!=='평가 보류')?'후보 없음':'판단 보류'}</b><small>${worst?'복수 부진 근거':a.enriched?'최근 출전 기준':'비교 중'}</small></div><div class="dr-style"><span>나의 플레이스타일</span><button type="button" class="dr-style-open" aria-label="플레이스타일 분석 근거 보기"><b>${esc(style.name)}</b><span aria-hidden="true">?</span></button><small>${esc(style.short)}</small></div></div>${dTeamDiagnosis(a)?`<div class="note" style="margin:6px 0;font-size:12px"><b>팀 진단</b> · ${dTeamDiagnosis(a)} (승률 ${Math.round(a.W/a.n*100)}%)</div>`:''}${dReviewStrip(a)}<div class="dr-actions" aria-label="구단 리포트 작업"></div>`
+  const styleButton=$('dReport').querySelector('.dr-style-open');styleButton.addEventListener('click',()=>{const box=$('dStyleDialog');$('dStyleName').textContent=style.name;$('dStyleDetail').textContent=style.detail;$('dStyleMode').textContent=a.dm?'감독모드 팀의 경기 성향':'공식경기 플레이 성향';if(!box.open)box.showModal()});
   const actions=$('dReport').querySelector('.dr-actions');
  if(!d.sample&&a.n>0){const b=document.createElement('button');b.type='button';b.className='ghost dr-action d-report-image';b.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 3h14v14H3zm2 2v10h10V5zM6 12l3-4 3 3 2-2v5H6z"/></svg><span>결과 이미지</span>';b.addEventListener('click',()=>dOpenImage(d,a));actions.appendChild(b)}
   if(a.enriched&&a.recentPlayers?.length&&!d.sample){const b=document.createElement('button');b.type='button';b.className='ghost dr-action';b.title='최근 스쿼드를 AI 스쿼드에서 개선 추천';b.setAttribute('aria-label',b.title);b.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2 1.2 4.1L15 8l-3.8 1.9L10 14l-1.2-4.1L5 8l3.8-1.9L10 2Zm5 10 .7 2.3L18 15.5l-2.3 1.2L15 19l-.7-2.3-2.3-1.2 2.3-1.2L15 12Z"/></svg><span>AI 개선</span>';b.addEventListener('click',()=>{try{sessionStorage.setItem('fg-squad-recent-v1',JSON.stringify({players:a.recentPlayers.map(p=>({id:+p.spId,grade:+p.grade,pos:p.pos,name:p.name,review:dReinforce(p)}))}));location.assign('/squad/?import=1')}catch(e){location.assign('/squad/')}});actions.appendChild(b)}

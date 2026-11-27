@@ -196,9 +196,12 @@ export async function onRequest({request,env}){
  const me=()=>{check(member&&!member.suspended,"로그인 또는 계정 상태를 확인하세요.",401);check(member.policy===POLICY,"최신 약관에 동의한 뒤 이용하세요.",403);return member};
  const active=()=>{const m=me();check(m.nickname,"닉네임 설정이 필요합니다.",403);return m};
  const requireAdmin=()=>{active();check(admin,"관리자 권한이 필요합니다.",403)};
+ const hub=()=>env.CHAT_HUB?.get(env.CHAT_HUB.idFromName("public"));
+ const notifyChat=async()=>{try{await hub()?.fetch("https://chat.internal/notify",{method:"POST"})}catch{console.error("chat notification failed")}};
  const audit=async(action,target,reason)=>run("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",member.id,action,String(target),reason,now());
  try{
  if(request.method==="GET"){
+   if(p==="live-chat/socket"){check(request.headers.get("Origin")===u.origin,"요청 출처가 올바르지 않습니다.",403);check(request.headers.get("Upgrade")?.toLowerCase()==="websocket","WebSocket 연결이 필요합니다.",426);check(hub(),"실시간 채팅 서버를 준비 중입니다.",503);return await hub().fetch("https://chat.internal/socket",{headers:{Upgrade:"websocket"}})}
    if(p==="live-chat"){
      await ensureSocial(db);
      const m=member&&!member.suspended&&member.policy===POLICY&&member.nickname?member:null;
@@ -301,7 +304,7 @@ export async function onRequest({request,env}){
  if(p==="live-chat/send"){
    const m=active(),body=str(b?.body,300),t=now();await ensureSocial(db);
    const result=await db.batch([q("DELETE FROM live_chat WHERE created<=?",t-7*86400),q("INSERT INTO live_chat(author,body,created) SELECT ?,?,? WHERE NOT EXISTS(SELECT 1 FROM live_chat WHERE author=? AND created>?) AND (SELECT count(*) FROM live_chat WHERE author=? AND created>?)<10",m.id,body,t,m.id,t-5,m.id,t-60)]);
-   check(result[1].meta.changes===1,"잠시 후 다시 작성해 주세요.",429);return json({ok:true});
+   check(result[1].meta.changes===1,"잠시 후 다시 작성해 주세요.",429);await notifyChat();return json({ok:true});
  }
  if(p==="live-chat/report"||p==="live-chat/block"){
    const m=active(),id=integer(b?.id);await ensureSocial(db);
@@ -319,7 +322,7 @@ export async function onRequest({request,env}){
    await db.batch([q("UPDATE private_contact SET status=?,reply=? WHERE id=?",b.status,reply,id),q("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",member.id,"contact-status",String(id),b.status,now())]);return json({ok:true});
  }
  if(p==="admin/live-chat"){
-   requireAdmin();const id=integer(b?.id);await ensureSocial(db);await db.batch([q("UPDATE live_chat SET hidden=? WHERE id=?",b.hidden===true?1:0,id),q("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",member.id,"chat-moderation",String(id),b.hidden===true?"hide":"restore",now())]);return json({ok:true});
+   requireAdmin();const id=integer(b?.id);await ensureSocial(db);await db.batch([q("UPDATE live_chat SET hidden=? WHERE id=?",b.hidden===true?1:0,id),q("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",member.id,"chat-moderation",String(id),b.hidden===true?"hide":"restore",now())]);await notifyChat();return json({ok:true});
  }
  if(p==="ops-event"){
    if(admin||request.headers.get("Sec-GPC")==="1"||request.headers.get("DNT")==="1"||/bot|crawl|spider|headless|preview|curl|wget/i.test(request.headers.get("User-Agent")||""))return json({ok:true});

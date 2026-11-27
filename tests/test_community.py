@@ -45,7 +45,7 @@ def test_board_compact_columns_and_view_counter(tmp_path):
     out = tmp_path / "site"
     build.main(["--data", str(tmp_path / "missing"), "--out", str(out)])
     html = (out / "board/index.html").read_text("utf-8")
-    for col in ("분류", "제목", "글쓴이", "날짜", "조회", "순추천"):
+    for col in ("분류", "제목", "글쓴이", "날짜", "조회", "추천"):
         assert f'<th scope="col">{col}</th>' in html
     assert '<tbody id="fcPosts">' in html
     assert 'id="fcPreviewHint"' in html

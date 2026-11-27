@@ -216,3 +216,40 @@ body[data-view="board"] #fcTabs{margin:4px 0 6px;padding:4px;gap:3px;border-radi
 .fc-mobile-meta{display:flex;align-items:center;flex-wrap:wrap;gap:3px 0;color:var(--muted,#74887d);font-size:10px;line-height:1.35;margin-top:5px;font-weight:400;font-variant-numeric:tabular-nums}.fc-mobile-meta>span{display:inline-flex;align-items:center;gap:2px;min-width:0;max-width:100%;padding:0 5px;border-left:1px solid var(--line,#d5e8de);white-space:nowrap}.fc-mobile-meta>span:first-child{padding-left:0;border-left:0}.fc-mobile-meta>span:last-child{padding-right:0}.fc-mobile-meta svg{flex:none;width:11px;height:11px;opacity:.85}.fc-mobile-meta .fc-mobile-author{overflow:hidden;text-overflow:ellipsis;max-width:45%}.fc-mobile-meta .fc-cat{width:13px;height:13px;margin:0}.fc-mobile-meta .fc-verified{width:11px;height:11px;margin:0;font-size:8px}.fc-board-table .fc-empty{display:block;width:100%;height:auto;min-height:100px;padding:35px 8px;text-align:center}.fc-board-bottom{padding:8px 0;gap:6px}.fc-board-bottom button{padding:6px 9px;font-size:12px}.fc-search-form input{font-size:16px;padding:6px 8px}
 }
 @media(max-width:350px){.fc-mobile-meta{font-size:9px}.fc-mobile-meta>span{padding-inline:3px}.fc-board-table .fc-title-cell{font-size:13px}.fc-board-table .fc-post-title{font-size:13px}}
+
+/* Article-first board: consistent typography, compact metadata, full-width reading. */
+.fc-detail{background:var(--surface);border-color:var(--line);color:var(--fg)}
+.fc-detail-top{justify-content:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.fc-detail-top strong{font-size:15px;color:var(--fg)}.fc-detail-top a{border-left:1px solid var(--line);padding-left:12px;font-size:12px;color:var(--muted);font-weight:500}
+.fc-detail-head{border-top:0;border-bottom:1px solid var(--line);padding:14px 0 12px}
+.fc-detail-head h1{font-size:clamp(20px,2.5vw,27px);line-height:1.42;margin:0 0 10px;text-wrap:wrap;color:var(--fg)}
+.fc-detail-prefix{display:inline-block;vertical-align:2px;background:var(--sunk);color:var(--muted);font-size:11px;font-weight:700;border-radius:3px;padding:2px 5px}
+.fc-post-meta{gap:6px 12px;font-size:12px;color:var(--muted)}
+.fc-post-meta strong{font-weight:700;color:var(--fg)}.fc-post-meta .fc-detail-author{display:inline-flex;align-items:center;gap:2px;color:var(--fg);min-width:0;overflow-wrap:anywhere}
+.fc-post-meta .fc-detail-author .fc-cat{width:23px;height:23px;margin-right:2px;flex:none}.fc-detail-date{margin-left:auto;font-size:11px;white-space:nowrap}
+.fc-detail-share{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:7px 0;font-size:11px;color:var(--muted)}.fc-detail-share>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fg-community .fc-detail-share button{font-size:11px;padding:2px 7px;border-radius:4px;background:var(--surface);border-color:var(--line);color:var(--muted);flex:none}
+.fc-post-body{min-height:110px;padding:12px 0 20px;color:var(--fg);line-height:1.75;overflow-wrap:anywhere}.fc-post-body img,.fc-post-body video{max-width:100%;height:auto}
+.fc-post-votes{gap:8px;padding:10px 0 12px}.fc-post-votes .fc-vote{min-width:110px;padding:8px 13px;border-radius:5px;font-size:14px}
+.fg-community .fc-post-votes .fc-up{border-color:#2a9b71}.fg-community .fc-post-votes .fc-down{border-color:#d98480}
+.fc-post-tools{gap:4px;padding:0 0 12px}.fc-post-tools button,.fc-tool-link{padding:4px 8px!important;font-size:11px!important}
+.fc-comments{padding:12px 0 14px;border-top:1px solid var(--line)}.fc-comment{padding:10px 2px;border-color:var(--line)}.fc-comment .fc-text{margin:6px 0}.fc-comment-form{margin-top:12px}
+@media(max-width:700px){
+/* Body already has at least 16px safe-area padding. Expand only board content by 8px per side, leaving at least 8px. */
+body[data-view="board"]>.wrap{width:calc(100% + 16px);max-width:none;margin-inline:-8px;padding-inline:0}
+body[data-view="board"] .fg-community{width:100%;max-width:none;margin:6px 0 24px}
+body[data-view="board"] .fc-heading{margin:0 0 4px;padding-inline:3px}
+body[data-view="board"] .fc-mobile-board-tools{margin:3px 0;padding-inline:3px}
+body[data-view="board"] #fcTabs{margin:3px 0 5px;border-radius:4px;padding:3px;gap:2px}
+body[data-view="board"] #fcTabs button{padding:6px 7px}
+body[data-view="board"] .fc-board-list{margin:0;width:100%;border-left:0;border-right:0}
+body[data-view="board"] .fc-board-bottom{width:100%;margin:0;padding:7px 2px}
+body[data-view="board"] .fc-reading>.fc-heading{display:none}
+body[data-view="board"] .fc-detail{margin:0 0 8px;padding:0 8px;border:0;border-radius:0}
+.fc-detail-top{padding:8px 0;gap:8px}.fc-detail-top strong{font-size:14px}.fc-detail-top a{padding-left:8px}
+.fc-detail-head{padding:10px 0 9px}.fc-detail-head h1{font-size:19px;line-height:1.4;margin-bottom:8px}
+.fc-post-meta{font-size:11px;gap:4px 8px}.fc-post-meta .fc-detail-author .fc-cat{width:20px;height:20px}.fc-detail-date{flex-basis:100%;margin-left:0;font-size:10px;text-align:right}
+.fc-detail-share{padding:6px 0}.fc-post-body{min-height:90px;font-size:15px;padding:8px 0 16px;line-height:1.75}
+.fc-post-votes .fc-vote{min-width:100px;font-size:13px;padding:8px 12px}
+.fc-comment-heading h2{font-size:15px}.fc-comment-form textarea{min-height:88px;font-size:16px}.fc-comment-footer .fc-primary{padding:7px 12px;font-size:12px}
+.fc-reading .fc-list-title{font-size:15px;margin:8px 3px 4px}
+}

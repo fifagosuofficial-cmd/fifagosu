@@ -60,6 +60,9 @@ def verify():
     assert "function boardMobileMeta(x,type)" in myjs and "fc-mobile-views" in myjs
     assert ".fc-board-table .fc-title-cell{display:block;width:100%" in mycss
     print("Public mobile two-line board layout OK")
+    assert "width:calc(100% + 16px);max-width:none;margin-inline:-8px;padding-inline:0" in mycss
+    assert "fc-detail-nav fc-detail-top" in myjs and "fc-detail-share" in myjs and "추천 <strong>" in myjs
+    print("Public compact board article and full-width mobile layout OK")
     assert 'id="fcGiftDialog"' in my and 'id="fcPointHistory"' in my
     assert "points/gift" in myjs and "admin/member-detail" in myjs and "admin/points" in myjs
     assert "포인트" in myjs and " XP" not in myjs

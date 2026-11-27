@@ -31,6 +31,8 @@ def verify():
     assert "function dTimingEvidence(" in app and "function dTimingAdvice(" in app and "function dRateGap(" in app
     assert "뚜렷하게 반복되는 약점은 확인되지 않았어요" in app
     print("Public evidence-based diagnosis advice OK")
+    assert "function dCoachWeak(" in app and "지금 <b>${streak}연패" in app and "개선 점검" not in app[app.index("function dAdvice("):app.index("function dRenderTip(")]
+    print("Public conversational coach advice OK")
     js = get("/assets/js/social.js?fgverify=" + stamp)
     assert "setChatOpen(chat.hidden)" in js and 'node("time"' not in js
     state = json.loads(get("/api/community/live-chat"))

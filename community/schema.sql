@@ -39,3 +39,14 @@ CREATE TABLE IF NOT EXISTS arcade_rounds(id TEXT PRIMARY KEY,member_id TEXT NOT 
 CREATE INDEX IF NOT EXISTS arcade_owner_day ON arcade_rounds(member_id,day);
 CREATE INDEX IF NOT EXISTS arcade_week ON arcade_rounds(game,day,state,score);
 CREATE UNIQUE INDEX IF NOT EXISTS arcade_one_active ON arcade_rounds(member_id) WHERE state=0;
+
+-- Live chat and private visitor feedback
+CREATE TABLE IF NOT EXISTS live_chat(id INTEGER PRIMARY KEY AUTOINCREMENT,author TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,body TEXT NOT NULL,created INTEGER NOT NULL,hidden INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS live_chat_author_time ON live_chat(author,created);
+CREATE INDEX IF NOT EXISTS live_chat_time ON live_chat(created);
+CREATE TABLE IF NOT EXISTS live_chat_blocks(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,blocked TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,PRIMARY KEY(member_id,blocked));
+CREATE TABLE IF NOT EXISTS live_chat_reports(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,chat_id INTEGER NOT NULL REFERENCES live_chat(id) ON DELETE CASCADE,created INTEGER NOT NULL,PRIMARY KEY(member_id,chat_id));
+CREATE TABLE IF NOT EXISTS private_contact(id INTEGER PRIMARY KEY AUTOINCREMENT,member_id TEXT REFERENCES members(id) ON DELETE CASCADE,kind TEXT NOT NULL,body TEXT NOT NULL,page TEXT NOT NULL,created INTEGER NOT NULL,status TEXT NOT NULL DEFAULT 'new',reply TEXT);
+CREATE INDEX IF NOT EXISTS private_contact_owner ON private_contact(member_id,created);
+CREATE INDEX IF NOT EXISTS private_contact_status ON private_contact(status,created);
+CREATE TABLE IF NOT EXISTS contact_limits(bucket TEXT PRIMARY KEY,expires INTEGER NOT NULL,n INTEGER NOT NULL);

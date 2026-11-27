@@ -335,3 +335,22 @@ test("operations metrics aggregate anonymous outcomes, reject extra fields and r
 
 
 test("operations layout separates status and wraps long mobile metrics",()=>{const js=fs.readFileSync(path.join(__dirname,"../site/assets/js/community.js"),"utf8"),css=fs.readFileSync(path.join(__dirname,"../site/assets/css/community.css"),"utf8");assert.ok(js.includes('class="fc-ops-detail"'));assert.ok(js.includes('class="fc-ops-line"'));assert.match(css,/\.fc-ops-state\{[^}]*white-space:normal/);assert.match(css,/\.fc-ops-line\{[^}]*grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\)/);});
+
+test("private feedback and chat enforce identity, visibility and rate limits",async()=>{
+ const {env}=fixture(),{onRequest}=await load();
+ const req=(p,body,who)=>onRequest({request:new Request(origin+"/api/community/"+p,{...(body===undefined?{}:{method:"POST",body:JSON.stringify(body)}),headers:{Origin:origin,"Content-Type":"application/json","CF-Connecting-IP":"192.0.2.1",...(who?{Cookie:"fg_session="+who.repeat(64)}:{})}}),env});
+ assert.equal((await req("live-chat/send",{body:"hello"})).status,401);
+ assert.equal((await req("live-chat/send",{body:"hello"},"b")).status,200);
+ assert.equal((await req("live-chat/send",{body:"spam"},"b")).status,429);
+ const chat=await (await req("live-chat")).json();assert.equal(chat.rows[0].body,"hello");assert.equal("author_subject" in chat.rows[0],false);
+ assert.equal((await req("contact/send",{kind:"bug",body:"private issue",page:"/",age:true,consent:true})).status,200);
+ assert.equal((await req("contact/send",{kind:"suggestion",body:"member issue",page:"/",age:true,consent:true},"b")).status,200);
+ assert.equal((await req("admin/social",undefined,"b")).status,403);
+ assert.equal((await req("contact/mine")).status,401);
+ const mine=await (await req("contact/mine",undefined,"b")).json();assert.equal(mine.rows.length,1);assert.equal(mine.rows[0].body,"member issue");
+ const admin=await (await req("admin/social",undefined,"a")).json();assert.equal(admin.unread,2);
+ assert.equal((await req("admin/contact",{id:mine.rows[0].id,status:"done",reply:"fixed"},"a")).status,200);
+ assert.equal((await (await req("contact/mine",undefined,"b")).json()).rows[0].reply,"fixed");
+ assert.equal((await req("admin/live-chat",{id:chat.rows[0].id,hidden:true},"a")).status,200);
+ assert.equal((await (await req("live-chat")).json()).rows.length,0);
+});

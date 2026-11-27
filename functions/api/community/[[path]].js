@@ -177,6 +177,9 @@ async function arcadeApi({p,b,m,db,env,u,received=Date.now()}){
  throw new Err("페이지를 찾을 수 없습니다.",404);
 }
 
+const socialDDL=["CREATE TABLE IF NOT EXISTS live_chat(id INTEGER PRIMARY KEY AUTOINCREMENT,author TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,body TEXT NOT NULL,created INTEGER NOT NULL,hidden INTEGER NOT NULL DEFAULT 0)","CREATE INDEX IF NOT EXISTS live_chat_author_time ON live_chat(author,created)","CREATE INDEX IF NOT EXISTS live_chat_time ON live_chat(created)","CREATE TABLE IF NOT EXISTS live_chat_blocks(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,blocked TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,PRIMARY KEY(member_id,blocked))","CREATE TABLE IF NOT EXISTS live_chat_reports(member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,chat_id INTEGER NOT NULL REFERENCES live_chat(id) ON DELETE CASCADE,created INTEGER NOT NULL,PRIMARY KEY(member_id,chat_id))","CREATE TABLE IF NOT EXISTS private_contact(id INTEGER PRIMARY KEY AUTOINCREMENT,member_id TEXT REFERENCES members(id) ON DELETE CASCADE,kind TEXT NOT NULL,body TEXT NOT NULL,page TEXT NOT NULL,created INTEGER NOT NULL,status TEXT NOT NULL DEFAULT 'new',reply TEXT)","CREATE INDEX IF NOT EXISTS private_contact_owner ON private_contact(member_id,created)","CREATE INDEX IF NOT EXISTS private_contact_status ON private_contact(status,created)","CREATE TABLE IF NOT EXISTS contact_limits(bucket TEXT PRIMARY KEY,expires INTEGER NOT NULL,n INTEGER NOT NULL)"];
+const socialReady=new WeakMap();
+async function ensureSocial(db){if(!socialReady.has(db)){const job=(async()=>{const r=await db.prepare("SELECT count(*) n FROM sqlite_master WHERE type='table' AND name IN ('live_chat','live_chat_blocks','live_chat_reports','private_contact','contact_limits')").first();if(r?.n!==5)await db.batch(socialDDL.map(s=>db.prepare(s)))})().catch(e=>{socialReady.delete(db);throw e});socialReady.set(db,job)}await socialReady.get(db)}
 export async function onRequest({request,env}){
  const received=Date.now();
  const u=new URL(request.url),p=u.pathname.replace(/^\/api\/community\/?/,"").replace(/\/$/,""),db=env.COMMUNITY_DB;
@@ -193,9 +196,21 @@ export async function onRequest({request,env}){
  const me=()=>{check(member&&!member.suspended,"로그인 또는 계정 상태를 확인하세요.",401);check(member.policy===POLICY,"최신 약관에 동의한 뒤 이용하세요.",403);return member};
  const active=()=>{const m=me();check(m.nickname,"닉네임 설정이 필요합니다.",403);return m};
  const requireAdmin=()=>{active();check(admin,"관리자 권한이 필요합니다.",403)};
+ const hub=()=>env.CHAT_HUB?.get(env.CHAT_HUB.idFromName("public"));
+ const notifyChat=async()=>{try{await hub()?.fetch("https://chat.internal/notify",{method:"POST"})}catch{console.error("chat notification failed")}};
  const audit=async(action,target,reason)=>run("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",member.id,action,String(target),reason,now());
  try{
  if(request.method==="GET"){
+   if(p==="live-chat/socket"){check(request.headers.get("Origin")===u.origin,"요청 출처가 올바르지 않습니다.",403);check(request.headers.get("Upgrade")?.toLowerCase()==="websocket","WebSocket 연결이 필요합니다.",426);check(hub(),"실시간 채팅 서버를 준비 중입니다.",503);return await hub().fetch("https://chat.internal/socket",{headers:{Upgrade:"websocket"}})}
+   if(p==="live-chat"){
+     await ensureSocial(db);
+     const m=member&&!member.suspended&&member.policy===POLICY&&member.nickname?member:null;
+     const rows=await all("SELECT c.id,c.body,c.created,m.nickname,c.author=? own,m.subject author_subject FROM live_chat c JOIN members m ON m.id=c.author WHERE c.hidden=0 AND c.created>? AND m.suspended=0 AND NOT EXISTS(SELECT 1 FROM live_chat_blocks b WHERE b.member_id=? AND b.blocked=c.author) ORDER BY c.id DESC LIMIT 40",m?.id||"",now()-7*86400,m?.id||"");
+     return json({canWrite:!!m,rows:rows.reverse().map(({author_subject,...x})=>({...x,verified:adminFor(env,{subject:author_subject})}))});
+   }
+   if(p==="contact/mine"){const m=active();await ensureSocial(db);return json({rows:await all("SELECT id,kind,body,page,created,status,reply FROM private_contact WHERE member_id=? AND created>? ORDER BY id DESC LIMIT 100",m.id,now()-180*86400)})}
+   if(p==="admin/social"){requireAdmin();await ensureSocial(db);return json({unread:(await first("SELECT count(*) n FROM private_contact WHERE status='new' AND created>?",now()-180*86400)).n,contacts:await all("SELECT c.id,c.kind,c.body,c.page,c.created,c.status,c.reply,COALESCE(m.nickname,'비회원') nickname FROM private_contact c LEFT JOIN members m ON m.id=c.member_id WHERE c.created>? ORDER BY CASE c.status WHEN 'new' THEN 0 WHEN 'review' THEN 1 ELSE 2 END,c.id DESC LIMIT 100",now()-180*86400),chat:await all("SELECT c.id,c.body,c.created,c.hidden,m.nickname,(SELECT count(*) FROM live_chat_reports r WHERE r.chat_id=c.id) reports FROM live_chat c JOIN members m ON m.id=c.author WHERE c.created>? ORDER BY reports DESC,c.id DESC LIMIT 100",now()-7*86400)})}
+
    if(p==="game-status")return await arcadeApi({p,m:active(),db,env,u});
    if(p==="me"){if(!member)return json({enabled:true,member:null});await ensureBoard(db);const ranks=await authorRanks(db,[member.id]);if(member.game_name!==null&&member.game_name!==undefined)await run("UPDATE members SET game_name=NULL WHERE id=?",member.id);return json({enabled:true,member:{nickname:member.nickname,suspended:!!member.suspended,admin,rank:ranks.get(member.id)||rankFor(0),needsPolicy:member.policy!==POLICY}})}
    if(p==="callback"){
@@ -272,6 +287,43 @@ export async function onRequest({request,env}){
  check(request.headers.get("Origin")===u.origin,"요청 출처가 올바르지 않습니다.",403);
  check(request.headers.get("content-type")?.includes("application/json"),"잘못된 요청입니다.",415);
  const raw=await request.text();check(raw.length<=40000,"요청이 너무 큽니다.",413);let b;try{b=JSON.parse(raw)}catch{throw new Err("잘못된 요청입니다.")}
+ if(p==="contact/send"){
+   check(b&&b.consent===true&&b.age===true,"개인정보 안내 및 만 14세 이상 여부를 확인해 주세요.");
+   check(["suggestion","bug","improvement","other"].includes(b.kind),"문의 유형을 확인해 주세요.");
+   const body=str(b.body,2000,5),page=str(b.page,120);
+   check(/^\/[a-zA-Z0-9/_-]*$/.test(page)&&!page.startsWith("//"),"페이지 형식 오류");
+   const m=member?me():null;
+   const ip=request.headers.get("CF-Connecting-IP");check(m||ip,"보안 확인에 실패했습니다.",403);
+   await ensureSocial(db);
+   const t=now(),window=Math.floor(t/600),bucket=await sha(env.GOOGLE_CLIENT_SECRET+":"+(m?"m:"+m.id:"ip:"+ip)+":"+window);
+   const lim=await first("INSERT INTO contact_limits(bucket,expires,n) VALUES(?,?,1) ON CONFLICT(bucket) DO UPDATE SET n=n+1 WHERE n<3 RETURNING n",bucket,(window+1)*600);
+   check(lim,"10분 후 다시 의견을 보내 주세요.",429);
+   await db.batch([q("DELETE FROM contact_limits WHERE expires<=?",t),q("DELETE FROM private_contact WHERE created<=?",t-180*86400),q("INSERT INTO private_contact(member_id,kind,body,page,created) VALUES(?,?,?,?,?)",m?.id||null,b.kind,body,page,t)]);
+   return json({ok:true});
+ }
+ if(p==="live-chat/send"){
+   const m=active(),body=str(b?.body,300),t=now();await ensureSocial(db);
+   const result=await db.batch([q("DELETE FROM live_chat WHERE created<=?",t-7*86400),q("INSERT INTO live_chat(author,body,created) SELECT ?,?,? WHERE NOT EXISTS(SELECT 1 FROM live_chat WHERE author=? AND created>?) AND (SELECT count(*) FROM live_chat WHERE author=? AND created>?)<10",m.id,body,t,m.id,t-5,m.id,t-60)]);
+   check(result[1].meta.changes===1,"잠시 후 다시 작성해 주세요.",429);await notifyChat();return json({ok:true});
+ }
+ if(p==="live-chat/report"||p==="live-chat/block"){
+   const m=active(),id=integer(b?.id);await ensureSocial(db);
+   const target=await first("SELECT author FROM live_chat WHERE id=? AND hidden=0 AND created>?",id,now()-7*86400);
+   check(target&&target.author!==m.id,"대상을 찾을 수 없습니다.",404);
+   if(p==="live-chat/report")await run("INSERT OR IGNORE INTO live_chat_reports(member_id,chat_id,created) VALUES(?,?,?)",m.id,id,now());
+   else await run("INSERT OR IGNORE INTO live_chat_blocks(member_id,blocked) VALUES(?,?)",m.id,target.author);
+   return json({ok:true});
+ }
+ if(p==="live-chat/unblock-all"){const m=active();await ensureSocial(db);await run("DELETE FROM live_chat_blocks WHERE member_id=?",m.id);return json({ok:true})}
+ if(p==="admin/contact"){
+   requireAdmin();const id=integer(b?.id);check(["new","review","done"].includes(b.status),"처리 상태 오류");const reply=b.reply?str(b.reply,2000):null;
+   await ensureSocial(db);const target=await first("SELECT member_id FROM private_contact WHERE id=? AND created>?",id,now()-180*86400);check(target,"의견을 찾을 수 없습니다.",404);
+   check(!reply||target.member_id,"비회원에게는 답변을 보낼 수 없습니다.");
+   await db.batch([q("UPDATE private_contact SET status=?,reply=? WHERE id=?",b.status,reply,id),q("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",member.id,"contact-status",String(id),b.status,now())]);return json({ok:true});
+ }
+ if(p==="admin/live-chat"){
+   requireAdmin();const id=integer(b?.id);await ensureSocial(db);await db.batch([q("UPDATE live_chat SET hidden=? WHERE id=?",b.hidden===true?1:0,id),q("INSERT INTO audit(actor,action,target,reason,created) VALUES(?,?,?,?,?)",member.id,"chat-moderation",String(id),b.hidden===true?"hide":"restore",now())]);await notifyChat();return json({ok:true});
+ }
  if(p==="ops-event"){
    if(admin||request.headers.get("Sec-GPC")==="1"||request.headers.get("DNT")==="1"||/bot|crawl|spider|headless|preview|curl|wget/i.test(request.headers.get("User-Agent")||""))return json({ok:true});
    check(raw.length<=200&&b&&Object.keys(b).length===3&&opsFeatures.has(b.feature)&&opsOutcomes.has(b.outcome)&&Number.isInteger(b.ms)&&b.ms>=0&&b.ms<=300000,"잘못된 기능 통계 요청입니다.");

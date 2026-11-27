@@ -1,0 +1,13 @@
+name = "fifagosu-chat-hub"
+main = "index.js"
+compatibility_date = "2026-11-27"
+workers_dev = false
+preview_urls = false
+
+[[durable_objects.bindings]]
+name = "CHAT_HUB"
+class_name = "ChatHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChatHub"]

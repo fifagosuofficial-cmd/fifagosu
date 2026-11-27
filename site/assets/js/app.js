@@ -441,7 +441,7 @@ function expandSnap(s){
 }
 if(window.FG_SNAP_RAW){window.FG_SNAP={};FG_SNAP_RAW.forEach(s=>Object.assign(FG_SNAP,expandSnap(s)))}
 let dMode='50', dCur=null, dTab='pstats', dCount=30;
-const DTABS={'50':[['pstats','선수별 기록'],['ranker','랭커 비교'],['stats','세부 지표'],['growth','성장 기록'],['time','시간대별 득실'],['shot','슈팅 맵']],'52':[['pstats','선수별 기록'],['ranker','랭커 비교'],['stats','세부 지표'],['growth','성장 기록'],['form','포메이션 상성'],['line','라인별 평점'],['time','시간대별 득실'],['shot','슈팅 맵']]};
+const DTABS={'50':[['pstats','선수별 기록'],['ranker','랭커 비교'],['stats','세부 지표'],['growth','성장 기록'],['changes','변경 전후'],['time','시간대별 득실'],['shot','슈팅 맵']],'52':[['pstats','선수별 기록'],['ranker','랭커 비교'],['stats','세부 지표'],['growth','성장 기록'],['changes','변경 전후'],['form','포메이션 상성'],['line','라인별 평점'],['time','시간대별 득실'],['shot','슈팅 맵']]};
 let dTabInit='pstats';
 const DKEY='fg_diag_v3', dRead=()=>{try{return JSON.parse(ls(DKEY)||'{}')}catch(e){return {}}}, dWrite=v=>ls(DKEY,JSON.stringify(v));
 let dFilter={pos:'',apps:1,action:'',sort:'pitch',recent:false}, dPriceMeta=null;
@@ -872,6 +872,14 @@ async function dEnrich(a,seq){
   if(seq!==diagSeq)return;a.enriched=true;dSaveVisit(dCur.d,a);dRenderReport(dCur.d,a);if(['pstats','growth','ranker'].includes(dTab))dRenderPanel()
 }
 const dPct=(v,days)=>v==null?'<span class="muted">조회 불가</span>':`<span class="${v>0?'up':v<0?'dn':''}"${days?` title="실제 ${days}일 전 전체 스냅샷과 비교"`:''}>${v>0?'+':''}${v.toFixed(1)}%${days?`<small> · ${days}일</small>`:''}</span>`;
+let dImageData=null;
+function dOpenImage(d,a){if(!window.FGDiagTools)return;const box=$('dImageDialog');dImageData={d,a};$('dImageNick').checked=false;dDrawImage();if(!box.open)box.showModal()}
+function dDrawImage(){if(!dImageData)return;const {d,a}=dImageData,latest=dRecentRows(a.players,a.recentLineup,true).filter(x=>Number.isFinite(x.eval)),mean=xs=>xs.length?Math.round(xs.reduce((n,x)=>n+x.eval,0)/xs.length):null,score=mean(latest),player=x=>x?{label:dCardLabel(x),score:x.eval,grade:x.evalGrade}:null;
+ const best=latest.slice().sort((x,y)=>y.eval-x.eval)[0],review=dReviewPriority(a)[0],date=d.matches[0]?.matchDate?new Date(d.matches[0].matchDate).toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul'}):'';
+ FGDiagTools.draw($('dImageCanvas'),{nickname:$('dImageNick').checked?d.basic.nickname:'',mode:a.dm?'감독모드':'공식경기',date,n:a.n,win:Math.round(a.W/a.n*100),record:a.W+'승 '+a.D+'무 '+a.L+'패',score,grade:score==null?'':dGrade(score),coverage:latest.length+'/'+(a.recentLineup||[]).length+'명 평가'+(!a.enriched?' · 분석 중':''),lines:['공격','미드','수비','GK'].map(name=>({name,value:mean(latest.filter(x=>LINE(x.pos)===name))})),best:player(best),review:player(review),gf:(a.gf/a.n).toFixed(2),ga:(a.ga/a.n).toFixed(2)});
+}
+async function dImageSave(share){const c=$('dImageCanvas'),status=$('dImageStatus');try{const blob=await new Promise(resolve=>c.toBlob(resolve,'image/png'));if(!blob)throw Error('이미지 생성 실패');const file=new File([blob],'피파고수_전적진단.png',{type:'image/png'});if(share&&navigator.canShare?.({files:[file]})){await navigator.share({files:[file],title:'피파고수 전적진단'});return}const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=file.name;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);status.textContent=share?'이미지 저장 후 공유해 주세요.':'이미지 저장을 요청했습니다.'}catch(e){if(e.name!=='AbortError')status.textContent=e.message||'저장 실패'}}
+$('dImageNick').addEventListener('change',dDrawImage);$('dImageClose').addEventListener('click',()=>$('dImageDialog').close());$('dImageDownload').addEventListener('click',()=>dImageSave(false));$('dImageShare').addEventListener('click',()=>dImageSave(true));$('dImageDialog').addEventListener('close',()=>{dImageData=null;$('dImageStatus').textContent=''});
 function dRenderReport(d,a){
   const best=a.players.filter(x=>x.eval!=null).sort((x,y)=>y.eval-x.eval)[0],worst=dPriority(a).find(x=>dRecentRows([x],a.recentLineup,true).length);
   $('dReportShell').hidden=false;
@@ -880,6 +888,7 @@ function dRenderReport(d,a){
     <div><span>최근 스쿼드 가치</span><b>${a.squadValue?fmtBP(a.squadValue):'계산 중'}</b><small>${a.valueMissing?`${a.valueMissing}명 시세 제외`:`${a.valueKnown||0}명 확인`}</small></div>
     <div class="dr-priority"><span>우선 보강</span><b>${!a.enriched?'분석 중':worst?esc(dCardLabel(worst)):dRecentRows(a.players,a.recentLineup,true).some(x=>x.action&&x.action!=='평가 보류')?'뚜렷한 보강 후보 없음':'판단 보류'}</b><small>${worst?'낮은 종합 점수와 복수 부진 근거 확인':a.enriched?'최근 출전 선수 기준':'랭커·평점 비교 중'}</small></div></div>${dTeamDiagnosis(a)?`<div class="note" style="margin:6px 0;font-size:12px"><b>팀 진단</b> · ${dTeamDiagnosis(a)} (승률 ${Math.round(a.W/a.n*100)}%)</div>`:''}${dReviewStrip(a)}<div class="dr-actions" aria-label="구단 리포트 작업"></div>`
   const actions=$('dReport').querySelector('.dr-actions');
+ if(!d.sample&&a.n>0){const b=document.createElement('button');b.type='button';b.className='ghost dr-action d-report-image';b.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 3h14v14H3zm2 2v10h10V5zM6 12l3-4 3 3 2-2v5H6z"/></svg><span>결과 이미지</span>';b.addEventListener('click',()=>dOpenImage(d,a));actions.appendChild(b)}
   if(a.enriched&&a.recentPlayers?.length&&!d.sample){const b=document.createElement('button');b.type='button';b.className='ghost dr-action';b.title='최근 스쿼드를 AI 스쿼드에서 개선 추천';b.setAttribute('aria-label',b.title);b.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2 1.2 4.1L15 8l-3.8 1.9L10 14l-1.2-4.1L5 8l3.8-1.9L10 2Zm5 10 .7 2.3L18 15.5l-2.3 1.2L15 19l-.7-2.3-2.3-1.2 2.3-1.2L15 12Z"/></svg><span>AI 개선</span>';b.addEventListener('click',()=>{try{sessionStorage.setItem('fg-squad-recent-v1',JSON.stringify({players:a.recentPlayers.map(p=>({id:+p.spId,grade:+p.grade,pos:p.pos,name:p.name,review:dReinforce(p)}))}));location.assign('/squad/?import=1')}catch(e){location.assign('/squad/')}});actions.appendChild(b)}
 
   if(a.enriched&&!d.sample&&a.n>0){const b=document.createElement('button');b.type='button';b.className='ghost dr-action';b.title='내 진단 기록에 저장';b.setAttribute('aria-label',b.title);b.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3h10l2 2v12H4V3Zm3 0v5h6V3M7 17v-5h6v5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>진단 저장</span>';b.addEventListener('click',async()=>{b.disabled=true;try{const nickname=d.basic.nickname,body='최근 '+a.n+'경기 · 승률 '+Math.round(a.W/a.n*100)+'%'+(a.squadValue?' · 최근 스쿼드 가치 '+fmtBP(a.squadValue):'')+(best?' · 우수 선수 '+dCardLabel(best):'')+(worst?' · 우선 보강 '+dCardLabel(worst):'');const r=await fetch('/api/community/diagnosis',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nickname,body})});const j=await r.json();if(!r.ok)throw Error(j.message);b.querySelector('span').textContent='저장 완료'}catch(err){alert('저장 실패: '+err.message);b.disabled=false}});actions.appendChild(b)}
@@ -1040,8 +1049,21 @@ function dRankerView(a){
  (weak?'<p class="note"><b>우선 점검: '+weak.label+'</b> · 비교 표본과 차이가 큰 항목입니다. 선수 성능이나 전술 차이도 영향을 줄 수 있습니다.</p>':'')+
  '<details style="margin-top:12px"><summary>동일 선수·포지션 랭커 참고 기록</summary>'+dRankerCardDetail(a,eligible,filterHtml)+'</details>';
 }
+let dChangeLimit=20,dChangeIndex=0;
+function dChangeView(a){
+ if(a.sample)return '<p class="note">실제 전적 조회 후 변경 전후 분석을 이용할 수 있어요.</p>';
+ const ev=a.changeEvents??=(window.FGDiagTools?.events(dCur.d.matches)||[]);
+ if(!ev.length)return '<div class="d-change-empty"><b>확인된 스쿼드 변경이 없어요.</b><p class="note">동일한 11명·포지션·강화 구성이 전후 각각 3경기 이상 유지된 경우만 감지합니다. 최근 100경기로 조회하면 더 많은 변경을 확인할 수 있어요.</p></div>';
+ const i=Math.min(dChangeIndex,ev.length-1),e=ev[i],q=FGDiagTools.compare(e,dChangeLimit),fmt=(v,unit)=>v==null?'—':v.toFixed(unit==='%'?1:2)+unit;
+ const row=(name,x,y,unit='',low=false)=>{const delta=x==null||y==null?null:y-x,good=delta!=null&&Math.abs(delta)>.005&&(low?delta<0:delta>0);return '<tr><td>'+esc(name)+'</td><td>'+fmt(x,unit)+'</td><td>'+fmt(y,unit)+'</td><td class="'+(delta==null||Math.abs(delta)<=.005?'':good?'up':'dn')+'">'+(delta==null?'—':(delta>0?'+':'')+delta.toFixed(unit==='%'?1:2)+(unit==='%'?'%p':unit))+'</td></tr>'};
+ const label=p=>p?dCardLabel({...p,grade:p.spGrade}):'—';
+ const table=(rows)=>'<table class="d-change-table"><thead><tr><th>항목</th><th>이전</th><th>이후</th><th>변화</th></tr></thead><tbody>'+rows+'</tbody></table>';
+ const date=new Date(e.date).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+ const n=q.n;
+ return '<div class="d-change-top"><label>변경 이력 <select data-change-index>'+ev.map((x,j)=>'<option value="'+j+'"'+(j===i?' selected':'')+'>'+esc(new Date(x.date).toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul'}))+' · '+x.changes.length+'개 변경</option>').join('')+'</select></label><div class="d-change-options">'+[10,20,30].map(k=>'<button type="button" data-change-limit="'+k+'" aria-pressed="'+(k===dChangeLimit)+'">'+k+'경기</button>').join('')+'</div></div><div class="d-change-head"><b>'+esc(date)+' · '+(e.changes.length===1?esc(e.changes[0].type):'동시 스쿼드 변경')+'</b><small>전후 각 '+n+'경기'+(n<dChangeLimit?' · 표본 부족':'')+'</small></div><div class="d-change-list">'+q.changes.map(x=>'<div class="d-change-pair"><span>'+esc(label(x.old))+'</span><span aria-hidden="true">→</span><span>'+esc(label(x.next))+'</span></div>').join('')+'</div>'+table([row('승률',q.before.wr,q.after.wr,'%'),row('경기당 득점',q.before.gf,q.after.gf),row('경기당 실점',q.before.ga,q.after.ga,'',true),row('팀 평균 평점',q.before.rating,q.after.rating),row('패스 성공률',q.before.pass,q.after.pass,'%'),row('태클 성공률',q.before.tackle,q.after.tackle,'%')].join(''))+(q.changes.length===1&&q.changes[0].before&&q.changes[0].after?'<h3 class="d-change-sub">변경 선수 기록</h3>'+table([['평균 평점','rating',''],['경기당 득점','goal',''],['경기당 도움','assist',''],['패스 성공률','pass','%'],['볼 경합 성공률','duel','%'],['태클 성공률','tackle','%']].map(([name,k,u])=>row(name,q.changes[0].before[k],q.changes[0].after[k],u)).join('')):'')+'<p class="note">같은 구성이 유지된 구간의 가까운 경기만 동일 수로 비교합니다. '+(n<10?'표본이 적어 성적 차이 해석에 주의하세요. ':'')+'전술·상대 수준 등 다른 요인의 영향이 있으므로 특정 선수 교체의 인과 효과로 단정하지 않습니다.</p>';
+}
 function dRenderTabs(){const list=DTABS[dMode];if(!list.some(t=>t[0]===dTab))dTab=list[0][0];$('dTabs').innerHTML=list.map(([k,l])=>`<button role="tab" data-tab="${k}" aria-selected="${k===dTab}">${l}</button>`).join('')}
-function dRenderPanel(){$('dPanel').innerHTML={stats:dStatsView,pstats:dPStatsView,time:timeChart,shot:shotMap,player:dPlayerTable,growth:dGrowthView,ranker:dRankerView,form:dFormView,line:dLineView}[dTab](dCur.a);$('dTabs').querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===dTab))}
+function dRenderPanel(){$('dPanel').innerHTML={changes:dChangeView,stats:dStatsView,pstats:dPStatsView,time:timeChart,shot:shotMap,player:dPlayerTable,growth:dGrowthView,ranker:dRankerView,form:dFormView,line:dLineView}[dTab](dCur.a);$('dTabs').querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===dTab))}
 function dRenderMatches(d,a){
   $('dAllN').textContent=`${d.matches.length}경기`;
   const md=s=>{const t=new Date(s);return `${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`};
@@ -1093,7 +1115,7 @@ async function runDiag(nick){
     else{$('dBoard').innerHTML=`<div><div class="nick">${esc(nick)}</div><div class="meta">미리보기 화면은 넥슨 서버에 직접 접속할 수 없어서 실시간 조회가 안 돼요. 배포한 사이트에서는 닉네임만 넣으면 바로 불러와요.${window.FG_SNAP?' 미리 불러온 구단주: '+[...new Set(Object.keys(FG_SNAP).map(k=>FG_SNAP[k].basic.nickname))].map(esc).join(', '):''}</div><button type="button" class="ghost" data-sample style="margin-top:8px;padding:6px 12px;font-size:13px">화면 구성만 예시 경기로 보기</button></div>`;dClear();return}
   }
   const a=analyze(d,dMode);dCur={d,a};
-  dTab='pstats';   // 공식경기·감독모드 모두 선수별 기록이 메인
+  dTab='pstats';dChangeIndex=0;   // 공식경기·감독모드 모두 선수별 기록이 메인
   // Both modes share the fixed report → details → opponent teamcolor → weaknesses order.
   dSaveVisit(d,a);dRenderBoard(d,a);dRenderSummary(d,a);dRenderReport(d,a);dRenderTip(a);dRenderCards(a);dRenderTabs();dRenderPanel();dRenderMatches(d,a);
   if(LIVE&&!d.sample)window.FGMetric?.(metricKey,'ok',Date.now()-diagStarted);
@@ -1106,12 +1128,13 @@ $('dForm').addEventListener('submit',e=>{e.preventDefault();runDiag($('dNick').v
 $('dBoard').addEventListener('click',e=>{const fav=e.target.closest('[data-dfavorite-toggle]');if(fav){dChangeFavorite(fav.dataset.dfavoriteToggle);return}if(e.target.closest('[data-sample]')){$('dNick').value='예시';runDiag('예시')}});
 $('dCount').addEventListener('click',e=>{const b=e.target.closest('[data-n]');if(!b)return;dCount=+b.dataset.n;$('dCount').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));runDiag($('dNick').value)});
 $('dMode').addEventListener('click',e=>{const b=e.target.closest('[data-mode]');if(!b)return;dMode=b.dataset.mode;$('dMode').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));runDiag($('dNick').value)});
+$('dPanel').addEventListener('click',e=>{const b=e.target.closest('[data-change-limit]');if(b&&dCur){dChangeLimit=+b.dataset.changeLimit;dRenderPanel()}});
 $('dTabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;dTab=b.dataset.tab;dRenderPanel()});
 $('dQuick').addEventListener('click',e=>{const remove=e.target.closest('[data-dfavorite-remove]');if(remove){dChangeFavorite(remove.dataset.dfavoriteRemove,true);return}const b=e.target.closest('[data-dnick]');if(b){$('dNick').value=b.dataset.dnick;runDiag(b.dataset.dnick)}});
 $('dFav').addEventListener('click',()=>{if(dCur)dChangeFavorite(dCur.d.basic.nickname)});
 $('dMine').addEventListener('click',()=>{if(!dCur)return;dStore(s=>s.mine=dCur.d.basic.nickname);dRenderQuick(dCur.d.basic.nickname)});
 $('dShare').addEventListener('click',async()=>{if(!dCur)return;const u=new URL((window.FG_ROUTES&&FG_ROUTES.diag)||'/diag',window.FG_SITE_URL||location.origin);u.searchParams.set('nick',dCur.d.basic.nickname);u.searchParams.set('mode',dMode);u.searchParams.set('count',dCount);const data={title:`${dCur.d.basic.nickname} 전적 진단 | 피파고수`,text:`${dCur.d.basic.nickname} 최근 ${dCur.a.n}경기 승률 ${Math.round(dCur.a.W/dCur.a.n*100)}%`,url:u.href};try{if(navigator.share)await navigator.share(data);else{await navigator.clipboard.writeText(u.href);$('dShare').textContent='링크 복사됨 ✓';setTimeout(()=>$('dShare').textContent='진단 공유',1600)}}catch(e){}});
-$('dPanel').addEventListener('change',e=>{if(e.target.hasAttribute('data-rank-basis')&&dCur){dCur.a.rankBasis=e.target.value;dRenderPanel();return}const f=e.target.dataset.dfilter;if(f){dFilter[f]=f==='recent'?e.target.checked:f==='apps'?+e.target.value:e.target.value;dRenderPanel();return}if(!dCur)return;const s=dRead(),key=dHistoryKey(dCur.d.basic.nickname,dMode);if(e.target.dataset.goal){s.goals=s.goals||{};const o=s.goals[key]??={};o[e.target.dataset.goal]=e.target.value;dWrite(s)}});
+$('dPanel').addEventListener('change',e=>{if(e.target.hasAttribute('data-change-index')){dChangeIndex=+e.target.value;dRenderPanel();return}if(e.target.hasAttribute('data-rank-basis')&&dCur){dCur.a.rankBasis=e.target.value;dRenderPanel();return}const f=e.target.dataset.dfilter;if(f){dFilter[f]=f==='recent'?e.target.checked:f==='apps'?+e.target.value:e.target.value;dRenderPanel();return}if(!dCur)return;const s=dRead(),key=dHistoryKey(dCur.d.basic.nickname,dMode);if(e.target.dataset.goal){s.goals=s.goals||{};const o=s.goals[key]??={};o[e.target.dataset.goal]=e.target.value;dWrite(s)}});
 
 /* 공유 링크: 개인 BP·구매가는 URL에 넣지 않아요. */
 let dQueryStarted=false;

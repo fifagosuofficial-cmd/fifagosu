@@ -46,6 +46,19 @@ def verify():
     assert '.fg-community[data-screen="mypage"] #fcMineTabs{display:grid' in mycss
     assert "fc-my-count" in myjs and "다음 등급까지" in myjs
     print("Public compact mypage assets OK")
+    assert 'id="fcGiftDialog"' in my and 'id="fcPointHistory"' in my
+    assert "points/gift" in myjs and "admin/member-detail" in myjs and "admin/points" in myjs
+    assert "포인트" in myjs and " XP" not in myjs
+    fun = get("/fun/?fgverify=" + stamp)
+    games = get("/assets/js/minigames.js?fgverify=" + stamp)
+    assert "포인트 획득 기회!" in fun and "보유 포인트" in games
+    import urllib.error
+    try:
+        get("/api/community/points/history")
+        raise AssertionError("Guest point history is accessible")
+    except urllib.error.HTTPError as e:
+        assert e.code == 401, e.code
+    print("Public points gift and member management assets OK")
     try:
         ads = get("/ads.txt?fgverify=" + stamp)
         print("Public ads.txt publisher entry:", "present" if "google.com, pub-2025317658537963, DIRECT" in ads else "missing")

@@ -157,3 +157,15 @@ def test_mypage_compact_profile_and_existing_actions():
     assert 'fc-my-count' in js
     assert '.fg-community[data-screen="mypage"] #fcMineTabs{display:grid' in css
     assert 'grid-template-columns:repeat(6,minmax(0,1fr))' in css
+
+
+def test_point_gift_and_member_management_ui():
+    html = (ROOT / "site/templates/community.html").read_text("utf-8")
+    js = (ROOT / "site/assets/js/community.js").read_text("utf-8")
+    for key in ("fcGiftOpen","fcGiftDialog","fcGiftForm","fcPointHistory","fcMemberDialog"):
+        assert 'id="'+key+'"' in html
+    for value in ("points/gift","points/history","admin/member-detail","admin/member-search","admin/points","포인트 선물하기"):
+        assert value in js or value in html
+    for path in ("site/assets/js/community.js","site/assets/js/welcome.js","site/assets/js/minigames.js","fun/index.html"):
+        import re
+        assert not re.search(r"\bXP\b",(ROOT/path).read_text("utf-8")), path

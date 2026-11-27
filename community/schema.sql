@@ -55,3 +55,9 @@ CREATE TABLE IF NOT EXISTS contact_limits(bucket TEXT PRIMARY KEY,expires INTEGE
 CREATE TABLE IF NOT EXISTS reported_chat(id TEXT PRIMARY KEY,author_key TEXT NOT NULL,nickname TEXT NOT NULL,body TEXT NOT NULL,created INTEGER NOT NULL,hidden INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS reported_chat_created ON reported_chat(created);
 CREATE TABLE IF NOT EXISTS reported_chat_votes(chat_id TEXT NOT NULL REFERENCES reported_chat(id) ON DELETE CASCADE,member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,created INTEGER NOT NULL,PRIMARY KEY(chat_id,member_id));
+
+-- Point transfers and operator adjustments: one immutable event per transaction.
+CREATE TABLE IF NOT EXISTS point_events(id TEXT PRIMARY KEY,kind TEXT NOT NULL CHECK(kind IN ('gift','adjust')),sender TEXT REFERENCES members(id) ON DELETE SET NULL,recipient TEXT REFERENCES members(id) ON DELETE SET NULL,actor TEXT REFERENCES members(id) ON DELETE SET NULL,amount INTEGER NOT NULL CHECK(amount BETWEEN 1 AND 100000),reason TEXT,created INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS point_event_sender ON point_events(sender,created);
+CREATE INDEX IF NOT EXISTS point_event_recipient ON point_events(recipient,created);
+CREATE TRIGGER IF NOT EXISTS point_adjust_audit AFTER INSERT ON point_events WHEN NEW.kind='adjust' BEGIN INSERT INTO audit(actor,action,target,reason,created) VALUES(NEW.actor,'point-adjust',COALESCE(NEW.recipient,NEW.sender),CASE WHEN NEW.recipient IS NOT NULL THEN '+' ELSE '-' END || NEW.amount || ' 포인트 · ' || NEW.reason,NEW.created); END;

@@ -16,6 +16,13 @@ def verify():
         assert '피파고수에게 건의하기' in html, path
         assert 'name="consent"' not in html.split('id="fgContactDialog"',1)[1].split("</dialog>",1)[0], path
         print("Public UI OK:", path)
+    diag = get("/diag?fgverify=" + stamp)
+    assert 'id="dStyleDialog"' in diag
+    app = get("/assets/js/app.js?fgverify=" + stamp)
+    assert "function dPlayStyle(" in app and "나의 플레이스타일" in app and "diag-owner-tiers" in app
+    css = get("/assets/css/main.css?fgverify=" + stamp)
+    assert ".diag-tier-row" in css and ".dr-style-open" in css
+    print("Public diagnosis layout and playstyle assets OK")
     js = get("/assets/js/social.js?fgverify=" + stamp)
     assert "setChatOpen(chat.hidden)" in js and 'node("time"' not in js
     state = json.loads(get("/api/community/live-chat"))

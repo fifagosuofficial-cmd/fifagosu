@@ -223,3 +223,24 @@ test("diagnosis profile omits the duplicate record strip while retaining ranks a
 
 
 test('GK uses unified grade, bounded team context and repeated personal rating for replacement',()=>{const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),s=fs.readFileSync(path.join(__dirname,'../site/assets/js/app.js'),'utf8'),g={};vm.createContext(g);vm.runInContext(s.slice(s.indexOf('function dPerfPair('),s.indexOf('function dTeamDiagnosis(')),g);const ref={avg:6.5,n:50},a={performance:{roles:{GK:{rating:ref,against:{avg:1,n:50},clean:{avg:.4,n:50}}}},perfRef:{groups:{GK:{metrics:{rating:ref}}}}};const x={roleApps:20,roleRaw:{rating:[130,20,20]},gkMatches:20,gkAgainst:20,gkClean:8,r:Array(20).fill(6.5)};const q=g.dKeeperScore(x,a);assert.equal(q.value,75);assert.equal(q.grade,'B');assert.equal(g.dPlayerAction(x,q,{}),'유지');const bad={...x,roleRaw:{rating:[110,20,20]},r:Array(20).fill(5.5)};const b=g.dKeeperScore(bad,a);assert.ok(b.confirmed);assert.equal(g.dPlayerAction(bad,b,{}),'우선 보강');const mid={...x,roleRaw:{rating:[116,20,20]},r:Array(20).fill(5.8)};assert.equal(g.dPlayerAction(mid,g.dKeeperScore(mid,a),{}),'교체 검토');const teamOnly={...x,gkAgainst:200,gkClean:0};const t=g.dKeeperScore(teamOnly,a);assert.equal(t.confirmed,false);assert.notEqual(g.dPlayerAction(teamOnly,t,{}),'교체 검토');assert.equal(g.dPerfPair(5,undefined),null);assert.equal(g.dKeeperScore({...x,roleApps:4},a),null);assert.ok(!s.includes("x.keeperRef?' 참고'"));});
+
+test('playstyle uses observed match records and refuses inadequate or synthetic samples',()=>{
+ const i=src.indexOf('function dPlayStyle('),e=src.indexOf('function dRenderReport(',i);vm.runInContext(src.slice(i,e),ctx);
+ const row=(pos=50,shots=10,out=2,opp=10,lp=5,tp=5)=>({matchInfo:[{matchDetail:{possession:pos,matchEndType:0},shoot:{shootTotal:shots,shootOutPenalty:out},pass:{passTry:100,longPassTry:lp,throughPassTry:tp}},{matchDetail:{possession:100-pos},shoot:{shootTotal:opp,shootOutPenalty:0}}]});
+ const rows=(...a)=>Array.from({length:10},()=>row(...a));
+ assert.equal(ctx.dPlayStyle(rows(58)).name,'점유형');
+ assert.equal(ctx.dPlayStyle(rows(40,10,2,10)).name,'역습 성향');
+ assert.equal(ctx.dPlayStyle(rows(40,4,1,12)).name,'수세형');
+ assert.equal(ctx.dPlayStyle(rows(50,10,5)).name,'중거리형');
+ assert.equal(ctx.dPlayStyle(rows(50,10,2,10,22)).name,'롱패스형');
+ assert.equal(ctx.dPlayStyle(rows(50,10,2,10,5,20)).name,'침투패스형');
+ assert.equal(ctx.dPlayStyle(rows()).name,'균형형');
+ assert.equal(ctx.dPlayStyle(rows().slice(0,9)).name,'분석 보류');
+ assert.equal(ctx.dPlayStyle(rows(),true).name,'분석 보류');
+ assert.equal(ctx.dPlayStyle(rows().map(m=>({...m,matchInfo:[{...m.matchInfo[0],matchDetail:{possession:null}},m.matchInfo[1]]}))).name,'분석 보류');
+ assert.match(ctx.dPlayStyle(rows(58)).detail,/유효 10경기/);
+ const css=fs.readFileSync(path.join(__dirname,'../site/assets/css/main.css'),'utf8');
+ assert.match(css,/\.diag-intro>#dBoard\{grid-template-columns:minmax\(0,1fr\) auto;gap:8px\}/);
+ assert.match(css,/\.diag-report-shell \.dr-insights\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+ assert.ok(src.includes('나의 플레이스타일')&&src.includes('dStyleDialog'));
+});

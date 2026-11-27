@@ -184,7 +184,7 @@ def test_board_view_count_stays_visible_on_mobile():
     html = (ROOT / "site/templates/community.html").read_text("utf-8")
     css = (ROOT / "site/assets/css/community.css").read_text("utf-8")
     js = (ROOT / "site/assets/js/community.js").read_text("utf-8")
-    assert '<th scope="col">날짜</th><th scope="col">조회</th><th scope="col">순추천</th>' in html
+    assert '<th scope="col">날짜</th><th scope="col">조회</th><th scope="col">추천</th>' in html
     assert 'fc-count fc-views' in js and 'count(x.views)' in js
     assert '.fc-board-table .fc-col-views{width:0}' not in css
     assert '.fc-board-table td:nth-child(5){display:none}' not in css

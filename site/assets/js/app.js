@@ -1539,7 +1539,7 @@ function renderCard(){
    <section class="pm2-l">
     <div class="pm2-id">
      <div class="pm2-txt">
-      <div class="pm2-name">${bigBadge(c.sid)}<b id="pmTitle">${esc(name)}</b></div><div><a href="/board/?category=review&amp;card=${encodeURIComponent(c.id)}">선수 후기</a> · <button type="button" id="fgFavoriteMember">관심 선수 저장</button></div>
+      <div class="pm2-name">${bigBadge(c.sid)}<b id="pmTitle">${esc(name)}</b></div><div class="pm2-quick"><a href="/board/?category=review&amp;card=${encodeURIComponent(c.id)}"><span aria-hidden="true">♧</span> 선수 후기</a><button type="button" id="fgFavoriteMember" aria-label="관심 선수 저장" title="관심 선수 저장">★</button></div>
       ${main?`<div class="pm2-ovr"><span class="mp">${esc(main[0])}</span><b>${ovrNow}</b></div>`:''}
       <div class="pm2-meta"><span>${esc(sname(c.sid))}</span>${D?`<i>|</i><span>${esc(String(D.nation||'').split(',')[0])}</span>${flagImg(D.nationId)}`:''}</div>
       <div class="pm2-phys">${pay?`<span>급여</span><span class="hex">${pay}</span>`:''}${D?`<i>|</i><span>${D.height||'-'}cm</span><i>|</i><span>${D.weight||'-'}kg</span><i>|</i><span>${esc(D.body||'-')}</span>`:''}${foot?`<span class="pm2-foot2"><b class="${foot.main==='L'?'on':''}">${foot.l}</b><b class="${foot.main==='R'?'on':''}">${foot.r}</b></span>`:''}</div>

@@ -46,6 +46,16 @@ const opsFeatures=new Set(["diag_official","diag_manager","card_search","boost_r
 const opsOutcomes=new Set(["ok","empty","error"]);
 const opsReady=new WeakMap();
 async function ensureOps(db){if(!opsReady.has(db))opsReady.set(db,db.prepare(opsDDL).run().catch(e=>{opsReady.delete(db);throw e}));await opsReady.get(db)}
+async function workflowHealth(){
+ const base="https://api.github.com/repos/fifagosuofficial-cmd/fifagosu/actions/";
+ const read=async path=>{const r=await fetch(base+path,{headers:{"Accept":"application/vnd.github+json","User-Agent":"fifagosu-admin"},signal:AbortSignal.timeout(6000)});if(!r.ok)throw Error("GitHub HTTP "+r.status);return r.json()};
+ const results=await Promise.all(["crawl.yml","news.yml"].map(async file=>{
+  try{const d=await read("workflows/"+file+"/runs?branch=main&per_page=5");const runs=d.workflow_runs||[];const selected=file==="crawl.yml"?[runs.find(r=>r.event!=="push"),runs[0]]:[runs[0]];
+   return await Promise.all(selected.map(async(r,i)=>{const label=file==="news.yml"?"뉴스 수집·배포":i===0?"시세 수집":"최근 시세·사이트 배포";if(!r)return {label,status:"unknown"};let failed=[];if(r.conclusion==="failure"){try{const jobs=await read("runs/"+r.id+"/jobs");failed=(jobs.jobs||[]).flatMap(j=>(j.steps||[]).filter(s=>s.conclusion==="failure").map(s=>s.name)).slice(0,8)}catch{}}
+    return {label,id:r.id,status:r.status,conclusion:r.conclusion,updated:r.updated_at,failed};}));
+  }catch{return [{label:file==="news.yml"?"뉴스 수집·배포":"시세 수집·배포",status:"unknown"}]}
+ }));return {runs:results.flat()};
+}
 async function opsSummary(db,u,env){
  await ensureOps(db);const t=now(),hour=Math.floor(t/3600),day=trafficDay(t),range=u.searchParams.get("range")==="1"?1:u.searchParams.get("range")==="30"?30:7,from=(day-range+1)*24-9;
  const q=(sql,...args)=>db.prepare(sql).bind(...args);
@@ -279,6 +289,7 @@ export async function onRequest({request,env}){
    })}
    if(p==="admin/traffic"){requireAdmin();return json(await trafficSummary(db,u))}
    if(p==="admin/ops"){requireAdmin();return json(await opsSummary(db,u,env))}
+   if(p==="admin/workflows"){requireAdmin();return json(await workflowHealth())}
    if(p==="admin"){requireAdmin();await ensureBoard(db);await cleanup();
      const kstDay=Math.floor((now()+32400)/86400),start=(kstDay-6)*86400-32400,today=kstDay*86400-32400;
      const stats=await first("SELECT (SELECT count(*) FROM members) members,(SELECT count(*) FROM members WHERE created>=?) new_members,(SELECT count(*) FROM members WHERE suspended=1) suspended,(SELECT count(*) FROM posts WHERE hidden=0) posts,(SELECT count(*) FROM posts WHERE created>=? AND hidden=0) new_posts,(SELECT count(*) FROM comments WHERE hidden=0 AND post_id IN (SELECT id FROM posts WHERE hidden=0)) comments,(SELECT count(*) FROM comments WHERE created>=? AND hidden=0 AND post_id IN (SELECT id FROM posts WHERE hidden=0)) new_comments,(SELECT count(*) FROM reports WHERE status='open') open_reports,(SELECT count(*) FROM feedback WHERE status='open') open_feedback,(SELECT COALESCE(sum(views),0) FROM posts WHERE hidden=0) views",today,today,today);

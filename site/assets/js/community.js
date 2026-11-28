@@ -216,11 +216,18 @@ function selectAdmin(tab){adminTab=tab;if(tab==="traffic")return loadTraffic();i
 function memberRows(rows){return entries(rows,x=>entry(x.nickname||"닉네임 미설정",date(x.created)+" · "+(x.suspended?"정지":"정상")+" · "+(x.rank?.name||"")+" · "+count(x.rank?.points)+" 포인트",btn("상세","data-admin","member-detail:"+x.id)+btn("포인트 조정","data-admin","points:"+x.id)+btn("로그인 해제","data-admin","member-sessions:"+x.id)+btn(x.suspended?"해제":"정지","data-admin","member:"+x.id+":"+(x.suspended?0:1))))}
 async function showMember(id){const d=await get("admin/member-detail?id="+encodeURIComponent(id)),x=d.member;$("fcMemberDetailTitle").textContent=x.nickname||"닉네임 미설정";$("fcMemberDetailBody").innerHTML='<p>'+esc(x.rank.name+" · "+count(x.rank.points)+" 포인트 · "+(x.suspended?"정지":"정상"))+'</p><p>게시글 '+count(x.posts)+' · 댓글 '+count(x.comments)+' · 유효 세션 '+count(x.sessions)+'</p><h3>포인트 내역</h3>'+pointRows(d.rows)+'<h3>관리 이력</h3>'+entries(d.audit,r=>entry(r.action,date(r.created)+" · "+r.reason));$("fcMemberDialog").showModal()}
 let adminPointBusy=false,adminPointRequest=null;
+let workflowHealthData=null,workflowHealthBusy=false,workflowHealthAt=0;
+function workflowHealthView(){
+ if(!workflowHealthData)return '<section class="fc-dash-card"><h3>자동 작업 상태</h3><p class="fc-note">상태 확인 중…</p></section>';
+ const rows=workflowHealthData.runs||[];
+ return '<section class="fc-dash-card"><h3>자동 작업 상태</h3>'+rows.map(r=>{const bad=["failure","cancelled","timed_out","action_required","startup_failure"].includes(r.conclusion),ok=r.conclusion==="success",state=bad?"error":ok?"ok":"",label=bad?"실패":ok?"정상":r.status==="unknown"?"확인 불가":r.status==="completed"?"완료 · 결과 확인 필요":"진행 중";return '<div class="fc-ops-row"><div class="fc-ops-line"><b>'+esc(r.label)+'</b><span class="fc-ops-state" data-state="'+state+'">'+label+'</span></div><small class="fc-ops-detail">'+esc((r.failed||[]).join(" · ")||(r.updated?new Date(r.updated).toLocaleString("ko-KR"):"GitHub 상태 조회 필요"))+'</small>'+(Number.isSafeInteger(r.id)?'<a href="https://github.com/fifagosuofficial-cmd/fifagosu/actions/runs/'+r.id+'" target="_blank" rel="noopener noreferrer">실행 기록</a>':'')+'</div>'}).join("")+'</section>';
+}
+async function refreshWorkflowHealth(){if(workflowHealthBusy||Date.now()-workflowHealthAt<60000)return;workflowHealthBusy=true;try{workflowHealthData=await get("admin/workflows")}catch{workflowHealthData={runs:[{label:"자동 작업",status:"unknown"}]}}finally{workflowHealthBusy=false;workflowHealthAt=Date.now();if(["overview","system"].includes(adminTab))renderAdmin()}}
 function renderAdmin(){
  tabs($("fcAdminTabs"),adminLabels,adminTab);let h='<h2>'+adminLabels[adminTab]+'</h2>';
- if(adminTab==="overview")h+=adminOverview(adminData);
+ if(adminTab==="overview"){h+=workflowHealthView()+adminOverview(adminData);void refreshWorkflowHealth()}
  else if(adminTab==="traffic")h+=trafficView();
- else if(["usage","system"].includes(adminTab))h+=opsView(adminTab==="system");
+ else if(["usage","system"].includes(adminTab)){if(adminTab==="system"){h+=workflowHealthView();void refreshWorkflowHealth()}h+=opsView(adminTab==="system")}
  else if(adminTab==="marketReport")h+=marketReportView();
  else{
  const rows=adminData[adminTab]||[];h+='<p class="fc-note">최근 최대 100건 · '+rows.length+'건 표시</p><label class="fc-admin-filter">검색<input type="search" id="fcAdminSearch" placeholder="'+(adminTab==="members"?"회원 닉네임 검색":"현재 목록에서 검색")+'">'+(adminTab==="members"?'<button type="button" id="fcMemberSearch">전체 회원 검색</button>':"")+'</label><div id="fcAdminEntries">';

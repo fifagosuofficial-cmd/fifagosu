@@ -1,0 +1,1 @@
+{"date":"2026-11-28","basis":"full-list-snapshots","requestedDays":[1,7,30],"grades":[1,5,8],"historyDays":5,"historyFrom":"2026-11-24","historyTo":"2026-11-28","cards":93867,"shards":200,"schema":"row=[price,pct1,pct7,pct30,actualDays1,actualDays7,actualDays30]"}

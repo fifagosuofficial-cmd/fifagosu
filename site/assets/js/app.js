@@ -1539,7 +1539,7 @@ function renderCard(){
    <section class="pm2-l">
     <div class="pm2-id">
      <div class="pm2-txt">
-      <div class="pm2-name">${bigBadge(c.sid)}<b id="pmTitle">${esc(name)}</b></div><div class="pm2-quick"><a href="/board/?category=review&amp;card=${encodeURIComponent(c.id)}"><span aria-hidden="true">♧</span> 선수 후기</a><button type="button" id="fgFavoriteMember" aria-label="관심 선수 저장" title="관심 선수 저장">★</button></div>
+      <div class="pm2-name">${bigBadge(c.sid)}<b id="pmTitle">${esc(name)}</b><div class="pm2-quick"><a aria-label="선수 후기" title="선수 후기" href="/board/?category=review&amp;card=${encodeURIComponent(c.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 11.5a9 9 0 0 1-9 9 10 10 0 0 1-4-.9L3 21l1.4-4.5A9 9 0 1 1 21 11.5Z"/><circle cx="8" cy="11.5" r=".9" fill="currentColor"/><circle cx="12" cy="11.5" r=".9" fill="currentColor"/><circle cx="16" cy="11.5" r=".9" fill="currentColor"/></svg></a><button type="button" id="fgFavoriteMember" aria-label="관심 선수 확인 중" aria-pressed="false" disabled>★</button></div></div>
       ${main?`<div class="pm2-ovr"><span class="mp">${esc(main[0])}</span><b>${ovrNow}</b></div>`:''}
       <div class="pm2-meta"><span>${esc(sname(c.sid))}</span>${D?`<i>|</i><span>${esc(String(D.nation||'').split(',')[0])}</span>${flagImg(D.nationId)}`:''}</div>
       <div class="pm2-phys">${pay?`<span>급여</span><span class="hex">${pay}</span>`:''}${D?`<i>|</i><span>${D.height||'-'}cm</span><i>|</i><span>${D.weight||'-'}kg</span><i>|</i><span>${esc(D.body||'-')}</span>`:''}${foot?`<span class="pm2-foot2"><b class="${foot.main==='L'?'on':''}">${foot.l}</b><b class="${foot.main==='R'?'on':''}">${foot.r}</b></span>`:''}</div>
@@ -1547,7 +1547,6 @@ function renderCard(){
      </div>
      <div class="pm2-photo">${D&&D.teamId?`<span class="pm2-crest">${crestImg(D.teamId)}</span>`:''}${bigImg(c.id)}${gradeSel}</div>
     </div>
-    <div class="pm2-gbar"><span>강화</span>${Array.from({length:MAX_GRADE},(_,i)=>`<button type="button" data-g="${i+1}" class="gb g-${GRADE_CLS(i+1)}" aria-pressed="${i+1===g}">${i+1}</button>`).join('')}</div>
     <div class="pm2-sum">${sumCells}</div>
     <div class="pm2-tabs" data-side="L"><button type="button" data-t="feat" aria-selected="${pmTabL==='feat'}">특징</button><button type="button" data-t="price" aria-selected="${pmTabL==='price'}">시세</button><button type="button" data-t="club" aria-selected="${pmTabL==='club'}">클럽 경력</button></div>
     <div class="pm2-tabp">${tabL}</div>
@@ -1561,6 +1560,7 @@ function renderCard(){
   </div>
   <div class="pm2-others"><div class="pm2-oh">같은 선수 다른 시즌 <small>${others.length}장</small></div>${others.length?`<div class="pm2-orow">${others.map(o=>{const x=ix(o.id);return `<button type="button" data-sp="${o.id}">${bigBadge(o.sid)}${x&&x[0]?`<b class="${fcCls(x[0])}">${x[0]}</b>`:''}</button>`}).join('')}</div>`:'<p class="muted">다른 시즌 카드가 없어요.</p>'}</div>
  </div>`;
+  void pmFavoriteRefresh();
 }
 function closeCard(){$('pmodal').hidden=true;document.body.style.overflow='';pmCard=null}
 $('pmClose').addEventListener('click',closeCard);
@@ -1699,7 +1699,10 @@ document.querySelectorAll("[data-fg-index]").forEach(initFGIndex);
 
 
 // Community integration: explicit member action, no background account data upload.
-document.addEventListener("click",async e=>{if(!e.target.closest("#fgFavoriteMember")||!pmCard)return;const id=pmCard.id,grade=pmGrade,name=document.getElementById("pmTitle")?.textContent||String(id);try{const r=await fetch("/api/community/favorite",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({card_id:id,grade,name})});const j=await r.json();if(!r.ok)throw Error(j.message);alert("관심 선수에 저장했습니다.")}catch(err){alert("관심 선수 저장 실패: "+err.message)}});
+let pmFavoriteSeq=0,pmFavoriteBusy=false;
+function pmFavoritePaint(button,saved){button.disabled=false;button.setAttribute("aria-pressed",String(saved));button.title=saved?"관심 선수 해제":"관심 선수 저장";button.setAttribute("aria-label",button.title)}
+async function pmFavoriteRefresh(){const button=document.getElementById("fgFavoriteMember");if(!button||!pmCard)return;const seq=++pmFavoriteSeq,id=pmCard.id,grade=pmGrade;try{const r=await fetch("/api/community/favorite?card_id="+id+"&grade="+grade,{cache:"no-store"});if(!r.ok)throw Error("조회 실패");const d=await r.json();if(seq===pmFavoriteSeq&&button.isConnected)pmFavoritePaint(button,!!d.saved)}catch{if(seq===pmFavoriteSeq&&button.isConnected){button.title="관심 선수 조회 실패";button.setAttribute("aria-label",button.title)}}}
+document.addEventListener("click",async e=>{const button=e.target.closest("#fgFavoriteMember");if(!button||!pmCard||pmFavoriteBusy||button.disabled)return;const id=pmCard.id,grade=pmGrade,name=document.getElementById("pmTitle")?.textContent||String(id),remove=button.getAttribute("aria-pressed")==="true";pmFavoriteBusy=true;button.disabled=true;try{const r=await fetch("/api/community/favorite",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({card_id:id,grade,name,remove})});const d=await r.json();if(!r.ok)throw Error(d.message||"요청 실패");if(button.isConnected)pmFavoritePaint(button,!remove)}catch(err){alert(err.message);if(button.isConnected)pmFavoritePaint(button,remove)}finally{pmFavoriteBusy=false;void pmFavoriteRefresh()}});
 
 // Diagnostic tooltips live under body, outside the scrolling/sticky table.
 (()=>{const panel=document.getElementById('dPanel');if(!panel)return;

@@ -1628,3 +1628,8 @@ nav.menu a.nav-diag-feature:hover,nav.menu a.nav-diag-feature:focus-visible{anim
 .pm2-trs{gap:4px}.pm2-tr{font-size:11px;padding-right:6px}
 .pm2-r{padding:16px 18px}.pm2-others{padding:14px 18px}
 }
+
+.pm2-name{flex-wrap:wrap;gap:6px}.pm2-name #pmTitle{flex:0 1 auto}.pm2-name .pm2-quick{display:inline-flex;flex-wrap:nowrap;gap:4px;margin-left:2px}
+.pm2-name .pm2-quick a,.pm2-name .pm2-quick button{width:30px;min-width:30px;height:30px;min-height:30px;padding:0;border:0;background:transparent;border-radius:6px;color:var(--muted)}
+.pm2-name .pm2-quick svg{width:21px;height:21px}.pm2-name .pm2-quick button{font-size:24px;color:#a2a8ae}.pm2-name .pm2-quick button[aria-pressed=true]{color:#eab72b}
+.pm2-name .pm2-quick button:disabled{opacity:.65;cursor:wait}.pm2-grade-trigger{min-height:32px}

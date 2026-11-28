@@ -104,6 +104,11 @@ jobs:
           cp -r functions dist/
           if [ -d data ]; then cp -r data dist/ && rm -f dist/data/state.json; fi
 
+      - name: Check Pages asset sizes
+        if: env.CF_TOKEN != ''
+        run: |
+          rm -f dist/data/market/summary.json
+          python -c 'from pathlib import Path; bad=[str(p) for p in Path("dist").rglob("*") if p.is_file() and p.stat().st_size>25*1024*1024]; print("Oversized files:", bad); assert not bad'
       - name: Cloudflare Pages 배포
         if: env.CF_TOKEN != ''
         uses: cloudflare/wrangler-action@v3

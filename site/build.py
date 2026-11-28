@@ -595,8 +595,17 @@ def main(argv=None):
     market_data_dir = out / "market-data"
     market_data_dir.mkdir(parents=True, exist_ok=True)
     for days, payload in market_payloads.items():
+        # Keep full rankings, but bound each public asset well below Pages' 25 MiB limit.
+        items = payload["items"]
+        parts = []
+        for offset in range(0, len(items), 10000):
+            name = f"{days}-{offset // 10000}.json"
+            (market_data_dir / name).write_text(
+                json.dumps(items[offset:offset + 10000], ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            parts.append(name)
+        manifest_payload = {**payload, "items": [], "parts": parts}
         (market_data_dir / f"{days}.json").write_text(
-            json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            json.dumps(manifest_payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     (market_data_dir / "daily-report.json").write_text(json.dumps(market_report(market, market_seasons), ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     if market and not market.get("byGrade"):
         market = None

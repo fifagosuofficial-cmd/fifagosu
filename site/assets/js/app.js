@@ -1614,7 +1614,7 @@ function hydrateSeasonBadges(scope){
 }
 const marketDataCache={};
 function loadMarketPeriod(day){
-  if(!marketDataCache[day])marketDataCache[day]=fetch(`/market-data/${day}.json`).then(r=>{if(!r.ok)throw Error(r.status);return r.json()}).catch(e=>{delete marketDataCache[day];throw e});
+  if(!marketDataCache[day])marketDataCache[day]=fetch(`/market-data/${day}.json`).then(r=>{if(!r.ok)throw Error(r.status);return r.json()}).then(async p=>{if(p.parts){const chunks=await Promise.all(p.parts.map(async name=>{const r=await fetch(`/market-data/${name}`);if(!r.ok)throw Error(r.status);return r.json()}));p.items=chunks.flat()}return p}).catch(e=>{delete marketDataCache[day];throw e});
   return marketDataCache[day]
 }
 function marketRow(x,n){

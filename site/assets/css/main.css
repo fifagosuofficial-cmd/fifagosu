@@ -1646,3 +1646,6 @@ nav.menu a.nav-diag-feature:hover,nav.menu a.nav-diag-feature:focus-visible{anim
 .pm2-ovr .pm2-alt b{font:800 13px var(--f-data)}
 .pm2-phys{gap:5px}
 @media(max-width:760px){.pm2-txt{gap:7px}.pm2-id{align-items:start}.pm2-l{gap:11px}.pm2-ovr .pm2-alt{margin-left:2px}.pm2-ovr .pm2-alt b{font-size:13px}.pm2-feet .pm2-foot2 b{width:23px;height:23px}.pm2-visual{gap:6px}}
+
+.pm2-meta{gap:4px;align-items:center}.pm2-meta .pm2-feet{display:inline-flex;margin-left:2px;flex:none}.pm2-meta .pm2-foot2{gap:3px}.pm2-meta .pm2-foot2 b{width:19px;height:19px;font-size:11px}.pm2-meta .pm2-feet:empty{display:none}
+@media(max-width:760px){.pm2-meta{font-size:11px;gap:3px;margin-right:calc(-1 * min(20px,4vw))}.pm2-meta .fo{height:12px}.pm2-meta .pm2-foot2 b{width:17px;height:17px;font-size:10px}.pm2-meta .pm2-feet{margin-left:0}.pm2-meta .pm2-foot2{gap:2px}}

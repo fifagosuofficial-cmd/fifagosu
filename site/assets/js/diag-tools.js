@@ -14,13 +14,27 @@ function avg(rows,fn){const vs=rows.map(fn).filter(finite);return vs.length?vs.r
 function team(ms){const me=ms.map(m=>m.matchInfo[0]),op=ms.map(m=>m.matchInfo[1]),results=me.map(s=>s.matchDetail?.matchResult).filter(v=>["승","무","패"].includes(v));return {n:ms.length,wr:results.length?results.filter(v=>v==="승").length/results.length*100:null,gf:avg(me,s=>s.shoot?.goalTotal),ga:avg(op,s=>s?.shoot?.goalTotal),rating:avg(me.flatMap(s=>s.player||[]),p=>p.status?.spRating>0?p.status.spRating:null),pass:rate(me.map(s=>s.pass),"passSuccess","passTry"),tackle:rate(me.map(s=>s.defence),"tackleSuccess","tackleTry")}}
 function player(ms,p){if(!p)return null;const ps=ms.flatMap(m=>m.matchInfo[0].player||[]).filter(q=>identity(q)===identity(p)).map(q=>q.status||{});return {rating:avg(ps,s=>s.spRating>0?s.spRating:null),goal:avg(ps,s=>s.goal),assist:avg(ps,s=>s.assist),pass:rate(ps,"passSuccess","passTry"),duel:rate(ps,"ballPossesionSuccess","ballPossesionTry"),tackle:rate(ps,"tackle","tackleTry")}}
 function compare(e,limit){const n=Math.min(limit,e.before.matches.length,e.after.matches.length),before=e.before.matches.slice(-n),after=e.after.matches.slice(0,n);return {n,before:team(before),after:team(after),changes:e.changes.map(x=>({...x,before:player(before,x.old),after:player(after,x.next)}))}}
-function draw(canvas,d){const c=canvas.getContext("2d");if(!c)throw Error("이미지 생성 미지원");canvas.width=1080;canvas.height=1350;const fg="#effaf5",muted="#a0bdb0",green="#35e6aa",orange="#ffc16e";
+function verdict(d){
+ const gf=Number(d.gf),ga=Number(d.ga),w=Number(d.win),def=d.lines?.find(x=>x.name==="수비")?.value,atk=d.lines?.find(x=>x.name==="공격")?.value;
+ const pick=xs=>xs[(Math.round(gf*100+ga*100+w+(d.n||0))>>>0)%xs.length];
+ if(d.n<10)return ["아직 예열 중","10경기 이상 쌓이면 전술 진단이 더 정확해집니다."];
+ if(gf>=3&&ga>=2)return [pick(["공격은 월클, 수비는 자동문","한 골 먹으면 두 골 넣지 뭐","닥공 FC · 골잔치 전문"]), "득점은 강점! 수비 전환과 역습 차단을 점검하세요."];
+ if(w>=75)return [pick(["상대 키보드 수명 단축반","승점 자판기는 상대팀","이 정도면 공경 출근 도장"]), "높은 승률을 유지한 경기 패턴을 복기해 보세요."];
+ if(ga>=3)return [pick(["골키퍼 야근수당 지급 시급","수비진은 관람 중","우리 팀 골문은 24시간 영업"]), "수비 간격과 센터백 커서 전환부터 점검하세요."];
+ if(gf<1.3)return [pick(["골대야 우리 친하지?","공격수 퇴근 버튼 찾는 중","득점 버튼 어디 갔나요"]), "박스 안 슈팅 기회와 공격 전개를 점검하세요."];
+ if(ga<=1&&w>=50)return ["잠금장치 달린 골문","낮은 실점이 강점입니다. 공격 효율도 함께 확인하세요."];
+ if(w<40)return [pick(["한 판만 더의 무한루프","승점 기부천사 FC","오늘도 멘탈 강화 중"]), "연패 때는 쉬어 가고 낮은 평가 포지션부터 점검하세요."];
+ if(atk!=null&&def!=null&&atk-def>=15)return ["공격진 캐리 중","공격과 수비 평가 차이가 큽니다. 수비 라인을 점검하세요."];
+ const styles={"중거리형":"ZD 각 재는 중","롱패스형":"택배 배송 전문 FC","침투패스형":"침투 맛집 FC","점유형":"공은 내 거야","역습 성향":"역습 딸깍 FC","수세형":"버티기 장인","공격주도형":"닥공 연구소"};
+ return [styles[d.style?.name]||"오늘도 공경 한 판","강점은 유지하고 낮은 평가 포지션을 우선 점검하세요."];
+}
+function draw(canvas,d){const c=canvas.getContext("2d");if(!c)throw Error("이미지 생성 미지원");canvas.width=1080;canvas.height=1550;const fg="#effaf5",muted="#a0bdb0",green="#35e6aa",orange="#ffc16e";
 const rect=(x,y,w,h,color,r=18)=>{c.fillStyle=color;c.beginPath();if(c.roundRect)c.roundRect(x,y,w,h,r);else c.rect(x,y,w,h);c.fill()};
 const t=(v,x,y,size,color=fg,weight=500,align="left",max=980)=>{c.font=weight+" "+size+"px system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";c.fillStyle=color;c.textAlign=align;c.textBaseline="middle";let s=String(v??"—");while(s.length>1&&c.measureText(s).width>max)s=s.slice(0,-1);if(s!==String(v??"—"))s=s.slice(0,-1)+"…";c.fillText(s,x,y)};
-c.fillStyle="#0e211b";c.fillRect(0,0,1080,1350);rect(0,0,1080,10,green,0);t("FIFAGOSU",48,60,36,green,800);t("SQUAD REPORT",1032,60,24,muted,700,"right");t("스쿼드 건강검진",48,140,51,fg,800);t(d.nickname||"구단주명 비공개",48,205,33,fg,700);t(d.mode+" · 최근 "+d.n+"경기 · "+d.date,48,255,25,muted);
+c.fillStyle="#0e211b";c.fillRect(0,0,1080,1550);rect(0,0,1080,10,green,0);if(d.logo?.complete&&d.logo.naturalWidth){const h=76,w=h*d.logo.naturalWidth/d.logo.naturalHeight;c.drawImage(d.logo,48,25,Math.min(w,350),h)}else t("FIFAGOSU",48,60,36,green,800);t("SQUAD REPORT",1032,60,24,muted,700,"right");const [headline,tip]=verdict(d);t(headline,48,140,49,fg,800);t(d.nickname||"구단주명 비공개",48,205,33,fg,700);t(d.mode+" · 최근 "+d.n+"경기 · "+d.date,48,255,25,muted);
 rect(48,295,984,238,"#17382c");t("승률",78,335,28,muted);t(d.win+"%",78,419,82,green,800);t(d.record,78,489,27,fg);t("스쿼드 종합 점수",1002,335,28,muted,500,"right");t(d.score==null?"—":d.score+"점 "+d.grade,1002,419,59,fg,800,"right");t(d.coverage,1002,489,23,muted,500,"right");
 rect(48,557,984,306,"#172e26");t("포지션별 종합 점수",78,596,29,fg,700);d.lines.forEach((r,i)=>{const y=652+i*56;t(r.name,78,y,26,fg);rect(250,y-8,650,16,"#345247",8);if(r.value!=null)rect(250,y-8,650*r.value/100,16,r.value>=80?green:r.value>=70?"#e7cf72":orange,8);t(r.value==null?"—":r.value+"점",1002,y,26,fg,700,"right")});
 const player=(x,y,title,p,color)=>{rect(x,y,480,200,"#172e26");t(title,x+24,y+37,24,color,700);t(p?.label||"평가 표본 부족",x+24,y+93,29,fg,700,"left",432);t(p?String(p.score)+"점 "+p.grade:"—",x+24,y+151,42,color,800)};
-player(48,887,"최우수 선수",d.best,green);player(552,887,"보강 우선 점검",d.review,orange);t("경기당 득점 "+d.gf+" · 실점 "+d.ga,48,1128,27,fg,600);t("확인된 최신 라인업 선수 평가 평균 · 교체 확정 아님",48,1176,23,muted);t("FIFAGOSU.COM",48,1260,48,green,800);t("내 스쿼드도 무료 진단",1032,1260,28,fg,600,"right");}
-const api={events,compare,diff,draw};if(typeof module!=="undefined"&&module.exports)module.exports=api;else root.FGDiagTools=api;
+player(48,887,"최우수 선수",d.best,green);player(552,887,"보강 우선 점검",d.review,orange);rect(48,1108,984,155,"#17382c");t("경기당 득점 "+d.gf+"  |  실점 "+d.ga,78,1145,34,fg,800);t("골득실 "+(Number(d.gf)-Number(d.ga)>=0?"+":"")+(Number(d.gf)-Number(d.ga)).toFixed(2)+" / 경기",78,1194,27,green,700);t(d.style?.name||"분석 보류",1002,1145,30,green,700,"right");t(d.style?.short||"",1002,1194,25,muted,500,"right");t("피파고수 한마디",48,1300,25,green,800);t(tip,48,1343,29,fg,600);t("예능 별명 · 실제 경기 기록 기반 / 선수 교체 확정 아님",48,1390,23,muted);t("FIFAGOSU.COM",48,1480,48,green,800);t("친구도 진단받아 보세요",1032,1480,28,fg,600,"right");}
+const api={events,compare,diff,draw,verdict};if(typeof module!=="undefined"&&module.exports)module.exports=api;else root.FGDiagTools=api;
 })(typeof window!=="undefined"?window:globalThis);

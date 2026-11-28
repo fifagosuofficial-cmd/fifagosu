@@ -1540,12 +1540,12 @@ function renderCard(){
     <div class="pm2-id">
      <div class="pm2-txt">
       <div class="pm2-name">${bigBadge(c.sid)}<b id="pmTitle">${esc(name)}</b><div class="pm2-quick"><a aria-label="선수 후기" title="선수 후기" href="/board/?category=review&amp;card=${encodeURIComponent(c.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 11.5a9 9 0 0 1-9 9 10 10 0 0 1-4-.9L3 21l1.4-4.5A9 9 0 1 1 21 11.5Z"/><circle cx="8" cy="11.5" r=".9" fill="currentColor"/><circle cx="12" cy="11.5" r=".9" fill="currentColor"/><circle cx="16" cy="11.5" r=".9" fill="currentColor"/></svg></a><button type="button" id="fgFavoriteMember" aria-label="관심 선수 확인 중" aria-pressed="false" disabled>★</button></div></div>
-      ${main?`<div class="pm2-ovr"><span class="mp">${esc(main[0])}</span><b>${ovrNow}</b></div>`:''}
+      ${main?`<div class="pm2-ovr"><span class="mp">${esc(main[0])}</span><b>${ovrNow}</b>${pos.length>1?`<div class="pm2-alt">${pos.slice(1).map(p=>`<span>${esc(p[0])} <b>${(p[1]||0)+b+adaptDelta+tcOverall}</b></span>`).join('')}</div>`:''}</div>`:''}
       <div class="pm2-meta"><span>${esc(sname(c.sid))}</span>${D?`<i>|</i><span>${esc(String(D.nation||'').split(',')[0])}</span>${flagImg(D.nationId)}`:''}</div>
-      <div class="pm2-phys">${pay?`<span>급여</span><span class="hex">${pay}</span>`:''}${D?`<i>|</i><span>${D.height||'-'}cm</span><i>|</i><span>${D.weight||'-'}kg</span><i>|</i><span>${esc(D.body||'-')}</span>`:''}${foot?`<span class="pm2-foot2"><b class="${foot.main==='L'?'on':''}">${foot.l}</b><b class="${foot.main==='R'?'on':''}">${foot.r}</b></span>`:''}</div>
-      ${pos.length>1?`<div class="pm2-alt">${pos.slice(1).map(p=>`<span>${esc(p[0])} <b>${(p[1]||0)+b+adaptDelta+tcOverall}</b></span>`).join('')}</div>`:''}
+      <div class="pm2-phys">${pay?`<span>급여</span><span class="hex">${pay}</span>`:''}${D?`<i>|</i><span>${D.height||'-'}cm</span><i>|</i><span>${D.weight||'-'}kg</span><i>|</i><span>${esc(D.body||'-')}</span>`:''}</div>
+
      </div>
-     <div class="pm2-photo">${D&&D.teamId?`<span class="pm2-crest">${crestImg(D.teamId)}</span>`:''}${bigImg(c.id)}${gradeSel}</div>
+     <div class="pm2-visual"><div class="pm2-photo">${D&&D.teamId?`<span class="pm2-crest">${crestImg(D.teamId)}</span>`:''}${bigImg(c.id)}${gradeSel}</div><div class="pm2-feet">${foot?`<span class="pm2-foot2"><b class="${foot.main==='L'?'on':''}">${foot.l}</b><b class="${foot.main==='R'?'on':''}">${foot.r}</b></span>`:''}</div></div>
     </div>
     <div class="pm2-sum">${sumCells}</div>
     <div class="pm2-tabs" data-side="L"><button type="button" data-t="feat" aria-selected="${pmTabL==='feat'}">특징</button><button type="button" data-t="price" aria-selected="${pmTabL==='price'}">시세</button><button type="button" data-t="club" aria-selected="${pmTabL==='club'}">클럽 경력</button></div>

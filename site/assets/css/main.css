@@ -1633,3 +1633,16 @@ nav.menu a.nav-diag-feature:hover,nav.menu a.nav-diag-feature:focus-visible{anim
 .pm2-name .pm2-quick a,.pm2-name .pm2-quick button{width:30px;min-width:30px;height:30px;min-height:30px;padding:0;border:0;background:transparent;border-radius:6px;color:var(--muted)}
 .pm2-name .pm2-quick svg{width:21px;height:21px}.pm2-name .pm2-quick button{font-size:24px;color:#a2a8ae}.pm2-name .pm2-quick button[aria-pressed=true]{color:#eab72b}
 .pm2-name .pm2-quick button:disabled{opacity:.65;cursor:wait}.pm2-grade-trigger{min-height:32px}
+
+/* Compact profile hierarchy: secondary positions alongside primary OVR; feet under portrait. */
+.pm2-visual{min-width:0;display:grid;gap:7px;align-content:start}
+.pm2-feet{display:flex;justify-content:center;min-height:0}
+.pm2-feet:empty{display:none}
+.pm2-feet .pm2-foot2{margin:0;gap:5px}
+.pm2-feet .pm2-foot2 b{width:24px;height:24px;border-radius:50%}
+.pm2-ovr{flex-wrap:wrap;align-items:center;gap:6px}
+.pm2-ovr .pm2-alt{display:flex;gap:4px;align-items:center;margin-left:3px}
+.pm2-ovr .pm2-alt span{display:inline-flex;align-items:center;gap:4px;padding:4px 6px;border-radius:6px;background:var(--sunk);font-size:11px;white-space:nowrap}
+.pm2-ovr .pm2-alt b{font:800 13px var(--f-data)}
+.pm2-phys{gap:5px}
+@media(max-width:760px){.pm2-txt{gap:7px}.pm2-id{align-items:start}.pm2-l{gap:11px}.pm2-ovr .pm2-alt{margin-left:2px}.pm2-ovr .pm2-alt b{font-size:13px}.pm2-feet .pm2-foot2 b{width:23px;height:23px}.pm2-visual{gap:6px}}

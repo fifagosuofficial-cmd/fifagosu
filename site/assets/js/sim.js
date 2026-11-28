@@ -24,7 +24,7 @@ function loadMaterialData(){if(!materialP)materialP=Promise.all([timedFetch('/as
 function localEngine(id,base,g){const b=GRADE_BONUS[g];if(!materialPrices||!window.FGMaterials||!Number.isInteger(b)||!Number.isInteger(base)||base<=0)return null;if(verifiedEngine?.hasRule(base,g,b))return verifiedEngine;if(observedEngine?.hasRule(base,g,b))return observedEngine;const k=id+':'+g,q=exactQuotes.get(k);if(!q)return null;const ek=k+':'+base;if(!exactEngines.has(ek))exactEngines.set(ek,FGMaterials.create(materialPrices,FGMaterials.exactObservedRule(q,base,b)));return exactEngines.get(ek)}
 function localPlan(id,base,g,target=100){const engine=localEngine(id,base,g);if(!engine)return null;const k=id+':'+base+':'+g+':'+target;if(localPlans.has(k))return localPlans.get(k);const p=engine.solve(base,g,GRADE_BONUS[g],id%1000000,target);localPlans.set(k,p);return p}
 function referencePlan(id,base,g,target=100){if(!referenceEngine?.ready||g>7||!Number.isInteger(base))return null;const pid=materialPids.has(id%1000000)?id%1000000:0,k=[base,g,pid,target].join(':');if(!referencePlans.has(k)){const p=referenceEngine.solve(base,g,GRADE_BONUS[g],pid,target);referencePlans.set(k,p?{...p,reference:true}:null)}return referencePlans.get(k)}
-function localBest(id,base,g,gain){const engine=localEngine(id,base,g)||(g<=7?referenceEngine:null);if(!engine)return null;const k=[id,base,g,gain].join(':');if(!localBestCache.has(k)){const p=engine.best(base,g,GRADE_BONUS[g],id%1000000,gain);localBestCache.set(k,p&&engine===referenceEngine?{...p,reference:true}:p)}return localBestCache.get(k)}
+function localBest(id,base,g,gain){const engine=verifiedEngine?.hasRule(base,g,GRADE_BONUS[g])?verifiedEngine:null;if(!engine)return null;const k=[id,base,g,gain].join(':');if(!localBestCache.has(k)){const p=engine.best(base,g,GRADE_BONUS[g],id%1000000,gain);localBestCache.set(k,p&&engine===referenceEngine?{...p,reference:true}:p)}return localBestCache.get(k)}
 function loadPool(){if(!poolP)poolP=timedFetch(DATA_BASE+'/market/pool.json',20000).then(r=>r.ok?r.body:null).then(j=>{POOL=j&&j.items&&j.items.length?j.items:null;return POOL}).catch(()=>null);return poolP}
 /* ================= 탭 ================= */
 const tabs=document.querySelector('.sim-tabs');
@@ -81,7 +81,7 @@ function effRows(){
 }
 // Adding a cost must lower return and profit, and cannot enlarge a budget.
 function effWithMaterial(row,plan){
-  if(!(plan?.official||plan?.local)||plan.gauge!==100||!Number.isSafeInteger(plan.cost)||plan.cost<=0)return null;
+  if(!(plan?.official||plan?.local&&plan.estimated===false)||plan.gauge!==100||!Number.isSafeInteger(plan.cost)||plan.cost<=0)return null;
   const inv=row.buy+plan.cost;if(!Number.isFinite(inv)||inv<=0)return null;
   return {...row,mat:plan.cost,plan,inv,rr:row.ret/inv,ev:row.ret-inv,win:row.netUp-inv};
 }
@@ -111,7 +111,7 @@ const effMissingQuote=code=>["no_quotes","no_full_combo","not_verified"].include
 const effLookupBlocked=code=>["request_limit","upstream_cooldown"].includes(code)||/(?:_http_(?:403|429|5\d\d)|_timeout|_network)$/.test(code||"")||["network","cache_init","cache_read","cache_write","request_budget"].includes(code);
 function effActive(ctx){return effCtx===ctx&&$('effMat').checked&&!$('simEff').hidden&&!$('v-sim').hidden}
 function effMaterialRows(ctx){
-  const rows=[];for(const r of ctx.candidates){const key=planKey(r.id,r.g),plan=officialPlans.get(key)||localPlan(r.id,r.ovr,r.g)||referencePlan(r.id,r.ovr,r.g);if(plan){const v=effWithMaterial(r,plan);if(v&&v.inv<=ctx.budget)rows.push(v)}}return rows;
+  const rows=[];for(const r of ctx.candidates){const key=planKey(r.id,r.g),plan=officialPlans.get(key)||localPlan(r.id,r.ovr,r.g);if(plan){const v=effWithMaterial(r,plan);if(v&&v.inv<=ctx.budget)rows.push(v)}}return rows;
 }
 function effStart(ctx,retry=false){
   if(!effActive(ctx)||ctx.running)return;
@@ -173,13 +173,13 @@ function effPaint(ctx,baseRows){
   const rows=ctx?effMaterialRows(ctx):effWithinBudget(baseRows,effBudget);
   const fee=(feeRate()*100).toFixed(1).replace(/\.0$/,'');
   const empty=ctx?(ctx.candidates.length===0?'예산과 강화 단계에 맞는 후보가 없어요.':ctx.running?'공식 재료비를 조회하고 있어요…':ctx.issue?'공식 조회 대기 · 확인된 결과는 유지됩니다.':'예산·조건에 맞는 확인된 재료비 조합이 아직 없어요. 추가 조회를 눌러 주세요.'):'조건에 맞는 카드가 없어요.';
-  const win=effMode==='win',preview=!!ctx&&!rows.length,top=effCandidateOrder(preview?ctx.candidates:rows,effMode,effSort).slice(0,30),title=win?'인생강화 TOP':'회수율 TOP 30';
-  const html='<div class="eff-col"><h3>'+title+' <small>'+(win?(effSort==='profit'?'순이익 높은 순':'종합지수 높은 순'):'투자금 대비 회수 비율 순')+(preview?' · 재료비 미포함 임시 목록':ctx?' · 공식 확인 및 자체 계산 후보 기준':'')+'</small></h3>'+(preview?'<p class="sim-note">재료비 확인된 후보 없음 · 아래는 재료비를 제외한 참고 순위입니다. 공식 조회 버튼으로 확인할 수 있습니다.</p>':'')+(top.map((r,i)=>effRow(r,i,win?'win':undefined)).join('')||'<p class="sim-note">'+empty+'</p>')+'</div>';
+  const win=effMode==='win',preview=false,top=effCandidateOrder(preview?ctx.candidates:rows,effMode,effSort).slice(0,30),title=win?'인생강화 TOP':'회수율 TOP 30';
+  const html='<div class="eff-col"><h3>'+title+' <small>'+(win?(effSort==='profit'?'순이익 높은 순':'종합지수 높은 순'):'투자금 대비 회수 비율 순')+(preview?' · 재료비 미포함 임시 목록':ctx?' · 검증된 재료비 기준':'')+'</small></h3>'+(preview?'<p class="sim-note">재료비 확인된 후보 없음 · 아래는 재료비를 제외한 참고 순위입니다. 공식 조회 버튼으로 확인할 수 있습니다.</p>':'')+(top.map((r,i)=>effRow(r,i,win?'win':undefined)).join('')||'<p class="sim-note">'+empty+'</p>')+'</div>';
   if(html!==effLastHTML){$('effOut').className='eff-cols';$('effOut').innerHTML=html;effLastHTML=html}
   $('effActions').hidden=!ctx;
   if(ctx){
     const remaining=ctx.candidates.some(r=>{const k=planKey(r.id,r.g);return !officialPlans.has(k)&&!ctx.attempted.has(k)&&!knownUnavailable(k)&&localPlan(r.id,r.ovr,r.g)?.estimated!==false});
-    $('effInfo').textContent='재료비 포함 · 공식 확인 또는 수집 시세 자체 계산 · 표시 '+rows.length.toLocaleString()+' / 후보 '+ctx.candidates.length.toLocaleString()+'건 · 수수료 '+fee+'% · 자체 예상 '+rows.filter(r=>r.plan?.estimated).length.toLocaleString()+'건 · 수집일 '+(materialPrices?.date||'미상')+' · 전체 시장 순위 아님'+(Number.isFinite(effBudget)?' · 예산 '+won(effBudget)+' 이하':'');
+    $('effInfo').textContent='재료비 포함 · 공식 확인 또는 검증 규칙 기반 수집 시세 · 표시 '+rows.length.toLocaleString()+' / 후보 '+ctx.candidates.length.toLocaleString()+'건 · 수수료 '+fee+'% · 자체 예상 '+rows.filter(r=>r.plan?.estimated).length.toLocaleString()+'건 · 수집일 '+(materialPrices?.date||'미상')+' · 전체 시장 순위 아님'+(Number.isFinite(effBudget)?' · 예산 '+won(effBudget)+' 이하':'');
     $('effProgress').textContent=ctx.running?'공식 확인 중 ('+ctx.done+'/'+EFF_BATCH+')':ctx.issue?ctx.issue:rows.length?'재료비 '+rows.length.toLocaleString()+'건 · 참고 추정 '+rows.filter(r=>r.plan?.reference).length.toLocaleString()+'건':materialPrices?'확인된 재료비 없음 · 공식 조회 가능':'재료 시세 데이터 미확인';
     $('effMore').disabled=ctx.running||!remaining;
     $('effRetry').hidden=!ctx.retry.size;$('effRetry').disabled=ctx.running;
@@ -255,12 +255,12 @@ const attemptCost=g=>autoMat()?selectedPlan(g)?.cost??null:matPer()>0?matPer()*K
 function matShow(){
  const v=matPer(),plan=autoMat()?selectedPlan(cur):null,key=SEL?planKey(SEL.c.id,cur):"";
  $('smEMat').disabled=autoMat()||preparing;
- $('smEMatV').textContent=autoMat()?(plan?.local?'수집 시세 · 검증 규칙':'공식 월평균 최저 거래가'):v?korBP(v)+' BP / 장':'재료비 입력 필요';
+ $('smEMatV').textContent=autoMat()?(plan?.local?'수집 시세 · 검증 규칙':'공식 월평균 거래가 (실시간 매물 아님)'):v?korBP(v)+' BP / 장':'재료비 입력 필요';
  $('smEMatCombo').innerHTML=!autoMat()?"수동 재료비 사용 중":plan?'<div style="width:100%"><b>'+korBP(plan.cost)+' BP · '+plan.cards.length+'장 · 100%</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">'+plan.cards.map(c=>'<span style="border:1px solid rgba(128,128,128,.25);border-radius:6px;padding:4px 7px">OVR '+c.ovr+' · '+korBP(c.price)+' BP</span>').join('')+'</div></div>':cur>=MAX?"최대 강화":!SEL?"선수를 선택하세요":officialPending.has(key)?"재료비 조회 중…":officialErrors.has(key)?'<span>'+H(officialErrors.get(key))+'</span><button type="button" id="smEBoostRetry" style="font-size:12px;padding:5px 10px;border-radius:8px;cursor:pointer" title="'+H(officialErrors.get(key))+'">다시 조회</button>':"재료비 조회 대기";
  if($('smEBoostRetry'))$('smEBoostRetry').onclick=()=>{void loadOfficial(cur)};
- const hint=$('smELocalHint'),controls=$('smELocalControls');if(hint&&controls){const base=baseOvr(),target=Number($('smELocalGauge').value)||100,local=SEL&&cur<MAX?(localPlan(SEL.c.id,base,cur,target)||referencePlan(SEL.c.id,base,cur,target)):null;let best=null,ev=null;
+ const hint=$('smELocalHint'),controls=$('smELocalControls');if(hint&&controls){const base=baseOvr(),target=Number($('smELocalGauge').value)||100,local=SEL&&cur<MAX?(verifiedEngine?.hasRule(base,cur,GRADE_BONUS[cur])?localPlan(SEL.c.id,base,cur,target):null):null;let best=null,ev=null;
  if(SEL?.l?.price&&cur<MAX){const buy=priceAt(cur),up=priceAt(cur+1),fv=priceAt($('smEFail').value==='down'&&cur>=5?cur-1:cur);if(buy&&up&&fv){const gain=SUCC[cur]/100*(up-fv)*(1-feeRate());best=localBest(SEL.c.id,base,cur,gain);if(best)ev=fv*(1-feeRate())-buy+gain*best.gauge/100-best.cost}}
- controls.hidden=!autoMat()||!SEL||!(localEngine(SEL.c.id,base,cur)||(cur<=7&&referenceEngine?.ready));hint.hidden=controls.hidden;hint.textContent=(!local?'선택한 게이지 조합 미확인':(local.reference?'과거 자료 참고 추정':local.estimated?'자체 예상':'자체 계산')+' '+local.gauge.toFixed(1)+'% · '+korBP(local.cost)+' BP · '+local.cards.map(c=>c.name+' '+c.grade+'강 (OVR '+c.ovr+')').join(' + ')+' · 수집일 '+(local.date||'미상'))+(best?' / 기대손익 최적: '+best.gauge.toFixed(1)+'% · '+sgn(ev)+' BP ('+(best.reference?'과거 자료 참고 추정':best.estimated?'예상':'검증 규칙')+')':'');}
+ controls.hidden=!autoMat()||!SEL||!verifiedEngine?.hasRule(base,cur,GRADE_BONUS[cur]);hint.hidden=controls.hidden;hint.textContent=(!local?'선택한 게이지 조합 미확인':(local.reference?'과거 자료 참고 추정':local.estimated?'자체 예상':'자체 계산')+' '+local.gauge.toFixed(1)+'% · '+korBP(local.cost)+' BP · '+local.cards.map(c=>c.name+' '+c.grade+'강 (OVR '+c.ovr+')').join(' + ')+' · 수집일 '+(local.date||'미상'))+(best?' / 기대손익 최적: '+best.gauge.toFixed(1)+'% · '+sgn(ev)+' BP ('+(best.reference?'과거 자료 참고 추정':best.estimated?'예상':'검증 규칙')+')':'');}
  $('smEGaugeV').textContent=autoMat()?(plan?"풀게이지 · 100%":"게이지 미확인"):`${KAN}칸 · ${KAN*20}%`;
  $('smEGaugeBox').querySelectorAll('[data-k]').forEach(x=>x.classList.toggle('on',autoMat()?!!plan:+x.dataset.k<=KAN));
 }

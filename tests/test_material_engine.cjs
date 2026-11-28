@@ -147,3 +147,5 @@ test("optimizer chooses best expectation across attainable gauge values",()=>{co
 
 
 test("historical reference rules stay estimated and exclude unverified higher stages",()=>{const {referenceRules}=require("../site/assets/js/material-engine.js");const model=create(data,referenceRules(data));const p=model.solve(110,4,0,1);assert.ok(p&&p.estimated&&p.gauge===100);assert.equal(model.solve(110,8,0,1),null);});
+
+test("unverified cheap reference plans cannot enter efficiency ranking",()=>{const fs=require("node:fs"),vm=require("node:vm"),s=fs.readFileSync(require("node:path").join(__dirname,"../site/assets/js/sim.js"),"utf8"),ctx={};vm.createContext(ctx);vm.runInContext(s.slice(s.indexOf("function effWithMaterial("),s.indexOf("function parseEffBudget(")),ctx);const row={ovr:137,g:1,buy:1e12,ret:2e12,netUp:2e12};assert.equal(ctx.effWithMaterial(row,{local:true,estimated:true,reference:true,gauge:100,cost:1999999}),null);assert.equal(ctx.effWithMaterial(row,{local:true,gauge:100,cost:1999999}),null);assert.ok(ctx.effWithMaterial(row,{local:true,estimated:false,gauge:100,cost:1e10}));});
